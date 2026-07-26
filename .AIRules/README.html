@@ -27,29 +27,22 @@ composant <code>profile-tree</code> natif de Tabby.</p>
   voir callout ci-dessous.</li>
 </ul>
 
-<div class="callout warning">
-<span class="callout-title">⚠️ Ce dossier n'est pas versionné avec le code</span>
-<p><code>Développement/</code> n'est pas un dépôt Git. Ces fichiers vivent uniquement sur cette
-machine — ils ne sont <strong>pas</strong> poussés sur GitHub avec le plugin. Une reprise à 100 % du
-développement depuis un autre PC (clone du dépôt seul) n'inclura donc ni l'historique détaillé, ni
-les pièges, ni la roadmap. À garder en tête si ce projet doit un jour être repris ailleurs — la
-solution la plus simple serait de synchroniser ce dossier séparément (dotfiles, cloud) ou de
-l'intégrer au dépôt si la portabilité complète redevient prioritaire.</p>
-</div>
+<p class="muted">Ce dossier est versionné avec le code (dans le dépôt Git de
+<code>tabby-ssh-sidebar</code>) — une reprise du développement depuis un autre PC via
+<code>git clone</code> inclut donc l'intégralité de l'historique, des pièges et de la roadmap.</p>
 
 <h2>Structure</h2>
 
 <table>
 <tr><th>Fichier</th><th>Contenu</th></tr>
 <tr><td><a href="AI-CONTEXT.html">AI-CONTEXT.html</a></td>
-    <td>Invariants stables : conventions de code, pièges rencontrés (référence numérotée), points
-    fragiles à revérifier après mise à jour de Tabby, décisions de design actées pour les
-    fonctionnalités pas encore construites.</td></tr>
+    <td>Invariants du code déjà construit : identité du projet, pièges rencontrés (référence
+    numérotée), points fragiles à revérifier après mise à jour de Tabby.</td></tr>
 <tr><td><a href="AI-HISTORY.html">AI-HISTORY.html</a></td>
     <td>Journal chronologique par chantier, le plus récent en tête. Chaque chantier liste ses
     commits (date / hash / résumé).</td></tr>
 <tr><td><a href="ROADMAP.html">ROADMAP.html</a></td>
-    <td>Statut et priorité de chaque chantier restant à faire.</td></tr>
+    <td>Statut, priorité et détail de design complet de chaque chantier restant à faire.</td></tr>
 </table>
 
 <p>Le <code>CLAUDE.md</code> à la racine du dépôt <code>tabby-ssh-sidebar</code> reste la référence

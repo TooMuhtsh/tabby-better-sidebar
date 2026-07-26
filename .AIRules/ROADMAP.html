@@ -17,8 +17,8 @@
 <h1>Roadmap</h1>
 <p class="muted">Dernière revue : 2026-07-26</p>
 
-<p>Détail de design pour chaque chantier dans <a href="AI-CONTEXT.html#decisions-design">AI-CONTEXT.html §4</a>.
-Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>.</p>
+<p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
+techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
 
 <h2>Vue d'ensemble</h2>
 <table>
@@ -26,70 +26,187 @@ Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY
 <tr><td>Socle (favoris, statut live, drag &amp; drop, menus contextuels, icônes)</td>
     <td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td>Publication npm</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
-<tr><td>SFTP contextuel</td><td><span class="pill planned">📋 Planifié</span></td><td>Absolue</td></tr>
-<tr><td>Workspaces</td><td><span class="pill planned">📋 Planifié</span></td><td>Absolue</td></tr>
-<tr><td>Sélection multiple</td><td><span class="pill planned">📋 Mécanisme tranché</span></td><td>Moyenne</td></tr>
-<tr><td>Tunnels SSH</td><td><span class="pill planned">📋 Planifié</span></td><td>Moyenne</td></tr>
-<tr><td>Ouverture groupée de dossier ("Group Exec")</td><td><span class="pill planned">📋 Planifié</span></td><td>Basse</td></tr>
-<tr><td>Options &amp; polissage UI</td><td><span class="pill planned">📋 Planifié</span></td><td>Basse</td></tr>
-<tr><td>Vault Auto-Unlock</td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
-<tr><td>Importateur MobaXterm</td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
+<tr><td><a href="#sftp">SFTP contextuel</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Absolue</td></tr>
+<tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Absolue</td></tr>
+<tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill planned">📋 Mécanisme tranché</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#robustesse">Robustesse édition de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
+<tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 </table>
 
 <h2>Phase 1 — priorité absolue</h2>
 <p>Les deux fonctionnalités qui justifient de remplacer MobaXterm par Tabby + ce plugin.</p>
 
-<h3>SFTP contextuel</h3>
-<p>Bascule Profils/SFTP dans l'espace de la sidebar elle-même (pas un panneau séparé). Voir
-<a href="AI-CONTEXT.html">AI-CONTEXT.html</a> pour le design détaillé déjà validé (liaison au focus
-split-pane, lazy loading, suivi des transferts par flèches d'activité). <code>SFTPPanelComponent</code>
-confirmé exporté par <code>tabby-ssh</code> — pas de réimplémentation locale nécessaire, contrairement
-à <code>profile-tree</code> en son temps.</p>
+<h3 id="sftp">SFTP contextuel</h3>
+<p>Bascule Profils/SFTP dans l'espace de la sidebar elle-même (pas un panneau séparé ancré à
+droite, façon FileZilla — plan initial abandonné). Volet fichiers locaux masqué par défaut.
+Déclenché depuis un onglet SSH déjà connecté (pas de session headless dédiée).
+<code>SFTPPanelComponent</code>/<code>SFTPSession</code>/<code>SFTPFile</code> confirmés exportés
+par <code>tabby-ssh</code> — pas de réimplémentation locale nécessaire, contrairement à
+<code>profile-tree</code> en son temps.</p>
+<ul>
+<li><strong>Focus multi-split</strong> : la vue se rafraîchit au clic sur un terminal différent au
+  sein d'un même onglet scindé (liée au <code>SplitTabComponent</code> actif). Option de
+  <strong>geler la vue active</strong> pour éviter des rafraîchissements accidentels pendant une
+  navigation SFTP en cours.</li>
+<li><strong>Sensibilité au contexte</strong> : la vue reflète l'onglet SSH actif, bascule
+  automatique si on change d'onglet ; état "en attente d'une session SSH active" (vue grisée ou
+  retour sur la vue Profils) si l'onglet actif n'en a pas.</li>
+<li><strong>Persistance de navigation</strong> : dernier chemin distant visité mémorisé par onglet
+  (en mémoire, pas persisté dans <code>config.yaml</code>).</li>
+<li><strong>Performances</strong> : liste de fichiers chargée par blocs (lazy loading RxJS au fil
+  du défilement) pour éviter de figer le thread Electron sur un dossier distant très peuplé.</li>
+<li><strong>Suivi des transferts</strong> : flèches discrètes d'activité (<code>↑</code> upload /
+  <code>↓</code> download) à côté du profil concerné, <strong>pas</strong> de barre de progression
+  classique (coût de re-render Angular trop élevé avec plusieurs transferts en parallèle).
+  Pourcentage précis affiché uniquement au survol (tooltip). Mini-gestionnaire pliable en bas de
+  sidebar pour l'historique/la file d'attente.</li>
+</ul>
+<p class="muted">À vérifier au moment de l'implémentation : mécanique exacte du bouton de bascule
+(état par onglet ou global ?).</p>
 
-<h3>Workspaces</h3>
-<p>Filtrage de visibilité par espace de travail nommé, stocké dans <code>config.yaml</code> (pas de
-système de fichiers externe séparé), favoris cloisonnés par workspace, couleurs contextuelles au
-lancement, sélecteur onglets→dropdown adaptatif. À traiter après le SFTP, une fois celui-ci stable.</p>
+<h3 id="workspaces">Workspaces</h3>
+<p>Plusieurs espaces de travail nommés (ex. perso / pro / projet X) filtrant la
+<strong>visibilité</strong> des groupes/profils affichés. Pas de mécanisme de masquage séparé :
+masquer un profil/groupe = le décocher du workspace actif — les workspaces SONT le mécanisme de
+masquage. À traiter après le SFTP, une fois celui-ci stable.</p>
+<ul>
+<li><strong>Stockage dans <code>config.yaml</code></strong> via <code>ConfigProvider</code> (pas de
+  fichiers JSON externes séparés — option envisagée puis abandonnée). L'objectif de portabilité
+  entre machines est déjà couvert nativement puisque <code>config.yaml</code> contient tout en un
+  seul fichier synchronisable tel quel (dotfiles Git, cloud, Syncthing...) ; fragmenter en
+  plusieurs fichiers aurait compliqué cette synchro pour un système maison (écriture atomique,
+  gestion de conflit) à construire en plus. Export/import JSON <strong>ponctuel</strong> prévu à la
+  place pour le partage sélectif (structure d'un workspace sans les secrets), pas comme source de
+  vérité vivante.</li>
+<li><strong>Favoris cloisonnés par workspace</strong> (un profil peut être favori dans A mais pas
+  B). L'ordre des profils/groupes, lui, reste partagé entre tous les workspaces.</li>
+<li>Workspace <strong>"Tous"</strong> permanent par défaut (affichage non filtré), pour qu'un
+  mauvais filtrage ne donne jamais l'impression que des profils ont disparu.</li>
+<li><strong>Logique de cascade</strong> au masquage d'un dossier parent : popup proposant "ce
+  workspace seulement" vs "tous les workspaces".</li>
+<li><strong>Couleurs contextuelles</strong> : couleur de bordure de terminal différente selon le
+  workspace actif au moment du lancement d'un même profil (ex. rouge en "Prod", bleu en "Perso").
+  Injectée via un clone en mémoire (<code>structuredClone</code>) au double-clic de lancement,
+  <strong>jamais</strong> en mutant le profil d'origine (cohérent avec le piège #12 d'AI-CONTEXT.html).</li>
+<li><strong>Sélecteur adaptatif</strong> : onglets horizontaux par défaut en haut de la sidebar,
+  bascule automatique vers un menu déroulant (dropdown) dès que la largeur disponible devient trop
+  étroite — détecté via un <code>ResizeObserver</code> sur la sidebar (pas un seuil fixe sur le
+  nombre de workspaces, la largeur réelle est le signal le plus fiable puisque la sidebar est
+  elle-même redimensionnable par l'utilisateur).</li>
+</ul>
 
 <h2>Phase 2 — productivité</h2>
 
-<h3>Sélection multiple</h3>
-<p>Mécanisme déjà tranché : cases à cocher + "Déplacer la sélection ici" en clic droit, plutôt que
-le multi-drag natif CDK. Pas encore implémenté.</p>
+<h3 id="selection-multiple">Sélection multiple</h3>
+<p>Uniquement pour les <strong>profils</strong>, pas les groupes. Permet de sélectionner plusieurs
+profils puis de les déplacer tous ensemble vers un autre groupe en un seul geste.</p>
+<ul>
+<li><strong>Mécanisme retenu</strong> : sélection éphémère par cases à cocher (Shift/Ctrl+clic pour
+  étendre), puis clic droit sur le dossier cible → <strong>"Déplacer la sélection ici"</strong> —
+  plutôt que le multi-drag natif Angular CDK (qui ne gère pas nativement le déplacement simultané
+  de plusieurs éléments et aurait demandé d'adapter <code>onProfileDrop</code>/l'aperçu de drag
+  pour un cas jugé trop complexe/fragile).</li>
+<li><strong>Comportements calqués sur les standards OS</strong> : un clic gauche simple sans
+  touche modificatrice réinitialise la sélection en cours ; un clic droit <strong>en dehors</strong>
+  de la sélection l'annule et ouvre directement le menu contextuel standard (création/édition/
+  suppression) plutôt que le menu de déplacement.</li>
+</ul>
 
-<h3>Tunnels SSH</h3>
-<p>Surcouche visuelle sur le port-forwarding déjà natif de Tabby — création en un clic depuis le
-menu contextuel d'un profil, indicateur visuel, panneau des tunnels actifs.</p>
+<h3 id="tunnels-ssh">Tunnels SSH</h3>
+<p>Conçu comme une <strong>surcouche visuelle</strong> branchée directement sur le moteur de
+port-forwarding déjà natif de Tabby — pas de réimplémentation du tunneling lui-même. Le plugin se
+contente d'exposer la création/config en un clic depuis le menu contextuel d'un profil (plutôt que
+via la fenêtre de gestion des tunnels native, jugée plus lourde et déconnectée des profils), et de
+refléter l'état des tunnels déjà gérés par Tabby.</p>
+<ul>
+<li>Indicateur visuel (pastille façon "maillon de chaîne") sur le profil concerné quand un tunnel
+  l'utilisant comme passerelle est actif.</li>
+<li>Panneau des tunnels actifs en bas de sidebar.</li>
+<li>Si Tabby gère déjà la reprise sur micro-coupure réseau nativement, le plugin n'a qu'à en
+  afficher l'état plutôt qu'à réimplémenter l'auto-reconnexion.</li>
+</ul>
 
-<h3>Ouverture groupée d'un dossier</h3>
-<p>Clic droit sur un dossier → "Ouvrir tout", à coupler avec la saisie synchronisée native de
-Tabby. Priorité basse — pas demandée en premier par l'utilisateur.</p>
+<h3 id="group-exec">Ouverture groupée d'un dossier ("Group Exec")</h3>
+<p>Clic droit sur un dossier → "Ouvrir tout" : lance une session pour chaque profil du dossier, en
+onglets séparés ou en split panes. Intérêt renforcé si couplé à la saisie synchronisée déjà native
+de Tabby (multi-input) pour exécuter la même commande sur plusieurs serveurs en parallèle. Priorité
+basse — pas demandée en premier par l'utilisateur.</p>
 
 <h2>Non daté — à faire quand utile</h2>
 
-<h3>Options &amp; polissage UI</h3>
-<p>Double entrée de configuration (sous-onglet Tabby + icône d'engrenage sidebar), masquage de
-composants natifs redondants, raccourcis clavier globaux.</p>
+<h3 id="ui-polish">Options &amp; polissage UI</h3>
+<ul>
+<li><strong>Double entrée de configuration</strong> : sous-onglet dédié dans les options globales
+  de Tabby (<code>tabby-settings</code>) + icône d'engrenage discrète en bas à droite de la
+  sidebar, les deux pointant vers les mêmes réglages.</li>
+<li><strong>UI trimming</strong> : option pour masquer des composants natifs de Tabby devenus
+  redondants (ex. bouton de transfert SFTP d'origine) via injection de CSS global
+  (<code>display: none !important</code>), en s'inspirant des patterns déjà observés dans
+  <code>tabby-sftp-plus</code>.</li>
+<li><strong>Raccourcis globaux</strong> : <code>HotkeyProvider</code> pour mapper des raccourcis
+  clavier (changer de workspace, basculer vers le SFTP actif, afficher le panneau des tunnels).</li>
+</ul>
 
-<h3>Robustesse</h3>
-<p>Envelopper <code>clickNativeProfileRow()</code> (édition de profil, le point le plus fragile —
-voir <a href="AI-CONTEXT.html#fragile-1">AI-CONTEXT §3.1</a>) dans un try/catch verbeux avec message
-clair en cas d'échec, plutôt que de casser silencieusement.</p>
+<h3 id="robustesse">Robustesse — édition de profil</h3>
+<p>Envelopper la séquence <code>clickNativeProfileRow()</code> (édition de profil par clic droit —
+le point le plus fragile du plugin, voir <a href="AI-CONTEXT.html#fragile-1">AI-CONTEXT §3.1</a>)
+dans un bloc try/catch verbeux, pour qu'un futur changement de DOM dans <code>tabby-settings</code>
+affiche un message clair ("Impossible d'ouvrir automatiquement la modale d'édition, redirection
+vers Paramètres → Profils") plutôt que d'échouer silencieusement.</p>
 
 <h3>Ménage avant release soignée</h3>
-<p>Corriger le placeholder de copyright dans <code>LICENSE</code> (voir AI-CONTEXT §1).</p>
+<p>Corriger le placeholder de copyright dans <code>LICENSE</code> (voir <a href="AI-CONTEXT.html">AI-CONTEXT §1</a>).</p>
 
 <h2>Hors périmètre</h2>
 
-<h3>Vault Auto-Unlock</h3>
-<p>Déplacé vers un futur plugin séparé (<code>tabby-vault-unlock</code>) — voir
-<a href="AI-CONTEXT.html">AI-CONTEXT.html</a> pour le design et le pattern d'interfaçage prévu entre
-les deux plugins. Rien à faire ici tant que ce nouveau plugin n'existe pas.</p>
+<h3 id="vault">Vault Auto-Unlock — futur plugin séparé</h3>
+<div class="callout important"><span class="callout-title">Décision actée</span>
+<p>Le déverrouillage automatique du coffre-fort Tabby (éviter de ressaisir le mot de passe maître à
+chaque démarrage) <strong>ne fait pas partie de <code>better-sidebar</code></strong> — ce n'est pas
+une fonctionnalité de sidebar, et c'est le point le plus sensible (manipulation d'un secret
+utilisateur) envisagé sur ce projet. Deviendrait un plugin indépendant, ex.
+<code>tabby-vault-unlock</code>, publié et versionné séparément.</p></div>
+<ul>
+<li><strong>Interfaçage entre plugins indépendants</strong> : possible, pattern identifié. Tous les
+  plugins Tabby tournent dans le même process Electron et partagent le même injecteur Angular —
+  déjà le mécanisme utilisé par <code>better-sidebar</code> pour consommer des classes de
+  <code>tabby-core</code>/<code>tabby-settings</code>/<code>tabby-ssh</code>. Un futur
+  <code>tabby-vault-unlock</code> exporterait un service minimal (ex.
+  <code>VaultBridgeService</code>), et <code>better-sidebar</code> l'importerait en dépendance
+  optionnelle avec <code>@Optional()</code>/<code>Injector.get(TOKEN, null)</code> — la section
+  correspondante des réglages disparaît simplement si le plugin Vault n'est pas installé. Pattern
+  non officiel (effet de bord du chargeur de plugins, pas une API documentée) : le contrat entre
+  les deux packages serait à notre charge (versioning à gérer). Même discipline de vérification que
+  le reste du projet : si <code>tabby-vault-unlock</code> exporte un service, vérifier les DEUX
+  niveaux (typings ET bundle <code>dist/index.js</code> compilé) avant de s'y fier — voir piège
+  #13 d'AI-CONTEXT.html.</li>
+<li><strong>Design prévu</strong> pour ce futur plugin : délégation à l'OS via
+  <code>electron.safeStorage</code> (Windows : Gestionnaire d'identifiants/DPAPI ; macOS : Trousseau
+  d'accès/Keychain avec Touch ID si activé ; Linux : Secret Service API/<code>libsecret</code> via
+  GNOME Keyring/KWallet). Mécanisme opt-in, injection programmatique du mot de passe déchiffré dans
+  le <code>VaultService</code> de Tabby avant que la pop-up native de saisie n'apparaisse.</li>
+<li><strong>Sécurité RAM</strong> : la variable JS contenant le mot de passe maître déchiffré en
+  clair doit être <strong>immédiatement écrasée (<code>= null</code>) dès que l'injection dans le
+  moteur de Tabby est validée</strong>, pour limiter au minimum la fenêtre d'exposition du secret
+  en mémoire vive.</li>
+<li><strong>Garde-fou</strong> : si l'injection échoue (ex. mot de passe maître changé depuis les
+  réglages natifs de Tabby), suppression immédiate du token local obsolète et retour transparent à
+  la pop-up native.</li>
+<li><strong>Point à vérifier avant tout début de code</strong> : confirmer que
+  <code>VaultService</code> (ou l'équivalent réel dans le <code>tabby-core</code> installé) expose
+  bien une méthode d'injection programmatique utilisable depuis un plugin tiers — typings ET bundle
+  compilé, ne jamais conclure sur un seul des deux (piège #13).</li>
+</ul>
 
-<h3>Importateur MobaXterm</h3>
-<p>Explicitement écarté par l'utilisateur — des outils de conversion existent déjà. À reconsidérer
-seulement si la friction remonte concrètement en usage réel.</p>
+<h3 id="moba-importer">Importateur MobaXterm</h3>
+<p>Explicitement écarté par l'utilisateur : des outils de conversion (<code>.mxtpro</code>/<code>.ini</code>)
+existent déjà, non prioritaire. À reconsidérer seulement si ce point de friction remonte
+concrètement en usage réel.</p>
 
-<footer>tabby-better-sidebar</footer>
+<footer>tabby-better-sidebar · voir <a href="AI-CONTEXT.html">AI-CONTEXT.html</a> pour les pièges et invariants du code déjà en place.</footer>
 </body>
 </html>

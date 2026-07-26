@@ -234,99 +234,10 @@ la copie locale.</p>
 renomme ces champs, l'erreur sera silencieuse à la compilation (l'augmentation "ment" à
 TypeScript) — seul un test manuel de "Nouveau profil..." révélera le problème.</p>
 
-<h2 id="decisions-design">4. Décisions de design actées pour les fonctionnalités pas encore construites</h2>
-<p>Détail de chantier dans <a href="ROADMAP.html">ROADMAP.html</a> — ici seulement les choix déjà
-tranchés à respecter au moment de l'implémentation.</p>
+<p class="muted">Le détail de design des fonctionnalités pas encore construites (SFTP, Workspaces,
+etc.) vit désormais dans <a href="ROADMAP.html">ROADMAP.html</a>, avec le reste de chaque
+chantier — ce fichier ne garde que les invariants du code déjà en place.</p>
 
-<h3>SFTP contextuel</h3>
-<ul>
-<li>Espace de la sidebar elle-même (bascule Profils/SFTP), pas un panneau séparé ancré à droite.
-  Volet fichiers locaux masqué par défaut. Déclenché depuis un onglet SSH déjà connecté (pas de
-  session headless dédiée).</li>
-<li><code>SFTPPanelComponent</code>/<code>SFTPSession</code>/<code>SFTPFile</code> confirmés
-  exportés par <code>tabby-ssh</code> — pas de réimplémentation locale nécessaire.</li>
-<li>Vue liée au <code>SplitTabComponent</code> actif (bascule au changement de focus, avec option
-  de gel) ; état "en attente d'une session SSH" si l'onglet actif n'en a pas.</li>
-<li>Dernier chemin distant visité mémorisé par onglet (en mémoire, pas persistant).</li>
-<li>Liste de fichiers chargée par blocs (lazy loading RxJS) pour éviter de figer le thread Electron.</li>
-<li>Suivi des transferts : flèches d'activité ↑/↓ à côté du profil + pourcentage au survol
-  (tooltip), <strong>pas</strong> de barre de progression classique (coût de re-render Angular trop
-  élevé avec plusieurs transferts en parallèle). Mini-gestionnaire pliable en bas de sidebar pour
-  l'historique/la file d'attente.</li>
-</ul>
-
-<h3>Workspaces</h3>
-<ul>
-<li>Stockage dans <code>config.yaml</code> via <code>ConfigProvider</code> (pas de fichiers JSON
-  externes séparés) — l'objectif de portabilité est déjà couvert nativement puisque
-  <code>config.yaml</code> contient tout en un seul fichier synchronisable tel quel. Export/import
-  JSON <strong>ponctuel</strong> prévu pour le partage sélectif (structure d'un workspace sans les
-  secrets), pas comme source de vérité vivante.</li>
-<li>Favoris cloisonnés par workspace (un profil peut être favori dans A mais pas B). L'ordre des
-  profils/groupes reste, lui, partagé entre tous les workspaces.</li>
-<li>Workspace "Tous" permanent par défaut (affichage non filtré).</li>
-<li>Logique de cascade au masquage d'un dossier parent : popup proposant "ce workspace seulement"
-  vs "tous les workspaces".</li>
-<li>Couleurs contextuelles par workspace : injectées via <code>structuredClone</code> au
-  double-clic de lancement, jamais en mutant le profil d'origine (cohérent avec piège #12).</li>
-<li>Sélecteur : onglets horizontaux par défaut, bascule automatique vers un dropdown pilotée par un
-  <code>ResizeObserver</code> sur la largeur réelle de la sidebar (pas un seuil fixe sur le nombre
-  de workspaces).</li>
-</ul>
-
-<h3>Sélection multiple</h3>
-<p>Mécanisme retenu : cases à cocher (Shift/Ctrl+clic pour étendre) + clic droit sur le dossier
-cible → "Déplacer la sélection ici" — plutôt que le multi-drag natif Angular CDK (jugé trop
-complexe/fragile). Comportements calqués sur les standards OS : un clic gauche simple sans
-modificateur réinitialise la sélection ; un clic droit hors sélection l'annule et ouvre le menu
-contextuel standard. Uniquement pour les profils, pas les groupes.</p>
-
-<h3>Tunnels SSH</h3>
-<p>Surcouche visuelle sur le moteur de port-forwarding déjà natif de Tabby (pas de
-réimplémentation) : création/config en un clic depuis le menu contextuel d'un profil, indicateur
-visuel (pastille) sur le profil concerné, panneau des tunnels actifs en bas de sidebar.</p>
-
-<h3>Ouverture groupée d'un dossier ("Group Exec")</h3>
-<p>Clic droit sur un dossier → "Ouvrir tout" : lance une session par profil du dossier, à coupler
-idéalement avec la saisie synchronisée déjà native de Tabby.</p>
-
-<h3>Vault Auto-Unlock — hors périmètre, plugin séparé</h3>
-<div class="callout important"><span class="callout-title">Décision actée</span>
-<p>Le déverrouillage automatique du coffre-fort Tabby <strong>ne fait pas partie de
-<code>better-sidebar</code></strong> — ce n'est pas une fonctionnalité de sidebar, et c'est le point
-le plus sensible (manipulation d'un secret utilisateur) envisagé sur ce projet. Deviendrait un
-plugin séparé, ex. <code>tabby-vault-unlock</code>.</p></div>
-<ul>
-<li>Interfaçage entre plugins indépendants : possible via l'injecteur Angular partagé (tous les
-  plugins Tabby tournent dans le même process). <code>tabby-vault-unlock</code> exporterait un
-  service minimal, <code>better-sidebar</code> l'importerait en dépendance optionnelle avec
-  <code>@Optional()</code>/<code>Injector.get(TOKEN, null)</code> — pas d'erreur si le plugin Vault
-  n'est pas installé. Pattern non officiel (effet de bord du chargeur de plugins, pas une API
-  documentée) : le contrat entre les deux packages est à notre charge.</li>
-<li>Design prévu pour ce futur plugin : délégation à l'OS via <code>electron.safeStorage</code>
-  (DPAPI/Keychain/libsecret selon l'OS), opt-in, injection dans le <code>VaultService</code> de
-  Tabby avant la pop-up native. <strong>La variable JS contenant le mot de passe déchiffré en clair
-  doit être immédiatement écrasée (<code>= null</code>) dès l'injection validée.</strong> Garde-fou
-  si l'injection échoue : suppression du token local obsolète, retour à la pop-up native.</li>
-<li>À vérifier avant tout code : que <code>VaultService</code> expose une méthode d'injection
-  programmatique utilisable depuis un plugin tiers (typings ET bundle compilé, piège #13).</li>
-</ul>
-
-<h3>Options &amp; polissage UI</h3>
-<ul>
-<li>Double entrée de configuration : sous-onglet dans <code>tabby-settings</code> + icône
-  d'engrenage dans la sidebar, mêmes réglages.</li>
-<li>UI trimming : masquer des composants natifs redondants via CSS global
-  (<code>display: none !important</code>), inspiré de <code>tabby-sftp-plus</code>.</li>
-<li>Raccourcis globaux via <code>HotkeyProvider</code> (changer de workspace, basculer SFTP,
-  afficher les tunnels).</li>
-</ul>
-
-<h3>Explicitement écarté</h3>
-<p>Importateur de sessions MobaXterm (<code>.mxtpro</code>/<code>.ini</code>) — non prioritaire,
-des outils de conversion existent déjà. À reconsidérer seulement si ce point de friction remonte
-concrètement.</p>
-
-<footer>tabby-better-sidebar · voir <a href="AI-HISTORY.html">AI-HISTORY.html</a> pour le contexte de chaque décision.</footer>
+<footer>tabby-better-sidebar · voir <a href="AI-HISTORY.html">AI-HISTORY.html</a> pour le contexte de chaque décision, <a href="ROADMAP.html">ROADMAP.html</a> pour ce qui reste à faire.</footer>
 </body>
 </html>
