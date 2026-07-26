@@ -1,5 +1,5 @@
 {
-  "name": "tabby-sidebar-plus",
+  "name": "tabby-better-sidebar",
   "version": "0.1.0",
   "description": "Enhanced connection sidebar for Tabby: profile tree with favorites, live status, drag & drop, and a docked FileZilla-style SFTP file manager.",
   "keywords": [

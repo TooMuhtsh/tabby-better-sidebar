@@ -1,4 +1,4 @@
-# tabby-sidebar-plus
+# tabby-better-sidebar
 
 Enhanced connection sidebar for [Tabby](https://tabby.sh), on top of the native profile tree:
 
@@ -20,11 +20,15 @@ npm install
 npm run watch
 ```
 
-Then, with Tabby closed, run it pointing at this plugin directory:
+Then, with Tabby closed, link this folder into Tabby's plugins directory
+(on Windows, `TABBY_PLUGINS` is broken — see `tabby_sidebar_roadmap.md`):
 
+```powershell
+New-Item -ItemType Junction -Path "$env:APPDATA\tabby\plugins\node_modules\tabby-better-sidebar" -Target "<path-to-this-folder>"
 ```
-TABBY_PLUGINS=<path-to-this-folder> tabby --debug
-```
+
+Then just launch Tabby normally. After any rebuild, fully restart the app
+(not just a window reload) to pick up changes.
 
 ## License
 
