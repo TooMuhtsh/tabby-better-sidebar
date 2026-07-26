@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>tabby-better-sidebar — Historique</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="tabbar">
+<a href="README.html">Accueil</a>
+<a href="AI-CONTEXT.html">Contexte</a>
+<a href="AI-HISTORY.html" class="current">Historique</a>
+<a href="ROADMAP.html">Roadmap</a>
+</nav>
+
+<h1>Journal de bord</h1>
+<p class="muted">Chantiers classés du plus récent au plus ancien. À l'intérieur d'un chantier,
+entrées les plus récentes en tête.</p>
+
+<div class="callout important">
+<span class="callout-title">Ne jamais modifier une entrée existante</span>
+<p>Uniquement en ajouter en tête du chantier concerné. Format d'une ligne :
+<code>Date | Hash | Résumé</code>.</p>
+</div>
+
+<h2>Diagnostic — jonction NTFS de dev manquante, plugin invisible (2026-07-26)</h2>
+<p>Signalé par l'utilisateur : le plugin n'apparaissait plus dans la liste des plugins Tabby.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-26</td><td>n/a (hors dépôt)</td>
+<td>Diagnostic : <code>%APPDATA%\tabby\plugins\node_modules\</code> ne contenait plus
+<code>tabby-better-sidebar</code> (seul <code>tabby-sftp-plus</code> présent) — la jonction NTFS de
+dev avait disparu (piège #1, probablement supprimée en désactivant le plugin depuis l'UI
+Extensions). <code>dist/index.js</code> toujours présent et à jour. Jonction recréée. Rappel donné
+à l'utilisateur : redémarrer tout le process <code>Tabby.exe</code>, pas un simple reload.</td></tr>
+</table>
+
+<h2>Distinct : classement de recherche npm pour un paquet neuf (2026-07-26)</h2>
+<p>L'utilisateur cherchait le plugin depuis la recherche npm intégrée de Tabby, pas depuis le mode
+dev — confusion initiale avec le chantier ci-dessus, deux causes différentes.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-26</td><td>n/a (recherche externe)</td>
+<td>Vérifié directement sur l'API de recherche npm : le paquet est bien indexé (présent pour le
+mot-clé <code>tabby-plugin</code>) mais absent des 250 premiers résultats même pour une recherche
+par nom exact — l'algorithme de <code>registry.npmjs.org</code> pondère fortement la popularité
+(téléchargements/maintenance), inexistante pour un paquet publié quelques heures plus tôt. Pas un
+bug de publication. Documenté comme piège #20 dans AI-CONTEXT.html, avec le contournement
+(<code>npm install tabby-better-sidebar</code> direct dans le dossier de plugins).</td></tr>
+</table>
+
+<h2>Restructuration de la documentation — split roadmap → gouvernance IA (2026-07-26)</h2>
+<p>La roadmap unique (<code>tabby_sidebar_roadmap.md</code>) avait grossi au-delà de son rôle
+(historique + pièges + roadmap + points fragiles mélangés). Reprend le format déjà utilisé sur un
+autre projet de l'utilisateur (Travail, dossier <code>.AIRules/</code>) : README (index/protocole),
+AI-CONTEXT (invariants), AI-HISTORY (journal), ROADMAP (statut/priorités) — converti en HTML statique
+avec navigation commune.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-26</td><td>non commité au moment de l'écriture</td>
+<td>Ancien <code>tabby_sidebar_roadmap.md</code> retiré, contenu porté (condensé, doublons et
+narration de délibération retirés) dans <code>.AIRules/{README,AI-CONTEXT,AI-HISTORY,ROADMAP}.html</code>.
+Numérotation des 20 pièges et des 7 points fragiles conservée à l'identique (référencée depuis
+CLAUDE.md). Dossier positionné dans le dépôt <code>tabby-ssh-sidebar</code> (pas au niveau parent
+<code>Développement</code> comme envisagé un temps) pour rester suivi par Git avec le code.</td></tr>
+</table>
+
+<h2>Révisions de roadmap suite à consultations externes (Gemini) (2026-07-26)</h2>
+<p>Trois échanges successifs avec Gemini (Google) pour challenger la roadmap depuis une perspective
+dev/sysadmin/gestionnaire, plus une clarification directe de l'utilisateur.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-26</td><td>6eff80c</td>
+<td><strong>Décisions finales (3<sup>e</sup> échange)</strong> : Vault Auto-Unlock sorti du périmètre
+de <code>better-sidebar</code>, prévu comme plugin séparé avec interfaçage optionnel via
+l'injecteur Angular partagé — clarifié par l'utilisateur que l'objectif de "portabilité" derrière
+le stockage JSON externe des workspaces était en fait le transport de sa propre config entre
+machines, pas le partage d'équipe : stockage des workspaces ramené sur <code>config.yaml</code>
+(annule la proposition JSON externe du 2<sup>e</sup> lot), export/import ponctuel ajouté pour le
+partage sélectif à la place. Précisions confirmées : couleurs contextuelles par workspace
+(<code>structuredClone</code> au double-clic), UI adaptative via <code>ResizeObserver</code>,
+sécurité RAM du futur plugin Vault (purge immédiate du mot de passe déchiffré après injection).</td></tr>
+<tr><td>2026-07-26</td><td>(inclus dans 6eff80c)</td>
+<td><strong>2<sup>e</sup> lot Gemini</strong> : précisions sur le SFTP (liaison au focus split-pane
+avec option de gel, lazy loading anti-freeze, suivi des transferts par flèches d'activité plutôt
+que barre de progression), sur les Workspaces (à ce stade encore stockage JSON externe + favoris
+cloisonnés + logique de cascade, UI onglets→dropdown), sur la sélection multiple (comportements
+calqués sur les standards OS), sur les tunnels SSH (surcouche du moteur natif Tabby), et proposition
+initiale du Vault Auto-Unlock avec purge RAM.</td></tr>
+<tr><td>2026-07-26</td><td>(inclus dans 6eff80c)</td>
+<td><strong>1<sup>er</sup> lot Gemini</strong> : sensibilité au contexte et persistance de
+navigation pour le SFTP, dropdown + workspace "Tous" pour les Workspaces, alternative "cases à
+cocher + déplacer la sélection ici" pour contourner la complexité du multi-drag Angular CDK. Ajout
+des chantiers Tunnels SSH et "Group Exec" (ouverture groupée d'un dossier). Importateur MobaXterm
+explicitement écarté par l'utilisateur (outils de conversion déjà disponibles).</td></tr>
+</table>
+
+<h2>Publication npm v0.2.0 (2026-07-26)</h2>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-26</td><td>9fac365</td><td>Champ <code>author</code> du package.json fixé à
+<code>TooMuhtsh</code> (voir piège #2).</td></tr>
+<tr><td>2026-07-26</td><td>386c1a4</td><td>Dépendances runtime (<code>dompurify</code>, jeux
+d'icônes Iconify) déplacées vers <code>devDependencies</code> — elles sont bundlées par webpack
+dans <code>dist/index.js</code>, pas nécessaires comme dépendances du paquet publié.</td></tr>
+<tr><td>2026-07-26</td><td>314cab5</td><td>Préparation publication npm : placeholder restant
+corrigé, métadonnées <code>package.json</code> mises à jour.</td></tr>
+<tr><td>2026-07-26</td><td>n/a (npm publish, pas un commit)</td><td>Publié sur npm en
+<code>tabby-better-sidebar@0.2.0</code> via compte npm <code>toomuhtsh</code> (token à accès
+granulaire avec bypass 2FA, la 2FA standard n'étant pas activée). Indexation de recherche npm plus
+lente que d'habitude après publication (voir piège #20, creusé plus tard dans la session).
+Installation du vrai paquet publié (pas la jonction de dev) vérifiée manuellement dans
+<code>%APPDATA%\tabby\plugins\</code> — fonctionne correctement. Désactiver le plugin depuis l'UI
+Extensions supprime la jonction NTFS de dev (piège #1) — à recréer si retour en mode dev.</td></tr>
+</table>
+
+<h2>Fonctionnalités socle (2026-07-26)</h2>
+<p>Environnement de dev, scaffold initial, puis l'ensemble des fonctionnalités "vision" demandées :
+favoris, statut live, drag &amp; drop, menus contextuels, icônes personnalisées. Détail technique
+complet (comportement exact, choix d'implémentation) dans les pièges correspondants d'AI-CONTEXT.html.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-26</td><td>36f98b7</td><td>Picker d'icônes (FontAwesome + Iconify MDI/Tabler + import
+SVG sanitisé DOMPurify), création de dossier/profil par clic droit (vraie modale native
+<code>EditProfileModalComponent</code>, piège #17), suppression de profil par clic droit (popup HTML,
+pas de dialogue Windows natif), fix de la zone de dépôt à 0px de hauteur (piège #19).</td></tr>
+<tr><td>2026-07-26</td><td>8b8748b</td><td>Favoris épinglés, statut de connexion live (pastille
+verte/rouge/grise), glisser-déposer complet (réordonnancement + re-parentage de groupes via
+recréation/migration/suppression, piège #12), suppression de groupe par clic droit (garde-fou
+non-vide), édition de profil par clic droit (redirection + pilotage DOM vers Paramètres → Profils,
+pièges #13/#17), glissoir de redimensionnement pleine hauteur (fix <code>:host</code>, piège #14),
+masquage du groupe "Sans groupe" quand il est vide.</td></tr>
+<tr><td>2026-07-26</td><td>(commit initial, avant renommage)</td><td>Environnement de dev (Node.js
+portable), scaffold du plugin (package.json/tsconfig/webpack/LICENSE), composant de base repris du
+<code>profile-tree</code> natif, montage manuel dans le DOM (<code>mount.service.ts</code>, le
+composant natif n'étant pas exporté — voir piège #6), build validé, renommage
+<code>tabby-sidebar-plus</code> → <code>tabby-better-sidebar</code>, dépôt créé et poussé sur
+GitHub (identité <code>TooMuhtsh</code> + email noreply, voir pièges #9/#10).</td></tr>
+</table>
+
+<footer>tabby-better-sidebar · voir <a href="AI-CONTEXT.html">AI-CONTEXT.html</a> pour le détail
+technique référencé par numéro de piège.</footer>
+</body>
+</html>

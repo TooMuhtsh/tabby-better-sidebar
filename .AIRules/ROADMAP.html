@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>tabby-better-sidebar — Roadmap</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="tabbar">
+<a href="README.html">Accueil</a>
+<a href="AI-CONTEXT.html">Contexte</a>
+<a href="AI-HISTORY.html">Historique</a>
+<a href="ROADMAP.html" class="current">Roadmap</a>
+</nav>
+
+<h1>Roadmap</h1>
+<p class="muted">Dernière revue : 2026-07-26</p>
+
+<p>Détail de design pour chaque chantier dans <a href="AI-CONTEXT.html#decisions-design">AI-CONTEXT.html §4</a>.
+Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>.</p>
+
+<h2>Vue d'ensemble</h2>
+<table>
+<tr><th>Chantier</th><th>Statut</th><th>Priorité</th></tr>
+<tr><td>Socle (favoris, statut live, drag &amp; drop, menus contextuels, icônes)</td>
+    <td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
+<tr><td>Publication npm</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
+<tr><td>SFTP contextuel</td><td><span class="pill planned">📋 Planifié</span></td><td>Absolue</td></tr>
+<tr><td>Workspaces</td><td><span class="pill planned">📋 Planifié</span></td><td>Absolue</td></tr>
+<tr><td>Sélection multiple</td><td><span class="pill planned">📋 Mécanisme tranché</span></td><td>Moyenne</td></tr>
+<tr><td>Tunnels SSH</td><td><span class="pill planned">📋 Planifié</span></td><td>Moyenne</td></tr>
+<tr><td>Ouverture groupée de dossier ("Group Exec")</td><td><span class="pill planned">📋 Planifié</span></td><td>Basse</td></tr>
+<tr><td>Options &amp; polissage UI</td><td><span class="pill planned">📋 Planifié</span></td><td>Basse</td></tr>
+<tr><td>Vault Auto-Unlock</td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
+<tr><td>Importateur MobaXterm</td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
+</table>
+
+<h2>Phase 1 — priorité absolue</h2>
+<p>Les deux fonctionnalités qui justifient de remplacer MobaXterm par Tabby + ce plugin.</p>
+
+<h3>SFTP contextuel</h3>
+<p>Bascule Profils/SFTP dans l'espace de la sidebar elle-même (pas un panneau séparé). Voir
+<a href="AI-CONTEXT.html">AI-CONTEXT.html</a> pour le design détaillé déjà validé (liaison au focus
+split-pane, lazy loading, suivi des transferts par flèches d'activité). <code>SFTPPanelComponent</code>
+confirmé exporté par <code>tabby-ssh</code> — pas de réimplémentation locale nécessaire, contrairement
+à <code>profile-tree</code> en son temps.</p>
+
+<h3>Workspaces</h3>
+<p>Filtrage de visibilité par espace de travail nommé, stocké dans <code>config.yaml</code> (pas de
+système de fichiers externe séparé), favoris cloisonnés par workspace, couleurs contextuelles au
+lancement, sélecteur onglets→dropdown adaptatif. À traiter après le SFTP, une fois celui-ci stable.</p>
+
+<h2>Phase 2 — productivité</h2>
+
+<h3>Sélection multiple</h3>
+<p>Mécanisme déjà tranché : cases à cocher + "Déplacer la sélection ici" en clic droit, plutôt que
+le multi-drag natif CDK. Pas encore implémenté.</p>
+
+<h3>Tunnels SSH</h3>
+<p>Surcouche visuelle sur le port-forwarding déjà natif de Tabby — création en un clic depuis le
+menu contextuel d'un profil, indicateur visuel, panneau des tunnels actifs.</p>
+
+<h3>Ouverture groupée d'un dossier</h3>
+<p>Clic droit sur un dossier → "Ouvrir tout", à coupler avec la saisie synchronisée native de
+Tabby. Priorité basse — pas demandée en premier par l'utilisateur.</p>
+
+<h2>Non daté — à faire quand utile</h2>
+
+<h3>Options &amp; polissage UI</h3>
+<p>Double entrée de configuration (sous-onglet Tabby + icône d'engrenage sidebar), masquage de
+composants natifs redondants, raccourcis clavier globaux.</p>
+
+<h3>Robustesse</h3>
+<p>Envelopper <code>clickNativeProfileRow()</code> (édition de profil, le point le plus fragile —
+voir <a href="AI-CONTEXT.html#fragile-1">AI-CONTEXT §3.1</a>) dans un try/catch verbeux avec message
+clair en cas d'échec, plutôt que de casser silencieusement.</p>
+
+<h3>Ménage avant release soignée</h3>
+<p>Corriger le placeholder de copyright dans <code>LICENSE</code> (voir AI-CONTEXT §1).</p>
+
+<h2>Hors périmètre</h2>
+
+<h3>Vault Auto-Unlock</h3>
+<p>Déplacé vers un futur plugin séparé (<code>tabby-vault-unlock</code>) — voir
+<a href="AI-CONTEXT.html">AI-CONTEXT.html</a> pour le design et le pattern d'interfaçage prévu entre
+les deux plugins. Rien à faire ici tant que ce nouveau plugin n'existe pas.</p>
+
+<h3>Importateur MobaXterm</h3>
+<p>Explicitement écarté par l'utilisateur — des outils de conversion existent déjà. À reconsidérer
+seulement si la friction remonte concrètement en usage réel.</p>
+
+<footer>tabby-better-sidebar</footer>
+</body>
+</html>

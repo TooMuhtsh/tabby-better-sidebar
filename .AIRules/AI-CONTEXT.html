@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>tabby-better-sidebar — Contexte &amp; invariants</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="tabbar">
+<a href="README.html">Accueil</a>
+<a href="AI-CONTEXT.html" class="current">Contexte</a>
+<a href="AI-HISTORY.html">Historique</a>
+<a href="ROADMAP.html">Roadmap</a>
+</nav>
+
+<h1>Contexte &amp; invariants</h1>
+<p class="muted">Dernière revue : 2026-07-26</p>
+
+<p>Faits stables sur l'architecture de ce plugin, pièges déjà résolus (à ne pas refaire) et
+décisions de design déjà actées pour les fonctionnalités pas encore construites. Les commandes de
+build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne les duplique
+pas.</p>
+
+<h2>1. Identité du projet</h2>
+<ul>
+<li>Dossier local historique : <code>tabby-ssh-sidebar</code> (jamais renommé, casserait la
+  jonction NTFS de dev). Nom réel du package npm / dépôt GitHub : <code>tabby-better-sidebar</code>.
+  Le loader de plugins Tabby se base sur le nom du dossier dans <code>plugins/node_modules/</code>
+  (déjà correct), pas sur <code>package.json.name</code> ni le nom du dossier source — incohérence
+  cosmétique sans impact fonctionnel.</li>
+<li><code>LICENSE</code> garde encore le placeholder <code>"tabby-sidebar-plus contributors"</code>
+  — à corriger avant une release soignée.</li>
+<li>Identité Git configurée <strong>localement à ce dépôt uniquement</strong> (pas
+  <code>--global</code>) : <code>TooMuhtsh &lt;188712716+TooMuhtsh@users.noreply.github.com&gt;</code>
+  (email noreply GitHub du compte perso). À reconfigurer manuellement sur toute nouvelle machine
+  (non inclus dans ce qui est poussé sur GitHub).</li>
+</ul>
+
+<h2>2. Pièges rencontrés (référence numérotée — ne pas renuméroter)</h2>
+<p class="muted">Chaque piège est référencé ailleurs par son numéro (CLAUDE.md, journal). Ne jamais
+réordonner cette liste.</p>
+
+<h3 id="piege-1">#1 — <code>TABBY_PLUGINS</code> cassé sur Windows</h3>
+<p>Tabby fait <code>process.env.TABBY_PLUGINS.split(':')</code> ; un chemin Windows
+(<code>C:\...</code>) contient un <code>:</code> après la lettre de lecteur → chemin tronqué,
+plugin jamais trouvé, sans erreur visible. Bug Tabby, pas du plugin.
+<strong>Solution retenue</strong> : ne pas utiliser cette variable. Jonction NTFS directe :</p>
+<pre><code>New-Item -ItemType Junction -Path "$env:APPDATA\tabby\plugins\node_modules\tabby-better-sidebar" -Target "C:\Users\Alex Ramirez\Documents\Développement\tabby-ssh-sidebar"</code></pre>
+<div class="callout warning"><span class="callout-title">Piège opérationnel</span>
+<p>Désactiver le plugin depuis l'UI Extensions de Tabby <strong>supprime la jonction</strong> (pas
+juste un flag) — la recréer manuellement pour revenir en mode dev.</p></div>
+
+<h3 id="piege-2">#2 — <code>package.json</code> sans champ <code>author</code></h3>
+<p>Le loader de plugins fait <code>author.name || author</code> sans vérifier l'existence — plante
+silencieusement, logué juste comme <code>"Cannot load package info for X"</code>. Toujours mettre
+un champ <code>author</code>, même vide.</p>
+
+<h3 id="piege-3">#3 — <code>templateUrl</code>/<code>styleUrls</code> ne marchent pas pour un plugin tiers</h3>
+<p>Résolus uniquement au bootstrap principal de l'appli. Pattern correct (voir
+<code>tabby-clippy</code>) :</p>
+<pre><code>@Component({ template: require('./x.pug') })  // pas templateUrl</code></pre>
+<p>SCSS : import en side-effect (<code>import './x.scss'</code>) + <code>style-loader</code>/
+<code>css-loader</code>/<code>sass-loader</code> en webpack (injection CSS globale). Nécessite
+<code>apply-loader</code> devant <code>pug-loader</code> pour que <code>require('./x.pug')</code>
+retourne une string.</p>
+
+<h3 id="piege-4">#4 — Versions verrouillées pour Angular 15 (peer dep de <code>tabby-core</code>)</h3>
+<ul>
+<li><code>typescript@^4.9.x</code> (pas 5.x)</li>
+<li><code>pug@^2.0.x</code> (<code>pug-loader@2.4.0</code> exige <code>pug@^2.0.0</code>)</li>
+<li><code>@types/node@^18.19.0</code> (26.x embarque des typings <code>node:ffi</code> qui ne
+  parsent pas sous TS 4.9)</li>
+<li><code>@ng-bootstrap/ng-bootstrap@^14.x</code> (la dernière vise Angular 18+)</li>
+</ul>
+
+<h3 id="piege-5">#5 — <code>npm install</code> échoue sur <code>tabby-ssh</code></h3>
+<p>Son <code>postinstall</code> tente de compiler des bindings natifs inutilisés (on ne consomme
+que ses types). → <code>npm install --ignore-scripts</code>.</p>
+
+<h3 id="piege-6">#6 — Typings npm de <code>tabby-core</code> en retard sur l'app installée</h3>
+<p><code>buildGroupTree()</code>, <code>icon</code>/<code>color</code>/<code>parentGroupId</code>
+sur <code>ProfileGroup</code> existent à l'exécution (1.0.235) mais pas dans les types publiés (tag
+<code>nightly</code>, plus vieux). → Augmentation de type dédiée
+(<code>src/tabby-core-augment.d.ts</code>) plutôt que des <code>any</code> disséminés.</p>
+
+<h3 id="piege-7">#7 — La sidebar native existe déjà, cachée</h3>
+<p>Paramètres → Window → "Show profile sidebar" (<code>config.store.showProfileTree</code>,
+composant <code>profile-tree</code>). Utile pour comparer un comportement suspect avec le natif.</p>
+
+<h3 id="piege-8">#8 — Debug via Chrome DevTools Protocol</h3>
+<p><code>Tabby.exe --debug --remote-debugging-port=9333</code> → connexion Node en WebSocket natif
+pour lire la vraie console et interroger le DOM. Utile car Tabby avale beaucoup d'erreurs de
+chargement de plugin dans des <code>catch</code> génériques.</p>
+<div class="callout important"><span class="callout-title">Important</span>
+<p>Après toute modification du plugin : <strong>tuer et relancer tout le process</strong>
+<code>Tabby.exe</code> — pas un simple reload de page. Le cache de modules Node est global au
+process.</p></div>
+
+<h3 id="piege-9">#9 — <code>gh auth login</code> authentifie le compte actif du navigateur</h3>
+<p>Pas un compte choisi dans le CLI. Vérifier le compte actif dans le navigateur avant, ou
+<code>gh auth status --active</code> après.</p>
+
+<h3 id="piege-10">#10 — Auteur des commits ≠ compte GitHub utilisé</h3>
+<p>Indépendants : <code>git config user.email</code> détermine l'auteur affiché, le compte GitHub
+authentifié détermine qui pousse. Email noreply officiel pour committer "en tant que" un compte
+perso : <code>{id}+{login}@users.noreply.github.com</code> (id via
+<code>gh api user --jq '{id, login}'</code>).</p>
+
+<h3 id="piege-11">#11 — <code>git filter-branch</code> bloqué par le mode auto de Claude Code</h3>
+<p>Réécriture d'historique jugée sensible même sur un repo perso sans collaborateurs. L'utilisateur
+doit lancer la commande lui-même via le préfixe <code>!</code> (hors sandbox classifié). Nécessite
+<code>git push --force</code> après (les hash changent).</p>
+
+<h3 id="piege-12">#12 — <code>getProfileGroups()</code> ne clone pas profondément — pollue <code>config.yaml</code></h3>
+<div class="callout warning"><span class="callout-title">Critique — cause racine, ne jamais réintroduire</span>
+<p>A réellement corrompu la configuration de production de l'utilisateur une fois (groupes orphelins,
+entrées dupliquées) lors d'un test de re-parentage.</p></div>
+<p><code>profilesService.getProfileGroups()</code> peut renvoyer des références directes vers
+<code>config.store.groups</code> (contrairement à <code>getProfiles({clone:true})</code>, qui clone
+bien). <code>buildGroupTree()</code> attache alors un <code>.children</code> calculé directement
+sur ces objets vivants ; au <code>config.save()</code> suivant (n'importe lequel, favoris compris),
+cette propriété polluante est sérialisée → groupes dupliqués/orphelins dans <code>config.yaml</code>.</p>
+<p><strong>Fix retenu</strong> : <code>structuredClone()</code> sur <code>groups</code> juste après
+<code>getProfileGroups()</code>, avant toute manipulation. Le plugin ne mute jamais que sa propre
+copie.</p>
+<p><strong>Corollaire</strong> : <code>profilesService.writeProfileGroup(group)</code> fait une
+recherche <em>plate, racine uniquement</em> (<code>config.store.groups.find(...)</code>) —
+fondamentalement inadaptée pour déplacer un groupe entre <code>children:</code> imbriqués
+(silencieux en cas d'échec). Le re-parentage passe donc par recréation
+(<code>newProfileGroup</code>) + migration des profils un par un (<code>writeProfile</code>) +
+suppression de l'ancien (<code>deleteProfileGroup</code>) — jamais par réassignation directe de
+<code>parentGroupId</code>.</p>
+<p><strong>Discipline de méthode qui en découle</strong> : toute nouvelle fonctionnalité touchant
+groupes/profils doit être testée d'abord sur des entrées jetables (<code>grp-zzz-test-*</code>),
+jamais directement sur les vraies données.</p>
+
+<h3 id="piege-13">#13 — <code>@hidden</code> ne veut pas dire "non exporté"</h3>
+<p>Les deux sont indépendants. <code>EditProfileModalComponent</code> est <code>@hidden</code> ET
+absente du bundle réel (inutilisable) ; <code>SettingsTabComponent</code> est elle aussi
+<code>@hidden</code> mais bel et bien exportée (typings <strong>et</strong> bundle). <code>@hidden</code>
+n'exclut que de la doc générée. → Toujours vérifier les deux niveaux : <code>typings/index.d.ts</code>
+ET le bloc <code>__webpack_require__.d(...)</code> de <code>dist/index.js</code> compilé.</p>
+
+<h3 id="piege-14">#14 — <code>:host</code> ne fonctionne pas dans le SCSS de ce plugin</h3>
+<p>Le SCSS est injecté en CSS globale brute (side-effect import, voir piège #3) — <code>:host</code>
+n'est interprété que par le compilateur de templates Angular ou en Shadow DOM natif, ni l'un ni
+l'autre ne s'applique ici. Le navigateur ignore silencieusement la règle (aucune erreur). → Cibler
+le nom du tag custom element réel (ex. <code>sidebar-plus-tree { ... }</code>) à la place.</p>
+
+<h3 id="piege-15">#15 — <code>@HostListener('document:click')</code> ignore <code>stopPropagation()</code></h3>
+<p>Se déclenche même quand un descendant a appelé <code>$event.stopPropagation()</code> sur un
+<code>(click)</code> normal. → Ne jamais compter sur la propagation ; vérifier explicitement
+<code>(event.target as HTMLElement).closest('.mon-popup, ...')</code> dans le handler lui-même.</p>
+
+<h3 id="piege-16">#16 — <code>ConfigProvider.defaults</code> doit déclarer chaque clé individuellement</h3>
+<p>Une clé sous <code>config.store.sidebarPlus</code> non déclarée dans les <code>defaults</code>
+mute très bien en mémoire mais ne persiste <strong>jamais</strong> dans <code>config.yaml</code> —
+silencieux, aucune erreur. Touché <code>recentIcons</code> et <code>groupOrder</code> (ce dernier
+croyait fonctionner depuis le début). → Toute nouvelle clé <code>sidebarPlus.X</code> doit être
+ajoutée aux <code>defaults</code> de <code>SidebarPlusConfigProvider</code>
+(<code>src/configProvider.ts</code>), même vide.</p>
+
+<h3 id="piege-17">#17 — <code>EditProfileModalComponent</code> : cumul des pièges #13 et #6</h3>
+<p>Exportée par le bundle réel mais absente des typings npm (<code>TS2614</code> à la compilation
+si import direct). Pire : le champ s'appelle <code>partialProfile</code> à l'exécution alors que
+les typings npm obsolètes le nomment <code>profile</code> — utiliser ce dernier compilerait sans
+erreur mais ferait planter silencieusement la modale. → Augmentation de type dédiée
+(<code>src/tabby-settings-augment.d.ts</code>) avec les vrais noms de champs, vérifiés directement
+dans le bundle compilé (jamais seulement les typings ni le <code>.ts</code> source de l'app).</p>
+
+<h3 id="piege-18">#18 — Handler <code>(contextmenu)</code> sur l'espace vide de la sidebar</h3>
+<p>Doit être posé sur l'élément qui remplit réellement tout l'espace visible
+(<code>.sidebar-plus-tree.h-100</code>), pas sur celui qui ne fait que la hauteur de son contenu
+(<code>.sidebar-plus-tree-container</code>) — sinon un clic droit sous le dernier groupe ne
+déclenche rien pour un vrai clic utilisateur (un clic synthétique de test peut donner une fausse
+impression que ça marche).</p>
+
+<h3 id="piege-19">#19 — <code>cdkDropList</code> vide = 0px de hauteur</h3>
+<p>Cible de drop quasi impossible à atteindre. Devenu un bug de production réel avec "Nouveau
+dossier..." (toujours vide à la création) : le drop échoue silencieusement, aucune erreur, aucun
+changement dans <code>config.yaml</code>. → <code>min-height: 8px</code> sur tous les
+<code>div[id^='profiles-']</code> et <code>div[id^='groups-']</code>.</p>
+
+<h3 id="piege-20">#20 — Classement npm search très bas pour un paquet neuf</h3>
+<p>Constaté quelques heures après la publication de <code>tabby-better-sidebar@0.2.0</code> :
+le paquet est bien indexé (présent dans les résultats du mot-clé <code>tabby-plugin</code>), mais
+même une recherche par <strong>nom exact</strong> ne le fait pas apparaître dans les 250 premiers
+résultats de <code>registry.npmjs.org/-/v1/search</code> — l'algorithme pondère fortement la
+popularité (téléchargements, maintenance), qu'un paquet neuf n'a pas encore. Pas un bug de
+publication. Devrait s'améliorer avec l'usage, sans garantie de délai. Contournement pour tester
+l'install "officielle" en attendant :</p>
+<pre><code>cd "$env:APPDATA\tabby\plugins"
+npm install tabby-better-sidebar</code></pre>
+
+<h2>3. Points fragiles à revérifier après une mise à jour de Tabby</h2>
+<p>Ce plugin s'appuie par endroits sur des classes/composants internes non garantis par une API
+publique stable. Rien ne casse souvent, mais une mise à jour majeure de Tabby peut le faire
+silencieusement (pas d'erreur de compilation, juste un comportement qui ne fait plus rien ou fait
+la mauvaise chose). Tester chaque point après toute mise à jour de Tabby :</p>
+
+<h3 id="fragile-1">1. Édition de profil (clic droit → "Éditer...") — le plus fragile</h3>
+<p>Pilote du DOM interne non versionné de <code>tabby-settings</code> : chaque ligne est un
+<code>.collapse-item</code>, cliquer dessus ouvre directement la modale (pas de bouton dédié) ;
+<code>.modal-content</code>/<code>.modal-header h3</code>/<code>.modal-footer button</code> pour
+détecter la fermeture. Si ça casse : la modale ne s'ouvre plus, ou pire une mauvaise ligne s'ouvre.
+Pas destructeur si seule la détection de fermeture casse (l'utilisateur ferme l'onglet à la main).</p>
+
+<h3 id="fragile-2">2. <code>SettingsTabComponent.activeTab</code></h3>
+<p>Vrai <code>@Input()</code> documenté mais toujours <code>@hidden</code> donc non contractuel.
+Vérifier que <code>activeTab: 'profiles'</code> amène toujours sur le bon sous-onglet.</p>
+
+<h3 id="fragile-3">3. <code>SFTPPanelComponent</code>/<code>SFTPSession</code>/<code>SFTPFile</code></h3>
+<p>Prévus pour le panneau SFTP (pas encore implémenté) — vérifier qu'ils restent exportés par
+<code>tabby-ssh</code> et que <code>SFTPPanelComponent.session</code> attend toujours une
+<code>SSHSession</code> déjà connectée.</p>
+
+<h3 id="fragile-4">4. <code>writeProfileGroup()</code>/<code>newProfileGroup()</code>/<code>deleteProfileGroup()</code></h3>
+<p>Utilisées uniquement selon la discipline du piège #12. Si le format de stockage des groupes dans
+<code>config.yaml</code> change, retester le re-parentage sur des groupes jetables avant de faire
+confiance au comportement existant.</p>
+
+<h3 id="fragile-5">5. Clone non garanti de <code>getProfileGroups()</code>/<code>buildGroupTree()</code></h3>
+<p>Le <code>structuredClone()</code> défensif (piège #12) part du principe que l'API peut renvoyer
+des références vivantes. Si une future version clone proprement en interne, il devient superflu
+mais reste inoffensif à garder par précaution.</p>
+
+<h3 id="fragile-6">6. <code>profile-tree</code> toujours non exporté</h3>
+<p>Vérifier périodiquement (montée majeure de <code>tabby-core</code>) s'il a fini par être
+exporté — simplifierait la maintenance en permettant de réutiliser le composant natif au lieu de
+la copie locale.</p>
+
+<h3 id="fragile-7">7. <code>EditProfileModalComponent</code> (utilisé pour "Nouveau profil...")</h3>
+<p>Augmentée manuellement avec les noms de champs réels (piège #17). Si une future version de Tabby
+renomme ces champs, l'erreur sera silencieuse à la compilation (l'augmentation "ment" à
+TypeScript) — seul un test manuel de "Nouveau profil..." révélera le problème.</p>
+
+<h2 id="decisions-design">4. Décisions de design actées pour les fonctionnalités pas encore construites</h2>
+<p>Détail de chantier dans <a href="ROADMAP.html">ROADMAP.html</a> — ici seulement les choix déjà
+tranchés à respecter au moment de l'implémentation.</p>
+
+<h3>SFTP contextuel</h3>
+<ul>
+<li>Espace de la sidebar elle-même (bascule Profils/SFTP), pas un panneau séparé ancré à droite.
+  Volet fichiers locaux masqué par défaut. Déclenché depuis un onglet SSH déjà connecté (pas de
+  session headless dédiée).</li>
+<li><code>SFTPPanelComponent</code>/<code>SFTPSession</code>/<code>SFTPFile</code> confirmés
+  exportés par <code>tabby-ssh</code> — pas de réimplémentation locale nécessaire.</li>
+<li>Vue liée au <code>SplitTabComponent</code> actif (bascule au changement de focus, avec option
+  de gel) ; état "en attente d'une session SSH" si l'onglet actif n'en a pas.</li>
+<li>Dernier chemin distant visité mémorisé par onglet (en mémoire, pas persistant).</li>
+<li>Liste de fichiers chargée par blocs (lazy loading RxJS) pour éviter de figer le thread Electron.</li>
+<li>Suivi des transferts : flèches d'activité ↑/↓ à côté du profil + pourcentage au survol
+  (tooltip), <strong>pas</strong> de barre de progression classique (coût de re-render Angular trop
+  élevé avec plusieurs transferts en parallèle). Mini-gestionnaire pliable en bas de sidebar pour
+  l'historique/la file d'attente.</li>
+</ul>
+
+<h3>Workspaces</h3>
+<ul>
+<li>Stockage dans <code>config.yaml</code> via <code>ConfigProvider</code> (pas de fichiers JSON
+  externes séparés) — l'objectif de portabilité est déjà couvert nativement puisque
+  <code>config.yaml</code> contient tout en un seul fichier synchronisable tel quel. Export/import
+  JSON <strong>ponctuel</strong> prévu pour le partage sélectif (structure d'un workspace sans les
+  secrets), pas comme source de vérité vivante.</li>
+<li>Favoris cloisonnés par workspace (un profil peut être favori dans A mais pas B). L'ordre des
+  profils/groupes reste, lui, partagé entre tous les workspaces.</li>
+<li>Workspace "Tous" permanent par défaut (affichage non filtré).</li>
+<li>Logique de cascade au masquage d'un dossier parent : popup proposant "ce workspace seulement"
+  vs "tous les workspaces".</li>
+<li>Couleurs contextuelles par workspace : injectées via <code>structuredClone</code> au
+  double-clic de lancement, jamais en mutant le profil d'origine (cohérent avec piège #12).</li>
+<li>Sélecteur : onglets horizontaux par défaut, bascule automatique vers un dropdown pilotée par un
+  <code>ResizeObserver</code> sur la largeur réelle de la sidebar (pas un seuil fixe sur le nombre
+  de workspaces).</li>
+</ul>
+
+<h3>Sélection multiple</h3>
+<p>Mécanisme retenu : cases à cocher (Shift/Ctrl+clic pour étendre) + clic droit sur le dossier
+cible → "Déplacer la sélection ici" — plutôt que le multi-drag natif Angular CDK (jugé trop
+complexe/fragile). Comportements calqués sur les standards OS : un clic gauche simple sans
+modificateur réinitialise la sélection ; un clic droit hors sélection l'annule et ouvre le menu
+contextuel standard. Uniquement pour les profils, pas les groupes.</p>
+
+<h3>Tunnels SSH</h3>
+<p>Surcouche visuelle sur le moteur de port-forwarding déjà natif de Tabby (pas de
+réimplémentation) : création/config en un clic depuis le menu contextuel d'un profil, indicateur
+visuel (pastille) sur le profil concerné, panneau des tunnels actifs en bas de sidebar.</p>
+
+<h3>Ouverture groupée d'un dossier ("Group Exec")</h3>
+<p>Clic droit sur un dossier → "Ouvrir tout" : lance une session par profil du dossier, à coupler
+idéalement avec la saisie synchronisée déjà native de Tabby.</p>
+
+<h3>Vault Auto-Unlock — hors périmètre, plugin séparé</h3>
+<div class="callout important"><span class="callout-title">Décision actée</span>
+<p>Le déverrouillage automatique du coffre-fort Tabby <strong>ne fait pas partie de
+<code>better-sidebar</code></strong> — ce n'est pas une fonctionnalité de sidebar, et c'est le point
+le plus sensible (manipulation d'un secret utilisateur) envisagé sur ce projet. Deviendrait un
+plugin séparé, ex. <code>tabby-vault-unlock</code>.</p></div>
+<ul>
+<li>Interfaçage entre plugins indépendants : possible via l'injecteur Angular partagé (tous les
+  plugins Tabby tournent dans le même process). <code>tabby-vault-unlock</code> exporterait un
+  service minimal, <code>better-sidebar</code> l'importerait en dépendance optionnelle avec
+  <code>@Optional()</code>/<code>Injector.get(TOKEN, null)</code> — pas d'erreur si le plugin Vault
+  n'est pas installé. Pattern non officiel (effet de bord du chargeur de plugins, pas une API
+  documentée) : le contrat entre les deux packages est à notre charge.</li>
+<li>Design prévu pour ce futur plugin : délégation à l'OS via <code>electron.safeStorage</code>
+  (DPAPI/Keychain/libsecret selon l'OS), opt-in, injection dans le <code>VaultService</code> de
+  Tabby avant la pop-up native. <strong>La variable JS contenant le mot de passe déchiffré en clair
+  doit être immédiatement écrasée (<code>= null</code>) dès l'injection validée.</strong> Garde-fou
+  si l'injection échoue : suppression du token local obsolète, retour à la pop-up native.</li>
+<li>À vérifier avant tout code : que <code>VaultService</code> expose une méthode d'injection
+  programmatique utilisable depuis un plugin tiers (typings ET bundle compilé, piège #13).</li>
+</ul>
+
+<h3>Options &amp; polissage UI</h3>
+<ul>
+<li>Double entrée de configuration : sous-onglet dans <code>tabby-settings</code> + icône
+  d'engrenage dans la sidebar, mêmes réglages.</li>
+<li>UI trimming : masquer des composants natifs redondants via CSS global
+  (<code>display: none !important</code>), inspiré de <code>tabby-sftp-plus</code>.</li>
+<li>Raccourcis globaux via <code>HotkeyProvider</code> (changer de workspace, basculer SFTP,
+  afficher les tunnels).</li>
+</ul>
+
+<h3>Explicitement écarté</h3>
+<p>Importateur de sessions MobaXterm (<code>.mxtpro</code>/<code>.ini</code>) — non prioritaire,
+des outils de conversion existent déjà. À reconsidérer seulement si ce point de friction remonte
+concrètement.</p>
+
+<footer>tabby-better-sidebar · voir <a href="AI-HISTORY.html">AI-HISTORY.html</a> pour le contexte de chaque décision.</footer>
+</body>
+</html>
