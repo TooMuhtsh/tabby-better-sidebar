@@ -1,0 +1,48 @@
+{
+  "name": "tabby-sidebar-plus",
+  "version": "0.1.0",
+  "description": "Enhanced connection sidebar for Tabby: profile tree with favorites, live status, drag & drop, and a docked FileZilla-style SFTP file manager.",
+  "keywords": [
+    "tabby-plugin"
+  ],
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "build": "webpack --progress --color",
+    "watch": "webpack --progress --color --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "apply-loader": "^2.0.0",
+    "@types/node": "^18.19.0",
+    "@angular/animations": "^15.0.0",
+    "@angular/cdk": "^15.0.0",
+    "@angular/common": "^15.0.0",
+    "@angular/core": "^15.0.0",
+    "@angular/forms": "^15.0.0",
+    "@angular/platform-browser": "^15.0.0",
+    "@ng-bootstrap/ng-bootstrap": "^14.2.0",
+    "@types/webpack-env": "^1.16.0",
+    "css-loader": "^6.8.0",
+    "fuzzy-search": "^3.2.1",
+    "pug": "^2.0.4",
+    "pug-loader": "^2.4.0",
+    "rxjs": "^7.3.0",
+    "sass": "^1.60.0",
+    "sass-loader": "^13.2.0",
+    "style-loader": "^3.3.0",
+    "tabby-core": "^1.0.231-nightly.0",
+    "tabby-settings": "^1.0.231-nightly.0",
+    "tabby-ssh": "^1.0.231-nightly.0",
+    "tabby-terminal": "^1.0.231-nightly.0",
+    "ts-loader": "^9.4.0",
+    "typescript": "^4.9.5",
+    "webpack": "^5.24.4",
+    "webpack-cli": "^4.5.0"
+  }
+}

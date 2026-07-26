@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "baseUrl": "src",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "target": "es2020",
+    "esModuleInterop": true,
+    "noImplicitAny": false,
+    "removeComments": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "sourceMap": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "declaration": true,
+    "declarationDir": "dist",
+    "skipLibCheck": true,
+    "lib": [
+      "dom",
+      "es2020"
+    ]
+  },
+  "exclude": ["node_modules", "dist"]
+}
