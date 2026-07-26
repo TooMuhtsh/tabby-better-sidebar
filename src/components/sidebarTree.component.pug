@@ -7,14 +7,24 @@
     )
 
     .sidebar-plus-tree.h-100
-        .d-flex.flex-column.p-2.sidebar-plus-tree-container
-
+        .d-flex.flex-column.p-2.sidebar-plus-tree-container(
+            cdkDropList,
+            id='groups-root',
+            [cdkDropListData]='rootGroups',
+            [cdkDropListConnectedTo]='groupListIds',
+            (cdkDropListDropped)='onGroupDrop($event, null)'
+        )
             ng-container(*ngFor='let group of rootGroups')
-                ng-container(*ngTemplateOutlet='recursiveGroup; context: {$implicit: group, depth: 0}')
+                div(cdkDrag, [cdkDragData]='group', [cdkDragDisabled]='!group.editable')
+                    .group-drag-preview(*cdkDragPreview)
+                        profile-icon([icon]='group.icon ?? "far fa-folder"', [color]='group.color')
+                        span.ms-2 {{ group.name || 'Ungrouped' }}
+                    ng-container(*ngTemplateOutlet='recursiveGroup; context: {$implicit: group, depth: 0}')
 
             ng-template(#recursiveGroup let-group let-depth='depth')
                 a.tree-item(
                     (click)='toggleGroupCollapse(group)',
+                    (contextmenu)='onGroupContextMenu($event, group)',
                     [style.paddingLeft.px]='depth * 20',
                     href='#'
                 )
@@ -26,22 +36,76 @@
                     span.ms-2.me-auto {{ group.name || 'Ungrouped' }}
 
                 ng-container(*ngIf='!group.collapsed')
-                    ng-container(*ngFor='let profile of group.profiles')
-                        a.tree-item(
-                            (dblclick)='launchProfile(profile)',
-                            [style.paddingLeft.px]='(depth + 1) * 20',
-                            href='#'
-                        )
-                            .fw-20
-                                profile-icon.ms-1([icon]='profile.icon', [color]='profile.color')
-                            span.ms-2.no-wrap {{ profile.name }}
+                    div(
+                        cdkDropList,
+                        [id]='"profiles-" + group.id',
+                        [cdkDropListData]='group.profiles',
+                        [cdkDropListConnectedTo]='profileListIds',
+                        (cdkDropListDropped)='onProfileDrop($event, group)'
+                    )
+                        ng-container(*ngFor='let profile of group.profiles')
+                            a.tree-item(
+                                cdkDrag,
+                                [cdkDragData]='profile',
+                                (dblclick)='launchProfile(profile)',
+                                (contextmenu)='onProfileContextMenu($event, profile)',
+                                [style.paddingLeft.px]='(depth + 1) * 20',
+                                href='#'
+                            )
+                                .fw-20
+                                    profile-icon.ms-1([icon]='profile.icon', [color]='profile.color')
+                                span.status-dot.ms-1(
+                                    [class.status-dot-connected]='getProfileStatus(profile) === "connected"',
+                                    [class.status-dot-error]='getProfileStatus(profile) === "error"',
+                                    [title]='getProfileStatus(profile) === "connected" ? "Connecté" : getProfileStatus(profile) === "error" ? "Déconnecté" : "Aucune session"'
+                                )
+                                span.ms-2.no-wrap {{ profile.name }}
+                                .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavorite(profile)')
 
-                            .actions
-                                .action((click)='launchProfile(profile)')
-                                    .fa.fa-fw.fas.fa-play
+                                .actions
+                                    .action((click)='toggleFavorite(profile, $event)')
+                                        .fa.fa-fw(
+                                            [class.fas]='isFavorite(profile)',
+                                            [class.far]='!isFavorite(profile)',
+                                            class='fa-star'
+                                        )
+                                    .action((click)='launchProfile(profile)')
+                                        .fa.fa-fw.fas.fa-play
 
-                    ng-container(*ngFor='let child of group.children')
-                        ng-container(*ngTemplateOutlet='recursiveGroup; context: {$implicit: child, depth: depth + 1}')
+                    div(
+                        cdkDropList,
+                        [id]='"groups-" + group.id',
+                        [cdkDropListData]='group.children',
+                        [cdkDropListConnectedTo]='groupListIds',
+                        (cdkDropListDropped)='onGroupDrop($event, group.id)'
+                    )
+                        ng-container(*ngFor='let child of group.children')
+                            div(cdkDrag, [cdkDragData]='child', [cdkDragDisabled]='!child.editable')
+                                .group-drag-preview(*cdkDragPreview)
+                                    profile-icon([icon]='child.icon ?? "far fa-folder"', [color]='child.color')
+                                    span.ms-2 {{ child.name || 'Ungrouped' }}
+                                ng-container(*ngTemplateOutlet='recursiveGroup; context: {$implicit: child, depth: depth + 1}')
 .grabber(
+    [class.resizing]='panelIsResizing',
     (mousedown)='startResize($event)'
 )
+
+.group-context-menu(
+    *ngIf='contextMenuGroup',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    a.group-context-menu-item((click)='deleteGroup(contextMenuGroup)', href='#')
+        .fa.fa-fw.fas.fa-trash.me-2
+        | Supprimer
+
+.group-context-menu(
+    *ngIf='contextMenuProfile',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    a.group-context-menu-item((click)='openProfileSettings(contextMenuProfile)', href='#')
+        .fa.fa-fw.fas.fa-pen.me-2
+        | Éditer...

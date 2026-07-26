@@ -4,6 +4,7 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
     defaults = {
         sidebarPlus: {
             enabled: true,
+            favorites: [] as string[],
         },
     }
 }

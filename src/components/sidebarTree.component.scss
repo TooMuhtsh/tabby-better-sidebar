@@ -1,4 +1,12 @@
-:host {
+// `:host` doesn't work here: this stylesheet is injected as plain global CSS
+// (style-loader, via a side-effect `import`), never processed by Angular's
+// template compiler — `:host` only has meaning inside a real Shadow DOM
+// root, which this app doesn't use. Target the actual custom element tag
+// instead so this rule (position, background, border) actually applies —
+// without it, .grabber's `position: absolute` had no positioned ancestor to
+// anchor to and fell back to the viewport as its containing block.
+sidebar-plus-tree {
+    display: block;
     background-color: var(--theme-bg-more-2);
     position: relative;
     border-right: 1px solid var(--theme-secondary);
@@ -20,6 +28,30 @@ input {
     .fas.fa-chevron-right,
     .fas.fa-chevron-down {
         font-size: .7rem;
+    }
+
+    .favorite-badge {
+        font-size: .65rem;
+        color: #e8b923;
+    }
+
+    .status-dot {
+        flex: 0 0 auto;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: var(--theme-secondary-fg);
+        opacity: .35;
+
+        &.status-dot-connected {
+            background-color: #3fb950;
+            opacity: 1;
+        }
+
+        &.status-dot-error {
+            background-color: #e5534b;
+            opacity: 1;
+        }
     }
 
     profile-icon {
@@ -71,21 +103,97 @@ input {
                     background-color: var(--theme-primary);
                     color: var(--theme-secondary);
                 }
+
+                .fa-star.fas {
+                    color: #e8b923;
+                }
             }
         }
     }
+
+    .cdk-drop-list-dragging .tree-item:not(.cdk-drag-placeholder) {
+        transition: transform 200ms cubic-bezier(0, 0, .2, 1);
+    }
+}
+
+// CDK moves the drag preview/placeholder into a global overlay appended to
+// <body>, outside .sidebar-plus-tree's DOM subtree — these rules must NOT be
+// nested under .sidebar-plus-tree (an ancestor-scoped selector would never
+// match the relocated element).
+.cdk-drag-preview {
+    box-sizing: border-box;
+    border-radius: .3rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .4);
+    background-color: var(--theme-bg-more-2);
+    opacity: .9;
+
+    .actions {
+        display: none !important;
+    }
+}
+
+.group-drag-preview {
+    display: flex;
+    align-items: center;
+    padding: .25rem .5rem;
+    border-radius: .3rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .4);
+    background-color: var(--theme-bg-more-2);
+    opacity: .9;
+
+    profile-icon {
+        width: 15px;
+        height: 15px;
+    }
+}
+
+.cdk-drag-placeholder {
+    opacity: .25;
+}
+
+.cdk-drag-animating {
+    transition: transform 200ms cubic-bezier(0, 0, .2, 1);
 }
 
 .grabber {
     position: absolute;
-    z-index: 1;
-    width: 7px;
-    height: 25px;
+    z-index: 10;
+    width: 6px;
+    height: 100%;
     display: block;
-    background-color: var(--theme-secondary-fg);
-    border: 3px solid var(--theme-secondary);
-    border-radius: .4rem;
-    top: 50%;
-    right: -4px;
+    top: 0;
+    right: -3px;
     cursor: col-resize;
+    background-color: transparent;
+    transition: background-color 100ms ease;
+
+    &:hover,
+    &.resizing {
+        background-color: var(--theme-primary);
+    }
+}
+
+.group-context-menu {
+    position: fixed;
+    z-index: 100;
+    min-width: 140px;
+    padding: .25rem;
+    border-radius: .3rem;
+    background-color: var(--theme-bg-more-2);
+    border: 1px solid var(--theme-secondary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .4);
+
+    .group-context-menu-item {
+        display: flex;
+        align-items: center;
+        padding: .35rem .5rem;
+        border-radius: .2rem;
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--theme-secondary);
+        }
+    }
 }
