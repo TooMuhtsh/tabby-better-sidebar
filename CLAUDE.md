@@ -90,7 +90,29 @@ de chargement de plugin.
   plugin tiers, le tag `/** @hidden */` seul ne prouve rien (n'affecte que la
   doc générée) — vérifier les DEUX niveaux : `typings/index.d.ts` du
   package ET le bloc d'export webpack réel de `dist/index.js` compilé
-  (roadmap, piège #13).
+  (roadmap, piège #13). Si les typings npm n'exportent pas une classe qui est
+  bien réellement exportée à l'exécution (ex: `EditProfileModalComponent` de
+  `tabby-settings`), ajouter une augmentation de type dédiée (voir
+  `src/tabby-settings-augment.d.ts`, même principe que
+  `src/tabby-core-augment.d.ts`) plutôt que de contourner avec des casts
+  `any` disséminés — et vérifier les noms de CHAMPS dans le bundle compilé,
+  pas seulement dans les typings ni le `.ts` source de l'app (roadmap, piège
+  #17 : un champ peut être nommé différemment entre les typings obsolètes et
+  le composant réellement chargé).
+- **`@HostListener('document:click')` ignore `$event.stopPropagation()`
+  appelé par un descendant.** Ne jamais compter sur la propagation d'un
+  clic pour empêcher ce HostListener de se déclencher — vérifier plutôt
+  explicitement `(event.target as HTMLElement).closest('.ma-popup, ...')`
+  dans le handler lui-même (roadmap, piège #15).
+- **Toute nouvelle clé sous `config.store.sidebarPlus` doit être déclarée
+  dans les `defaults` de `SidebarPlusConfigProvider`
+  (`src/configProvider.ts`), même vide.** Une clé non déclarée se mute très
+  bien en mémoire mais ne persiste jamais dans `config.yaml` — silencieux,
+  aucune erreur (roadmap, piège #16).
+- **Un `cdkDropList` vide a une hauteur CSS de 0px**, donc une cible de
+  glisser-déposer quasi inatteignable — tous les `div[id^='profiles-']` et
+  `div[id^='groups-']` ont un `min-height: 8px` pour rester des cibles
+  fiables même vides (roadmap, piège #19).
 
 ## Git
 

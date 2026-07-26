@@ -2,7 +2,8 @@ import './sidebarTree.component.scss'
 import FuzzySearch from 'fuzzy-search'
 import { merge, Subscription, timer } from 'rxjs'
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop'
-import { Component, HostBinding, HostListener, Input, OnDestroy, OnInit } from '@angular/core'
+import { Component, HostBinding, HostListener, Inject, Input, OnDestroy, OnInit } from '@angular/core'
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import {
     AppService,
     BaseTabComponent,
@@ -12,10 +13,13 @@ import {
     PartialProfileGroup,
     Profile,
     ProfileGroup,
+    ProfileProvider,
     ProfilesService,
     SplitTabComponent,
 } from 'tabby-core'
-import { SettingsTabComponent } from 'tabby-settings'
+import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
+import { ICON_ENTRIES, PickerIcon } from '../icons'
+import { sanitizeSvgIcon } from '../svgSanitizer'
 
 interface CollapsableProfileGroup extends ProfileGroup {
     collapsed: boolean
@@ -53,14 +57,55 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
 
     contextMenuGroup: PartialProfileGroup<CollapsableProfileGroup>|null = null
     contextMenuProfile: PartialProfile<Profile>|null = null
+    contextMenuRoot = false
     contextMenuX = 0
     contextMenuY = 0
+    contextMenuMode: 'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile' = 'menu'
+
+    newGroupName = ''
+    profileTemplates: { provider: ProfileProvider<Profile>, template: PartialProfile<Profile> }[] = []
+
+    // Pug/Angular ends up serializing the template's *ngIf attribute value
+    // with double quotes and HTML-entity-escaping any literal `"` inside it
+    // (e.g. `contextMenuMode === "icon"` becomes `contextMenuMode === &quot;icon&quot;`
+    // in the compiled template string) — comparing against a boolean getter
+    // instead of a quoted string literal sidesteps that escaping entirely.
+    get isMenuMode (): boolean {
+        return this.contextMenuMode === 'menu'
+    }
+
+    get isIconPickerMode (): boolean {
+        return this.contextMenuMode === 'icon'
+    }
+
+    get isCreateGroupMode (): boolean {
+        return this.contextMenuMode === 'createGroup'
+    }
+
+    get isCreateProfileMode (): boolean {
+        return this.contextMenuMode === 'createProfile'
+    }
+
+    get isConfirmDeleteProfileMode (): boolean {
+        return this.contextMenuMode === 'confirmDeleteProfile'
+    }
+
+    iconQuery = ''
+    iconMatches: PickerIcon[] = []
+    showCustomSvgInput = false
+    customSvgText = ''
+    customSvgError: string|null = null
+    customSvgWarning: string|null = null
+
+    private static readonly MAX_RECENT_ICONS = 5
 
     constructor (
         private config: ConfigService,
         private profilesService: ProfilesService,
         private app: AppService,
         private notifications: NotificationsService,
+        private ngbModal: NgbModal,
+        @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
     ) { }
 
     async ngOnInit (): Promise<void> {
@@ -418,7 +463,22 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         if (!group.editable) {
             return
         }
+        this.contextMenuProfile = null
         this.contextMenuGroup = group
+        this.contextMenuRoot = false
+        this.contextMenuMode = 'menu'
+        this.contextMenuX = event.clientX
+        this.contextMenuY = event.clientY
+    }
+
+    /** Right-click on empty sidebar space (not on any group/profile row) — offers root-level creation. */
+    onSidebarContextMenu (event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.contextMenuGroup = null
+        this.contextMenuProfile = null
+        this.contextMenuRoot = true
+        this.contextMenuMode = 'menu'
         this.contextMenuX = event.clientX
         this.contextMenuY = event.clientY
     }
@@ -426,20 +486,154 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
     closeContextMenu (): void {
         this.contextMenuGroup = null
         this.contextMenuProfile = null
+        this.contextMenuRoot = false
+        this.contextMenuMode = 'menu'
     }
 
-    @HostListener('document:click')
-    onDocumentClick (): void {
+    // Checks the click's target rather than relying on descendant
+    // (click)='$event.stopPropagation()' bindings to suppress this — those
+    // bindings don't reliably stop this HostListener('document:click') from
+    // firing regardless (observed via console.trace: it runs synchronously
+    // right after a menu item's own click handler, even for items whose
+    // ancestor .group-context-menu has a stopPropagation click binding).
+    @HostListener('document:click', ['$event'])
+    onDocumentClick (event: MouseEvent): void {
+        if ((event.target as HTMLElement).closest('.group-context-menu, .icon-picker, .create-popup')) {
+            return
+        }
         this.closeContextMenu()
+    }
+
+    ////// GROUP / PROFILE CREATION (context menu) //////
+    openCreateGroupPrompt (): void {
+        this.contextMenuMode = 'createGroup'
+        this.newGroupName = ''
+    }
+
+    async createGroup (): Promise<void> {
+        const name = this.newGroupName.trim()
+        if (!name) {
+            return
+        }
+        const parentGroupId = this.contextMenuGroup?.id
+        await this.profilesService.newProfileGroup({ name, parentGroupId } as PartialProfileGroup<ProfileGroup>, { genId: true })
+        await this.config.save()
+        this.closeContextMenu()
+    }
+
+    async openCreateProfilePicker (): Promise<void> {
+        this.contextMenuMode = 'createProfile'
+        const perProvider = await Promise.all(this.profileProviders.map(async provider => ({
+            provider,
+            templates: (await provider.getBuiltinProfiles()).filter(p => p.isTemplate),
+        })))
+        this.profileTemplates = perProvider.flatMap(({ provider, templates }) => templates.map(template => ({ provider, template })))
+    }
+
+    async pickProfileTemplate (entry: { provider: ProfileProvider<Profile>, template: PartialProfile<Profile> }): Promise<void> {
+        const groupId = this.contextMenuGroup?.id
+        const base = structuredClone(entry.template) as PartialProfile<Profile> & { isTemplate?: boolean, isBuiltin?: boolean, weight?: number }
+        delete base.isTemplate
+        delete base.isBuiltin
+        delete base.weight
+        base.group = groupId
+        this.closeContextMenu()
+
+        const modal = this.ngbModal.open(EditProfileModalComponent, { size: 'lg' })
+        modal.componentInstance.partialProfile = base
+        modal.componentInstance.profileProvider = entry.provider
+
+        const result = await modal.result.catch(() => null) as PartialProfile<Profile>|null
+        if (!result) {
+            return
+        }
+        result.type = entry.provider.id
+        if (!result.name) {
+            const cfgProxy = this.profilesService.getConfigProxyForProfile(result)
+            result.name = entry.provider.getSuggestedName(cfgProxy) ?? entry.provider.name
+        }
+        await this.profilesService.newProfile(result)
+        await this.config.save()
     }
 
     ////// PROFILE EDITING (context menu) //////
     onProfileContextMenu (event: MouseEvent, profile: PartialProfile<Profile>): void {
         event.preventDefault()
         event.stopPropagation()
+        this.contextMenuGroup = null
         this.contextMenuProfile = profile
+        this.contextMenuRoot = false
+        this.contextMenuMode = 'menu'
         this.contextMenuX = event.clientX
         this.contextMenuY = event.clientY
+    }
+
+    ////// ICON PICKER (context menu) //////
+    openIconPicker (): void {
+        this.contextMenuMode = 'icon'
+        this.iconQuery = ''
+        this.iconMatches = []
+        this.showCustomSvgInput = false
+        this.customSvgText = ''
+        this.customSvgError = null
+        this.customSvgWarning = null
+    }
+
+    get recentIcons (): string[] {
+        return this.config.store.sidebarPlus?.recentIcons ?? []
+    }
+
+    onIconQueryChange (): void {
+        const q = this.iconQuery.trim().toLowerCase()
+        this.iconMatches = q ? ICON_ENTRIES.filter(e => e.name.includes(q)).slice(0, 40) : []
+    }
+
+    toggleCustomSvgInput (): void {
+        this.showCustomSvgInput = !this.showCustomSvgInput
+    }
+
+    async selectIconClass (iconClass: string): Promise<void> {
+        await this.applyIcon(iconClass)
+    }
+
+    async applyCustomSvg (): Promise<void> {
+        const result = sanitizeSvgIcon(this.customSvgText)
+        if (!result.ok || !result.svg) {
+            this.customSvgError = result.error ?? 'SVG rejeté.'
+            this.customSvgWarning = null
+            return
+        }
+        this.customSvgError = null
+        this.customSvgWarning = result.warning ?? null
+        await this.applyIcon(result.svg)
+    }
+
+    private async applyIcon (icon: string): Promise<void> {
+        if (this.contextMenuProfile) {
+            const profile = this.contextMenuProfile
+            profile.icon = icon
+            await this.profilesService.writeProfile(profile)
+        } else if (this.contextMenuGroup) {
+            // Only ever pass a minimal {id, icon} object here, never
+            // contextMenuGroup itself — it carries the plugin-computed
+            // `.children`/`.collapsed` fields, and writeProfileGroup()
+            // Object.assign()s whatever it's given onto the live config
+            // object (see roadmap piège #12: that's exactly how a past bug
+            // leaked computed fields into config.yaml).
+            await this.profilesService.writeProfileGroup({ id: this.contextMenuGroup.id, icon } as PartialProfileGroup<ProfileGroup>)
+        } else {
+            return
+        }
+        this.recordRecentIcon(icon)
+        await this.config.save()
+        this.closeContextMenu()
+    }
+
+    private recordRecentIcon (icon: string): void {
+        this.config.store.sidebarPlus ??= {}
+        const recent: string[] = (this.config.store.sidebarPlus.recentIcons ?? []).filter((i: string) => i !== icon)
+        recent.unshift(icon)
+        this.config.store.sidebarPlus.recentIcons = recent.slice(0, SidebarPlusTreeComponent.MAX_RECENT_ICONS)
     }
 
     /**
@@ -561,6 +755,17 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         }
         await this.profilesService.deleteProfileGroup(group)
         this.config.save()
+        this.closeContextMenu()
+    }
+
+    ////// PROFILE DELETION (context menu) //////
+    confirmDeleteProfile (): void {
+        this.contextMenuMode = 'confirmDeleteProfile'
+    }
+
+    async deleteProfile (profile: PartialProfile<Profile>): Promise<void> {
+        await this.profilesService.deleteProfile(profile)
+        await this.config.save()
         this.closeContextMenu()
     }
 }

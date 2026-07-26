@@ -3,6 +3,7 @@
     "baseUrl": "src",
     "module": "es2020",
     "moduleResolution": "node",
+    "resolveJsonModule": true,
     "target": "es2020",
     "esModuleInterop": true,
     "noImplicitAny": false,

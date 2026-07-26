@@ -267,6 +267,98 @@ Dépôt distant : **https://github.com/TooMuhtsh/tabby-better-sidebar** (public)
   (g.profiles?.length ?? 0) > 0)`), aucun risque particulier, ne touche que
   l'affichage. Testé : le groupe disparaît bien de l'arbre racine quand
   aucun profil n'y est rattaché.
+- **Icônes personnalisées** (`src/icons.json`, `src/icons.ts`, `src/svgSanitizer.ts`,
+  `src/components/sidebarTree.component.ts/.pug/.scss`) — menu contextuel
+  « Changer l'icône... » (profil et groupe), panneau flottant avec :
+  - Recherche unifiée sur trois sources embarquées offline (aucun appel
+    réseau) : FontAwesome (`src/icons.json`, extrait de `tabby-core`, ~1850
+    icônes), **Material Design Icons** et **Tabler** via les paquets npm
+    `@iconify-json/mdi`/`@iconify-json/tabler` (projet Iconify, Apache-2.0/MIT,
+    ~7600 + ~6200 icônes) — ajoutés après retour utilisateur que FontAwesome
+    est trop pauvre côté icônes réseau/infra (server-network, router, lan,
+    switch...). Les icônes Iconify sont stockées comme chaînes `<svg
+    viewBox="..." xmlns="...">{body}</svg>` construites directement depuis les
+    données du paquet (données de confiance qu'on embarque nous-mêmes, donc
+    **jamais passées par le sanitizer** — le coût DOMPurify sur ~14 000
+    icônes à froid serait de plusieurs secondes pour aucun bénéfice de
+    sécurité réel). `src/icons.ts` unifie tout en une liste `PickerIcon[]`
+    (`{name, value}`) triée, recherchée par sous-chaîne sur `name`.
+  - 5 dernières icônes utilisées (« Récentes »), persistées dans
+    `config.store.sidebarPlus.recentIcons` (voir piège #16 : a d'abord
+    échoué silencieusement, il fallait déclarer la clé dans les defaults du
+    `ConfigProvider`).
+  - Import de SVG personnalisé, **masqué par défaut** derrière un lien
+    « Importer à partir d'un SVG... » (retour utilisateur : ne pas montrer le
+    champ en permanence), sanitisé via **DOMPurify** (`src/svgSanitizer.ts`) —
+    voir section dédiée plus bas ("Sanitisation SVG").
+  - Icône appliquée à un profil : mutation directe de l'objet cloné +
+    `writeProfile()`. Icône appliquée à un groupe : **jamais** l'objet
+    `contextMenuGroup` complet (il porte `.children`/`.collapsed`, calculés
+    par le plugin) — toujours un objet minimal `{id, icon}` passé à
+    `writeProfileGroup()`, qui ne fait qu'un `Object.assign` dessus (voir
+    piège #12).
+  - Testé de bout en bout sur un profil/groupe jetables : recherche FA +
+    Iconify, icônes récentes affichées et persistées après redémarrage
+    complet de Tabby, import SVG personnalisé appliqué et persisté.
+- **Sanitisation SVG via DOMPurify** (`src/svgSanitizer.ts`) — pour l'import
+  SVG personnalisé (donnée utilisateur non fiable, contrairement aux icônes
+  Iconify embarquées ci-dessus). Choix **DOMPurify** (Cure53, MIT/Apache-2.0,
+  largement audité) plutôt qu'un parseur maison : rediscuté avec
+  l'utilisateur en cours de route (« il existe pas de sanitizer reconnue déjà
+  prêt à l'emploi ? » / « on ne réinvente pas la roue ») après une première
+  version avec un parseur XML fait main — écrire son propre sanitizer
+  anti-XSS est exactement le genre de code sensible à déléguer à une
+  bibliothèque éprouvée plutôt qu'à réinventer. Config restrictive
+  (`USE_PROFILES: {svg: true}` + `ALLOWED_TAGS`/`ALLOWED_ATTR` explicites,
+  liste blanche réduite aux formes simples d'icône) ; re-parse ensuite en XML
+  réel (`DOMParser`) pour vérifier une racine `<svg>` unique ; expose
+  `DOMPurify.removed` en avertissement si des éléments ont été retirés.
+- **Création de dossier/profil par clic droit** (`src/components/sidebarTree.component.ts/.pug/.scss`) —
+  demande utilisateur : « pouvoir gérer tout ça depuis la sidebar ». Deux
+  points d'entrée :
+  - Clic droit sur un dossier existant → « Nouveau dossier... » (enfant) /
+    « Nouveau profil... » (dans ce dossier).
+  - Clic droit sur l'espace **vide** de la sidebar → mêmes actions au niveau
+    racine. Piège rencontré : le gestionnaire `(contextmenu)` doit être posé
+    sur `.sidebar-plus-tree` (qui a `h-100`, remplit tout l'espace visible),
+    **pas** sur `.sidebar-plus-tree-container` (qui ne fait que la hauteur de
+    son contenu) — sinon un clic droit sous le dernier groupe ne déclenche
+    rien (voir piège #18).
+  - « Nouveau dossier... » : popup minimaliste (nom seul), appelle
+    `profilesService.newProfileGroup({name, parentGroupId}, {genId:true})` —
+    mécanisme déjà éprouvé (utilisé par `reparentGroup()`).
+  - « Nouveau profil... » : popup listant les profils-modèles de chaque
+    provider (`profileProviders[].getBuiltinProfiles()` filtré
+    `isTemplate`, ex. "SSH connection"), puis ouverture de la **vraie modale
+    native** `EditProfileModalComponent` (import direct via `NgbModal`,
+    formulaire complet host/port/user/auth/clés... au lieu de réimplémenter
+    quoi que ce soit) avec `partialProfile.group` présélectionné sur le
+    dossier cible. Voir piège #17 : cette classe est elle aussi `@hidden` +
+    absente des typings npm mais bien exportée par le bundle réel de l'app,
+    et son champ s'appelle `partialProfile` à l'exécution alors que les
+    typings npm (obsolètes) le nomment `profile` — augmentation de type
+    dédiée dans `src/tabby-settings-augment.d.ts`.
+  - À la fermeture de la modale : `result.type = provider.id`, nom généré
+    via `provider.getSuggestedName()` si vide, puis
+    `profilesService.newProfile(result)` (génère l'id, `genId` par défaut) +
+    `config.save()`.
+- **Suppression de profil par clic droit** (`src/components/sidebarTree.component.ts/.pug`) —
+  même demande que ci-dessus. Popup de confirmation **HTML** (pas de
+  `PlatformService.showMessageBox()` natif Windows, retour utilisateur
+  explicite : « il y a une fenêtre de confirmation Windows, pas une modale
+  HTML ») dans le même style que les autres popups du plugin, puis
+  `profilesService.deleteProfile()` + `config.save()`.
+- **Fix : zone de dépôt vide à 0px de hauteur** (`src/components/sidebarTree.component.scss`) —
+  un `cdkDropList` de profils/sous-groupes vide (ex. un dossier tout juste
+  créé) a une hauteur CSS de 0px, ce qui le rend quasiment impossible à
+  viser pour y déposer un profil par glisser-déposer — déjà repéré comme
+  "piège de test" (voir piège #12) mais jamais corrigé en production, ce qui
+  devient un vrai problème d'usage maintenant que "Nouveau dossier..." crée
+  des dossiers systématiquement vides — voir piège #19 pour le détail complet
+  du fix (`min-height: 8px`). Reproduit et corrigé via glisser-déposer réel :
+  déplacer un profil vers un dossier vide échouait silencieusement (aucune
+  erreur, juste aucun changement dans `config.yaml`) avant le fix, fonctionne
+  après.
 - **Git configuré et poussé sur GitHub** : `gh` CLI installé en version
   portable (zip, `%LOCALAPPDATA%\Programs\gh-portable`, pas d'admin requis),
   authentifié en tant que `TooMuhtsh` (compte perso). Dépôt public créé et
@@ -481,6 +573,96 @@ Dépôt distant : **https://github.com/TooMuhtsh/tabby-better-sidebar** (public)
     aucune erreur de compilation ni console : juste un style qui ne
     s'applique jamais, à vérifier visuellement/via `getComputedStyle` si un
     style d'hôte semble ne pas s'appliquer.
+15. **`@HostListener('document:click')` d'Angular se déclenche même quand un
+    descendant a appelé `$event.stopPropagation()` sur un `(click)` normal.**
+    Découvert en implémentant le picker d'icônes : `openIconPicker()`
+    (déclenché par un item de menu contextuel) changeait bien
+    `contextMenuMode` en mémoire (confirmé via `console.log`), mais le
+    panneau ne s'affichait jamais — `console.trace()` dans
+    `closeContextMenu()` a montré qu'`onDocumentClick()` (le
+    `HostListener('document:click')` du composant) s'exécutait juste après,
+    resettant tout, alors que le clic avait eu lieu à l'intérieur du menu
+    (`.group-context-menu`), dont le `(click)='$event.stopPropagation()'`
+    aurait dû bloquer la remontée. Ça fonctionnait "par accident" pour les
+    autres items du menu (Supprimer, Éditer...) uniquement parce que leurs
+    handlers (`deleteGroup()`, `openProfileSettings()`) appellent eux-mêmes
+    `closeContextMenu()` explicitement à la fin — le double appel (le leur +
+    celui, non voulu, du HostListener) ne se voyait pas. → **Ne jamais
+    compter sur `stopPropagation()` pour bloquer un
+    `HostListener('document:click')`** : `onDocumentClick(event)` vérifie
+    maintenant explicitement `(event.target as HTMLElement).closest('.group-context-menu, .icon-picker, .create-popup')`
+    et ignore le clic si c'est le cas, indépendamment de toute propagation.
+16. **`ConfigProvider.defaults` doit déclarer CHAQUE clé custom
+    individuellement, sinon elle ne persiste jamais dans `config.yaml`.**
+    Découvert en ajoutant `sidebarPlus.recentIcons` : la mutation
+    (`this.config.store.sidebarPlus.recentIcons = [...]`) fonctionnait bien
+    en mémoire (`console.log` le confirmait juste avant `config.save()`),
+    mais la clé n'apparaissait jamais dans `config.yaml` après coup — alors
+    que la MÊME icône appliquée au profil, elle, persistait très bien. Seule
+    `favorites` (déclarée dans `configProvider.ts`) survivait ; `recentIcons`
+    (pas déclarée) non. → **Toute nouvelle clé sous `config.store.sidebarPlus`
+    doit être ajoutée aux `defaults` de `SidebarPlusConfigProvider`
+    (`src/configProvider.ts`)**, même avec une valeur vide, pour que le
+    système de config de Tabby la reconnaisse comme faisant partie du schéma
+    à sérialiser. En creusant, `groupOrder` (utilisé depuis le début pour le
+    réordonnancement de groupes frères, piège #12) s'est révélé avoir
+    **exactement le même problème** — jamais déclaré dans les defaults, donc
+    jamais réellement persisté malgré la description "testé, fonctionne"
+    dans une session précédente de ce roadmap. Les deux ont été ajoutés aux
+    defaults et revérifiés persistants après un redémarrage complet de
+    Tabby.
+17. **`EditProfileModalComponent` (tabby-settings) : même situation que le
+    piège #13 (`@hidden` mais réellement exporté), ET même situation que le
+    piège #6 (typings npm en retard sur le runtime installé) — les DEUX en
+    même temps, sur la même classe.** Le code source de l'app installée
+    (`C:\Program Files\Tabby\resources\builtin-plugins\tabby-settings\dist\index.js`)
+    exporte bien `EditProfileModalComponent` dans son bloc webpack
+    (`__webpack_require__.d(...)`), mais **les typings npm publiés**
+    (`node_modules/tabby-settings/typings/index.d.ts`) n'exportent que
+    `SettingsTabComponent` — `import { EditProfileModalComponent } from
+    'tabby-settings'` échoue à la compilation (`TS2614`) alors que ça
+    fonctionnerait très bien à l'exécution. Pire : même une fois l'export
+    ajouté manuellement, le **nom du champ** diffère entre les deux sources
+    — les typings npm (obsolètes) le nomment `profile`, mais le composant
+    réellement compilé et chargé par l'app utilise `partialProfile` (repéré
+    via `grep -o "partialProfile" dist/index.js`, qui confirme le nom réel).
+    Utiliser le nom des typings npm (`profile`) aurait compilé sans erreur
+    mais silencieusement fait planter la modale (champ jamais lu par le vrai
+    composant). → **Augmentation de type dédiée**
+    (`src/tabby-settings-augment.d.ts`, sur le modèle de
+    `tabby-core-augment.d.ts`) déclarant `EditProfileModalComponent` avec les
+    VRAIS noms de champs (`partialProfile`/`profileProvider`), vérifiés
+    directement dans le bundle compilé plutôt que dans les typings ou même
+    le code source TS de l'app (qui peut lui-même diverger du bundle publié
+    au moment de la lecture). Retenir la leçon du piège #13 à son maximum :
+    pour toute classe `tabby-settings`/`tabby-core` non triviale, vérifier le
+    bundle compilé (`dist/index.js`) en dernier recours, jamais seulement les
+    typings ni même le `.ts` source.
+18. **Le gestionnaire `(contextmenu)` pour un clic droit sur "l'espace vide"
+    de la sidebar doit être posé sur l'élément qui remplit réellement tout
+    l'espace visible, pas sur celui qui ne fait que la hauteur de son
+    contenu.** `.sidebar-plus-tree-container` (`.d-flex.flex-column.p-2`, le
+    `cdkDropList` racine) ne fait que la hauteur cumulée de ses groupes —
+    un clic droit sous le dernier groupe mais toujours dans la sidebar
+    visible tombe en réalité sur `.sidebar-plus-tree` (qui a `h-100`, la
+    classe Bootstrap `height:100%`), un ancêtre, PAS sur le conteneur. Un
+    premier essai avec le handler sur `.sidebar-plus-tree-container`
+    "fonctionnait" dans un test automatisé (clic synthétique dispatché
+    directement sur l'élément) mais jamais pour un vrai clic utilisateur
+    dans le vide réel de la sidebar. → Handler déplacé sur
+    `.sidebar-plus-tree.h-100` lui-même.
+19. **Un `cdkDropList` vide a une hauteur CSS de 0px — déjà repéré comme un
+    "piège de test" (voir piège #12) mais jamais corrigé pour de vrai,
+    devenu un bug de production réel avec l'ajout de "Nouveau dossier...".**
+    Un dossier tout juste créé est systématiquement vide ; y glisser-déposer
+    un profil échoue silencieusement (le drop n'est simplement jamais
+    détecté par Angular CDK, aucune erreur) parce que sa zone de dépôt
+    (`div[id^='profiles-']`) n'a virtuellement aucune surface cliquable. →
+    `min-height: 8px` ajouté en CSS sur tous les `div[id^='profiles-']` et
+    `div[id^='groups-']` (`sidebarTree.component.scss`) — suffisant pour
+    rester une cible de dépôt fiable sans ajouter un espace vide visuellement
+    gênant. Reproduit et confirmé via glisser-déposer réel (pas seulement
+    simulé) avant/après le fix.
 
 ## Reste à faire (la "vision" demandée)
 
@@ -489,12 +671,13 @@ Ordre validé avec l'utilisateur : ~~favoris~~ (fait) → ~~statut live~~ (fait)
 l'historique mouvementé) → SFTP docké → workspaces (5e axe, ajouté en cours
 de route, voir plus bas).
 
-Demandes utilisateur reçues en cours de route, toutes implémentées : suppression
-de groupe via clic droit, re-parentage de groupe par glisser-déposer, édition
-de profil via clic droit (redirige vers Paramètres → Profils), glissoir de
-redimensionnement pleine hauteur, masquage de "Sans groupe" si vide (voir
-section "Fait" pour le détail de chacune). Icônes personnalisées validées le
-26/07, pas encore implémentées (voir item 2 ci-dessous).
+Demandes utilisateur reçues en cours de route, toutes implémentées :
+suppression de groupe via clic droit, re-parentage de groupe par
+glisser-déposer, édition de profil via clic droit (redirige vers Paramètres
+→ Profils), glissoir de redimensionnement pleine hauteur, masquage de "Sans
+groupe" si vide, icônes personnalisées (FontAwesome + Iconify MDI/Tabler +
+import SVG sanitisé), création de dossier/profil et suppression de profil
+par clic droit (voir section "Fait" pour le détail de chacune).
 
 1. **Accès SFTP direct, façon MobaXterm — DESIGN REVU, remplace le plan
    initial "docké à droite façon FileZilla".** Nouvelle direction donnée par
@@ -524,58 +707,12 @@ section "Fait" pour le détail de chacune). Icônes personnalisées validées le
      bascule Profils/SFTP (état à conserver par onglet SSH actif ? un seul
      état global ?), et comment détecter/écouter le lancement d'une session
      SFTP pour basculer automatiquement la vue.
-2. **Icônes personnalisées — VALIDÉ le 26/07, les deux approches retenues
-   (pas exclusives) : bibliothèque FontAwesome embarquée + import de SVG
-   personnalisé.** Recherche de faisabilité terminée avant validation
-   (lecture seule, rien implémenté) :
-   - **(a) Bibliothèque FontAwesome embarquée.** `icons.json` (source de
-     l'autocomplete natif de Tabby) n'est PAS publié dans le paquet npm
-     `tabby-core` (`package.json` → `"files": ["dist","typings"]`, pas de
-     `src`) ; il n'existe que dans le monorepo source de Tabby et se
-     retrouve **inliné dans le bundle compilé de tabby-settings**
-     (`dist/index.js`, ~2000 icônes Font Awesome 6 Free, licence MIT). Pas
-     d'import propre à l'exécution possible (dépendrait de détails internes
-     non garantis, cassable à chaque mise à jour de Tabby) → **extraire le
-     JSON une fois, manuellement, et l'embarquer comme asset statique dans
-     ce plugin** (réutilisation légale, licence MIT). Sert de base à un
-     sélecteur d'icônes par recherche/grille dans notre sidebar.
-   - **(b) Import de SVG personnalisé.** `<profile-icon>` (le tag, déjà
-     utilisé dans notre template) accepte nativement tout `icon`/`color`
-     commençant par `<` comme du HTML/SVG à injecter (template compilé de
-     `tabby-core`, directive `[fastHtmlBind]` sur la branche HTML).
-     Redimensionnement CSS déjà géré pour `img`/`svg` enfants — donc
-     faisable dès aujourd'hui côté modèle de données.
-     ⚠️ **Risque XSS réel, à traiter nous-mêmes, non négociable.**
-     `[fastHtmlBind]` (`FastHtmlBindDirective`, tabby-core) fait un
-     `element.innerHTML = value` **impératif en TypeScript pur**, hors du
-     template Angular — ça contourne totalement la sanitisation d'Angular
-     (qui n'agit que sur les bindings `[innerHTML]` dans un template, pas
-     sur une affectation DOM directe en code). Aucun `DomSanitizer` utilisé
-     côté Tabby. Dans un contexte Electron avec accès Node, une injection
-     ici est plus grave qu'un XSS web classique. → **Avant de stocker ou
-     d'afficher un SVG importé par l'utilisateur, notre plugin doit le faire
-     passer par sa propre sanitisation stricte** (liste blanche de balises
-     SVG type `svg`/`path`/`circle`/`g`/`rect`/`polygon`, interdiction de
-     `script`, de tout attribut `on*`, des URLs `javascript:` — ne jamais se
-     reposer sur `<profile-icon>` natif, qui n'offre aucune protection).
-     Bibliothèque de sanitisation à choisir à l'implémentation (ex: DOMPurify
-     avec une config SVG restrictive, ou un parseur XML fait main avec liste
-     blanche stricte de balises/attributs — pas de solution déjà choisie).
-     Autre limite à prendre en compte pour l'UI d'import : `[style.color]`
-     (notre `group.color`/`profile.color`) n'est appliqué par Tabby QUE sur
-     la branche FontAwesome (`<i>`), jamais sur la branche HTML/SVG — un SVG
-     personnalisé doit utiliser `fill="currentColor"`/`stroke="currentColor"`
-     et hériter la couleur d'un wrapper `[style.color]` posé par NOUS.
-   - Pas encore commencé — priorité et ordre d'implémentation par rapport au
-     SFTP/workspaces/multi-sélection à définir avec l'utilisateur.
-
 ## Propositions reçues le 26/07, restantes (pas encore décidées)
 
 - ~~Redimensionnement latéral~~ — existait déjà, mais cassé (voir piège
   #14) ; corrigé et rendu pleine hauteur. Fait.
 - ~~Masquer "Sans groupe" si vide~~ — fait.
-- ~~Icônes personnalisées~~ — validé, voir item 2 de "Reste à faire"
-  ci-dessus.
+- ~~Icônes personnalisées~~ — fait (voir section "Fait").
 
 Reste une proposition non décidée :
 
@@ -697,3 +834,12 @@ avant de considérer le plugin à jour :
    majeure de `tabby-core` dans `package.json`) s'il n'a pas fini par être
    exporté, ce qui simplifierait grandement la maintenance en permettant de
    réutiliser le composant natif au lieu de la copie locale.
+7. **`EditProfileModalComponent` (utilisé pour "Nouveau profil...")** — voir
+   piège #17 : augmentée manuellement dans `src/tabby-settings-augment.d.ts`
+   avec les noms de champs réels (`partialProfile`/`profileProvider`)
+   vérifiés dans le bundle compilé, PAS ceux des typings npm (`profile`,
+   obsolètes). Si une future version de Tabby renomme ces champs ou change
+   la signature du composant, l'erreur sera silencieuse à la compilation
+   (le cast de l'augmentation "ment" à TypeScript) — seul un test manuel de
+   "Nouveau profil..." (la modale doit s'ouvrir avec le bon provider et le
+   groupe déjà présélectionné) révélera le problème.

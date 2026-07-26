@@ -6,7 +6,7 @@
         (ngModelChange)='onFilterChange()'
     )
 
-    .sidebar-plus-tree.h-100
+    .sidebar-plus-tree.h-100((contextmenu)='onSidebarContextMenu($event)')
         .d-flex.flex-column.p-2.sidebar-plus-tree-container(
             cdkDropList,
             id='groups-root',
@@ -91,17 +91,39 @@
 )
 
 .group-context-menu(
-    *ngIf='contextMenuGroup',
+    *ngIf='contextMenuGroup && isMenuMode',
     [style.left.px]='contextMenuX',
     [style.top.px]='contextMenuY',
     (click)='$event.stopPropagation()'
 )
+    a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
+        .fa.fa-fw.fas.fa-folder-plus.me-2
+        | Nouveau dossier...
+    a.group-context-menu-item((click)='openCreateProfilePicker()', href='#')
+        .fa.fa-fw.fas.fa-plus.me-2
+        | Nouveau profil...
+    a.group-context-menu-item((click)='openIconPicker()', href='#')
+        .fa.fa-fw.fas.fa-icons.me-2
+        | Changer l'icône...
     a.group-context-menu-item((click)='deleteGroup(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-trash.me-2
         | Supprimer
 
 .group-context-menu(
-    *ngIf='contextMenuProfile',
+    *ngIf='contextMenuRoot && isMenuMode',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
+        .fa.fa-fw.fas.fa-folder-plus.me-2
+        | Nouveau dossier...
+    a.group-context-menu-item((click)='openCreateProfilePicker()', href='#')
+        .fa.fa-fw.fas.fa-plus.me-2
+        | Nouveau profil...
+
+.group-context-menu(
+    *ngIf='contextMenuProfile && isMenuMode',
     [style.left.px]='contextMenuX',
     [style.top.px]='contextMenuY',
     (click)='$event.stopPropagation()'
@@ -109,3 +131,108 @@
     a.group-context-menu-item((click)='openProfileSettings(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-pen.me-2
         | Éditer...
+    a.group-context-menu-item((click)='openIconPicker()', href='#')
+        .fa.fa-fw.fas.fa-icons.me-2
+        | Changer l'icône...
+    a.group-context-menu-item((click)='confirmDeleteProfile()', href='#')
+        .fa.fa-fw.fas.fa-trash.me-2
+        | Supprimer
+
+.icon-picker(
+    *ngIf='isIconPickerMode && (contextMenuGroup || contextMenuProfile)',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Choisir une icône
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+
+    .text-muted.small(*ngIf='recentIcons.length && !iconQuery') Récentes
+    .icon-picker-grid(*ngIf='recentIcons.length && !iconQuery')
+        a.icon-picker-item(
+            *ngFor='let c of recentIcons',
+            (click)='selectIconClass(c)',
+            [title]='c',
+            href='#'
+        )
+            profile-icon([icon]='c')
+
+    input.form-control.form-control-sm.mb-1.mt-1(
+        type='text',
+        [(ngModel)]='iconQuery',
+        placeholder='Rechercher (ex: server, folder, star...)',
+        (ngModelChange)='onIconQueryChange()'
+    )
+    .icon-picker-grid(*ngIf='iconMatches.length')
+        a.icon-picker-item(
+            *ngFor='let e of iconMatches',
+            (click)='selectIconClass(e.value)',
+            [title]='e.name',
+            href='#'
+        )
+            profile-icon([icon]='e.value')
+
+    hr
+
+    .icon-picker-custom
+        a.small((click)='toggleCustomSvgInput()', href='#') Importer à partir d'un SVG...
+
+        ng-container(*ngIf='showCustomSvgInput')
+            textarea.form-control.form-control-sm.mt-1(
+                rows='3',
+                [(ngModel)]='customSvgText',
+                placeholder='<svg viewBox="0 0 24 24">...</svg>'
+            )
+            .text-danger.small.mt-1(*ngIf='customSvgError') {{ customSvgError }}
+            .text-warning.small.mt-1(*ngIf='customSvgWarning') {{ customSvgWarning }}
+            button.btn.btn-sm.btn-secondary.mt-1((click)='applyCustomSvg()') Appliquer le SVG
+
+.create-popup(
+    *ngIf='isCreateGroupMode',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Nouveau dossier
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    input.form-control.form-control-sm.mt-1(
+        type='text',
+        [(ngModel)]='newGroupName',
+        placeholder='Nom du dossier',
+        (keydown.enter)='createGroup()'
+    )
+    button.btn.btn-sm.btn-primary.mt-2((click)='createGroup()') Créer
+
+.create-popup(
+    *ngIf='isCreateProfileMode',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Nouveau profil
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    .create-profile-list
+        a.create-profile-item(
+            *ngFor='let e of profileTemplates',
+            (click)='pickProfileTemplate(e)',
+            href='#'
+        )
+            profile-icon.me-2([icon]='e.template.icon')
+            span {{ e.template.name }}
+
+.create-popup(
+    *ngIf='isConfirmDeleteProfileMode && contextMenuProfile',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Supprimer le profil
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    .small.mb-2 Supprimer « {{ contextMenuProfile.name }} » ? Cette action est irréversible.
+    .d-flex.gap-2
+        button.btn.btn-sm.btn-danger((click)='deleteProfile(contextMenuProfile)') Supprimer
+        button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') Annuler
