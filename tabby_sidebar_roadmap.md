@@ -707,6 +707,39 @@ par clic droit (voir section "Fait" pour le détail de chacune).
      bascule Profils/SFTP (état à conserver par onglet SSH actif ? un seul
      état global ?), et comment détecter/écouter le lancement d'une session
      SFTP pour basculer automatiquement la vue.
+   - **Proposition (consultation externe Gemini, 26/07) — sensibilité au
+     contexte** : la vue SFTP doit refléter l'onglet SSH actif (bascule
+     automatique si on change d'onglet pendant que la vue SFTP est affichée),
+     et afficher un état "En attente d'une session SSH active" (vue grisée ou
+     retour auto sur la vue Profils) si l'onglet actif n'a pas de session SSH,
+     plutôt que de rester bloquée sur le dernier serveur consulté.
+   - **Proposition (consultation externe Gemini, 26/07) — persistance de
+     navigation** : mémoriser en mémoire (pas forcément persisté dans
+     `config.yaml`) le dernier chemin distant visité par onglet (map UUID
+     onglet → chemin SFTP), pour ne pas retomber à la racine à chaque
+     bascule Profils ↔ SFTP sur le même onglet.
+   - **Précision reçue le 26/07 (2e lot, consultation Gemini) — gestion du
+     focus en split panes** : liaison dynamique avec le volet actif
+     (`SplitTabComponent`) — l'arborescence affichée se rafraîchit au clic
+     sur un terminal différent au sein d'un même onglet scindé. Prévoir une
+     option pour **geler la vue active** (ne pas suivre le focus) afin
+     d'éviter des rafraîchissements accidentels pendant une navigation
+     SFTP en cours.
+   - **Précision reçue le 26/07 (2e lot) — performances (anti-freeze)** :
+     récupération de la liste de fichiers par blocs (lazy loading), avec
+     chargement en arrière-plan via RxJS au fil du défilement, pour éviter
+     de figer le thread Electron sur un dossier distant très peuplé.
+   - **Précision reçue le 26/07 (2e lot) — suivi des transferts, validée** :
+     - Mini-gestionnaire global pliable en bas de la sidebar (historique +
+       file d'attente des transferts).
+     - Flèches discrètes d'activité (`↑` upload / `↓` download) affichées à
+       côté du nom du profil concerné pendant un transfert en cours, **en
+       remplacement d'une barre de progression classique** — jugée trop
+       lourde pour le DOM Angular si plusieurs transferts sont actifs en
+       parallèle (une barre de progression implique un re-render fréquent
+       par élément, contre un simple changement d'icône ici).
+     - Pourcentage précis affiché uniquement au survol du profil (Tooltip),
+       pour garder la barre visuellement légère par défaut.
 ## Propositions reçues le 26/07, restantes (pas encore décidées)
 
 - ~~Redimensionnement latéral~~ — existait déjà, mais cassé (voir piège
@@ -714,13 +747,14 @@ par clic droit (voir section "Fait" pour le détail de chacune).
 - ~~Masquer "Sans groupe" si vide~~ — fait.
 - ~~Icônes personnalisées~~ — fait (voir section "Fait").
 
-Reste une proposition non décidée :
+Reste une proposition, **mécanisme désormais tranché** (voir ci-dessous) :
 
-1. **Sélection multiple (Shift+Clic / Ctrl+Clic) pour déplacement en masse**
-   — uniquement pour les **profils**, pas les groupes (précisé par
-   l'utilisateur). Permettrait de sélectionner plusieurs profils dans
-   l'arbre puis de les glisser-déposer tous ensemble vers un autre groupe en
-   un seul geste. Le plus gros morceau des propositions du 26/07 :
+1. **Sélection multiple pragmatique (Shift+Clic / Ctrl+Clic) pour
+   déplacement en masse** — uniquement pour les **profils**, pas les
+   groupes (précisé par l'utilisateur). Permettrait de sélectionner
+   plusieurs profils dans l'arbre puis de les déplacer tous ensemble vers un
+   autre groupe en un seul geste. Le plus gros morceau des propositions du
+   26/07 :
    - Nécessite un état de sélection (ex: `Set<string>` d'IDs de profils),
      une logique de sélection par plage (Shift, du dernier élément cliqué
      jusqu'au nouveau) et par ajout/retrait individuel (Ctrl), + un style
@@ -732,6 +766,19 @@ Reste une proposition non décidée :
      qu'au seul élément physiquement glissé, et adapter l'aperçu de drag
      (`*cdkDragPreview`) pour indiquer "N profils" plutôt qu'un seul nom.
    - Pas de blocage identifié à ce stade, juste une portée non triviale.
+   - **Approche retenue le 26/07 (consultation Gemini)**, confirmée par
+     l'utilisateur le même jour (2e lot) : plutôt que le "vrai" multi-drag
+     CDK ci-dessus (jugé trop complexe/fragile), sélection **éphémère** par
+     cases à cocher (Shift/Ctrl+clic pour étendre la sélection), puis clic
+     droit sur le dossier cible → **"Déplacer la sélection ici"**. Contourne
+     les limites de CDK (pas de drag simultané à gérer) au prix d'un geste
+     en deux temps plutôt qu'un seul glisser-déposer.
+   - **Précisions de comportement validées le 26/07 (2e lot)**, calquées sur
+     les standards OS : un clic gauche simple sans touche modificatrice
+     réinitialise la sélection en cours ; un clic droit **en dehors** de la
+     sélection active l'annule et ouvre directement le menu contextuel
+     standard (création/édition/suppression) plutôt que le menu de
+     déplacement de la sélection.
 
 ## Axe supplémentaire — Workspaces (validé, phase séparée)
 
@@ -740,16 +787,190 @@ Ajouté en cours de discussion (pas dans les 4 axes initiaux), à traiter
 reste stable et testé. Portée validée avec l'utilisateur :
 
 - Plusieurs workspaces nommés (ex: perso / pro / projet X).
-- Un workspace ne filtre QUE la **visibilité** des groupes/profils affichés
-  dans l'arbre (pas de favoris ni d'ordre indépendants par workspace — un
-  seul jeu de favoris/ordre partagé entre tous les workspaces).
+- Un workspace filtre la **visibilité** des groupes/profils affichés dans
+  l'arbre. ~~Pas de favoris ni d'ordre indépendants par workspace — un seul
+  jeu de favoris/ordre partagé entre tous les workspaces.~~ **Remplacé** :
+  voir "favoris cloisonnés par workspace" dans la révision validée du 26/07
+  (2e lot) plus bas — l'ordre des profils/groupes reste, lui, partagé (non
+  remis en cause).
 - Pas de mécanisme de "masquage" séparé : masquer un profil/groupe = le
   décocher du workspace actif. Les workspaces SONT le mécanisme de masquage.
-- Sélecteur de workspace dans la sidebar : dynamique, mix onglets/dropdown
-  selon le nombre de workspaces (le détail exact de ce comportement reste à
-  définir au moment de l'implémentation — pas encore fixé precisément avec
-  l'utilisateur).
-- Stocké dans `config.store.sidebarPlus`.
+- ~~Sélecteur de workspace dans la sidebar : dynamique, mix onglets/dropdown
+  selon le nombre de workspaces, détail pas encore fixé.~~ **Tranché** :
+  voir "UI adaptative (validée)" plus bas — onglets par défaut, bascule
+  vers dropdown pilotée par la largeur réelle (`ResizeObserver`), pas par
+  un seuil de nombre de workspaces.
+- **Proposition (consultation externe Gemini, 26/07)** : prévoir un
+  workspace permanent "Tous" (affichage complet, non filtré), sélectionné par
+  défaut, pour qu'un mauvais filtrage ne donne jamais l'impression que des
+  profils ont disparu.
+- **Stocké dans `config.store.sidebarPlus`** — ~~un temps remis en question
+  par une proposition de stockage JSON externe (26/07, 2e lot)~~, **décision
+  finale (26/07, 3e échange) : on reste sur `config.yaml` via le
+  `ConfigProvider`**. Raison du revirement : l'objectif réel derrière le
+  stockage externe n'était pas le partage d'équipe en soi, mais pouvoir
+  transporter facilement ses propres réglages entre machines — et
+  `config.yaml` le fait déjà nativement puisqu'il contient tout (profils,
+  groupes, données du plugin) en un seul fichier texte synchronisable tel
+  quel (dotfiles Git, dossier cloud, Syncthing...). Fragmenter en
+  "config.yaml + fichiers workspace séparés" aurait compliqué cette
+  synchro au lieu de la simplifier, pour un système de fichiers maison
+  (écriture atomique, gestion de conflit) à construire et tester en plus —
+  alors que le `ConfigProvider`/`config.save()` est déjà éprouvé (pièges
+  #12/#16).
+- **Export/import ponctuel à la place du stockage externe vivant** : pour le
+  cas où on veut partager la structure d'un workspace sans les secrets
+  (ex: donner à un collègue l'organisation d'un workspace sans lui filer
+  les credentials SSH qui vivent dans `config.yaml`), un simple bouton
+  "Exporter ce workspace en JSON" / "Importer" suffit — génère un fichier
+  ponctuel à la demande, pas une source de vérité parallèle à maintenir en
+  permanence.
+- **Favoris cloisonnés par workspace (confirmé)** : un profil peut être
+  favori dans le Workspace A mais pas dans le B — remplace le jeu de
+  favoris unique partagé du scope initial. L'ordre des profils/groupes,
+  lui, reste partagé (non remis en cause). Stocké dans `config.yaml` comme
+  le reste, donc pas d'impact du revirement ci-dessus sur ce point.
+- **Logique de cascade au masquage d'un dossier parent** : popup HTML
+  proposant le choix "appliquer à ce workspace seulement" vs "propager à
+  tous les workspaces" quand on masque un dossier contenant des
+  sous-éléments.
+- **Couleurs contextuelles par workspace (validé)** : injection dynamique
+  d'une couleur d'environnement **au double-clic sur un profil** (moment du
+  lancement), via un clone en mémoire (`structuredClone`) — permet des
+  visuels différents pour un même profil selon le workspace actif (ex: Prod
+  en rouge, Perso en bleu) **sans modifier le profil d'origine sur le
+  disque**. Cohérent avec la discipline anti-pollution déjà en place
+  (piège #12) : on ne mute jamais l'objet profil réel, seulement une copie
+  utilisée pour l'affichage/le lancement du terminal.
+- **UI adaptative (validée)** : onglets horizontaux par défaut en haut de la
+  sidebar, bascule automatique vers un menu déroulant (Dropdown) discret dès
+  que la largeur disponible devient trop étroite — détecté via un
+  `ResizeObserver` sur la sidebar (pas un seuil fixe sur le nombre de
+  workspaces comme envisagé initialement, la largeur réelle disponible est
+  le signal le plus fiable puisque la sidebar est elle-même
+  redimensionnable par l'utilisateur, voir le glissoir déjà en place).
+
+## Propositions reçues le 26/07 (consultation externe — Gemini), non décidées
+
+Discussion tenue avec Gemini (Google) le 26/07 pour challenger la roadmap
+depuis une perspective dev/sysadmin/gestionnaire. Plusieurs idées en sont
+ressorties et ont déjà été intégrées plus haut (sensibilité au contexte +
+persistance de chemin pour le SFTP, dropdown + workspace "Tous" pour les
+Workspaces, alternative par cases à cocher pour la sélection multiple).
+Restent ces deux fonctionnalités nouvelles, pas encore priorisées ni
+décidées avec l'utilisateur :
+
+1. **Tunnels SSH en un clic droit.** Créer un tunnel SSH (local/remote port
+   forwarding) directement depuis le menu contextuel d'un profil, plutôt que
+   via la fenêtre de gestion des tunnels native de Tabby (jugée plus lourde
+   et déconnectée des profils). Complété par :
+   - Un indicateur visuel sur l'icône du profil (ex: pastille façon "maillon
+     de chaîne") quand un tunnel utilisant ce profil comme passerelle est
+     actif.
+   - Un panneau/menu (bas de sidebar évoqué) listant les tunnels actifs.
+   - Idée de robustesse : auto-reconnexion discrète en cas de micro-coupure
+     réseau — à vérifier ce que l'API/le mécanisme de tunnel natif de Tabby
+     expose déjà là-dessus avant d'envisager une réimplémentation.
+   - **Précision validée le 26/07 (2e lot, consultation Gemini)** : conçu
+     comme une **surcouche visuelle branchée directement sur le moteur de
+     port-forwarding déjà natif de Tabby** — pas de réimplémentation du
+     tunneling lui-même. Le plugin se contente d'exposer la création/config
+     en un clic depuis le menu contextuel, et de refléter l'état des
+     tunnels déjà gérés par Tabby (réduit le risque du point d'auto-
+     reconnexion ci-dessus : si Tabby gère déjà la reprise nativement, le
+     plugin n'a qu'à en afficher l'état plutôt qu'à la réimplémenter).
+   - Priorité indicative : moyenne, après SFTP/Workspaces (vision moyen
+     terme pour l'utilisateur, pas un "Moba-killer" immédiat).
+2. **Ouverture groupée d'un dossier ("Group Exec").** Clic droit sur un
+   dossier → "Ouvrir tout" : lance une session pour chaque profil du
+   dossier, en onglets séparés ou en split panes. Intérêt renforcé si
+   couplé à la saisie synchronisée déjà native de Tabby (multi-input) pour
+   exécuter la même commande sur plusieurs serveurs en parallèle (cas
+   d'usage sysadmin : patcher/redémarrer un service sur un cluster).
+   - Priorité indicative : basse pour l'instant, pas retenue comme priorité
+     immédiate par l'utilisateur (SFTP + Workspaces passent avant).
+
+**Idée explicitement écartée par l'utilisateur** : un importateur de
+sessions MobaXterm (`.mxtpro`/`.ini`). Jugée non prioritaire — "y'a plein
+d'outils disponibles pour convertir dans un premier temps". À ne
+réenvisager que si ce point de friction remonte concrètement plus tard.
+
+**Suggestion de robustesse reçue (pas encore implémentée)** : envelopper la
+séquence `clickNativeProfileRow()` (édition de profil par clic droit — voir
+piège #13/#17 et section "Points fragiles" point 1) dans un bloc try/catch
+verbeux, pour qu'un futur changement de DOM dans `tabby-settings` affiche un
+message clair ("Impossible d'ouvrir automatiquement la modale d'édition,
+redirection vers Paramètres → Profils") plutôt que d'échouer silencieusement.
+
+## Axe hors périmètre — Vault Auto-Unlock : décidé comme un plugin séparé (pas dans `better-sidebar`)
+
+**Décision prise le 26/07 (3e échange).** Le déverrouillage automatique du
+coffre-fort Tabby (éviter de ressaisir le mot de passe maître à chaque
+démarrage) sort du périmètre de `better-sidebar` — ce n'est pas une
+fonctionnalité de sidebar, et c'est de loin le point le plus sensible
+(manipulation d'un secret utilisateur) de tout ce qui a été envisagé pour ce
+projet. Deviendrait un plugin Tabby indépendant, ex. `tabby-vault-unlock`,
+publié et versionné séparément.
+
+- **Interfaçage entre plugins indépendants : possible, pattern identifié.**
+  Tous les plugins Tabby tournent dans le même process Electron et partagent
+  le même injecteur Angular — c'est déjà le mécanisme que `better-sidebar`
+  utilise pour consommer des classes de `tabby-core`/`tabby-settings`/
+  `tabby-ssh` (`SettingsTabComponent`, `SFTPPanelComponent`,
+  `EditProfileModalComponent`...). Un futur `tabby-vault-unlock` pourrait
+  exporter un service minimal (ex: `VaultBridgeService`) et
+  `better-sidebar` l'importerait en dépendance npm optionnelle, avec
+  `@Optional()` côté Angular (ou `Injector.get(TOKEN, null)`) pour ne
+  jamais planter si le plugin Vault n'est pas installé — la section
+  correspondante des réglages disparaît simplement dans ce cas.
+  - **Non officiel** : ce n'est pas une API documentée par Tabby, c'est un
+    effet de bord du chargeur de plugins partageant un même injecteur.
+    Le contrat entre les deux plugins serait donc défini et maintenu par
+    nous (versioning à gérer entre les deux packages), pas garanti par
+    Tabby.
+  - Même discipline de vérification que pour le reste du projet (pièges
+    #13/#17) : si `tabby-vault-unlock` exporte un service, vérifier les
+    DEUX niveaux (typings ET bundle `dist/index.js` compilé) avant de s'y
+    fier depuis `better-sidebar`.
+- **Contenu prévu pour ce futur plugin** (documenté ici pour mémoire, à
+  déplacer dans son propre roadmap le jour où il démarre) :
+  - Délégation à l'OS via `electron.safeStorage` (Windows : Gestionnaire
+    d'identifiants/DPAPI ; macOS : Trousseau d'accès/Keychain avec Touch ID
+    si activé ; Linux : Secret Service API/`libsecret` via GNOME
+    Keyring/KWallet).
+  - Mécanisme opt-in, injection programmatique du mot de passe déchiffré
+    dans le `VaultService` de Tabby avant que la pop-up native de saisie
+    n'apparaisse.
+  - **Sécurité RAM (précision validée le 26/07, 3e échange)** : la variable
+    JS contenant le mot de passe maître déchiffré en clair doit être
+    **immédiatement écrasée (`= null`) dès que l'injection dans le moteur
+    de Tabby est validée**, pour limiter au minimum la fenêtre d'exposition
+    du secret en mémoire vive.
+  - Garde-fou : si l'injection échoue (ex: mot de passe maître changé
+    depuis les réglages natifs de Tabby), suppression immédiate du token
+    local obsolète et retour transparent à la pop-up native.
+  - Point à vérifier avant tout début de code : confirmer que `VaultService`
+    (ou l'équivalent réel dans le `tabby-core` installé) expose bien une
+    méthode d'injection programmatique utilisable depuis un plugin tiers —
+    vérifier typings ET bundle compilé, ne jamais conclure sur un seul des
+    deux (piège #13).
+
+## Axe supplémentaire — Options & polissage de l'UI
+
+**Ajouté le 26/07 (2e lot), pas encore implémenté.**
+
+- **Double entrée de configuration** : sous-onglet dédié dans les options
+  globales de Tabby (`tabby-settings`) + icône d'engrenage discrète en bas
+  à droite de la sidebar, les deux pointant vers les mêmes réglages.
+- **UI trimming** : option pour masquer des composants natifs de Tabby
+  devenus redondants (ex: bouton de transfert SFTP d'origine), via
+  injection de CSS global (`display: none !important`), en s'inspirant des
+  patterns déjà observés dans `tabby-sftp-plus` (plugin déjà installé
+  localement, déjà utilisé comme référence pour le panneau SFTP — voir plus
+  haut).
+- **Raccourcis globaux** : `HotkeyProvider` pour mapper des raccourcis
+  clavier (changer de workspace, basculer vers le SFTP actif, afficher le
+  panneau des tunnels).
 
 ## Notes diverses
 
