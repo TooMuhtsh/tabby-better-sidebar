@@ -163,25 +163,29 @@ vers Paramètres → Profils") plutôt que d'échouer silencieusement.</p>
 
 <h2>Hors périmètre</h2>
 
-<h3 id="vault">Vault Auto-Unlock — futur plugin séparé</h3>
+<h3 id="vault">Vault Auto-Unlock — plugin séparé <code>tabby-better-vault</code></h3>
 <div class="callout important"><span class="callout-title">Décision actée</span>
 <p>Le déverrouillage automatique du coffre-fort Tabby (éviter de ressaisir le mot de passe maître à
 chaque démarrage) <strong>ne fait pas partie de <code>better-sidebar</code></strong> — ce n'est pas
 une fonctionnalité de sidebar, et c'est le point le plus sensible (manipulation d'un secret
-utilisateur) envisagé sur ce projet. Deviendrait un plugin indépendant, ex.
-<code>tabby-vault-unlock</code>, publié et versionné séparément.</p></div>
+utilisateur) envisagé sur cet écosystème de plugins. Devient un plugin indépendant,
+<code>tabby-better-vault</code>, publié et versionné séparément — dossier de travail et
+gouvernance propres créés le 2026-07-26 :
+<a href="../../tabby-better-vault/.AIRules/README.html">.AIRules de tabby-better-vault</a> (lien
+relatif valable tant que les deux dossiers restent côte à côte dans <code>Développement/</code>).
+Design détaillé ci-dessous transporté à l'identique là-bas.</p></div>
 <ul>
 <li><strong>Interfaçage entre plugins indépendants</strong> : possible, pattern identifié. Tous les
   plugins Tabby tournent dans le même process Electron et partagent le même injecteur Angular —
   déjà le mécanisme utilisé par <code>better-sidebar</code> pour consommer des classes de
   <code>tabby-core</code>/<code>tabby-settings</code>/<code>tabby-ssh</code>. Un futur
-  <code>tabby-vault-unlock</code> exporterait un service minimal (ex.
+  <code>tabby-better-vault</code> exporterait un service minimal (ex.
   <code>VaultBridgeService</code>), et <code>better-sidebar</code> l'importerait en dépendance
   optionnelle avec <code>@Optional()</code>/<code>Injector.get(TOKEN, null)</code> — la section
   correspondante des réglages disparaît simplement si le plugin Vault n'est pas installé. Pattern
   non officiel (effet de bord du chargeur de plugins, pas une API documentée) : le contrat entre
   les deux packages serait à notre charge (versioning à gérer). Même discipline de vérification que
-  le reste du projet : si <code>tabby-vault-unlock</code> exporte un service, vérifier les DEUX
+  le reste du projet : si <code>tabby-better-vault</code> exporte un service, vérifier les DEUX
   niveaux (typings ET bundle <code>dist/index.js</code> compilé) avant de s'y fier — voir piège
   #13 d'AI-CONTEXT.html.</li>
 <li><strong>Design prévu</strong> pour ce futur plugin : délégation à l'OS via
