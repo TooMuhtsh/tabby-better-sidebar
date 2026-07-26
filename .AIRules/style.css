@@ -40,6 +40,7 @@ body {
 h1 { font-size: 1.7rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
 h2 { font-size: 1.3rem; margin-top: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
 h3 { font-size: 1.05rem; margin-top: 1.7rem; }
+h4 { font-size: .95rem; margin-top: 1.2rem; color: var(--muted); }
 a { color: var(--link); }
 code, pre {
   font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace;
@@ -74,6 +75,7 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 .pill.progress { color: #9a6700; }
 .pill.planned { color: var(--muted); }
 .pill.out { color: #cf222e; }
+.pill.warn { color: #9a6700; background: var(--warn-bg); border-color: var(--warn-bd); }
 .muted { color: var(--muted); }
 nav.tabbar {
   display: flex;
