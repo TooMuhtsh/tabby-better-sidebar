@@ -23,7 +23,7 @@
   "files": [
     "dist"
   ],
-  "author": "",
+  "author": "TooMuhtsh",
   "license": "MIT",
   "devDependencies": {
     "@angular/animations": "^15.0.0",
