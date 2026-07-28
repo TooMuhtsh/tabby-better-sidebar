@@ -188,7 +188,11 @@ input {
     min-width: 140px;
     padding: .25rem;
     border-radius: .3rem;
-    background-color: var(--theme-bg-more-2);
+    // Deliberately --theme-bg (the base app/terminal background), not
+    // --theme-bg-more-2 like the sidebar itself (line ~10 above) — using
+    // the same shade as the sidebar made every floating menu/popup blend
+    // straight into it, hard to visually pick out on right-click.
+    background-color: var(--theme-bg);
     border: 1px solid var(--theme-secondary);
     box-shadow: 0 4px 12px rgba(0, 0, 0, .4);
 
@@ -234,7 +238,9 @@ input {
     width: 260px;
     padding: .5rem;
     border-radius: .3rem;
-    background-color: var(--theme-bg-more-2);
+    // Same reasoning as .group-context-menu above: --theme-bg, not the
+    // sidebar's --theme-bg-more-2, so these floating popups stand out too.
+    background-color: var(--theme-bg);
     border: 1px solid var(--theme-secondary);
     box-shadow: 0 4px 12px rgba(0, 0, 0, .4);
 
