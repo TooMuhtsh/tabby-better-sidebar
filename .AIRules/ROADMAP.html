@@ -15,7 +15,7 @@
 </nav>
 
 <h1>Roadmap</h1>
-<p class="muted">Dernière revue : 2026-07-26</p>
+<p class="muted">Dernière revue : 2026-07-28</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
 techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
@@ -26,6 +26,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td>Socle (favoris, statut live, drag &amp; drop, menus contextuels, icônes)</td>
     <td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td>Publication npm</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
+<tr><td><a href="#context-menu-enrichi">Menu contextuel enrichi (Profils &amp; Groupes)</a></td><td><span class="pill planned">📋 Design fourni par l'utilisateur</span></td><td>Haute</td></tr>
 <tr><td><a href="#sftp">SFTP contextuel</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Absolue</td></tr>
 <tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Absolue</td></tr>
 <tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill planned">📋 Mécanisme tranché</span></td><td>Moyenne</td></tr>
@@ -35,7 +36,68 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#robustesse">Robustesse édition de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
+<tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute</td></tr>
+<tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#historique-profils">Historique des Profils Récents</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#quick-snippets">Quick Snippets (Macros de Sidebar)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#partage-groupe">Partage rapide de groupe (Presse-papiers)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#notes-profil">Notes de profil (Mémento contextuel)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#ping-live">Indicateur de latence / Ping live</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 </table>
+
+<h2 id="context-menu-enrichi">Extension du socle — menu contextuel enrichi (Profils &amp; Groupes)</h2>
+<p>Trois actions à ajouter/brancher sur le clic droit d'un Profil ou d'un Groupe dans la sidebar,
+en s'appuyant sur le socle déjà en place plutôt qu'en le redéfinissant.</p>
+
+<h3>1. Bascule des favoris depuis le menu contextuel</h3>
+<p>Intitulé dynamique selon l'état de l'élément : <strong>« Ajouter aux favoris »</strong> si absent
+des favoris, <strong>« Retirer des favoris »</strong> sinon.</p>
+<div class="callout important"><span class="callout-title">État actuel du code (vérifié)</span>
+<p><code>isFavorite()</code>/<code>toggleFavorite()</code> existent déjà dans
+<code>sidebarTree.component.ts</code>, mais seulement pour les <strong>profils</strong> (signature
+<code>PartialProfile&lt;Profile&gt;</code>) et seulement via l'étoile au survol d'une ligne de
+profil (<code>sidebarTree.component.pug</code>) — <strong>pas</strong> reliés au menu contextuel, et
+<strong>pas</strong> disponibles pour les groupes. Deux extensions nécessaires, pas une simple
+connexion au menu existant : (1) ajouter une entrée dans les deux menus contextuels
+(<code>contextMenuProfile</code> et <code>contextMenuGroup</code>) ; (2) étendre le mécanisme de
+favoris lui-même aux groupes — à vérifier : les IDs de profils et de groupes partagent-ils le même
+espace de nommage dans <code>config.store.sidebarPlus.favorites</code>, ou faut-il deux listes
+séparées pour éviter une collision improbable mais possible ?</p></div>
+
+<h3>2. Renommer (édition inline, sans modale)</h3>
+<p>Le nom de l'élément ciblé se transforme sur place en champ de texte éditable ; validation par
+Entrée, annulation par Échap. <strong>Aucune boîte de dialogue.</strong></p>
+<ul>
+<li>Nouveau mode à ajouter à l'union <code>contextMenuMode</code> existante
+  (<code>'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'</code>), par ex.
+  <code>'rename'</code> — cohérent avec le pattern déjà utilisé pour les autres sous-menus.</li>
+<li><strong>À ne pas confondre avec l'édition de profil déjà existante</strong>
+  (<code>openProfileSettings</code> → modale native <code>EditProfileModalComponent</code>, voir
+  piège de fragilité documenté dans <a href="AI-CONTEXT.html#fragile-1">AI-CONTEXT §3.1</a>) :
+  Renommer est une action plus légère et distincte, ne doit pas passer par cette séquence fragile.</li>
+<li>Écriture : <code>writeProfileGroup()</code> pour un groupe (racine uniquement — pas pour
+  re-parenter, voir piège #12), API profil équivalente pour un profil.</li>
+</ul>
+
+<h3>3. Lancer la session</h3>
+<ul>
+<li><strong>Sur un profil</strong> : déclenche la connexion — réutiliser le mécanisme de lancement
+  déjà existant ailleurs dans le plugin (ex. double-clic sur une ligne de profil) plutôt que d'en
+  réimplémenter un second.</li>
+<li><strong>Sur un groupe</strong> : lance toutes les sessions des profils du groupe, chacune dans un
+  onglet/une fenêtre séparé(e).</li>
+</ul>
+<div class="callout important"><span class="callout-title">Chevauchement à trancher</span>
+<p>Le lancement groupé recoupe le chantier <a href="#group-exec">« Group Exec »</a> déjà présent plus
+bas dans cette roadmap (priorité basse, pensé aussi pour la saisie synchronisée multi-input). À
+clarifier avant implémentation : ce point du menu contextuel devient-il la première brique de
+Group Exec (auquel cas fusionner les deux entrées de la roadmap), ou reste-t-il une action minimale
+séparée (ouverture simple, sans les options avancées prévues pour Group Exec) ?</p></div>
+<p class="muted">Point à vérifier avant implémentation, comme pour toute nouvelle clé de config
+(piège #16) : si le statut favori d'un groupe doit être persisté, la clé correspondante devra être
+déclarée dans les <code>defaults</code> de <code>SidebarPlusConfigProvider</code>.</p>
 
 <h2>Phase 1 — priorité absolue</h2>
 <p>Les deux fonctionnalités qui justifient de remplacer MobaXterm par Tabby + ce plugin.</p>
@@ -99,6 +161,20 @@ masquage. À traiter après le SFTP, une fois celui-ci stable.</p>
   elle-même redimensionnable par l'utilisateur).</li>
 </ul>
 
+<h3 id="sessions-actives">Section "Sessions Actives" en haut de la sidebar</h3>
+<p>Zone pliable dédiée tout en haut de la barre latérale, listant uniquement les connexions SSH
+ouvertes en arrière-plan.</p>
+<ul>
+<li><strong>Fonctionnalités</strong> : intégration visuelle des états de transfert SFTP actifs
+  (vitesse, file d'attente).</li>
+<li><strong>Interaction</strong> : le clic sur une session active déplace instantanément le focus
+  sur l'onglet ou le split pane correspondant.</li>
+</ul>
+<div class="callout important"><span class="callout-title">Note d'architecture</span>
+<p>Bien que SCP ait été évoqué, le socle de Tabby (<code>tabby-ssh</code>) exporte déjà
+<code>SFTPSession</code> (voir <a href="AI-CONTEXT.html#fragile-3">point de veille AI-CONTEXT</a>),
+il est donc impératif de s'appuyer sur SFTP pour garantir la stabilité globale.</p></div>
+
 <h2>Phase 2 — productivité</h2>
 
 <h3 id="selection-multiple">Sélection multiple</h3>
@@ -136,9 +212,63 @@ onglets séparés ou en split panes. Intérêt renforcé si couplé à la saisie
 de Tabby (multi-input) pour exécuter la même commande sur plusieurs serveurs en parallèle. Priorité
 basse — pas demandée en premier par l'utilisateur.</p>
 
+<h3 id="auto-enter">Détection et validation des sessions interactives (Auto-Enter)</h3>
+<p>Automatisation du login en simulant l'appui sur "Entrée" dès qu'une invite interactive
+(login/password) est détectée. Si le mot de passe est pré-rempli, cela valide ; s'il est vide, cela
+passe l'invite.</p>
+<ul>
+<li><strong>Implémentation UI</strong> : l'option ne doit PAS être globale. Un commutateur (toggle)
+  "Activer l'Auto-Enter" doit être visible dans l'interface de configuration du profil, positionné
+  directement à côté ou juste en dessous du champ natif de mot de passe enregistré.</li>
+</ul>
+<div class="callout important"><span class="callout-title">Alerte de fragilité technique</span>
+<p>L'injection de ce toggle près du champ mot de passe implique d'intervenir sur le DOM de la modale
+native <code>EditProfileModalComponent</code>. Cette zone étant critique et instable (voir
+<a href="AI-CONTEXT.html#piege-17">piège #17</a> et le
+<a href="AI-CONTEXT.html#fragile-1">point fragile associé</a> dans AI-CONTEXT.html), le hook
+d'injection Angular/DOM devra intégrer un mécanisme de repli (fallback) strict. Si le DOM de Tabby
+change lors d'une mise à jour de l'application, le toggle doit se déporter gracieusement dans le
+menu contextuel du profil ("Options Sidebar" → "Auto-Enter") ou dans les options globales, sans
+provoquer de plantage de l'interface.</p></div>
+
+<h3 id="clone-express">Clone Express de profil</h3>
+<p>Clic droit sur un profil → action "Dupliquer le profil". Génère instantanément une copie
+parfaite du profil sous le même groupe (avec suffixe " - Copie").</p>
+<p class="muted">Contrainte technique : pour éviter toute corruption ou pollution de
+<code>config.yaml</code> (<a href="AI-CONTEXT.html#piege-12">piège #12</a>), la duplication doit
+s'exécuter via un <code>structuredClone()</code> profond en mémoire de l'objet profil avant l'appel
+à l'API de persistance de Tabby.</p>
+
+<h3 id="historique-profils">Historique des Profils Récents</h3>
+<p>Liste dynamique et pliable affichant les 5 derniers profils de connexion utilisés, positionnée
+juste en dessous de la zone des sessions actives pour un réengagement ultra-rapide sans navigation
+dans l'arborescence.</p>
+
+<h3 id="quick-snippets">Quick Snippets (Macros de Sidebar)</h3>
+<p>Permet d'associer des commandes textuelles récurrentes (ex. redémarrage de service, consultation
+de logs) à un profil ou un groupe.</p>
+<ul>
+<li><strong>Interaction</strong> : un clic droit sur l'élément dans la sidebar déploie un sous-menu
+  listant ces macros personnalisées. Cliquer sur une macro l'envoie et l'exécute instantanément dans
+  le terminal actif de la session correspondante, évitant les allers-retours avec un gestionnaire
+  externe.</li>
+</ul>
+
 <h2>Non daté — à faire quand utile</h2>
 
 <h3 id="ui-polish">Options &amp; polissage UI</h3>
+<h4>Agencement de la page de paramètres (Settings Layout)</h4>
+<p>Structurer l'interface de configuration du plugin en 4 sections distinctes :</p>
+<ol>
+<li><strong>Général &amp; Affichage</strong> : options de masquage de l'UI native redondante,
+  gestion des raccourcis clavier globaux.</li>
+<li><strong>Sessions Actives &amp; SFTP</strong> : fréquences de rafraîchissement, interrupteur de
+  gel de la vue, historique de file d'attente.</li>
+<li><strong>Workspaces</strong> : liste des espaces de travail, import/export JSON sélectif,
+  assignation des couleurs de bordure par défaut.</li>
+<li><strong>Automatisation &amp; Macros</strong> : gestion globale des Quick Snippets et logs du
+  moteur d'Auto-Enter.</li>
+</ol>
 <ul>
 <li><strong>Double entrée de configuration</strong> : sous-onglet dédié dans les options globales
   de Tabby (<code>tabby-settings</code>) + icône d'engrenage discrète en bas à droite de la
@@ -150,6 +280,25 @@ basse — pas demandée en premier par l'utilisateur.</p>
 <li><strong>Raccourcis globaux</strong> : <code>HotkeyProvider</code> pour mapper des raccourcis
   clavier (changer de workspace, basculer vers le SFTP actif, afficher le panneau des tunnels).</li>
 </ul>
+
+<h3 id="sidebar-search">Barre de filtrage rapide (Sidebar Search)</h3>
+<p>Micro-champ de recherche textuelle épinglé en haut de la liste pour filtrer instantanément les
+profils et groupes affichés sans changer de workspace. Focus via le raccourci <code>Ctrl+F</code> ou
+<code>Cmd+F</code> lorsque la sidebar est active.</p>
+
+<h3 id="partage-groupe">Partage rapide de groupe (Presse-papiers)</h3>
+<p>Clic droit sur un dossier/groupe → "Copier la structure (JSON)". Extrait l'arborescence complète
+au format JSON en purgeant obligatoirement tous les secrets, identifiants et mots de passe. L'action
+symétrique "Coller le groupe" à la racine de la sidebar permet d'importer instantanément la
+structure.</p>
+
+<h3 id="notes-profil">Notes de profil (Mémento contextuel)</h3>
+<p>Zone de texte légère ou bulle d'aide éditable propre à chaque profil pour y consigner des notes
+d'exploitation (commandes de relance, rappels de maintenance, numéros de tickets).</p>
+
+<h3 id="ping-live">Indicateur de santé (Ping live)</h3>
+<p>Option pour afficher une micro-pastille colorée (vert/orange/rouge) à côté des sessions actives
+représentant la latence réseau actuelle via un ping régulier en tâche de fond (désactivable).</p>
 
 <h3 id="robustesse">Robustesse — édition de profil</h3>
 <p>Envelopper la séquence <code>clickNativeProfileRow()</code> (édition de profil par clic droit —
