@@ -5,6 +5,7 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
         sidebarPlus: {
             enabled: true,
             favorites: [] as string[],
+            favoriteGroups: [] as string[],
             recentIcons: [] as string[],
             groupOrder: {} as Record<string, string[]>,
         },

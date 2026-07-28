@@ -60,9 +60,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
     contextMenuRoot = false
     contextMenuX = 0
     contextMenuY = 0
-    contextMenuMode: 'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile' = 'menu'
+    contextMenuMode: 'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename' = 'menu'
 
     newGroupName = ''
+    renameValue = ''
     profileTemplates: { provider: ProfileProvider<Profile>, template: PartialProfile<Profile> }[] = []
 
     // Pug/Angular ends up serializing the template's *ngIf attribute value
@@ -88,6 +89,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
 
     get isConfirmDeleteProfileMode (): boolean {
         return this.contextMenuMode === 'confirmDeleteProfile'
+    }
+
+    get isRenameMode (): boolean {
+        return this.contextMenuMode === 'rename'
     }
 
     iconQuery = ''
@@ -168,6 +173,27 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
 
     async launchProfile<P extends Profile> (profile: PartialProfile<P>): Promise<any> {
         return this.profilesService.launchProfile(profile)
+    }
+
+    async launchProfileFromMenu (profile: PartialProfile<Profile>): Promise<void> {
+        this.closeContextMenu()
+        await this.launchProfile(profile)
+    }
+
+    /**
+     * Minimal version: launches the group's direct profiles only, each in
+     * its own tab, no split panes, no recursion into sub-groups. The richer
+     * behaviour (layout choice, synced multi-input) is deliberately left to
+     * the separate "Group Exec" roadmap item — see ROADMAP.html.
+     */
+    async launchGroupSessions (group: PartialProfileGroup<CollapsableProfileGroup>): Promise<void> {
+        this.closeContextMenu()
+        const profiles = group.profiles ?? []
+        if (!profiles.length) {
+            this.notifications.notice('Ce dossier ne contient aucun profil à lancer')
+            return
+        }
+        await Promise.all(profiles.map(profile => this.launchProfile(profile)))
     }
 
     async onFilterChange (): Promise<void> {
@@ -268,8 +294,41 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         this.rootGroups = this.applyFavorites(this.rootGroups.filter(g => g.id !== 'favorites'))
     }
 
+    toggleFavoriteFromMenu (profile: PartialProfile<Profile>, event: Event): void {
+        this.toggleFavorite(profile, event)
+        this.closeContextMenu()
+    }
+
     private get favoriteIds (): string[] {
         return this.config.store.sidebarPlus?.favorites ?? []
+    }
+
+    ////// GROUP FAVORITES //////
+    // Separate config key from profile favorites: profile IDs and group IDs
+    // don't share a documented namespace guarantee, so a combined list would
+    // risk a collision that's unlikely but avoidable at zero cost.
+    isFavoriteGroup (group: PartialProfileGroup<ProfileGroup>): boolean {
+        return this.favoriteGroupIds.includes(group.id)
+    }
+
+    toggleFavoriteGroupFromMenu (group: PartialProfileGroup<CollapsableProfileGroup>, event: Event): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.config.store.sidebarPlus ??= {}
+        const favoriteGroups: string[] = this.config.store.sidebarPlus.favoriteGroups ?? []
+        const index = favoriteGroups.indexOf(group.id)
+        if (index === -1) {
+            favoriteGroups.push(group.id)
+        } else {
+            favoriteGroups.splice(index, 1)
+        }
+        this.config.store.sidebarPlus.favoriteGroups = favoriteGroups
+        this.config.save()
+        this.closeContextMenu()
+    }
+
+    private get favoriteGroupIds (): string[] {
+        return this.config.store.sidebarPlus?.favoriteGroups ?? []
     }
 
     private applyFavorites (
@@ -501,6 +560,33 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         if ((event.target as HTMLElement).closest('.group-context-menu, .icon-picker, .create-popup')) {
             return
         }
+        this.closeContextMenu()
+    }
+
+    ////// RENAME (context menu, inline — no modal) //////
+    openRenamePrompt (): void {
+        this.renameValue = this.contextMenuProfile?.name ?? this.contextMenuGroup?.name ?? ''
+        this.contextMenuMode = 'rename'
+    }
+
+    async confirmRename (): Promise<void> {
+        const name = this.renameValue.trim()
+        if (!name) {
+            return
+        }
+        if (this.contextMenuProfile) {
+            this.contextMenuProfile.name = name
+            await this.profilesService.writeProfile(this.contextMenuProfile)
+        } else if (this.contextMenuGroup) {
+            // Minimal {id, name} object only — see applyIcon() above for why
+            // (never pass contextMenuGroup itself, it carries plugin-computed
+            // fields that writeProfileGroup() would Object.assign() straight
+            // into config.yaml, roadmap piège #12).
+            await this.profilesService.writeProfileGroup({ id: this.contextMenuGroup.id, name } as PartialProfileGroup<ProfileGroup>)
+        } else {
+            return
+        }
+        await this.config.save()
         this.closeContextMenu()
     }
 

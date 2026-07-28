@@ -34,6 +34,7 @@
                     .fw-20
                         profile-icon.ms-1([icon]='group.icon ?? "far fa-folder"', [color]='group.color')
                     span.ms-2.me-auto {{ group.name || 'Ungrouped' }}
+                    .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavoriteGroup(group)')
 
                 ng-container(*ngIf='!group.collapsed')
                     div(
@@ -96,6 +97,19 @@
     [style.top.px]='contextMenuY',
     (click)='$event.stopPropagation()'
 )
+    a.group-context-menu-item((click)='launchGroupSessions(contextMenuGroup)', href='#')
+        .fa.fa-fw.fas.fa-play.me-2
+        | Lancer toutes les sessions
+    a.group-context-menu-item((click)='toggleFavoriteGroupFromMenu(contextMenuGroup, $event)', href='#')
+        .fa.fa-fw.me-2(
+            [class.fas]='isFavoriteGroup(contextMenuGroup)',
+            [class.far]='!isFavoriteGroup(contextMenuGroup)',
+            class='fa-star'
+        )
+        | {{ isFavoriteGroup(contextMenuGroup) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}
+    a.group-context-menu-item((click)='openRenamePrompt()', href='#')
+        .fa.fa-fw.fas.fa-i-cursor.me-2
+        | Renommer...
     a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
         .fa.fa-fw.fas.fa-folder-plus.me-2
         | Nouveau dossier...
@@ -128,6 +142,19 @@
     [style.top.px]='contextMenuY',
     (click)='$event.stopPropagation()'
 )
+    a.group-context-menu-item((click)='launchProfileFromMenu(contextMenuProfile)', href='#')
+        .fa.fa-fw.fas.fa-play.me-2
+        | Lancer la session
+    a.group-context-menu-item((click)='toggleFavoriteFromMenu(contextMenuProfile, $event)', href='#')
+        .fa.fa-fw.me-2(
+            [class.fas]='isFavorite(contextMenuProfile)',
+            [class.far]='!isFavorite(contextMenuProfile)',
+            class='fa-star'
+        )
+        | {{ isFavorite(contextMenuProfile) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}
+    a.group-context-menu-item((click)='openRenamePrompt()', href='#')
+        .fa.fa-fw.fas.fa-i-cursor.me-2
+        | Renommer...
     a.group-context-menu-item((click)='openProfileSettings(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-pen.me-2
         | Éditer...
@@ -187,6 +214,23 @@
             .text-danger.small.mt-1(*ngIf='customSvgError') {{ customSvgError }}
             .text-warning.small.mt-1(*ngIf='customSvgWarning') {{ customSvgWarning }}
             button.btn.btn-sm.btn-secondary.mt-1((click)='applyCustomSvg()') Appliquer le SVG
+
+.create-popup(
+    *ngIf='isRenameMode',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Renommer
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    input.form-control.form-control-sm.mt-1(
+        type='text',
+        [(ngModel)]='renameValue',
+        (keydown.enter)='confirmRename()',
+        (keydown.escape)='closeContextMenu()'
+    )
+    button.btn.btn-sm.btn-primary.mt-2((click)='confirmRename()') Renommer
 
 .create-popup(
     *ngIf='isCreateGroupMode',
