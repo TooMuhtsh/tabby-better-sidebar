@@ -14,7 +14,7 @@
 </nav>
 
 <h1>Contexte &amp; invariants</h1>
-<p class="muted">Dernière revue : 2026-07-26</p>
+<p class="muted">Dernière revue : 2026-07-28</p>
 
 <p>Faits stables sur l'architecture de ce plugin et pièges déjà résolus, groupés par catégorie —
 l'utilité de ce fichier est d'éviter de refaire un piège, donc de retrouver d'un coup d'œil tout ce
@@ -36,7 +36,7 @@ Tabby.</p>
 <ul>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
-<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19</li>
+<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17 + 5 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11</li>
@@ -126,6 +126,19 @@ impression que ça marche).</p>
 dossier..." (toujours vide à la création) : le drop échoue silencieusement, aucune erreur, aucun
 changement dans <code>config.yaml</code>. → <code>min-height: 8px</code> sur tous les
 <code>div[id^='profiles-']</code> et <code>div[id^='groups-']</code>.</p>
+
+<h3 id="piege-21">#21 — Une mauvaise indentation pug déplace un élément vers le mauvais parent, sans erreur</h3>
+<p>Pug est sensible à l'indentation pour déterminer la hiérarchie DOM : une ligne indentée d'un cran
+de trop ou de trop peu ne casse pas la compilation, elle change silencieusement de parent. Cas réel :
+un badge <code>.favorite-badge</code> ajouté après <code>span.ms-2.me-auto</code> (enfant de
+<code>a.tree-item</code>, un conteneur <code>flex</code>) mais indenté au même niveau que
+<code>a.tree-item</code> lui-même → devient un <em>sibling</em> de l'élément flex au lieu d'un
+enfant, se retrouve hors du flux flex, s'affiche comme un bloc séparé sous la ligne et décale tout ce
+qui suit dans l'arbre. Aucune erreur de build, aucun warning — repéré seulement visuellement par
+l'utilisateur en testant. → Après tout ajout/déplacement de ligne dans un <code>.pug</code>, vérifier
+que son indentation correspond exactement à celle du sibling voisin visé (compter les espaces, pas
+"à l'œil"), surtout via l'outil <code>Edit</code> où l'indentation de <code>new_string</code> est
+tapée à la main plutôt que copiée du contexte environnant.</p>
 
 <h2 id="cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</h2>
 <p class="muted">La plus grosse source de pièges de ce projet : ce plugin s'appuie par endroits sur

@@ -24,6 +24,51 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Menu contextuel enrichi — favoris, renommer, lancer (2026-07-28)</h2>
+<p>Premier chantier de la phase "extension du socle" de la roadmap, design déjà fourni par
+l'utilisateur. Trois actions ajoutées aux menus contextuels Profil/Groupe existants.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-28</td><td>1c04f1d</td>
+<td>Trois retours utilisateur après le test manuel du menu contextuel enrichi, traités différemment
+selon leur nature. (1) Corrigé immédiatement, bug concret affectant tous les popups existants (pas
+seulement les nouveaux) : clic droit près du bord bas/droit de la sidebar → menu partiellement rendu
+sous la barre des tâches, inutilisable. Fix : <code>ngAfterViewChecked()</code> + flag
+<code>menuPositionDirty</code>, mesure la taille réelle du popup rendu (<code>getBoundingClientRect()</code>)
+et clampe <code>contextMenuX</code>/<code>contextMenuY</code> pour rester dans le viewport — posé sur
+chaque point d'ouverture/changement de mode (menu, icon picker, rename, create, confirm delete), pas
+seulement les trois handlers de clic droit initiaux, car chaque popup a une taille différente.
+(2) Fait immédiatement, changement trivial : <code>MAX_RECENT_ICONS</code> 5 → 20 icônes "Récentes"
+affichées dans le picker, demande directe de l'utilisateur. (3) Pas implémenté tout de suite : favoris
+d'icônes (liste séparée épinglable, distincte de "Récentes") ajouté à ROADMAP.html comme nouveau
+chantier proposé plutôt qu'improvisé en cours de route — nouvelle UI/clé de config, pas un simple
+réglage. (4) Ajouté juste après, retour utilisateur supplémentaire sur la même session de test : un
+en-tête (icône + nom de l'élément ciblé) en haut des menus contextuels Groupe/Profil
+(<code>.group-context-menu-header</code>, séparé du reste par une bordure), pour lever l'ambiguïté
+sur quel élément a été clic-droit — absent du menu racine (clic droit sur l'espace vide), qui ne
+cible aucun élément précis.</td></tr>
+<tr><td>2026-07-28</td><td>n/a (docs, ce commit)</td>
+<td>Décision explicitement confirmée par l'utilisateur : un groupe favori garde uniquement son étoile
+dans l'arbre, il ne remonte pas dans le dossier virtuel "Épinglés" (qui reste une liste plate de
+profils) — perimètre assumé, pas un oubli, laissé tel quel pour l'instant.</td></tr>
+<tr><td>2026-07-28</td><td>333704e</td>
+<td>Bascule favoris étendue aux groupes (clé <code>sidebarPlus.favoriteGroups</code> séparée de
+<code>favorites</code>, pour éviter tout risque de collision d'ID entre profils et groupes — déclarée
+dans les <code>defaults</code> du <code>ConfigProvider</code>, piège #16), renommage inline (mode
+<code>'rename'</code>, écriture <code>writeProfileGroup({id, name})</code> pour un groupe à
+n'importe quelle profondeur — confirmé que <code>writeProfileGroup()</code> fait une recherche flate
+sur <code>config.store.groups</code> qui stocke TOUS les groupes au même niveau quel que soit leur
+imbrication visuelle, donc le "racine uniquement" du piège #12 ne s'applique qu'au re-parentage, pas
+aux écritures de champs simples), et lancement de session (profil : réutilise
+<code>launchProfile()</code> existant ; groupe : lance ses profils directs uniquement, sans
+récursion — décision actée avec l'utilisateur de garder ça séparé du futur chantier "Group Exec"
+plutôt que de fusionner les deux). Bug trouvé par l'utilisateur en testant manuellement sur la
+jonction de dev avant tout commit : le badge favori de groupe s'affichait sous le nom au lieu d'à
+côté, décalant toute la suite de l'arbre — piège d'indentation pug (nouveau piège #21 dans
+AI-CONTEXT.html), corrigé avant que ce commit ne soit fait, donc la version committée est déjà
+propre.</td></tr>
+</table>
+
 <h2>Diagnostic — jonction NTFS de dev manquante, plugin invisible (2026-07-26)</h2>
 <p>Signalé par l'utilisateur : le plugin n'apparaissait plus dans la liste des plugins Tabby.</p>
 <table>
