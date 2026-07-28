@@ -2,7 +2,7 @@ import './sidebarTree.component.scss'
 import FuzzySearch from 'fuzzy-search'
 import { merge, Subscription, timer } from 'rxjs'
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop'
-import { Component, HostBinding, HostListener, Inject, Input, OnDestroy, OnInit } from '@angular/core'
+import { AfterViewChecked, Component, HostBinding, HostListener, Inject, Input, OnDestroy, OnInit } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import {
     AppService,
@@ -38,7 +38,7 @@ interface ProfileBackedTab {
     selector: 'sidebar-plus-tree',
     template: require('./sidebarTree.component.pug'),
 })
-export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
+export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChecked {
     profileGroups: PartialProfileGroup<ProfileGroup>[] = []
     rootGroups: PartialProfileGroup<ProfileGroup>[] = []
 
@@ -61,6 +61,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
     contextMenuX = 0
     contextMenuY = 0
     contextMenuMode: 'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename' = 'menu'
+    /** Set whenever a context menu/popup opens or switches mode — checked once in ngAfterViewChecked() to clamp it back on-screen after Angular renders it at its real size. */
+    private menuPositionDirty = false
 
     newGroupName = ''
     renameValue = ''
@@ -102,7 +104,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
     customSvgError: string|null = null
     customSvgWarning: string|null = null
 
-    private static readonly MAX_RECENT_ICONS = 5
+    private static readonly MAX_RECENT_ICONS = 20
 
     constructor (
         private config: ConfigService,
@@ -131,6 +133,32 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         this.statusSubscription?.unsubscribe()
         if (this.modalWatchInterval) {
             clearInterval(this.modalWatchInterval)
+        }
+    }
+
+    ngAfterViewChecked (): void {
+        if (!this.menuPositionDirty) {
+            return
+        }
+        this.menuPositionDirty = false
+        this.clampContextMenuPosition()
+    }
+
+    /** Keeps whichever context menu/popup is currently open fully within the viewport — a right-click near the bottom/right edge of a tall sidebar would otherwise render partially under the taskbar or off-screen and be unusable. */
+    private clampContextMenuPosition (): void {
+        const menu = document.querySelector<HTMLElement>('.group-context-menu, .icon-picker, .create-popup')
+        if (!menu) {
+            return
+        }
+        const rect = menu.getBoundingClientRect()
+        const margin = 4
+        const maxX = Math.max(margin, window.innerWidth - rect.width - margin)
+        const maxY = Math.max(margin, window.innerHeight - rect.height - margin)
+        const x = Math.min(this.contextMenuX, maxX)
+        const y = Math.min(this.contextMenuY, maxY)
+        if (x !== this.contextMenuX || y !== this.contextMenuY) {
+            this.contextMenuX = x
+            this.contextMenuY = y
         }
     }
 
@@ -528,6 +556,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         this.contextMenuMode = 'menu'
         this.contextMenuX = event.clientX
         this.contextMenuY = event.clientY
+        this.menuPositionDirty = true
     }
 
     /** Right-click on empty sidebar space (not on any group/profile row) — offers root-level creation. */
@@ -540,6 +569,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         this.contextMenuMode = 'menu'
         this.contextMenuX = event.clientX
         this.contextMenuY = event.clientY
+        this.menuPositionDirty = true
     }
 
     closeContextMenu (): void {
@@ -567,6 +597,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
     openRenamePrompt (): void {
         this.renameValue = this.contextMenuProfile?.name ?? this.contextMenuGroup?.name ?? ''
         this.contextMenuMode = 'rename'
+        this.menuPositionDirty = true
     }
 
     async confirmRename (): Promise<void> {
@@ -594,6 +625,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
     openCreateGroupPrompt (): void {
         this.contextMenuMode = 'createGroup'
         this.newGroupName = ''
+        this.menuPositionDirty = true
     }
 
     async createGroup (): Promise<void> {
@@ -609,11 +641,14 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
 
     async openCreateProfilePicker (): Promise<void> {
         this.contextMenuMode = 'createProfile'
+        this.menuPositionDirty = true
         const perProvider = await Promise.all(this.profileProviders.map(async provider => ({
             provider,
             templates: (await provider.getBuiltinProfiles()).filter(p => p.isTemplate),
         })))
         this.profileTemplates = perProvider.flatMap(({ provider, templates }) => templates.map(template => ({ provider, template })))
+        // The list grew after the await above — re-clamp now that the popup has its real, final size.
+        this.menuPositionDirty = true
     }
 
     async pickProfileTemplate (entry: { provider: ProfileProvider<Profile>, template: PartialProfile<Profile> }): Promise<void> {
@@ -652,6 +687,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         this.contextMenuMode = 'menu'
         this.contextMenuX = event.clientX
         this.contextMenuY = event.clientY
+        this.menuPositionDirty = true
     }
 
     ////// ICON PICKER (context menu) //////
@@ -663,6 +699,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
         this.customSvgText = ''
         this.customSvgError = null
         this.customSvgWarning = null
+        this.menuPositionDirty = true
     }
 
     get recentIcons (): string[] {
@@ -847,6 +884,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy {
     ////// PROFILE DELETION (context menu) //////
     confirmDeleteProfile (): void {
         this.contextMenuMode = 'confirmDeleteProfile'
+        this.menuPositionDirty = true
     }
 
     async deleteProfile (profile: PartialProfile<Profile>): Promise<void> {

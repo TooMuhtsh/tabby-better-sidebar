@@ -97,6 +97,9 @@
     [style.top.px]='contextMenuY',
     (click)='$event.stopPropagation()'
 )
+    .group-context-menu-header
+        profile-icon.me-2([icon]='contextMenuGroup.icon ?? "far fa-folder"', [color]='contextMenuGroup.color')
+        span.no-wrap {{ contextMenuGroup.name || 'Ungrouped' }}
     a.group-context-menu-item((click)='launchGroupSessions(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | Lancer toutes les sessions
@@ -142,6 +145,9 @@
     [style.top.px]='contextMenuY',
     (click)='$event.stopPropagation()'
 )
+    .group-context-menu-header
+        profile-icon.me-2([icon]='contextMenuProfile.icon', [color]='contextMenuProfile.color')
+        span.no-wrap {{ contextMenuProfile.name }}
     a.group-context-menu-item((click)='launchProfileFromMenu(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | Lancer la session

@@ -192,6 +192,23 @@ input {
     border: 1px solid var(--theme-secondary);
     box-shadow: 0 4px 12px rgba(0, 0, 0, .4);
 
+    .group-context-menu-header {
+        display: flex;
+        align-items: center;
+        padding: .35rem .5rem;
+        margin-bottom: .25rem;
+        border-bottom: 1px solid var(--theme-secondary);
+        font-weight: 600;
+        font-size: .85rem;
+        overflow: hidden;
+
+        profile-icon {
+            width: 15px;
+            height: 15px;
+            flex: 0 0 auto;
+        }
+    }
+
     .group-context-menu-item {
         display: flex;
         align-items: center;
