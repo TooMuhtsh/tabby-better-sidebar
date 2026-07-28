@@ -24,6 +24,17 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Suite — fond des popups, distinct du fond de la sidebar (2026-07-28)</h2>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-28</td><td>a2f6a58</td>
+<td>Retour utilisateur : les menus contextuels/popups (menu Groupe/Profil, picker d'icônes,
+create-popup) étaient difficiles à distinguer de la sidebar derrière eux. Cause : les deux utilisaient
+exactement la même variable <code>--theme-bg-more-2</code>. Changé pour <code>--theme-bg</code> (fond
+de base de l'appli/zone terminal) sur les trois — reste piloté par le thème actif, aucune couleur en
+dur.</td></tr>
+</table>
+
 <h2>Menu contextuel enrichi — favoris, renommer, lancer (2026-07-28)</h2>
 <p>Premier chantier de la phase "extension du socle" de la roadmap, design déjà fourni par
 l'utilisateur. Trois actions ajoutées aux menus contextuels Profil/Groupe existants.</p>
