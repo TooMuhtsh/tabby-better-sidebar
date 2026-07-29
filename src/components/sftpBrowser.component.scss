@@ -30,6 +30,13 @@ sidebar-plus-sftp-browser .sftp-tool {
         background-color: var(--theme-secondary);
         border-radius: .2rem;
     }
+
+    &.active {
+        opacity: 1;
+        background-color: var(--theme-primary);
+        color: var(--theme-bg);
+        border-radius: .2rem;
+    }
 }
 
 sidebar-plus-sftp-browser .sftp-breadcrumb {
@@ -38,7 +45,7 @@ sidebar-plus-sftp-browser .sftp-breadcrumb {
     white-space: nowrap;
     font-size: .75rem;
     // Horizontal scrollbars in a 300px sidebar eat a row of pixels for no
-    // benefit — the path is draggable and the full one is a double-click away.
+    // benefit — the path is draggable and editable from the pencil button.
     scrollbar-width: none;
 
     &::-webkit-scrollbar {
@@ -66,13 +73,45 @@ sidebar-plus-sftp-browser .sftp-breadcrumb {
     }
 }
 
+sidebar-plus-sftp-browser .sftp-column-chooser {
+    flex: none;
+    padding: .3rem .4rem .4rem;
+    margin: 0 .1rem .25rem;
+    font-size: .75rem;
+    background-color: var(--theme-bg);
+    border: 1px solid var(--theme-secondary);
+    border-radius: .2rem;
+
+    .chooser-title {
+        opacity: .6;
+        text-transform: uppercase;
+        font-size: .65rem;
+        letter-spacing: .04em;
+        margin-bottom: .2rem;
+    }
+
+    .chooser-item {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        padding: .05rem 0;
+        margin: 0;
+
+        &:hover {
+            opacity: .85;
+        }
+    }
+}
+
 sidebar-plus-sftp-browser .sftp-body {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     // Far tighter than the native panel's 10px/20px, which was sized for a
-    // full-width tab and left almost nothing for the name column here.
-    padding: .1rem .15rem .5rem;
+    // full-width tab and left almost nothing for the name column here. No top
+    // padding: rows scrolling under the sticky header would otherwise show
+    // through the gap above it.
+    padding: 0 .15rem .5rem;
 }
 
 sidebar-plus-sftp-browser .sftp-message {
@@ -82,22 +121,25 @@ sidebar-plus-sftp-browser .sftp-message {
     text-align: center;
 }
 
-// The grid proper. Fixed tracks for the three trailing columns and a single
+// The grid proper. Fixed tracks for every optional column and a single
 // flexible one for the name: the columns therefore stay aligned at any sidebar
 // width, and a directory — which has no size to show — simply leaves its track
 // empty instead of shifting everything left, which is what the native
 // template's `*ngIf` on the size cell used to do.
+// No `overflow: hidden` here, however tempting it is for clipping a border
+// radius: it would make this the sticky header's nearest clipping ancestor and
+// stop the header from ever sticking. The scroll container has to stay
+// .sftp-body.
 sidebar-plus-sftp-browser .sftp-grid {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--theme-secondary);
-    border-radius: .2rem;
-    overflow: hidden;
 }
 
 sidebar-plus-sftp-browser .sftp-row {
+    // grid-template-columns comes from the component: the tracks depend on
+    // which columns the user kept.
     display: grid;
-    grid-template-columns: 1.15rem minmax(0, 1fr) 3.9rem 4.5rem 1.9rem;
     align-items: center;
     font-size: .75rem;
     cursor: pointer;
@@ -118,9 +160,7 @@ sidebar-plus-sftp-browser .sftp-row {
     }
 
     // Column separators, so the grid reads as a grid rather than as rows.
-    .cell-size,
-    .cell-date,
-    .cell-mode {
+    .cell-value {
         border-left: 1px solid var(--theme-secondary);
         font-family: monospace;
         text-align: right;
@@ -137,7 +177,43 @@ sidebar-plus-sftp-browser .sftp-row {
     }
 }
 
+sidebar-plus-sftp-browser .sftp-header-row {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    cursor: default;
+    background-color: var(--theme-bg);
+    border-bottom: 1px solid var(--theme-secondary);
+
+    &:hover {
+        background-color: var(--theme-bg);
+    }
+
+    > * {
+        opacity: .55;
+        text-transform: uppercase;
+        font-size: .65rem;
+        letter-spacing: .04em;
+    }
+
+    .cell-value {
+        font-family: inherit;
+    }
+}
+
 sidebar-plus-sftp-browser .sftp-row-up .cell-name {
     opacity: .7;
     font-family: monospace;
+}
+
+// Dotfiles stay listed but recede, so the entries that matter read first.
+sidebar-plus-sftp-browser .sftp-row.sftp-dim {
+    .cell-icon,
+    .cell-name {
+        opacity: .45;
+    }
+
+    .cell-value {
+        opacity: .35;
+    }
 }

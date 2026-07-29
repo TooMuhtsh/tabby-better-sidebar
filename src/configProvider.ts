@@ -33,6 +33,10 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // icon the user wants permanently at hand cannot live there.
             favoriteIcons: [] as string[],
             groupOrder: {} as Record<string, string[]>,
+            // Ids of the optional SFTP browser columns, in display order —
+            // the name column is always shown and never listed here. See
+            // SidebarPlusSftpBrowserComponent.AVAILABLE_COLUMNS for the ids.
+            sftpColumns: ['size', 'date', 'mode'] as string[],
             // favorites/favoriteGroups above double as the "Tous" workspace's
             // own favorites (no migration needed — they're already live in
             // the user's config.yaml). Each entry here carries its own.

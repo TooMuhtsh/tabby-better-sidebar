@@ -25,10 +25,24 @@
 
     //- A title on every button: the captions the native template pairs with
     //- each icon do not fit a sidebar, and an icon on its own says nothing.
+    button.btn.btn-link.btn-sm.sftp-tool(
+        type='button',
+        *ngIf='editingPath === null',
+        (click)='editPath()',
+        title='Saisir le chemin à la main'
+    )
+        .fa.fa-fw.fas.fa-pen
     button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='navigate(path)', title='Actualiser')
         .fa.fa-fw.fas.fa-sync-alt
     button.btn.btn-link.btn-sm.sftp-tool(type='button', *ngIf='!showFilter', (click)='showFilter = true', title='Filtrer la liste')
         .fa.fa-fw.fas.fa-filter
+    button.btn.btn-link.btn-sm.sftp-tool(
+        type='button',
+        [class.active]='showColumnChooser',
+        (click)='showColumnChooser = !showColumnChooser',
+        title='Choisir les colonnes affichées'
+    )
+        .fa.fa-fw.fas.fa-table-columns
     button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='openCreateDirectoryModal()', title='Nouveau dossier distant')
         .fa.fa-fw.fas.fa-folder-plus
     button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='upload()', title='Envoyer des fichiers vers le serveur')
@@ -48,6 +62,13 @@
     button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='clearFilter()', title='Effacer le filtre')
         .fa.fa-fw.fas.fa-times
 
+//- Inline rather than a floating dropdown: see showColumnChooser.
+.sftp-column-chooser(*ngIf='showColumnChooser')
+    .chooser-title Colonnes
+    label.chooser-item(*ngFor='let column of availableColumns', [title]='column.description')
+        input(type='checkbox', [checked]='isColumnVisible(column)', (change)='toggleColumn(column)')
+        span.ms-1 {{ column.description }}
+
 //- dropZone is tabby-core's DropZoneDirective, exported by TabbyCoreModule —
 //- keeps drag-and-drop upload working exactly as in the native panel.
 .sftp-body(dropZone, (transfer)='uploadOneFolder($event)')
@@ -55,16 +76,26 @@
     ng-container(*ngIf='sftp')
         .sftp-message(*ngIf='fileList === null') Chargement...
         .sftp-grid(*ngIf='fileList !== null')
-            .sftp-row.sftp-row-up(*ngIf='canGoUp', (click)='goUp()', title='Remonter d’un niveau')
+            .sftp-row.sftp-header-row([style.grid-template-columns]='gridTemplate')
+                .cell-icon
+                .cell-name Nom
+                .cell-value(*ngFor='let column of visibleColumns', [title]='column.description') {{ column.label }}
+
+            .sftp-row.sftp-row-up(
+                *ngIf='canGoUp',
+                [style.grid-template-columns]='gridTemplate',
+                (click)='goUp()',
+                title='Remonter d’un niveau'
+            )
                 .cell-icon
                     .fa.fa-fw.fas.fa-level-up-alt
                 .cell-name ..
-                .cell-size
-                .cell-date
-                .cell-mode
+                .cell-value(*ngFor='let column of visibleColumns')
 
             .sftp-row(
                 *ngFor='let item of filteredFileList',
+                [style.grid-template-columns]='gridTemplate',
+                [class.sftp-dim]='isHidden(item)',
                 (click)='open(item)',
                 (contextmenu)='showContextMenu(item, $event)',
                 [title]='rowTooltip(item)'
@@ -72,8 +103,6 @@
                 .cell-icon
                     i.fa-fw([class]='getIcon(item)')
                 .cell-name {{ item.name }}
-                .cell-size {{ sizeCell(item) }}
-                .cell-date {{ shortDate(item.modified) }}
-                .cell-mode {{ octalMode(item) }}
+                .cell-value(*ngFor='let column of visibleColumns') {{ cellValue(column, item) }}
 
         .sftp-message(*ngIf='filterFoundNothing') Aucun fichier ne correspond au filtre.

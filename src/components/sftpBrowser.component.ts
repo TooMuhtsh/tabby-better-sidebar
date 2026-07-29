@@ -2,8 +2,19 @@ import './sftpBrowser.component.scss'
 import { filesize } from 'filesize'
 import { Component, Inject } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
-import { NotificationsService, PlatformService } from 'tabby-core'
+import { ConfigService, NotificationsService, PlatformService } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
+
+/** An optional column of the file list. The name column is not one of these — it is always shown. */
+export interface SftpColumn {
+    id: string
+    /** Header caption. Kept short: the whole list lives in a ~300px sidebar. */
+    label: string
+    /** Full wording for the column chooser, where there is room for it. */
+    description: string
+    /** A fixed grid track — fixed is the point, it is what keeps the columns aligned at any width. */
+    width: string
+}
 
 /**
  * Tabby's own SFTP panel with this plugin's presentation.
@@ -27,11 +38,31 @@ import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby
     template: require('./sftpBrowser.component.pug'),
 })
 export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
+    /**
+     * Everything `SFTPFile` can actually answer — it carries only name,
+     * fullPath, isDirectory, isSymlink, mode, size and modified, so there is
+     * no owner/group column to offer however much an SFTP client usually has
+     * one.
+     */
+    static readonly AVAILABLE_COLUMNS: SftpColumn[] = [
+        { id: 'size', label: 'Taille', description: 'Taille du fichier', width: '3.9rem' },
+        { id: 'date', label: 'Date', description: 'Date de modification', width: '4.5rem' },
+        { id: 'mode', label: 'Perm.', description: 'Permissions en octal (755)', width: '2.1rem' },
+        { id: 'modeLong', label: 'Droits', description: 'Permissions en format long (drwxr-xr-x)', width: '5.2rem' },
+        { id: 'type', label: 'Type', description: 'Nature de l’élément', width: '4rem' },
+        { id: 'ext', label: 'Ext.', description: 'Extension du fichier', width: '2.6rem' },
+    ]
+
+    availableColumns = SidebarPlusSftpBrowserComponent.AVAILABLE_COLUMNS
+    /** Toggles the inline column chooser. Inline, not a floating popup: a dropdown in a 300px sidebar would need positioning and outside-click handling (piège #15) for no gain. */
+    showColumnChooser = false
+
     // Declared explicitly rather than relying on Angular inheriting the
     // parent's factory: the parameters are the contract with SSHModule's
     // providers, and spelling them out keeps a future change in tabby-ssh a
     // compile error instead of a runtime injection failure.
     constructor (
+        private config: ConfigService,
         ngbModal: NgbModal,
         notifications: NotificationsService,
         platform: PlatformService,
@@ -40,33 +71,59 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
         super(ngbModal, notifications, platform, contextMenuProviders)
     }
 
-    // The getters and thin wrappers below exist so the template never has to
-    // contain a string literal. Pug delimits attribute values with one quote
-    // style and HTML-entity-escapes the other inside them, which mangles
-    // Angular expressions — the same trap already worked around in
-    // SidebarPlusTreeComponent (piège #20-ish: `contextMenuMode === "icon"`
-    // reaching Angular as `&quot;icon&quot;`).
-    get canGoUp (): boolean {
-        return this.path !== '/'
+    ////// COLUMNS //////
+    /** Configured columns, in the order declared in AVAILABLE_COLUMNS, ignoring ids that no longer exist. */
+    get visibleColumns (): SftpColumn[] {
+        const selected: string[] = this.config.store.sidebarPlus?.sftpColumns ?? []
+        return this.availableColumns.filter(c => selected.includes(c.id))
     }
 
-    get hasActiveFilter (): boolean {
-        return this.showFilter && this.filterText.trim() !== ''
+    /**
+     * Both the header and every row carry this, rather than the grid being
+     * declared once on the container with rows as `display: contents` — a row
+     * that generates no box cannot take a hover background or a bottom border.
+     */
+    get gridTemplate (): string {
+        return ['1.15rem', 'minmax(0, 1fr)', ...this.visibleColumns.map(c => c.width)].join(' ')
     }
 
-    get filterFoundNothing (): boolean {
-        return this.fileList !== null && this.filteredFileList.length === 0 && this.hasActiveFilter
+    isColumnVisible (column: SftpColumn): boolean {
+        return this.visibleColumns.some(c => c.id === column.id)
     }
 
-    goRoot (): void {
-        void this.navigate('/')
+    toggleColumn (column: SftpColumn): void {
+        const selected: string[] = [...(this.config.store.sidebarPlus?.sftpColumns ?? [])]
+        const at = selected.indexOf(column.id)
+        if (at === -1) {
+            selected.push(column.id)
+        } else {
+            selected.splice(at, 1)
+        }
+        this.config.store.sidebarPlus.sftpColumns = selected
+        this.config.save()
     }
 
-    /** Empty for directories — a folder has no meaningful byte size here. */
-    sizeCell (item: SFTPFile): string {
-        return item.isDirectory ? '' : this.humanSize(item.size)
+    cellValue (column: SftpColumn, item: SFTPFile): string {
+        switch (column.id) {
+            case 'size':
+                // A directory's own byte size says nothing useful about it.
+                return item.isDirectory ? '' : this.humanSize(item.size)
+            case 'date':
+                return this.shortDate(item.modified)
+            case 'mode':
+                return this.octalMode(item)
+            case 'modeLong':
+                return this.getModeString(item)
+            case 'type':
+                return this.typeLabel(item)
+            case 'ext':
+                return this.extension(item)
+            default:
+                return ''
+        }
     }
 
+    ////// FORMATTING //////
     /** Date only, no time — the full timestamp lives in the row tooltip. */
     shortDate (value: Date): string {
         const d = value instanceof Date ? value : new Date(value)
@@ -81,6 +138,32 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
 
     humanSize (bytes: number): string {
         return filesize(bytes, { round: 1 }) as string
+    }
+
+    typeLabel (item: SFTPFile): string {
+        if (item.isSymlink) {
+            return 'Lien'
+        }
+        if (item.isDirectory) {
+            return 'Dossier'
+        }
+        const ext = this.extension(item)
+        return ext === '' ? 'Fichier' : ext.toUpperCase()
+    }
+
+    extension (item: SFTPFile): string {
+        if (item.isDirectory) {
+            return ''
+        }
+        // A leading dot is the name of a hidden file, not an extension:
+        // `.bashrc` has none.
+        const at = item.name.lastIndexOf('.')
+        return at > 0 ? item.name.slice(at + 1) : ''
+    }
+
+    /** Dotfiles, dimmed rather than hidden — the panel has no "show hidden" toggle to get them back. */
+    isHidden (item: SFTPFile): boolean {
+        return item.name.startsWith('.')
     }
 
     /**
@@ -98,9 +181,32 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
             lines.push(`Modifié : ${d.toLocaleString()}`)
         }
         lines.push(`Permissions : ${this.octalMode(item)} — ${this.getModeString(item)}`)
+        lines.push(`Type : ${this.typeLabel(item)}`)
         if (item.isSymlink) {
             lines.push('Lien symbolique')
         }
         return lines.join('\n')
+    }
+
+    ////// TEMPLATE HELPERS //////
+    // The getters and thin wrappers below exist so the template never has to
+    // contain a string literal. Pug delimits attribute values with one quote
+    // style and HTML-entity-escapes the other inside them, which mangles
+    // Angular expressions — the same trap already worked around in
+    // SidebarPlusTreeComponent.
+    get canGoUp (): boolean {
+        return this.path !== '/'
+    }
+
+    get hasActiveFilter (): boolean {
+        return this.showFilter && this.filterText.trim() !== ''
+    }
+
+    get filterFoundNothing (): boolean {
+        return this.fileList !== null && this.filteredFileList.length === 0 && this.hasActiveFilter
+    }
+
+    goRoot (): void {
+        void this.navigate('/')
     }
 }
