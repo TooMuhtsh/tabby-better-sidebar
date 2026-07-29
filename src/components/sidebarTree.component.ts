@@ -56,6 +56,20 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     /** Toggles the sidebar between the normal tree and the "hidden items of this workspace" panel — see hiddenGroupsInWorkspace/hiddenProfilesInWorkspace. */
     showHiddenPanel = false
 
+    ////// SFTP //////
+    /**
+     * Swaps the whole sidebar between the profile tree and the SFTP view of
+     * the focused SSH session. Deliberately a *global* toggle for this first
+     * pass rather than one state per tab: the roadmap leaves the question open
+     * ("bascule par onglet ou globale ?"), and a single mode is the version
+     * that can be judged in use before committing to per-tab bookkeeping.
+     *
+     * Per-machine UI state, so localStorage like panelInternalWidth and
+     * activeWorkspaceId — not a config.yaml key that would sync across
+     * machines on every click.
+     */
+    sftpMode = window.localStorage.sidebarPlusSftpMode === 'true'
+
     /**
      * Groups (isTemplate/blacklist already filtered, like profileGroups) but
      * *not* filtered by the active workspace's visibility — kept around so
@@ -688,6 +702,17 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.config.store.sidebarPlus ??= {}
         this.config.store.sidebarPlus.workspaces = this.workspaces
         await this.config.save()
+    }
+
+    ////// SFTP VIEW //////
+    setSftpMode (on: boolean): void {
+        this.sftpMode = on
+        window.localStorage.sidebarPlusSftpMode = on ? 'true' : 'false'
+        if (on) {
+            // Leaving this on would put the sidebar back into the hidden-items
+            // panel — not the tree — the next time SFTP is switched off.
+            this.showHiddenPanel = false
+        }
     }
 
     ////// RESIZING //////

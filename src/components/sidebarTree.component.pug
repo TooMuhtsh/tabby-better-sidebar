@@ -1,5 +1,36 @@
 .p-2.h-100.d-flex.flex-column
-    .workspace-bar.d-flex.align-items-center.flex-wrap
+    //- Kept as the very first row, above the workspace bar, so it stays put
+    //- when switching modes instead of sliding around under the cursor.
+    .view-mode-bar.d-flex.align-items-center
+        a.view-mode-tab(
+            [class.active]='!sftpMode',
+            (click)='setSftpMode(false)',
+            title='Profils',
+            href='#'
+        )
+            .fa.fa-fw.fas.fa-list.me-1
+            span Profils
+        a.view-mode-tab(
+            [class.active]='sftpMode',
+            (click)='setSftpMode(true)',
+            title='SFTP de la session active',
+            href='#'
+        )
+            .fa.fa-fw.fas.fa-folder-open.me-1
+            span SFTP
+
+    //- Deliberately [hidden] and not *ngIf: destroying this component would
+    //- destroy its cached SFTP panels too, and rebuilding one opens a fresh
+    //- SFTP channel that nothing closes (SFTPSession has no close(); the
+    //- channel only dies with the SSH session). [active] is what keeps it
+    //- idle while the tree is showing — see the component's `active` input.
+    sidebar-plus-sftp.flex-grow-1(
+        [hidden]='!sftpMode',
+        [active]='sftpMode',
+        (closed)='setSftpMode(false)'
+    )
+
+    .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='!sftpMode')
         a.workspace-tab(
             [class.active]='activeWorkspaceId === "all"',
             (click)='selectWorkspace("all")',
@@ -20,7 +51,7 @@
         )
             .fa.fa-fw.fas.fa-plus
 
-    .d-flex.align-items-center.gap-1.mb-1
+    .d-flex.align-items-center.gap-1.mb-1(*ngIf='!sftpMode')
         input.form-control.form-control-sm(
             type='text',
             [(ngModel)]='filter',
@@ -36,7 +67,7 @@
         )
             .fa.fa-fw.fas.fa-eye-slash
 
-    .hidden-items-panel(*ngIf='showHiddenPanel')
+    .hidden-items-panel(*ngIf='showHiddenPanel && !sftpMode')
         .text-muted.small(*ngIf='!hiddenGroupsInWorkspace.length && !hiddenProfilesInWorkspace.length') Aucun élément masqué dans ce workspace.
         .hidden-item(*ngFor='let g of hiddenGroupsInWorkspace')
             profile-icon.me-2([icon]='g.icon ?? "far fa-folder"', [color]='g.color')
@@ -49,7 +80,7 @@
             a.action((click)='restoreProfileInWorkspace(p)', title='Réafficher', href='#')
                 .fa.fa-fw.fas.fa-eye
 
-    .sidebar-plus-tree.h-100(*ngIf='!showHiddenPanel', (contextmenu)='onSidebarContextMenu($event)')
+    .sidebar-plus-tree.h-100(*ngIf='!showHiddenPanel && !sftpMode', (contextmenu)='onSidebarContextMenu($event)')
         .d-flex.flex-column.p-2.sidebar-plus-tree-container(
             cdkDropList,
             id='groups-root',

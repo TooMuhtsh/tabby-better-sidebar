@@ -109,6 +109,26 @@ n'est interprété que par le compilateur de templates Angular ou en Shadow DOM 
 l'autre ne s'applique ici. Le navigateur ignore silencieusement la règle (aucune erreur). → Cibler
 le nom du tag custom element réel (ex. <code>sidebar-plus-tree { ... }</code>) à la place.</p>
 
+<h3 id="piege-33">#33 — Le CSS des composants Tabby est global lui aussi — réutiliser un composant natif, c'est hériter de la mise en page de son hôte d'origine</h3>
+<p>Tabby compile ses propres SCSS de la même façon que ce plugin (css-loader/style-loader, pas
+d'encapsulation de vue Angular), donc ses règles sont globales et s'appliquent à <em>toute</em>
+instance du tag, y compris une instance greffée ailleurs. Cas concret rencontré en montant
+<code>SFTPPanelComponent</code> dans la sidebar : <code>sshTab.component.scss</code> pose
+<code>sftp-panel { position: absolute; height: 80%; width: 100%; bottom: 0; z-index: 5 }</code>,
+parce que dans un onglet SSH le panneau est un tiroir qui recouvre le terminal. Greffé dans la
+sidebar, il arrive donc positionné en absolu sur 80&nbsp;% de hauteur, sans que rien dans le code
+du plugin ne le demande.</p>
+<p>→ Avant de réutiliser un composant natif, chercher son sélecteur de tag dans les
+<code>.scss</code> des <em>autres</em> composants du même paquet, pas seulement dans le sien. Les
+neutraliser demande simplement une spécificité supérieure
+(<code>sidebar-plus-sftp sftp-panel { ... }</code>, deux sélecteurs de tag contre un) — pas
+d'<code>!important</code>.</p>
+<p>Corollaire du même mécanisme, sur <code>[hidden]</code> : cet attribut ne vaut que par une règle
+de la feuille de style <em>user-agent</em>, et n'importe quelle règle <code>display</code> de
+niveau auteur la bat quelle que soit sa spécificité. Un <code>tag { display: block }</code> écrit
+ici rend donc <code>[hidden]</code> inopérant sur ce tag — il faut ajouter explicitement
+<code>tag[hidden] { display: none }</code>.</p>
+
 <h3 id="piege-15">#15 — <code>@HostListener('document:click')</code> ignore <code>stopPropagation()</code></h3>
 <p>Se déclenche même quand un descendant a appelé <code>$event.stopPropagation()</code> sur un
 <code>(click)</code> normal. → Ne jamais compter sur la propagation ; vérifier explicitement
@@ -213,6 +233,24 @@ erreur mais ferait planter silencieusement la modale. → Augmentation de type d
 (<code>src/tabby-settings-augment.d.ts</code>) avec les vrais noms de champs, vérifiés directement
 dans le bundle compilé (jamais seulement les typings ni le <code>.ts</code> source de l'app).</p>
 
+<h3 id="piege-32">#32 — Deux paquets <code>tabby-ssh</code> de <em>même numéro de version</em> mais de contenu différent</h3>
+<div class="callout warning"><span class="callout-title">Le numéro de version ne départage rien</span>
+<p><code>node_modules/tabby-ssh</code> (npm, utilisé à la compilation) et
+<code>C:\Program Files\Tabby\resources\builtin-plugins\tabby-ssh</code> (ce qui tourne réellement)
+annoncent tous deux <code>1.0.231-nightly.0</code> — et n'ont pourtant pas les mêmes typings.
+Constaté le 2026-07-29 sur <code>components/sftpPanel.component.d.ts</code> : la version installée
+déclare <code>downloadItem()</code>, <code>downloadFolder()</code>, <code>filteredFileList</code>,
+<code>showFilter</code> et <code>filterText</code>, absents de la version npm. C'est le piège #6
+(typings en retard) privé de son seul signal d'alerte habituel, le décalage de version.</p>
+<p>→ Corollaire de la méthode du piège #13 : la référence est <strong>toujours</strong> le paquet
+de <code>builtin-plugins/</code>, jamais celui de <code>node_modules/</code>, même quand les deux
+affichent le même numéro. Vérifier par un <code>diff</code> direct entre les deux arborescences
+<code>typings/</code> plutôt qu'en comparant les <code>package.json</code>.</p>
+<p class="muted">Attention en lisant ces diffs : les deux copies n'ont pas les mêmes fins de ligne
+(CRLF côté installé), donc <code>diff</code> annonce des fichiers intégralement différents alors
+qu'ils sont identiques. <code>session/sftp.d.ts</code> est dans ce cas ; seul
+<code>sftpPanel.component.d.ts</code> diverge réellement.</p></div>
+
 <h3>Points de veille — <span class="pill warn">⚠️ à revérifier après update Tabby</span></h3>
 
 <h4 id="fragile-1">Édition de profil (clic droit → "Éditer...") — le plus fragile de tous</h4>
@@ -226,10 +264,34 @@ Pas destructeur si seule la détection de fermeture casse (l'utilisateur ferme l
 <p>Vrai <code>@Input()</code> documenté mais toujours <code>@hidden</code> donc non contractuel.
 Vérifier que <code>activeTab: 'profiles'</code> amène toujours sur le bon sous-onglet.</p>
 
-<h4 id="fragile-3"><code>SFTPPanelComponent</code>/<code>SFTPSession</code>/<code>SFTPFile</code></h4>
-<p>Prévus pour le panneau SFTP (pas encore implémenté) — vérifier qu'ils restent exportés par
-<code>tabby-ssh</code> et que <code>SFTPPanelComponent.session</code> attend toujours une
-<code>SSHSession</code> déjà connectée.</p>
+<h4 id="fragile-3"><code>SFTPPanelComponent</code>/<code>SFTPSession</code>/<code>SSHTabComponent</code></h4>
+<p>Vérifié le 2026-07-29 sur le <code>tabby-ssh</code> réellement installé, aux deux niveaux
+(typings + bloc d'export webpack de <code>dist/index.js</code>, méthode du piège #13). Le bloc
+d'export runtime complet est : <code>AutoPrivateKeyLocator</code>,
+<code>PasswordStorageService</code>, <code>PortForwardType</code>,
+<code>SFTPContextMenuItemProvider</code>, <code>SFTPPanelComponent</code>,
+<code>SFTPSession</code>, <code>SSHAlgorithmType</code>, <code>SSHMultiplexerService</code>,
+<code>SSHProfileImporter</code>, <code>SSHTabComponent</code>. À revérifier après update :</p>
+<ul>
+<li><code>SFTPPanelComponent.session</code> attend une <code>SSHSession</code> déjà connectée —
+  c'est <code>SSHTabComponent.sshSession</code>, <strong>pas</strong>
+  <code>SSHTabComponent.session</code> (ce dernier est la <code>SSHShellSession</code> du terminal
+  et n'a pas d'<code>openSFTP()</code>).</li>
+<li><code>SSHTabComponent</code> est exportée à l'exécution mais absente des typings npm →
+  augmentation dédiée <code>src/tabby-ssh-augment.d.ts</code> (même principe que les pièges #6/#17).
+  <code>SSHSession</code>, elle, n'est <em>pas</em> exportée à l'exécution : son type est emprunté
+  par accès indexé à <code>SFTPPanelComponent['session']</code> plutôt que redéclaré — une
+  redéclaration serait nominalement incompatible à cause de ses membres <code>private</code>.</li>
+<li><code>SSHModule</code> <em>déclare</em> <code>SFTPPanelComponent</code> mais ne l'<em>exporte
+  pas</em> : son sélecteur <code>&lt;sftp-panel&gt;</code> est donc invisible depuis le template
+  d'un autre module. D'où le montage impératif par <code>createComponent()</code>, qui contourne
+  entièrement la portée des templates.</li>
+<li><code>SFTPSession</code> n'a pas de <code>close()</code> — un canal SFTP ne meurt qu'avec sa
+  session SSH. Toute reconstruction du panneau ouvre donc un canal de plus, définitivement : d'où
+  le cache d'un panneau par onglet dans <code>SidebarPlusSftpComponent</code>.</li>
+<li><code>SFTPFile</code> reste une simple <code>interface</code> (type only, normalement absente du
+  bloc d'export runtime) ; <code>SFTPFileHandle</code> n'est pas réexporté au niveau de l'index.</li>
+</ul>
 
 <h4 id="fragile-6"><code>profile-tree</code> toujours non exporté</h4>
 <p>Vérifier périodiquement (montée majeure de <code>tabby-core</code>) s'il a fini par être

@@ -26,6 +26,37 @@ sidebar-plus-tree input {
     border: 1px solid var(--theme-secondary);
 }
 
+// Scoped to the plugin's tag for the same reason as the input rule above:
+// this file is global CSS, and `.view-mode-bar` is generic enough to collide.
+sidebar-plus-tree .view-mode-bar {
+    gap: .25rem;
+    margin-bottom: .35rem;
+
+    .view-mode-tab {
+        display: inline-flex;
+        align-items: center;
+        flex: 1 1 0;
+        justify-content: center;
+        padding: .15rem .5rem;
+        border-radius: .2rem;
+        font-size: .75rem;
+        color: inherit;
+        text-decoration: none;
+        background-color: var(--theme-bg-more-2);
+        border: 1px solid var(--theme-secondary);
+
+        &:hover {
+            background-color: var(--theme-secondary);
+        }
+
+        &.active {
+            background-color: var(--theme-primary);
+            color: var(--theme-bg);
+            border-color: var(--theme-primary);
+        }
+    }
+}
+
 .workspace-bar {
     gap: .25rem;
     margin-bottom: .35rem;

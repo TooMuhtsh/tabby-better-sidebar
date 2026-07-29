@@ -1,0 +1,20 @@
+.sftp-host.h-100.d-flex.flex-column
+    .sftp-bound-tab.d-flex.align-items-center(*ngIf='!waiting')
+        .fa.fa-fw.fas.fa-server.me-1
+        span.no-wrap {{ boundTabTitle }}
+
+    .sftp-waiting.text-muted.small(*ngIf='waiting')
+        .fa.fa-fw.fas.fa-plug.mb-2
+        div En attente d'une session SSH active.
+        div.mt-1 Ouvrez un profil SSH — le panneau suivra l'onglet sélectionné.
+
+    //- Tabby's own SFTPPanelComponent is grafted in here by attachPanel().
+    //- Hidden rather than *ngIf'd away while waiting: removing the container
+    //- would drop the very node the cached panels are re-attached to.
+    //-
+    //- `#panelContainer=""` and not a bare `#panelContainer`: pug renders a
+    //- valueless attribute as `name="name"` outside terse/HTML5 mode, and
+    //- Angular reads `#ref="something"` as an exportAs lookup, which would
+    //- fail at compile time. An explicitly empty value is the plain
+    //- element-reference form.
+    .sftp-panel-container.flex-grow-1(#panelContainer='', [hidden]='waiting')

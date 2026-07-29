@@ -5,6 +5,7 @@ import { DragDropModule } from '@angular/cdk/drag-drop'
 import TabbyCoreModule, { ConfigProvider } from 'tabby-core'
 
 import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
+import { SidebarPlusSftpComponent } from './components/sftpPanel.component'
 import { SidebarPlusConfigProvider } from './configProvider'
 import { SidebarPlusMountService } from './mount.service'
 
@@ -20,6 +21,7 @@ import { SidebarPlusMountService } from './mount.service'
     ],
     declarations: [
         SidebarPlusTreeComponent,
+        SidebarPlusSftpComponent,
     ],
 })
 export default class SidebarPlusModule {

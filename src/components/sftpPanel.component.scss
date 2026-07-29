@@ -1,0 +1,85 @@
+// Same rule as the rest of this plugin: `:host` is a silent no-op here (this
+// file is injected as plain global CSS by a side-effect import, never through
+// Angular's template compiler — piège #14), so everything below is anchored on
+// the real custom element tag.
+sidebar-plus-sftp {
+    display: block;
+    min-height: 0;
+    overflow: hidden;
+}
+
+// `[hidden]` is only a UA-stylesheet rule, and any author-level `display`
+// beats the whole UA sheet regardless of specificity — the `display: block`
+// just above would otherwise keep this visible while the sidebar is showing
+// the profile tree.
+sidebar-plus-sftp[hidden] {
+    display: none;
+}
+
+sidebar-plus-sftp .sftp-waiting {
+    padding: 1rem .5rem;
+    text-align: center;
+}
+
+sidebar-plus-sftp .sftp-bound-tab {
+    padding: .15rem .35rem .35rem;
+    font-size: .75rem;
+    opacity: .7;
+    overflow: hidden;
+
+    .no-wrap {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+sidebar-plus-sftp .sftp-panel-container {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+// Same UA-vs-author `display` trap as sidebar-plus-sftp[hidden] above.
+sidebar-plus-sftp .sftp-panel-container[hidden] {
+    display: none;
+}
+
+// tabby-ssh ships `sftp-panel { position: absolute; height: 80%; width: 100%;
+// bottom: 0; z-index: 5 }` from sshTab.component.scss, and that stylesheet is
+// injected globally too (css-loader/style-loader, no Angular view
+// encapsulation attributes on it — checked in the compiled bundle), so it
+// applies to *any* <sftp-panel> in the document, including the one grafted
+// here. Undo it. Two tag selectors outrank the single one upstream, so no
+// !important is needed.
+sidebar-plus-sftp sftp-panel {
+    position: relative;
+    height: auto;
+    width: auto;
+    bottom: auto;
+    z-index: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+// The native panel's toolbar is built for a full-width tab: five buttons that
+// each pair an icon with a text caption, plus a breadcrumb. At sidebar width
+// the captions alone overflow the row, so drop them and keep the icons.
+sidebar-plus-sftp sftp-panel .header {
+    flex-wrap: wrap;
+
+    button div {
+        display: none;
+    }
+
+    .btn {
+        padding-left: .3rem;
+        padding-right: .3rem;
+    }
+
+    i {
+        margin-right: 0 !important;
+    }
+}
