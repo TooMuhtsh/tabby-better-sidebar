@@ -301,6 +301,33 @@ jamais conclure d'un « ça marchera en prod » que le dev est sain, ni l'invers
 listés (<code>tabby-electron</code>, <code>tabby-plugin-manager</code>, <code>tabby-serial</code>,
 <code>tabby-telnet</code>…).</p></div>
 
+<h3 id="piege-35">#35 — <code>SFTPPanelComponent.getModeString()</code> est faux sous Windows : hériter d'un composant, c'est hériter de ses bugs</h3>
+<div class="callout warning"><span class="callout-title">Un rendu plausible mais faux</span>
+<p>La méthode masque <code>item.mode</code> contre les constantes de Node
+(<code>constants.S_IXUSR</code>, <code>S_IRGRP</code>, <code>S_IWOTH</code>…). Or
+<strong>Windows ne définit que <code>S_IRUSR</code>, <code>S_IWUSR</code> et
+<code>S_IFDIR</code></strong> ; toutes les autres valent <code>undefined</code>,
+<code>mode &amp; undefined</code> vaut 0, et chacun de ces bits sort en tiret. Un dossier en 775
+s'affiche donc <code>drw-------</code> quelles que soient ses permissions réelles. Constaté le
+2026-07-29 dans le panneau SFTP de la sidebar, en comparant à la colonne octale calculée
+localement (<code>mode &amp; 0o777</code>), elle correcte.</p>
+<p>→ <code>SidebarPlusSftpBrowserComponent.longMode()</code> recalcule la chaîne
+<code>drwxrwxr-x</code> à partir des bits, sans passer par <code>constants</code>.</p>
+<p>→ Leçon générale, au-delà de ce cas : <strong>hériter d'un composant natif fait aussi hériter
+de ses bugs</strong>, et un affichage faux ne lève aucune erreur. Toute méthode de formatage
+reprise de Tabby est à confronter à une valeur connue avant d'être affichée — d'autant que
+celle-ci ne se trompe que sur cette plateforme, donc jamais chez ses auteurs.</p></div>
+
+<h3 id="piege-36">#36 — <code>toLocaleDateString()</code> sans argument rend de l'anglais américain dans Electron</h3>
+<p>La locale JS par défaut du renderer est <code>en-US</code> indépendamment de la langue de
+Windows et de celle réglée dans Tabby : une date sort <code>7/23/2026</code> au milieu d'une
+interface en français — et surtout, jour et mois se retrouvent silencieusement inversés à la
+lecture. Tabby expose <code>LocaleService</code> (exporté par <code>tabby-core</code>, vérifié
+dans le bloc d'export runtime) dont <code>getLocale()</code> donne la langue réellement
+configurée. → Toujours lui passer <code>this.locale.getLocale()</code>. C'est aussi ce qui
+explique que le panneau SFTP natif affiche bien « 23 juil. 2026 » : son pipe
+<code>tabbyDate</code> passe par ce service.</p>
+
 <h3>Points de veille — <span class="pill warn">⚠️ à revérifier après update Tabby</span></h3>
 
 <h4 id="fragile-1">Édition de profil (clic droit → "Éditer...") — le plus fragile de tous</h4>

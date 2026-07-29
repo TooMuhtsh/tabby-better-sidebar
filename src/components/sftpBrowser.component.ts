@@ -2,7 +2,7 @@ import './sftpBrowser.component.scss'
 import { filesize } from 'filesize'
 import { Component, Inject } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
-import { ConfigService, NotificationsService, PlatformService } from 'tabby-core'
+import { ConfigService, LocaleService, NotificationsService, PlatformService } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 
 /** An optional column of the file list. The name column is not one of these — it is always shown. */
@@ -63,6 +63,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
     // compile error instead of a runtime injection failure.
     constructor (
         private config: ConfigService,
+        private locale: LocaleService,
         ngbModal: NgbModal,
         notifications: NotificationsService,
         platform: PlatformService,
@@ -113,7 +114,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
             case 'mode':
                 return this.octalMode(item)
             case 'modeLong':
-                return this.getModeString(item)
+                return this.longMode(item)
             case 'type':
                 return this.typeLabel(item)
             case 'ext':
@@ -124,16 +125,50 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
     }
 
     ////// FORMATTING //////
-    /** Date only, no time — the full timestamp lives in the row tooltip. */
+    /**
+     * Date only, no time — the full timestamp lives in the row tooltip.
+     *
+     * The locale is taken from Tabby rather than left to the JS default:
+     * Electron reports en-US whatever the OS says, which would put `7/23/2026`
+     * in an otherwise French panel — and, worse, silently swap day and month.
+     */
     shortDate (value: Date): string {
         const d = value instanceof Date ? value : new Date(value)
-        return isNaN(d.getTime()) ? '' : d.toLocaleDateString()
+        return isNaN(d.getTime()) ? '' : d.toLocaleDateString(this.locale.getLocale())
+    }
+
+    fullDate (value: Date): string {
+        const d = value instanceof Date ? value : new Date(value)
+        return isNaN(d.getTime()) ? '' : d.toLocaleString(this.locale.getLocale())
     }
 
     /** Permissions as the octal triplet (`755`, `644`), the form actually used when typing a chmod. */
     octalMode (item: SFTPFile): string {
         // eslint-disable-next-line no-bitwise
         return (item.mode & 0o777).toString(8).padStart(3, '0')
+    }
+
+    /**
+     * The `drwxrwxr-x` form, computed here rather than through the inherited
+     * `getModeString()`.
+     *
+     * That one masks `item.mode` against Node's `constants.S_IXUSR`,
+     * `S_IRGRP`, `S_IWOTH` and friends — and **Windows only defines
+     * `S_IRUSR`, `S_IWUSR` and `S_IFDIR`**. The rest come back `undefined`,
+     * `mode & undefined` is 0, and every one of those bits renders as a dash:
+     * a 775 directory displays as `drw-------` on Windows, regardless of its
+     * real permissions. Verified against this very panel on 2026-07-29.
+     */
+    longMode (item: SFTPFile): string {
+        const type = item.isDirectory ? 'd' : item.isSymlink ? 'l' : '-'
+        const flags = 'rwxrwxrwx'
+        let out = type
+        for (let i = 0; i < flags.length; i++) {
+            // Bit 8 is the owner's read flag (0o400) down to bit 0, other's execute.
+            // eslint-disable-next-line no-bitwise
+            out += item.mode & 1 << flags.length - 1 - i ? flags[i] : '-'
+        }
+        return out
     }
 
     humanSize (bytes: number): string {
@@ -176,11 +211,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
         if (!item.isDirectory) {
             lines.push(`Taille : ${this.humanSize(item.size)} (${item.size.toLocaleString()} octets)`)
         }
-        const d = item.modified instanceof Date ? item.modified : new Date(item.modified)
-        if (!isNaN(d.getTime())) {
-            lines.push(`Modifié : ${d.toLocaleString()}`)
+        const modified = this.fullDate(item.modified)
+        if (modified !== '') {
+            lines.push(`Modifié : ${modified}`)
         }
-        lines.push(`Permissions : ${this.octalMode(item)} — ${this.getModeString(item)}`)
+        lines.push(`Permissions : ${this.octalMode(item)} — ${this.longMode(item)}`)
         lines.push(`Type : ${this.typeLabel(item)}`)
         if (item.isSymlink) {
             lines.push('Lien symbolique')
