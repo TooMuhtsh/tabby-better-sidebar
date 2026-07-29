@@ -101,24 +101,34 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
 
     ngOnInit (): void {
         this.viewInitialized = true
+        this.subscription = new Subscription()
+
+        // Pruning is driven by the two events that actually retire a tab —
+        // tabRemoved$ included, which is what fires when a pane leaves a split
+        // — and never by the tick below. It walks every tab of every split, so
+        // running it once a second forever would cost far more than it saves,
+        // for a view the user is usually not even looking at.
+        this.subscription.add(
+            merge(this.app.tabClosed$, this.app.tabRemoved$).subscribe(() => {
+                this.pruneClosedTabs()
+                this.sync()
+            }),
+        )
+
         // No sync() call here on purpose: the first one is left to timer(0),
         // which lands on the next tick, outside the change detection pass that
         // is running right now — attachView() during CD is asking for trouble.
-        this.subscription = merge(
-            this.app.activeTabChange$,
-            this.app.tabsChanged$,
-            this.app.tabClosed$,
-            // The focused tab can stay the same while its session comes up
-            // (or drops): nothing emits for that, so the bound tab is also
-            // re-evaluated on a slow tick.
-            timer(0, 1000),
-        ).subscribe(() => {
-            // Pruning runs even while the view is inactive, so panels of tabs
-            // closed in the meantime don't sit in the cache until the user
-            // next opens the SFTP view.
-            this.pruneClosedTabs()
-            this.sync()
-        })
+        this.subscription.add(
+            merge(
+                this.app.activeTabChange$,
+                this.app.tabsChanged$,
+                // The focused tab can stay the same while its session comes up
+                // (or drops): nothing emits for that, so the bound tab is also
+                // re-evaluated on a slow tick. sync() returns immediately while
+                // the view is inactive, so this idles at near-zero cost.
+                timer(0, 1000),
+            ).subscribe(() => this.sync()),
+        )
     }
 
     ngOnDestroy (): void {

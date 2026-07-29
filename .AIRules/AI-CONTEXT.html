@@ -109,24 +109,41 @@ n'est interprété que par le compilateur de templates Angular ou en Shadow DOM 
 l'autre ne s'applique ici. Le navigateur ignore silencieusement la règle (aucune erreur). → Cibler
 le nom du tag custom element réel (ex. <code>sidebar-plus-tree { ... }</code>) à la place.</p>
 
-<h3 id="piege-33">#33 — Le CSS des composants Tabby est global lui aussi — réutiliser un composant natif, c'est hériter de la mise en page de son hôte d'origine</h3>
-<p>Tabby compile ses propres SCSS de la même façon que ce plugin (css-loader/style-loader, pas
-d'encapsulation de vue Angular), donc ses règles sont globales et s'appliquent à <em>toute</em>
-instance du tag, y compris une instance greffée ailleurs. Cas concret rencontré en montant
-<code>SFTPPanelComponent</code> dans la sidebar : <code>sshTab.component.scss</code> pose
-<code>sftp-panel { position: absolute; height: 80%; width: 100%; bottom: 0; z-index: 5 }</code>,
-parce que dans un onglet SSH le panneau est un tiroir qui recouvre le terminal. Greffé dans la
-sidebar, il arrive donc positionné en absolu sur 80&nbsp;% de hauteur, sans que rien dans le code
-du plugin ne le demande.</p>
-<p>→ Avant de réutiliser un composant natif, chercher son sélecteur de tag dans les
-<code>.scss</code> des <em>autres</em> composants du même paquet, pas seulement dans le sien. Les
-neutraliser demande simplement une spécificité supérieure
-(<code>sidebar-plus-sftp sftp-panel { ... }</code>, deux sélecteurs de tag contre un) — pas
-d'<code>!important</code>.</p>
-<p>Corollaire du même mécanisme, sur <code>[hidden]</code> : cet attribut ne vaut que par une règle
-de la feuille de style <em>user-agent</em>, et n'importe quelle règle <code>display</code> de
-niveau auteur la bat quelle que soit sa spécificité. Un <code>tag { display: block }</code> écrit
-ici rend donc <code>[hidden]</code> inopérant sur ce tag — il faut ajouter explicitement
+<h3 id="piege-33">#33 — Un composant Tabby greffé ailleurs arrive <em>sans mise en page</em> : le CSS natif est encapsulé, contrairement à celui de ce plugin</h3>
+<p>Asymétrie facile à prendre à l'envers. Ce plugin injecte son SCSS en CSS globale brute (piège
+#3/#14), mais Tabby passe le sien par <code>styles: [...]</code> avec l'encapsulation de vue
+Angular par défaut : ses règles sont réécrites avec des attributs
+<code>[_ngcontent-…]</code>/<code>[_nghost-…]</code>. Vérifié le 2026-07-29 dans le décorateur
+compilé de <code>SFTPPanelComponent</code> et de <code>SSHTabComponent</code>.</p>
+<p>Conséquence en montant <code>SFTPPanelComponent</code> dans la sidebar :</p>
+<ul>
+<li><strong>Ce que le composant garde</strong> : son propre <code>sftpPanel.component.scss</code>,
+  écrit en <code>:host { ... }</code>, s'applique normalement — l'attribut <code>_nghost-…</code>
+  est posé sur l'élément hôte même quand il est créé par <code>createComponent()</code>. Sa mise en
+  page interne (colonne flex, <code>&gt; .body { flex: 1 1 0; overflow-y: auto }</code>) est donc
+  acquise, rien à redéclarer.</li>
+<li><strong>Ce qu'il perd</strong> : tout ce que son hôte d'origine lui donnait. Dans un onglet SSH
+  c'est un tiroir dimensionné par <code>sshTab.component.scss</code>
+  (<code>sftp-panel { position: absolute; height: 80%; width: 100%; bottom: 0; z-index: 5 }</code>),
+  et cette règle porte l'attribut de contenu de <code>sshTab</code> : elle ne peut pas atteindre une
+  instance vivant dans la vue d'un autre composant. Greffé dans la sidebar, le panneau arrive donc
+  <strong>sans aucune taille</strong>. Le piège n'est pas d'hériter d'un positionnement indésirable
+  (ça n'arrive pas), c'est de croire qu'un composant qui s'affiche correctement ailleurs se
+  dimensionnera tout seul ici.</li>
+</ul>
+<p>→ Fournir soi-même le dimensionnement, et poser <code>min-height: 0</code> sur
+<strong>chaque</strong> maillon de la chaîne flex qui descend jusqu'au conteneur scrollable du
+composant : la valeur par défaut <code>min-height: auto</code> d'un élément flex refuse de
+rétrécir sous son contenu, ce qui transforme silencieusement un descendant
+<code>overflow-y: auto</code> en contenu rogné. Les règles globales de ce plugin peuvent bien
+<em>ajouter</em> des propriétés à l'intérieur d'un composant natif (l'encapsulation ne protège de
+rien vers l'extérieur), mais elles perdent sur toute propriété que sa propre feuille définit :
+<code>:host &gt; .header</code> compte deux sélecteurs d'attribut, plus spécifique que n'importe
+quelle chaîne de sélecteurs de tag.</p>
+<p>Piège voisin, sur <code>[hidden]</code> : cet attribut ne vaut que par une règle de la feuille
+de style <em>user-agent</em>, et n'importe quelle règle <code>display</code> de niveau auteur la
+bat quelle que soit sa spécificité. Un <code>tag { display: flex }</code> écrit ici rend donc
+<code>[hidden]</code> inopérant sur ce tag — il faut ajouter explicitement
 <code>tag[hidden] { display: none }</code>.</p>
 
 <h3 id="piege-15">#15 — <code>@HostListener('document:click')</code> ignore <code>stopPropagation()</code></h3>
@@ -292,6 +309,16 @@ d'export runtime complet est : <code>AutoPrivateKeyLocator</code>,
 <li><code>SFTPFile</code> reste une simple <code>interface</code> (type only, normalement absente du
   bloc d'export runtime) ; <code>SFTPFileHandle</code> n'est pas réexporté au niveau de l'index.</li>
 </ul>
+<div class="callout warning"><span class="callout-title">Pas encore validé dans l'app</span>
+<p>Tout ce qui précède est vérifié sur les typings, le bundle et les métadonnées
+<code>NgModule</code> compilées — donc sur ce que le paquet <em>expose</em>. Ce qui reste à
+prouver par un test manuel dans Tabby, et que rien de statique ne peut établir : qu'un
+<code>SFTPPanelComponent</code> créé par <code>createComponent()</code> <em>se rende</em>
+effectivement hors de son module d'origine (résolution JIT des directives/pipes de la portée de
+<code>SSHModule</code>, notamment <code>dropZone</code> et le pipe <code>filesize</code>), et qu'il
+reste utilisable à la largeur d'une sidebar. Si le rendu échoue, le repli est la réimplémentation
+d'une liste au-dessus de <code>SFTPSession.readdir()</code> — API propre à 12 méthodes, pas de
+dette lourde.</p></div>
 
 <h4 id="fragile-6"><code>profile-tree</code> toujours non exporté</h4>
 <p>Vérifier périodiquement (montée majeure de <code>tabby-core</code>) s'il a fini par être
