@@ -8,8 +8,9 @@ connexion en direct, glisser-déposer, et (à venir) un SFTP contextuel intégr�
 Dépôt distant : https://github.com/TooMuhtsh/tabby-better-sidebar (public).
 
 **Avant toute session de travail sur ce projet, lire `.AIRules/README.html`**
-(index + protocole), puis `.AIRules/AI-CONTEXT.html` (invariants, 20 pièges
-déjà rencontrés, points fragiles à revérifier après mise à jour de Tabby) et
+(index + protocole), puis `.AIRules/AI-CONTEXT.html` (invariants, pièges déjà
+rencontrés — numérotés jusqu'à #31, le #7 est un trou hérité de la
+restructuration doc — et points fragiles à revérifier après mise à jour de Tabby) et
 `.AIRules/AI-HISTORY.html`/`.AIRules/ROADMAP.html` pour l'état d'avancement et
 ce qui reste à faire. Ouvrir ces fichiers directement dans un navigateur
 (navigation commune entre les 4 pages). Plusieurs bugs Windows/Tabby non

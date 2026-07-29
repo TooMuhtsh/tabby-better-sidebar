@@ -24,6 +24,111 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Test manuel des Workspaces : 5 correctifs (2026-07-29)</h2>
+<p>Passe de test manuel du chantier Workspaces conduite par l'utilisateur (l'assistant en écoute
+passive : logs du renderer via CDP, lecture directe de <code>config.yaml</code> — déchiffré pour
+l'occasion, le coffre le rendant sinon illisible depuis l'extérieur de l'app). Trois retours, dont
+deux ont révélé des bugs de fond ; validé par l'utilisateur en fin de passe.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-29</td><td>4f2fb59</td>
+<td><strong>Popups jamais recadrées à l'écran quand elles s'ouvrent depuis un item de menu</strong>
+(piège #30). Une première explication — plausible, prédisant le bon symptôme, mais fausse — a coûté
+un cycle de correction : la séquence d'événements (<code>contextmenu</code> suivi d'un
+<code>mouseup</code> relançant un cycle, contre <code>click</code> dernier de sa séquence). Ce qui a
+tranché : une trace temporaire imprimant l'élément réellement mesuré et sa hauteur, qui a donné
+<code>mode=createGroup elt=group-context-menu h=74</code> alors que la popup rendue faisait 109px.
+Les deux branches <code>*ngIf</code> basculent dans le même cycle et le DOM lu depuis
+<code>ngAfterViewChecked()</code> contient encore l'élément sortant. Correctif : mesure différée d'un
+tour de boucle d'événements. Vérifié par mesure et non à l'œil — <code>top</code> passé de 1026 à
+991,25px pour une popup de 109px dans un viewport de 1104, soit exactement la marge de 4px.</td></tr>
+<tr><td>2026-07-29</td><td>4f2fb59</td>
+<td><strong>Ordre des frères persisté avec l'id périmé après un re-parentage</strong> (piège #31),
+plus deux conséquences en cascade : le repli sur l'ordre de « Tous » était conditionné à la liste
+entière au lieu de l'être élément par élément, et l'ordre du conteneur d'origine n'était jamais
+réécrit quand un dossier le quittait. Diagnostiqué sur la vraie config de l'utilisateur, qui portait
+<code>526eac40: [a776a5b3]</code> — un id n'existant dans aucun groupe.</td></tr>
+<tr><td>2026-07-29</td><td>4f2fb59</td>
+<td><strong>Élagage automatique des ids morts</strong> dans toutes les listes d'ordre, à chaque
+écriture d'ordre (option retenue par l'utilisateur parmi trois : nettoyage ponctuel, automatique, ou
+statu quo). Vérifié sur ses données réelles : les 5 ids morts présents ont disparu au premier
+glisser-déposer, sans perte — 9 groupes, 25 profils, 0 orphelin avant comme après.</td></tr>
+<tr><td>2026-07-29</td><td>n/a — pas un bug</td>
+<td><strong>Points 6 et 7 du protocole de test</strong> (« la réorganisation faite dans un workspace
+s'applique aussi aux autres ») : conforme à la conception après vérification du geste réellement
+effectué — le dossier avait <em>changé de parent</em>, ce qui modifie l'arborescence réelle, donc
+tous les workspaces. Seuls la visibilité et l'ordre entre frères sont cloisonnés. L'ambiguïté du
+geste (moitié haute d'une ligne = réordonner, moitié basse = imbriquer) est consignée en roadmap
+comme point d'ergonomie à traiter.</td></tr>
+</table>
+
+<h2>Workspaces + déblocage complet du glisser-déposer de dossiers (2026-07-28)</h2>
+<p>Chantier Workspaces de la roadmap, puis une longue chasse au bug : imbriquer un dossier dans un
+autre était impossible, et l'est resté à travers plusieurs correctifs successifs — il y avait trois
+causes indépendantes, chacune suffisante à elle seule. Détail technique dans les pièges #22 à #29.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-28</td><td>4f2fb59</td>
+<td><strong>Rangement de l'arborescence réelle de l'utilisateur</strong>, à sa demande et après
+validation de la structure voulue : <code>Maison</code> à la racine, <code>Travail</code> devenu
+parent de <code>DATACENTER</code>, <code>Sites</code>, <code>HOSTS</code> et <code>Services</code>.
+Appliqué par glisser-déposer réel piloté via CDP (pas par édition de fichier) — ce qui a servi de
+recette grandeur nature du correctif. Intégrité vérifiée après coup : 22 profils avant / 22 après,
+aucun perdu, aucune référence de groupe orpheline, ids migrés correctement dans les deux workspaces
+existants.</td></tr>
+<tr><td>2026-07-28</td><td>4f2fb59</td>
+<td><strong>Incident — <code>config.yaml</code> de l'utilisateur corrompu puis réparé.</strong> Des
+éditions scriptées via <code>Get-Content</code>/<code>Set-Content -Encoding utf8</code> (PowerShell
+5.1) ont ré-encodé un chemin de clé SSH accentué (<code>…\Développement\…</code> →
+<code>…\DÃƒÆ’Ã‚Â©veloppement\…</code>) et ajouté un BOM. Totalement silencieux : détecté uniquement
+par un <code>diff</code> contre la sauvegarde, réparé par restauration intégrale, vérifié
+(accents intacts, pas de BOM). Documenté en piège #27 et en mémoire longue durée — toute édition
+scriptée d'un fichier accentué passe désormais par Node.</td></tr>
+<tr><td>2026-07-28</td><td>4f2fb59</td>
+<td><strong>3<sup>e</sup> et vraie cause racine — le placeholder de CDK</strong> (piège #28).
+Après les deux correctifs précédents, l'imbrication fonctionnait en glissant <em>vers le haut</em>
+mais jamais <em>vers le bas</em>, à n'importe quelle distance. Quand CDK entre dans la liste cible il
+y déplace son placeholder, qui libère en partant la place qu'il tenait <strong>au-dessus</strong> de
+la cible : celle-ci remonte d'une hauteur de ligne, sort de sous le curseur, CDK ressort, le
+placeholder revient → oscillation infinie. Vers le haut le placeholder est <em>sous</em> la cible,
+qui ne bouge pas — d'où l'asymétrie. Signature qui a trahi le mécanisme : la boucle de visée
+automatique alternait indéfiniment entre deux positions distantes d'exactement 29px. Le tri de CDK a
+été écarté comme cause en le désactivant (<code>cdkDropListSortingDisabled</code>) sans effet.
+Correctif : <code>.cdk-drag-placeholder { height: 0 }</code> — et surtout pas
+<code>display: none</code>, testé d'abord, qui supprime bien l'oscillation mais empêche
+<code>cdkDropListDropped</code> d'être émis (CDK anime la prévisualisation vers la boîte du
+placeholder ; sans boîte, la séquence ne se termine jamais). Ajouté en complément :
+<code>rescueTargetGroupId()</code>, un test de collision maison sur la position réelle des lignes qui
+rattrape les dépôts résolus à tort sur la racine — dont la mise au point a exigé de découvrir que
+<code>cdkDragEnded</code> est émis <em>avant</em> <code>cdkDropListDropped</code> (piège #29).</td></tr>
+<tr><td>2026-07-28</td><td>4f2fb59</td>
+<td><strong>Ergonomie du dépôt, sans ajouter d'espace</strong> (piège #26). Contrainte posée par
+l'utilisateur en cours de route : resserrer l'espacement entre dossiers, donc impossible de
+rembourrer les zones de dépôt. Retenu : la liste d'enfants, <em>quand elle est vide</em>, est
+agrandie à 16px puis remontée par une marge négative de même valeur — contribution nette nulle au
+flux, mais la boîte recouvre la moitié basse de la ligne du dossier. D'où le geste final : moitié
+basse = « déposer dedans », moitié haute = « réordonner à côté ». L'espacement passe de 45px à 29px
+par dossier replié. <code>pointer-events: none</code> au repos empêche l'overlay de voler les clics
+de la ligne. Pistes écartées et pourquoi : <code>::after</code> absolu (invisible pour
+<code>getBoundingClientRect</code>, donc rejeté par CDK), marge négative permanente sans
+<code>:empty</code> (écrase les lignes des dossiers non vides). Surbrillances de zone de dépôt
+retirées ensuite sur demande de l'utilisateur.</td></tr>
+<tr><td>2026-07-28</td><td>4f2fb59</td>
+<td><strong>2 premières causes du blocage</strong> (pièges #24 et #25), trouvées après que le test
+manuel eut échoué à départager les hypothèses — d'où la mise en place d'un banc de test qui pilote
+le glisser-déposer via CDP (<code>Input.dispatchMouseEvent</code>) et mesure la géométrie en direct,
+sur des dossiers jetables <code>grp-zzz-test-*</code>. (1) L'ordre de
+<code>cdkDropListConnectedTo</code> : CDK retient le <em>premier</em> conteneur connecté qui matche
+(<code>.find()</code>) et son test se termine par <code>nativeElement.contains(elementFromPoint)</code>,
+donc <code>groups-root</code> — qui contient dans le DOM toutes les listes imbriquées et figurait en
+tête — gagnait systématiquement (mesuré : <code>containerId === "groups-root"</code> sur 7 tentatives
+sur 7). Correctif : tri par profondeur décroissante, <code>groups-root</code> en dernier. (2) Le
+correctif CSS de la passe précédente (<code>min-height</code> agrandi sur
+<code>.cdk-drop-list-receiving</code>) aggravait le problème : CDK marque toutes les listes
+connectées d'un coup, donc l'arbre se décalait de ~90px au démarrage du glisser, et CDK met de toute
+façon les rectangles en cache <em>avant</em> d'appliquer cette classe.</td></tr>
+</table>
+
 <h2>Suite — fond des popups, distinct du fond de la sidebar (2026-07-28)</h2>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
@@ -114,7 +219,7 @@ AI-CONTEXT (invariants), AI-HISTORY (journal), ROADMAP (statut/priorités) — c
 avec navigation commune.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-26</td><td>non commité au moment de l'écriture</td>
+<tr><td>2026-07-26</td><td>4f2fb59</td>
 <td>Ancien <code>tabby_sidebar_roadmap.md</code> retiré, contenu porté (condensé, doublons et
 narration de délibération retirés) dans <code>.AIRules/{README,AI-CONTEXT,AI-HISTORY,ROADMAP}.html</code>.
 Numérotation des 20 pièges et des 7 points fragiles conservée à l'identique (référencée depuis

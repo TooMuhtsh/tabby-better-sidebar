@@ -140,6 +140,50 @@ que son indentation correspond exactement à celle du sibling voisin visé (comp
 "à l'œil"), surtout via l'outil <code>Edit</code> où l'indentation de <code>new_string</code> est
 tapée à la main plutôt que copiée du contexte environnant.</p>
 
+<h3 id="piege-22">#22 — Un <code>cdkDropList</code> derrière <code>*ngIf</code> disparaît complètement de l'enregistrement CDK, pas juste visuellement</h3>
+<p>Les zones de dépôt d'un dossier (<code>profiles-&lt;id&gt;</code>/<code>groups-&lt;id&gt;</code>)
+étaient enveloppées dans <code>ng-container(*ngIf='!group.collapsed')</code> avec les lignes de
+contenu — logique en apparence (pas la peine d'un drop-zone pour un contenu invisible), mais
+<code>*ngIf</code> détruit l'instance de la directive <code>cdkDropList</code>, qui n'est donc plus
+dans le registre interne de CDK. Un <code>cdkDropListConnectedTo</code> référençant cet id devient
+alors une connexion vers une liste inexistante : glisser un dossier vers un dossier <strong>replié</strong>
+n'affichait aucune zone de dépôt du tout, sans erreur (bug réel signalé le 28/07). → Garder le
+<code>div(cdkDropList, ...)</code> toujours monté (bénéficie déjà du <code>min-height: 8px</code> du
+piège #19, donc reste une cible atteignable même vide/repliée) et ne mettre <code>*ngIf</code> QUE sur
+le contenu à l'intérieur (les lignes de profils/sous-dossiers), jamais sur le conteneur
+<code>cdkDropList</code> lui-même.</p>
+
+<h3 id="piege-30">#30 — Depuis <code>ngAfterViewChecked()</code>, le DOM contient encore l'élément <em>sortant</em> quand deux <code>*ngIf</code> frères basculent dans le même cycle</h3>
+<p>Symptôme observé le 29/07 : les menus ouverts au clic droit étaient bien recadrés dans l'écran,
+mais pas les popups ouvertes <em>depuis un item de menu</em> (nouveau dossier, renommer, confirmation
+de suppression, sélecteur d'icônes), qui débordaient en bas.</p>
+<p>Le recadrage (<code>clampContextMenuPosition()</code>) mesure la popup via un
+<code>document.querySelector</code> sur les trois classes flottantes. Or quand un item de menu fait
+passer <code>contextMenuMode</code> de <code>'menu'</code> à <code>'createGroup'</code>, les deux
+branches <code>*ngIf</code> basculent dans le <strong>même</strong> cycle de détection, et le DOM lu
+depuis <code>ngAfterViewChecked()</code> contient encore l'élément sortant. Mesuré sur le bug réel :
+<code>mode=createGroup elt=group-context-menu h=74</code> alors que la popup effectivement rendue
+faisait 109px. Le calcul portait donc sur l'ancienne hauteur et concluait « rien à corriger »
+(1104 − 74 − 4 = 1026, exactement la position courante) — d'où un débordement de 35px, soit
+précisément l'écart de hauteur. L'ouverture au clic droit y échappait pour une raison sans rapport
+avec le geste : la popup précédente avait été détruite lors d'un cycle antérieur, donc le DOM était
+déjà cohérent.</p>
+<p>→ Différer la mesure d'un tour de boucle d'événements (<code>setTimeout</code>, patché par Zone.js
+donc exécuté dans Angular et suivi d'un cycle qui reprend les valeurs corrigées). Pas de boucle :
+<code>menuPositionDirty</code> est déjà remis à <code>false</code> et le recadrage ne le repositionne
+jamais.</p>
+<p>Piège de diagnostic associé : une explication plausible mais fausse a d'abord été retenue — la
+séquence d'événements (<code>contextmenu</code> suivi d'un <code>mouseup</code> qui relançait un
+cycle, contre <code>click</code> dernier de sa séquence). Elle prédisait le bon symptôme et a coûté
+un cycle de correction inutile. Ce qui l'a tranchée est une trace temporaire imprimant
+<em>l'élément réellement mesuré et sa hauteur</em> : sur un bug de géométrie, mesurer ce que le code
+voit avant de raisonner sur ce qu'il devrait voir.</p>
+<p>Reste vrai et conservé : écrire aussi la position directement sur l'élément
+(<code>menu.style.left/top</code>) en plus des champs liés, car <code>ngAfterViewChecked()</code>
+s'exécute après le rendu des liaisons du cycle. Invariant à préserver : <strong>toute</strong> popup
+positionnée via <code>contextMenuX/Y</code> passe par cet unique point de recadrage — ne pas
+positionner une nouvelle popup autrement.</p>
+
 <h2 id="cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</h2>
 <p class="muted">La plus grosse source de pièges de ce projet : ce plugin s'appuie par endroits sur
 des classes/composants internes de Tabby non garantis par une API publique stable. La méthode de
@@ -231,6 +275,152 @@ silencieux, aucune erreur. Touché <code>recentIcons</code> et <code>groupOrder<
 croyait fonctionner depuis le début). → Toute nouvelle clé <code>sidebarPlus.X</code> doit être
 ajoutée aux <code>defaults</code> de <code>SidebarPlusConfigProvider</code>
 (<code>src/configProvider.ts</code>), même vide.</p>
+
+<h3 id="piege-23">#23 — Muter une propriété imbriquée de <code>config.store.sidebarPlus.X</code> sans réassignation explicite ne persiste jamais</h3>
+<div class="callout warning"><span class="callout-title">Distinct du piège #16</span>
+<p>Pas un problème de <code>defaults</code> non déclaré (<code>groupOrder</code> l'était bien) — la clé
+existe, mais la mutation ne "prend" pas.</p></div>
+<p><code>this.config.store.sidebarPlus.groupOrder ??= {}; this.config.store.sidebarPlus.groupOrder[key] = valeur</code>
+(mutation imbriquée en place, jamais suivie d'une réassignation du haut niveau) ne persistait <strong>jamais</strong>
+dans <code>config.yaml</code> — silencieux, aucune erreur, et l'effet était même invisible en mémoire dans
+la même session (le réordonnancement de dossiers par glisser-déposer "revenait toujours à sa position
+initiale", y compris sans redémarrer Tabby). Bug réel introduit dès l'implémentation d'origine du
+glisser-déposer (avant même le chantier Workspaces), resté invisible jusqu'à un diagnostic complet le
+2026-07-28 (comparaison <code>config.yaml</code> avant/après, logs de debug injectés temporairement,
+CDP). Repéré par comparaison avec les autres écritures du plugin
+(<code>favorites</code>/<code>favoriteGroups</code>/<code>recentIcons</code>/<code>workspaces</code>),
+qui terminent <strong>toutes</strong> par une réassignation explicite
+<code>this.config.store.sidebarPlus.X = valeur</code> — seule <code>groupOrder</code> (branche "Tous"
+de <code>persistGroupOrder()</code>) s'en dispensait. → Toute écriture dans
+<code>config.store.sidebarPlus.*</code> doit se terminer par une affectation explicite de la clé de
+premier niveau touchée, jamais seulement une mutation de sous-objet en place.</p>
+
+<h3 id="piege-24">#24 — CDK retient le <em>premier</em> <code>cdkDropListConnectedTo</code> qui matche, et un conteneur ancêtre matche toujours</h3>
+<div class="callout warning"><span class="callout-title">Cause n°1 de « impossible d'imbriquer un dossier dans un autre »</span>
+<p>Symptôme : tout dépôt de dossier retombait à la racine, quelle que soit la précision de la visée.</p></div>
+<p>Mécanique CDK 15 (lue dans le source) : <code>DragRef._updateActiveDropContainer</code> appelle
+<code>this._initialContainer._getSiblingContainerFromPosition(...)</code>, qui fait
+<code>this._siblings.<strong>find</strong>(s =&gt; s._canReceive(item, x, y))</code>. Or
+<code>_canReceive</code> se termine par
+<code>elementFromPoint === nativeElement || nativeElement.<strong>contains</strong>(elementFromPoint)</code>.
+Deux conséquences cumulées : l'ordre du tableau passé à <code>cdkDropListConnectedTo</code> fait foi
+(<code>find</code>, pas « le plus spécifique »), et un conteneur qui <em>contient</em> le point dans le
+DOM matche toujours. Comme <code>#groups-root</code> contient toutes les listes imbriquées et qu'il
+était placé <strong>en premier</strong>, il gagnait systématiquement. → Trier les ids par profondeur
+décroissante et mettre <code>groups-root</code> <strong>en dernier</strong>
+(<code>sortGroupIdsByDepthDesc()</code>). Vérifié le 2026-07-28 par pilotage CDP du glisser-déposer :
+avant correctif, <code>containerId</code> valait <code>groups-root</code> sur 7 tentatives sur 7.</p>
+<p><code>profileListIds</code> n'a <em>pas</em> le même problème : <code>profiles-&lt;parent&gt;</code> et
+<code>groups-&lt;parent&gt;</code> sont frères, donc une liste de profils n'en contient jamais une autre.</p>
+
+<h3 id="piege-25">#25 — Toute règle CSS qui change la <em>taille</em> d'un <code>cdkDropList</code> en réaction au glisser est doublement cassée</h3>
+<div class="callout warning"><span class="callout-title">Cause n°2 du même bug</span>
+<p>Tentative « rendre les zones de dépôt visibles » via
+<code>.cdk-drop-list-receiving { min-height: 26px }</code> — a aggravé le problème au lieu de le résoudre.</p></div>
+<ol>
+<li><strong>Reflow massif.</strong> CDK marque <em>toutes</em> les listes connectées <code>receiving</code>
+d'un coup, au démarrage du glisser. Avec 5 dossiers repliés au-dessus du curseur, une croissance de
+8px→26px décale tout ce qui est en dessous de ~90px : le dossier visé n'est plus sous le pointeur.
+Mesuré : <code>elementFromPoint</code> renvoyait une liste située 90px plus haut avant le drag.</li>
+<li><strong>Rectangles déjà mis en cache.</strong> <code>DropListRef._startReceiving()</code> appelle
+<code>_cacheParentPositions()</code> <em>puis</em> émet <code>receivingStarted</code> — l'événement qui
+fait ajouter la classe. La boîte agrandie n'est donc jamais celle contre laquelle le test de collision
+compare. <code>_canReceive</code> exigeant à la fois le rect en cache <em>et</em>
+<code>elementFromPoint</code>, le dépôt ne s'enregistre silencieusement jamais.</li>
+</ol>
+<p>→ En réaction à <code>.cdk-drop-list-receiving</code>, ne changer que des propriétés sans effet sur
+la géométrie ni sur le cache : couleur, contour… et <code>pointer-events</code> (qui n'affecte pas le
+layout, donc pas le rect en cache, mais bien <code>elementFromPoint</code>).</p>
+
+<h3 id="piege-26">#26 — Agrandir une zone de dépôt sans ajouter d'espace : <code>:empty</code> + marge négative + <code>pointer-events</code></h3>
+<p>« Imbriquer A dans B » se traduit, dans le modèle CDK, par un dépôt sur la liste d'enfants de B —
+qui a une hauteur nulle dès que B est replié ou n'a pas encore de sous-dossier. Les rembourrer ajoute
+de l'espace mort sous <em>chaque</em> dossier (l'utilisateur a explicitement demandé l'inverse).</p>
+<p>Solution retenue (<code>sidebarTree.component.scss</code>) : quand — et seulement quand — la liste
+est vide, <code>min-height: 16px</code> + <code>margin-top: -16px</code>. La boîte de marge contribue
+0px au flux (l'arbre devient <em>plus compact</em> qu'avec un espaceur de 8px) mais la boîte de bordure
+recouvre la moitié basse de la ligne du dossier au-dessus. D'où l'ergonomie : moitié <strong>basse</strong>
+d'une ligne = « déposer dans ce dossier », moitié <strong>haute</strong> = « réordonner à côté ».</p>
+<p><code>pointer-events: none</code> au repos est ce qui rend le recouvrement sûr — sans lui, l'overlay
+volerait les clics de la ligne (repli, menu contextuel). La classe <code>.cdk-drop-list-receiving</code>
+le repasse à <code>auto</code> pendant le glisser ; c'est licite malgré le piège #25 puisque
+<code>pointer-events</code> n'a aucun effet sur le layout, donc aucun sur le rect déjà mis en cache.</p>
+<div class="callout"><span class="callout-title">Attention à <code>:empty</code></span>
+<p>Fonctionne bien ici car les nœuds-commentaires d'Angular (<code>*ngIf</code>/<code>*ngFor</code>)
+n'affectent pas <code>:empty</code> au sens CSS. À revérifier si le template gagne du texte statique
+ou des espaces significatifs dans ces div.</p></div>
+
+<h3 id="piege-28">#28 — Un placeholder CDK à hauteur normale rend tout dépôt « vers le bas » impossible</h3>
+<div class="callout warning"><span class="callout-title">Cause n°3, et la vraie racine</span>
+<p>Symptôme après les correctifs #24/#25 : imbriquer un dossier fonctionnait en glissant
+<em>vers le haut</em>, jamais <em>vers le bas</em> — quelle que soit la distance (voisin immédiat
+comme trois rangs plus bas).</p></div>
+<p>Quand CDK entre dans une liste cible, il y déplace son placeholder. Si celui-ci occupe la
+hauteur d'une ligne, il libère en partant la place qu'il tenait <strong>au-dessus</strong> de la
+cible : la cible remonte de 29px, sort de sous le curseur, CDK ressort de la liste, le placeholder
+revient, la cible redescend… <strong>oscillation infinie</strong>, le dépôt n'a jamais lieu. En
+glissant vers le haut le placeholder est <em>sous</em> la cible, qui ne bouge donc pas — d'où
+l'asymétrie.</p>
+<p>Mesuré : la boucle de visée automatique alternait indéfiniment entre deux positions distantes
+d'exactement une hauteur de ligne. Le phénomène persiste avec
+<code>cdkDropListSortingDisabled</code> — ce n'est pas le tri, c'est le placeholder.</p>
+<p>→ Correctif : <code>.cdk-drag-placeholder { height: 0 }</code> (+ marges/paddings à zéro).
+Entrer ou sortir d'un dossier ne change alors plus aucune géométrie.</p>
+<div class="callout warning"><span class="callout-title">Ne pas utiliser <code>display: none</code></span>
+<p>Première tentative : l'oscillation disparaissait bien, mais <strong>l'événement de dépôt ne se
+déclenchait plus du tout</strong>. CDK anime la prévisualisation vers la boîte du placeholder à la
+fin du glisser (<code>_animatePreviewToPlaceholder</code>) ; sans boîte, la séquence ne se termine
+jamais et <code>cdkDropListDropped</code> n'est jamais émis. Il faut une boîte mesurable de hauteur
+nulle, pas l'absence de boîte.</p></div>
+
+<h3 id="piege-29">#29 — <code>cdkDragEnded</code> est émis <em>avant</em> <code>cdkDropListDropped</code></h3>
+<p>Dans <code>DragRef._cleanupDragArtifacts()</code>, l'ordre est <code>ended.next()</code> puis
+<code>dropped.next()</code>. Tout état de suivi remis à zéro dans le gestionnaire
+<code>(cdkDragEnded)</code> est donc déjà perdu quand le gestionnaire de dépôt le lit — silencieux,
+et le symptôme (« mon repli de secours ne se déclenche jamais ») ne pointe pas du tout vers l'ordre
+des événements. Remettre l'état à zéro dans <code>(cdkDragStarted)</code> à la place.</p>
+<p>Concrètement ici : <code>onGroupDragEnded()</code> ne relâche que le suivi
+(<code>draggedGroupId</code>) et laisse délibérément <code>hoveredGroupId</code> intact pour que
+<code>rescueTargetGroupId()</code> puisse encore le lire.</p>
+
+<h3 id="piege-31">#31 — Après un re-parentage, l'ordre des frères doit être persisté avec le <em>nouvel</em> id</h3>
+<div class="callout warning"><span class="callout-title">Constaté dans la vraie config utilisateur</span>
+<p><code>groupOrder</code> d'un workspace contenait <code>526eac40: [a776a5b3]</code> — un id qui
+n'existe dans aucun groupe.</p></div>
+<p>Le re-parentage d'un dossier passe obligatoirement par recréation sous un <strong>nouvel id</strong>
+(piège #12). <code>reparentGroup()</code> appelle bien <code>migrateWorkspaceGroupId()</code> pour
+réécrire toutes les références, mais cette migration s'exécute <strong>avant</strong> que l'appelant
+ne persiste l'ordre des frères — or la liste persistée provient du nœud d'arbre <em>rendu</em>, qui
+porte encore l'ancien id. L'écriture repose donc par-dessus la migration un id mort : le dossier
+déplacé n'a plus aucune position enregistrée dans son nouveau parent et retombe silencieusement en
+fin de tri.</p>
+<p>Deux conséquences en cascade, à traiter ensemble :</p>
+<ul>
+<li>Le repli d'ordre était conditionné à <code>workspaceOrder?.length</code>, c'est-à-dire à la
+  <em>liste entière</em> : une liste ne contenant que des ids morts reste « non vide » et supprimait
+  donc complètement le repli sur l'ordre de « Tous », envoyant tout en tri alphabétique. Le repli
+  doit se résoudre <strong>élément par élément</strong> (un dossier absent de la liste du workspace
+  reprend sa position dans « Tous »), ce que décrit la roadmap.</li>
+<li>Le conteneur <em>source</em> doit être re-persisté sans l'élément parti, comme le fait déjà
+  <code>onProfileDrop()</code>. Sans ça l'id reste indéfiniment dans la liste d'ordre de son ancien
+  parent (constaté : un même id listé à la fois sous <code>root</code> et sous le dossier dans lequel
+  il venait d'être imbriqué).</li>
+</ul>
+<p>→ Faire remonter le nouvel id par <code>reparentGroup()</code> et le reporter sur le nœud glissé
+avant toute écriture d'ordre. Mutation sûre uniquement parce que ce nœud vient du
+<code>structuredClone()</code> de <code>loadTreeItems()</code> et jamais d'un objet vivant de
+<code>config.store</code> (piège #12).</p>
+
+<h3 id="piege-27">#27 — <code>Get-Content</code>/<code>Set-Content -Encoding utf8</code> (PS 5.1) corrompt les accents de <code>config.yaml</code></h3>
+<div class="callout warning"><span class="callout-title">A réellement abîmé la config utilisateur</span>
+<p>Un chemin de clé SSH <code>…\Développement\…</code> est devenu
+<code>…\DÃƒÆ’Ã‚Â©veloppement\…</code>, et un BOM a été ajouté en tête de fichier.</p></div>
+<p>Windows PowerShell 5.1 ne fait pas un aller-retour propre en UTF-8 : chaque cycle
+lecture/écriture ré-encode les caractères non-ASCII, et l'effet se cumule sur plusieurs passes.
+→ Pour toute édition scriptée de <code>config.yaml</code>, passer par <strong>Node</strong>
+(<code>readFileSync/writeFileSync</code> en <code>'utf8'</code>), jamais par
+<code>Get-Content</code>/<code>Set-Content</code>. Et systématiquement <code>diff</code> contre la
+sauvegarde avant de considérer l'opération terminée : le dégât est totalement silencieux.</p>
 
 <h3>Points de veille — <span class="pill warn">⚠️ à revérifier après update Tabby</span></h3>
 

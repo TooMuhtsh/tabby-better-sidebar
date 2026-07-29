@@ -28,7 +28,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td>Publication npm</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td>Menu contextuel enrichi (Profils &amp; Groupes)</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td><a href="#sftp">SFTP contextuel</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Absolue</td></tr>
-<tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Absolue</td></tr>
+<tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Absolue</td></tr>
 <tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill planned">📋 Mécanisme tranché</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
@@ -83,31 +83,169 @@ par <code>tabby-ssh</code> — pas de réimplémentation locale nécessaire, con
 <p>Plusieurs espaces de travail nommés (ex. perso / pro / projet X) filtrant la
 <strong>visibilité</strong> des groupes/profils affichés. Pas de mécanisme de masquage séparé :
 masquer un profil/groupe = le décocher du workspace actif — les workspaces SONT le mécanisme de
-masquage. À traiter après le SFTP, une fois celui-ci stable.</p>
+masquage. Traité avant le SFTP (initialement prévu après) — choix explicite de l'utilisateur le
+2026-07-28, ordre inversé par rapport à la priorisation d'origine.</p>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-29</span>
+<p>Passe de test manuel complète dans Tabby (onglets de workspace, masquage et panneau de
+restauration, comportement de la barre de filtre, favoris cloisonnés, ordre cloisonné, imbrication
+depuis un workspace, survie à un redémarrage complet). Cinq correctifs livrés à cette occasion, voir
+<a href="AI-HISTORY.html">AI-HISTORY</a> (2026-07-29) et les pièges #30/#31. Commit
+<code>4f2fb59</code>. Restent différés et non implémentés : icône par workspace, sélecteur adaptatif,
+couleurs contextuelles, export/import JSON — détaillés ci-dessous.</p></div>
+
 <ul>
-<li><strong>Stockage dans <code>config.yaml</code></strong> via <code>ConfigProvider</code> (pas de
-  fichiers JSON externes séparés — option envisagée puis abandonnée). L'objectif de portabilité
-  entre machines est déjà couvert nativement puisque <code>config.yaml</code> contient tout en un
-  seul fichier synchronisable tel quel (dotfiles Git, cloud, Syncthing...) ; fragmenter en
-  plusieurs fichiers aurait compliqué cette synchro pour un système maison (écriture atomique,
-  gestion de conflit) à construire en plus. Export/import JSON <strong>ponctuel</strong> prévu à la
-  place pour le partage sélectif (structure d'un workspace sans les secrets), pas comme source de
-  vérité vivante.</li>
-<li><strong>Favoris cloisonnés par workspace</strong> (un profil peut être favori dans A mais pas
-  B). L'ordre des profils/groupes, lui, reste partagé entre tous les workspaces.</li>
-<li>Workspace <strong>"Tous"</strong> permanent par défaut (affichage non filtré), pour qu'un
-  mauvais filtrage ne donne jamais l'impression que des profils ont disparu.</li>
-<li><strong>Logique de cascade</strong> au masquage d'un dossier parent : popup proposant "ce
-  workspace seulement" vs "tous les workspaces".</li>
-<li><strong>Couleurs contextuelles</strong> : couleur de bordure de terminal différente selon le
-  workspace actif au moment du lancement d'un même profil (ex. rouge en "Prod", bleu en "Perso").
-  Injectée via un clone en mémoire (<code>structuredClone</code>) au double-clic de lancement,
-  <strong>jamais</strong> en mutant le profil d'origine (cohérent avec le piège #12 d'AI-CONTEXT.html).</li>
-<li><strong>Sélecteur adaptatif</strong> : onglets horizontaux par défaut en haut de la sidebar,
-  bascule automatique vers un menu déroulant (dropdown) dès que la largeur disponible devient trop
-  étroite — détecté via un <code>ResizeObserver</code> sur la sidebar (pas un seuil fixe sur le
-  nombre de workspaces, la largeur réelle est le signal le plus fiable puisque la sidebar est
-  elle-même redimensionnable par l'utilisateur).</li>
+<li><strong>Stockage dans <code>config.yaml</code></strong> via <code>ConfigProvider</code>, nouvelle clé
+  <code>sidebarPlus.workspaces: SidebarWorkspace[]</code> (déclarée dans les <code>defaults</code>,
+  piège #16). Pas de fichiers JSON externes séparés — option envisagée puis abandonnée, voir
+  raisonnement de portabilité ci-dessous (inchangé). Export/import JSON ponctuel toujours prévu mais
+  <strong>différé</strong> (non implémenté dans cette première passe).</li>
+<li><strong>Membership = listes d'exclusion, pas d'inclusion</strong> : chaque <code>SidebarWorkspace</code>
+  porte <code>hiddenProfileIds</code>/<code>hiddenGroupIds</code>, pas une liste de membres. Décision
+  actée pour que tout profil/groupe créé après coup reste visible par défaut dans tous les workspaces
+  existants (cohérent avec le "masquer = décocher" du paragraphe d'intro) ; le workspace virtuel
+  "Tous" est exactement le cas zéro-exclusion, jamais stocké en tant qu'entrée à part.</li>
+<li><strong>Masquage d'un groupe = cascade sur ses descendants</strong> pour l'affichage (calculé à
+  la volée dans <code>computeWorkspaceFilterState()</code>, pas stocké) — sans ça
+  <code>buildGroupTree()</code> fait disparaître silencieusement les sous-groupes orphelins d'un
+  parent masqué au lieu de les remonter.</li>
+<li><strong>UX de masquage revue le 2026-07-28</strong> (retour utilisateur après un premier essai du
+  popup à cases à cocher multi-workspaces) : remplacée par une action en un clic, "Cacher dans le
+  workspace" dans le menu contextuel Profil/Groupe — cible toujours le workspace actif, aucune popup,
+  masquée d'elle-même sur "Tous" (qui ne masque jamais rien). Pour faire machine arrière, un bouton
+  <em>œil barré</em> à côté de la barre de filtre bascule vers un panneau dédié listant
+  <strong>uniquement</strong> les groupes/profils directement masqués dans le workspace actif
+  (<code>hiddenGroupsInWorkspace</code>/<code>hiddenProfilesInWorkspace</code>, lues depuis
+  <code>rawGroupsSnapshot</code> — un instantané non filtré conservé exprès pour ce panneau), chacun
+  avec un bouton <em>œil</em> pour le réafficher. Popup à cases à cocher entièrement retirée.</li>
+<li><strong>La barre de filtre cherche partout, tout le temps</strong> (retour utilisateur, 2026-07-28) :
+  <code>onFilterChange()</code> ignore désormais délibérément le filtrage de visibilité du workspace
+  actif — un workspace ne doit contrôler que ce que l'arbre montre par défaut, jamais rendre quelque
+  chose introuvable par la recherche.</li>
+<li><strong>Favoris cloisonnés par workspace</strong>, sans migration : les clés existantes
+  <code>sidebarPlus.favorites</code>/<code>favoriteGroups</code> (déjà vivantes dans le
+  <code>config.yaml</code> de l'utilisateur) sont réutilisées telles quelles comme favoris du
+  workspace "Tous" ; chaque nouveau workspace a ses propres <code>favorites</code>/<code>favoriteGroups</code>
+  sur son propre objet.</li>
+<li><strong>Ordre des dossiers/profils indépendant par workspace</strong> (retour utilisateur en test
+  manuel, 2026-07-28 — revirement sur la décision initiale "ordre partagé"). Chaque
+  <code>SidebarWorkspace</code> porte son propre <code>groupOrder</code>/<code>profileOrder</code>
+  (même forme que le <code>sidebarPlus.groupOrder</code> top-level, qui reste le mécanisme du
+  workspace "Tous" — zéro migration). Un dossier/profil pas encore réordonné dans un workspace donné
+  retombe sur l'ordre de "Tous" (<code>groupOrder</code> top-level / <code>weight</code> natif) tant
+  qu'on ne le déplace pas explicitement dans ce workspace. Réordonner en dehors de "Tous" n'écrit
+  <strong>jamais</strong> le <code>weight</code> natif d'un profil — seulement
+  <code>workspace.profileOrder[groupId]</code> — ce qui a un bénéfice de robustesse repéré par
+  l'utilisateur en cours de route : si le plugin est un jour désinstallé, aucune donnée native
+  (structure de groupes, poids de profils) n'a été touchée par les réorganisations faites hors
+  "Tous", seul l'overlay <code>sidebarPlus.workspaces</code> devient orphelin dans
+  <code>config.yaml</code>. Une liste d'ordre par workspace n'a besoin de décrire que les éléments
+  <em>visibles</em> dans ce workspace (un élément masqué n'y est jamais rendu, sa position enregistrée
+  n'a donc pas d'importance) — ce qui rend inutile le garde-fou anti-réorganisation initialement posé
+  en v1 (bloquer le glisser-déposer quand des éléments masqués sont présents) : supprimé, plus de
+  risque de corruption puisque chaque workspace a son propre ordre.</li>
+<li><strong>Workspace actif en <code>localStorage</code></strong> (<code>sidebarPlusActiveWorkspace</code>),
+  pas dans <code>config.yaml</code> — état par machine, changer d'onglet ne doit pas modifier un
+  fichier synchronisé entre machines.</li>
+<li><strong>Sélecteur</strong> : implémenté en onglets horizontaux simples (<code>flex-wrap</code>,
+  passent à la ligne s'il y en a beaucoup) + bouton "+". Le <strong>sélecteur adaptatif</strong>
+  (bascule automatique en dropdown via <code>ResizeObserver</code> sous une largeur seuil) est
+  <strong>différé</strong> — pas nécessaire tant que le nombre de workspaces reste faible en usage
+  réel.</li>
+<li><strong>Couleurs contextuelles</strong> (bordure de terminal selon le workspace actif au lancement) :
+  <strong>différé</strong>, non implémenté dans cette passe — touche le lancement de profil, jugé
+  préférable comme étape revue séparément. Design inchangé : injection via clone en mémoire
+  (<code>structuredClone</code>), jamais en mutant le profil d'origine (piège #12).</li>
+<li><strong>Le nom/icône/couleur d'un dossier ou son parent restent globaux</strong>, jamais
+  spécifiques à un workspace (décision confirmée avec l'utilisateur le 2026-07-28) — cohérent avec le
+  reste : un dossier a une seule identité et une seule position dans l'arborescence réelle ; seules sa
+  <strong>visibilité</strong> et son <strong>ordre parmi ses frères</strong> sont cloisonnés par
+  workspace.</li>
+<li><strong>Bug corrigé (2026-07-28) — réordonner un dossier via glisser-déposer était cassé, et
+  déplacer un dossier vers un autre parent ("désimbriquer") pouvait orpheliner des sous-éléments</strong> :
+  <code>reparentGroup()</code> recrée le dossier déplacé sous un <strong>nouvel id</strong> (piège #12,
+  Tabby n'autorise pas de reparentage en place) puis migre profils/sous-dossiers avant de supprimer
+  l'original. Le code migrait jusque-là depuis l'arbre <em>affiché</em>
+  (<code>dragged.children</code>/<code>.profiles</code>) — donc filtré par le workspace actif : tout
+  élément masqué dans ce workspace n'était jamais migré, restait rattaché à l'ancien id, puis se
+  retrouvait orphelin quand l'original était supprimé. Corrigé pour migrer depuis un instantané complet
+  et non filtré (<code>allGroups</code>, récupéré une fois via <code>profilesService.getProfileGroups()</code>
+  puis transmis à travers la récursion). Deuxième volet du même bug : le changement d'id n'était répercuté
+  nulle part — <code>migrateWorkspaceGroupId()</code> renomme désormais l'ancien id vers le nouveau dans
+  <code>hiddenGroupIds</code>/<code>groupOrder</code> de <strong>tous</strong> les workspaces (pas
+  seulement celui depuis lequel le déplacement a été fait) et dans le <code>groupOrder</code> top-level
+  de "Tous". <code>isSelfOrDescendant()</code> (garde-fou anti-cycle) migré de la même façon de
+  <code>profileGroups</code> vers <code>rawGroupsSnapshot</code> (non filtré), pour ne pas sous-détecter
+  un cycle dont un maillon serait masqué dans le workspace actif.</li>
+<li><strong>Bug corrigé (2026-07-28) — imbriquer un dossier dans un autre était totalement
+  impossible</strong>, et l'est resté à travers plusieurs correctifs successifs parce qu'il y avait
+  <strong>trois causes indépendantes</strong>, chacune suffisante à elle seule. Diagnostiqué par
+  pilotage automatisé du glisser-déposer via CDP (<code>Input.dispatchMouseEvent</code> + mesure de
+  la géométrie en direct) sur des dossiers jetables <code>grp-zzz-test-*</code>, après que le test
+  manuel eut échoué à départager les hypothèses. Détail complet dans les pièges #24, #25, #28 et #29 ;
+  en résumé : (1) l'ordre de <code>cdkDropListConnectedTo</code> — CDK retient le <em>premier</em>
+  conteneur qui matche et un ancêtre matche toujours, donc <code>groups-root</code> gagnait
+  systématiquement ; (2) une règle CSS qui agrandissait les zones de dépôt pendant le glisser —
+  reflow de tout l'arbre et rectangles déjà mis en cache par CDK ; (3) le placeholder de CDK à
+  hauteur de ligne, qui en quittant sa position <em>au-dessus</em> de la cible faisait remonter
+  celle-ci hors du curseur, d'où une oscillation infinie et l'asymétrie observée (glisser vers le
+  haut fonctionnait, vers le bas jamais).</li>
+<li><strong>Geste de dépôt (2026-07-28)</strong> : <strong>moitié basse</strong> de la ligne d'un
+  dossier = « déposer dedans », <strong>moitié haute</strong> = « réordonner à côté ». Obtenu sans
+  ajouter d'espace mort — la liste d'enfants, quand elle est vide, est agrandie puis remontée par une
+  marge négative de même valeur (contribution nette nulle au flux) et rendue transparente à la souris
+  hors glisser (piège #26). L'espacement de l'arbre <em>diminue</em> au passage de 45px à 29px par
+  dossier replié, à la demande de l'utilisateur. Un filet de sécurité complète le dispositif :
+  <code>rescueTargetGroupId()</code> fait son propre test de collision sur la position réelle des
+  lignes et rattrape les dépôts que CDK a résolus à tort sur la racine.</li>
+<li><strong>Surbrillance des zones de dépôt : retirée</strong> (demande utilisateur, 2026-07-28) —
+  le placeholder de CDK, qui se déplace dans le dossier survolé, suffit comme retour visuel.</li>
+<li><strong>Icône par workspace</strong> : demandée par l'utilisateur, <strong>non implémentée</strong>
+  (repoussée derrière les bugs de glisser-déposer, jamais reprise depuis). Design attendu : même
+  picker que celui des profils/dossiers, ouvert par une entrée de menu contextuel sur l'onglet du
+  workspace, icône affichée à côté du nom dans l'onglet. Implique un champ <code>icon</code> sur
+  <code>SidebarWorkspace</code>.</li>
+<li><strong>Bug corrigé (2026-07-28) — un nouveau workspace pouvait sembler hériter de l'état d'un
+  autre workspace</strong> : condition de course entre le rechargement déclenché par
+  <code>config.changed$</code> (sur chaque <code>config.save()</code>, y compris celui de la création)
+  et l'appel explicite de <code>selectWorkspace()</code> juste après — deux <code>loadTreeItems()</code>
+  concurrents, le dernier à se terminer (pas forcément le dernier démarré) l'emportait. Corrigé par un
+  compteur de requête monotone (<code>loadTreeRequestId</code>) : chaque appel capture l'état du
+  workspace actif <em>avant</em> son premier <code>await</code> (jamais relu après, pour ne pas
+  hériter d'une mutation faite par un appel concurrent en cours de route), et seul l'appel le plus
+  récemment <em>démarré</em> committe ses résultats dans <code>this.profileGroups</code>/
+  <code>this.rootGroups</code> à la fin.</li>
+</ul>
+
+<h4 id="ws-propositions">Propositions issues du test manuel du 2026-07-29 <span class="pill planned">📋 À arbitrer</span></h4>
+<p class="muted">Consignées à la demande de l'utilisateur pour vérification de faisabilité, aucune
+n'est implémentée.</p>
+<ul>
+<li><strong>Masquer par défaut dans les workspaces existants tout profil/dossier nouvellement
+  créé</strong> (visible d'emblée uniquement dans « Tous »). Motif avancé par l'utilisateur : en
+  l'état, chaque création apparaît d'un coup dans <em>tous</em> les workspaces, ce qui les « casse »
+  systématiquement et impose un masquage manuel workspace par workspace. Inverse la décision
+  d'origine (listes d'exclusion → visible par défaut partout), à ne pas confondre avec un simple
+  réglage : le sens par défaut de l'appartenance change.
+  <div class="callout warning"><span class="callout-title">Garantie nécessairement partielle</span>
+  <p>Seules les créations passant par le plugin (<code>createGroup()</code>,
+  <code>pickProfileTemplate()</code>) peuvent être interceptées. Un profil créé depuis les
+  paramètres natifs de Tabby n'emprunte aucun de ces chemins et resterait visible partout — sauf à
+  détecter les nouveautés au chargement (comparaison avec un instantané des ids connus), ce qui
+  suppose de stocker cet instantané et de trancher le cas « profil vu pour la première fois sur une
+  autre machine ».</p></div></li>
+<li><strong>Rendre configurable le comportement de la barre de filtre</strong> vis-à-vis des éléments
+  masqués. Aujourd'hui le filtre cherche délibérément partout, y compris ce que le workspace actif
+  masque (confirmé comme voulu par l'utilisateur au test du 2026-07-29) ; l'option offrirait le
+  comportement inverse — restreindre la recherche au périmètre visible du workspace. Réglage
+  <code>sidebarPlus</code> booléen, sans impact sur le stockage des workspaces.</li>
+<li><strong>Lever l'ambiguïté entre « réordonner » et « imbriquer » au glisser-déposer.</strong>
+  Constat du test du 2026-07-29 : l'utilisateur pensait réordonner deux dossiers alors qu'il en
+  imbriquait un dans l'autre. Ce n'est pas un défaut de cloisonnement — un re-parentage modifie
+  l'arborescence réelle, donc tous les workspaces, ce qui est la conception actée — mais le geste ne
+  se distingue que par quelques pixels (moitié haute d'une ligne = réordonner, moitié basse =
+  déposer dedans, cf. piège #26). Pistes : retour visuel distinct selon la moitié survolée, seuil
+  de déclenchement plus strict, ou modificateur clavier pour forcer l'imbrication.</li>
 </ul>
 
 <h3 id="sessions-actives">Section "Sessions Actives" en haut de la sidebar</h3>
