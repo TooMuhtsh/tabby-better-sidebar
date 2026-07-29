@@ -24,6 +24,57 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Revue de gouvernance — mise en conformité à la charte (2026-07-29)</h2>
+<p>Revue au sens de la <a href="GOUVERNANCE-IA.md">charte</a>, Règle 7 Cas B : audit d'un
+<code>.AIRules/</code> déjà au format mais qui a dérivé. Déclenchée en cours de session ordinaire,
+après un rappel de l'utilisateur sur une règle que je n'appliquais pas — les fichiers de
+<code>.AIRules/</code> se commitent et se poussent à chaque mise à jour, ce qui était déjà écrit dans
+la charte (Règle 1) et resté lettre morte. Cette entrée acte la revue et les écarts constatés.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-07-29</td><td><code>db45754</code></td>
+<td><strong>Quatre écarts corrigés, tous antérieurs à la révision de charte du 2026-07-28.</strong>
+(1) L'intro de <code>README.html</code> annonçait ce dossier <strong>« hors du dépôt Git »</strong> —
+faux, et contredit par le paragraphe suivant de la même page ; le chemin cité
+(<code>.AIRules/tabby-better-sidebar/</code>) n'existait pas davantage. (2) Les cadences d'écriture
+disaient d'alimenter <code>AI-HISTORY</code> à chaque commit et <code>ROADMAP</code> à chaque
+changement de statut, là où la charte exige depuis le 2026-07-28 le feu vert explicite de
+l'utilisateur pour ces deux pages, <code>AI-CONTEXT</code> restant la seule alimentée
+proactivement. (3) Le pied de page ne portait pas la mention « Conforme à la charte du … », qui est
+précisément le marqueur qu'une session ultérieure compare pour détecter qu'un projet est resté sur
+une convention antérieure. (4) La page affirmait l'existence d'un <code>CLAUDE.md</code> à la racine
+de <code>Développement/</code> — créé à cette occasion, il n'existait pas.
+<br><br>
+<strong>La charte voyage désormais avec le projet</strong> : <code>GOUVERNANCE-IA.md</code> est copié
+à l'identique dans ce <code>.AIRules/</code>, la racine du workspace n'étant pas un dépôt Git — cette
+copie versionnée en est la seule sauvegarde. Copie conforme, jamais adaptée au projet, pour rester
+comparable à l'original par un <code>diff</code> ; à repropager à chaque révision de la charte.
+<br><br>
+<code>CLAUDE.md</code> enregistre enfin la décision par dépôt qu'exige la Règle 3 sur les
+<strong>métadonnées d'attribution IA</strong> dans les messages de commit : admises — ce qui
+enregistre la pratique déjà présente dans l'historique public plutôt que de choisir à neuf, revenir
+dessus imposant une réécriture d'historique.</td></tr>
+
+<tr><td>2026-07-29</td><td><code>ab1d2ac</code></td>
+<td>Chantier <strong>« Transferts SFTP »</strong> ajouté à <a href="ROADMAP.html#transferts">la
+roadmap</a> à la demande de l'utilisateur, en priorité Haute, <strong>devant Auto-Enter</strong> :
+gestionnaire de transferts horodaté en bas de sidebar masqué quand vide, dépôt depuis l'OS
+directement sur un dossier distant, glisser-déposer interne au panneau SFTP. Rien n'est implémenté.
+La section consigne surtout la vérification d'API préalable, faite sur le Tabby installé : la
+directive <code>dropZone</code> n'arrête pas la propagation et ne transmet pas le
+<code>DragEvent</code> ; <code>FileTransfer</code> n'expose aucun signal de fin ;
+<code>startUploadFromDragEvent()</code> publie chaque fichier dans
+<code>fileTransferStarted$</code>, ce qui fait <strong>ouvrir le menu de transferts natif à chaque
+dépôt</strong> ; et nos propres transferts, ne passant pas par <code>PlatformService</code>,
+n'atteignent aucune liste. Deux points tranchés par l'utilisateur : lignes sobres plutôt que les
+barres de progression du menu natif, et — sur sa question de réutiliser ce menu — la vérification que
+<code>TransfersMenuComponent</code> n'est ni dans les <code>exports</code> du NgModule de
+<code>tabby-core</code> ni dans le bloc d'export du bundle compilé, sa source de données restant
+réutilisable là où son composant ne l'est pas.</td></tr>
+</table>
+
 <h2>Tunnels SSH (2026-07-29)</h2>
 <p>Deuxième des trois chantiers de priorité moyenne attaqués d'affilée. Ouvert par une
 <strong>note de faisabilité avant tout code</strong>, sur le paquet <code>tabby-ssh</code> installé
