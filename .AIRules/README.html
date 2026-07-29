@@ -23,8 +23,8 @@ composant <code>profile-tree</code> natif de Tabby.</p>
 <ul>
 <li>Dépôt de code : <code>C:\Users\Alex Ramirez\Documents\Développement\tabby-ssh-sidebar</code> —
   <a href="https://github.com/TooMuhtsh/tabby-better-sidebar">github.com/TooMuhtsh/tabby-better-sidebar</a> (public).</li>
-<li>Ce dossier de gouvernance (<code>.AIRules/tabby-better-sidebar/</code>) — <strong>hors du dépôt Git</strong>,
-  voir callout ci-dessous.</li>
+<li>Ce dossier de gouvernance (<code>.AIRules/</code>) vit <strong>à la racine du dépôt</strong>, donc
+  versionné avec le code.</li>
 </ul>
 
 <p class="muted">Ce dossier est versionné avec le code (dans le dépôt Git de
@@ -43,6 +43,10 @@ composant <code>profile-tree</code> natif de Tabby.</p>
     commits (date / hash / résumé).</td></tr>
 <tr><td><a href="ROADMAP.html">ROADMAP.html</a></td>
     <td>Statut, priorité et détail de design complet de chaque chantier restant à faire.</td></tr>
+<tr><td><a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a></td>
+    <td>Copie conforme de la charte de gouvernance appliquée par ce projet (original à la racine du
+    workspace). Ne pas l'adapter au projet : elle doit rester comparable à l'original par un
+    <code>diff</code>.</td></tr>
 </table>
 
 <p>Le <code>CLAUDE.md</code> à la racine du dépôt <code>tabby-ssh-sidebar</code> reste la référence
@@ -60,6 +64,10 @@ toute session ouverte depuis ce niveau le lise aussi.</p>
 <li>Vérifier l'état réel avant de faire confiance à la doc : jonction NTFS présente
   (<code>%APPDATA%\tabby\plugins\node_modules\tabby-better-sidebar</code>), build à jour
   (<code>dist/index.js</code>), <code>git log</code> pour les derniers commits.</li>
+<li>Comparer la date de conformité du pied de page à celle du pied de page de
+  <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a> : si elle est antérieure, <strong>signaler
+  l'écart et proposer</strong> une remise à niveau (charte, Règle 7, Cas B) — ne jamais l'appliquer
+  d'office.</li>
 </ol>
 
 <div class="callout important">
@@ -78,14 +86,23 @@ pas seulement une relecture de code). C'est déjà la pratique suivie jusqu'ici 
 </div>
 
 <h3>Quand mettre à jour</h3>
+<p>Deux cadences opposées, à ne pas confondre :</p>
 <ul>
-<li><strong>AI-HISTORY.html</strong> : à chaque commit Git, ou dès qu'un piège/comportement notable
-  est découvert — ne pas attendre la fin de session.</li>
-<li><strong>AI-CONTEXT.html</strong> : quand un nouvel invariant ou piège apparaît, ou qu'une
-  décision de design change (remplacer l'ancienne section plutôt que de l'empiler — pas besoin de
-  garder l'historique complet des revirements, juste l'état final et le "pourquoi" s'il est
-  utile).</li>
-<li><strong>ROADMAP.html</strong> : dès qu'un chantier change de statut ou de priorité.</li>
+<li><strong>AI-CONTEXT.html — au fil de l'eau, sans rien demander.</strong> Dès qu'un piège
+  technique notable est rencontré ou qu'un nouvel invariant apparaît, il est consigné
+  immédiatement, avant même que le chantier en cours soit terminé. C'est le seul document alimenté
+  proactivement. Quand une décision de design change, remplacer la section périmée plutôt que de
+  l'empiler — juste l'état final et le "pourquoi" s'il est utile.</li>
+<li><strong>AI-HISTORY.html et ROADMAP.html — sur feu vert explicite de l'utilisateur.</strong>
+  Aucun changement de statut, aucune décision de design actée, aucune description de correctif n'y
+  est écrite avant qu'il ait confirmé — y compris une mention intermédiaire du type « implémenté, en
+  attente de test ». Un build qui passe ou un test CDP réussi ne déclenchent rien ici.
+  <em>Exception</em> — session qui s'éternise : quand le contexte risque d'être perdu (compactage,
+  interruption), proposer un point de gouvernance et n'écrire que ce que l'utilisateur valide à ce
+  moment-là.</li>
+<li><strong>Toute modification de ce dossier se commite et se pousse dans la foulée</strong> (charte,
+  Règle 1) : une gouvernance à jour qui dort en local n'est ni sauvegardée, ni récupérable depuis une
+  autre machine. Le feu vert porte sur l'écriture, pas sur le push.</li>
 </ul>
 
 <p><strong>Ne jamais modifier les entrées déjà écrites d'AI-HISTORY.html</strong> — uniquement en
@@ -97,7 +114,8 @@ touchant <code>config.store.groups</code>/<code>.profiles</code>, jamais directe
 vraies données de l'utilisateur — même quand le risque semble faible (voir piège #12
 dans AI-CONTEXT.html, qui a réellement corrompu la config de production une fois).</p>
 
-<footer>tabby-better-sidebar · dernière restructuration de cette gouvernance : 2026-07-26</footer>
+<footer>tabby-better-sidebar · dernière restructuration de cette gouvernance : 2026-07-26 ·
+<strong>Conforme à la charte de gouvernance du 2026-07-29</strong></footer>
 
 </body>
 </html>
