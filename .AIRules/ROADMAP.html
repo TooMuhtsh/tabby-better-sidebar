@@ -42,7 +42,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#historique-profils">Historique des Profils Récents</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#quick-snippets">Quick Snippets (Macros de Sidebar)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#icon-favorites">Favoris d'icônes (distincts des « Récentes »)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#icon-favorites">Favoris d'icônes (distincts des « Récentes »)</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#partage-groupe">Partage rapide de groupe (Presse-papiers)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#notes-profil">Notes de profil (Mémento contextuel)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#ping-live">Indicateur de latence / Ping live</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
@@ -343,11 +343,32 @@ de logs) à un profil ou un groupe.</p>
 
 <h3 id="icon-favorites">Favoris d'icônes (distincts des « Récentes »)</h3>
 <p>Demandé directement par l'utilisateur (2026-07-28) après usage du picker d'icônes existant.
-Bouton étoile sur chaque icône affichée dans le picker (grille "Récentes", grille de résultats de
-recherche, SVG personnalisé une fois appliqué) pour l'épingler dans une liste séparée et
-<strong>permanente</strong>, indépendante de la fréquence d'usage — contrairement à « Récentes » qui
-s'use avec le temps (une icône peu utilisée finit par en sortir), une icône favorite reste tant
-qu'on ne la retire pas explicitement.</p>
+Épingler une icône dans une liste séparée et <strong>permanente</strong>, indépendante de la
+fréquence d'usage — contrairement à « Récentes » qui s'use avec le temps (une icône peu utilisée
+finit par en sortir), une icône favorite reste tant qu'on ne la retire pas explicitement.</p>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-29</span>
+<p>Commit <code>60e71ef</code>. Deux écarts au design d'origine ci-dessous, tous deux issus du test
+manuel :</p>
+<ul>
+<li><strong>Clic droit sur la tuile plutôt que bouton étoile</strong> (« c'est plus naturel »). La
+  version à étoile a d'abord été implémentée puis abandonnée : le badge dessiné dans le coin de la
+  tuile ressortait <em>visiblement rogné</em>, les grilles du picker ayant un
+  <code>overflow-y</code> qui découpe tout ce qui déborde d'une tuile. C'est aussi pourquoi le menu
+  est rendu <strong>hors</strong> de <code>.icon-picker</code>. Le menu affiche l'icône concernée à
+  la place d'une étoile générique (demande utilisateur).</li>
+<li><strong>Section « Favoris » affichée en permanence</strong>, y compris vide, avec l'indication du
+  geste à faire — sinon la fonctionnalité n'est découvrable qu'une fois déjà utilisée.</li>
+</ul>
+<p>Point d'architecture à connaître avant d'ajouter un menu au picker : ce menu ne passe
+<strong>pas</strong> par <code>contextMenuMode</code>, dont les modes sont mutuellement exclusifs —
+en utiliser un démonterait le picker sur lequel le menu agit. Il porte donc son propre état d'ouverture
+et ses propres coordonnées (partager <code>contextMenuX/Y</code> déplacerait le picker lui-même, qui
+en est positionné). Le recadrage, lui, reste mutualisé via <code>clampInViewport()</code> pour ne pas
+contourner le point unique du piège #30.</p>
+<p>Non retenu faute d'être demandé : retirer des « Récentes » une icône déjà épinglée (elle apparaît
+donc dans les deux sections), et cloisonner les favoris d'icônes par workspace — une icône est un
+choix de rendu, pas un élément que le workspace montre ou masque.</p></div>
 <ul>
 <li>Nouvelle clé <code>sidebarPlus.favoriteIcons: string[]</code>, même format que
   <code>recentIcons</code> (classe FontAwesome/Iconify ou SVG brut déjà sanitisé) — à déclarer dans

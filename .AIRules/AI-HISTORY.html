@@ -24,6 +24,26 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Favoris d'icônes (2026-07-29)</h2>
+<p>Chantier « Favoris d'icônes » de la roadmap, enchaîné après la validation des Workspaces. Deux
+allers-retours avec l'utilisateur en test manuel, chacun ayant fait évoluer le design initial —
+détail dans <a href="ROADMAP.html#icon-favorites">ROADMAP § Favoris d'icônes</a>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-07-29</td><td>60e71ef</td>
+<td><strong>Clé <code>sidebarPlus.favoriteIcons</code></strong> (déclarée dans les <code>defaults</code>,
+piège #16), section « Favoris » dans le picker, épinglage par <strong>clic droit</strong> sur
+n'importe quelle tuile. Le design d'origine prévoyait un bouton étoile sur la tuile : implémenté
+d'abord, puis abandonné parce qu'il ressortait rogné — les grilles du picker ont un
+<code>overflow-y</code> qui découpe tout débordement de tuile. Le menu est donc rendu hors du picker,
+avec son propre état d'ouverture et ses propres coordonnées (<code>contextMenuMode</code> aurait
+démonté le picker, <code>contextMenuX/Y</code> l'aurait déplacé), et affiche l'icône concernée plutôt
+qu'une étoile générique. Recadrage mutualisé via <code>clampInViewport()</code> pour rester sur le
+point unique du piège #30. Section « Favoris » gardée visible même vide, avec l'indication du geste.
+Persistance vérifiée sur disque avant redémarrage, puis confirmée par l'utilisateur après relance
+complète.</td></tr>
+</table>
+
 <h2>Test manuel des Workspaces : 5 correctifs (2026-07-29)</h2>
 <p>Passe de test manuel du chantier Workspaces conduite par l'utilisateur (l'assistant en écoute
 passive : logs du renderer via CDP, lecture directe de <code>config.yaml</code> — déchiffré pour
