@@ -1,7 +1,6 @@
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import * as url from 'url'
 import { NotificationsService, PlatformService } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { LocalFileDownload, LocalFileUpload } from './sftpLocalTransfer'
@@ -43,6 +42,25 @@ export class SftpRemoteEditor {
     ) { }
 
     /**
+     * `openPath()` and not `openExternal()`.
+     *
+     * `PlatformService.openExternal()` only hands a URL straight to the OS
+     * when its scheme is one of http/https/ftp/mailto; anything else — `file:`
+     * included — goes through `confirmAndOpenExternal()`, which raises a
+     * modal warning first. That guard is aimed at app-specific URI schemes and
+     * makes sense there, but here it put a confirmation dialog between the
+     * user and every single file they opened. `openPath()` calls
+     * `shell.openPath()` directly, with no scheme check and no prompt, and is
+     * declared on the abstract PlatformService in both the npm typings and the
+     * installed app's.
+     *
+     * It takes a plain filesystem path, not a URL — no pathToFileURL needed.
+     */
+    private open (localPath: string): void {
+        this.platform.openPath(localPath)
+    }
+
+    /**
      * Watching the *directory* rather than the file: many editors save by
      * writing a new file and renaming it over the old one, which severs a
      * watch held on the original inode and would make the second save onwards
@@ -53,7 +71,7 @@ export class SftpRemoteEditor {
         if (existing) {
             // Already open somewhere — just bring it back to the front rather
             // than downloading a second copy over the user's unsaved work.
-            await this.platform.openExternal(url.pathToFileURL(existing.localPath).toString())
+            this.open(existing.localPath)
             return
         }
 
@@ -88,7 +106,7 @@ export class SftpRemoteEditor {
         }
         this.sessions.set(item.fullPath, session)
 
-        await this.platform.openExternal(url.pathToFileURL(localPath).toString())
+        this.open(localPath)
         this.notifications.notice(`${item.name} ouvert — chaque enregistrement sera renvoyé au serveur`)
     }
 
