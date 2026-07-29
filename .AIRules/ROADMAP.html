@@ -47,6 +47,8 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#partage-groupe">Partage rapide de groupe (Presse-papiers)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#notes-profil">Notes de profil (Mémento contextuel)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#ping-live">Indicateur de latence / Ping live</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
+    <td><span class="pill done">✅ Revue faite (2026-07-29)</span></td><td>Entretien récurrent</td></tr>
 </table>
 
 <h2>Phase 1 — priorité absolue</h2>
@@ -760,6 +762,25 @@ le point le plus fragile du plugin, voir <a href="AI-CONTEXT.html#fragile-1">AI-
 dans un bloc try/catch verbeux, pour qu'un futur changement de DOM dans <code>tabby-settings</code>
 affiche un message clair ("Impossible d'ouvrir automatiquement la modale d'édition, redirection
 vers Paramètres → Profils") plutôt que d'échouer silencieusement.</p>
+
+<h3 id="gouvernance">Conformité de la gouvernance à la charte</h3>
+<p>Revue faite le 2026-07-29 (Règle 7, Cas B) — écarts constatés et corrigés détaillés dans
+<a href="AI-HISTORY.html">AI-HISTORY</a>, commit <code>db45754</code>. Ce n'est pas un état acquis :
+la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre. Ce qui reste à faire de
+façon récurrente :</p>
+<ul>
+<li><strong>Comparer les deux dates en début de session</strong> : celle du pied de page de
+  <a href="README.html">README.html</a> (« Conforme à la charte du … ») et celle du pied de page de
+  <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a>. Si la première est antérieure,
+  <strong>signaler l'écart et proposer</strong> une remise à niveau — jamais l'appliquer d'office,
+  un projet pouvant légitimement rester sur une convention antérieure.</li>
+<li><strong>Repropager la copie de la charte à chaque révision de l'original</strong> (qui vit à la
+  racine du workspace, hors dépôt Git). La copie de ce dossier doit rester <em>conforme</em> : jamais
+  adaptée au projet, comparable à l'original par un simple <code>diff</code>.</li>
+<li><strong>Corriger la dérive dès qu'elle est constatée</strong>, sans attendre une revue générale :
+  c'est ce qui a manqué ici — les deux affirmations fausses du README dataient de plusieurs jours et
+  se contredisaient à l'intérieur d'une même page.</li>
+</ul>
 
 <h3>Ménage avant release soignée</h3>
 <p>Corriger le placeholder de copyright dans <code>LICENSE</code> (voir <a href="AI-CONTEXT.html">AI-CONTEXT §1</a>).</p>
