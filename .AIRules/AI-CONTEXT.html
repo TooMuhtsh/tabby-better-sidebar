@@ -36,9 +36,9 @@ Tabby.</p>
 <ul>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
-<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21</li>
+<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #39, #41</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17 + 5 points de veille</li>
-<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16 + 2 points de veille</li>
+<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
 <li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20</li>
@@ -220,6 +220,41 @@ voit avant de raisonner sur ce qu'il devrait voir.</p>
 s'exécute après le rendu des liaisons du cycle. Invariant à préserver : <strong>toute</strong> popup
 positionnée via <code>contextMenuX/Y</code> passe par cet unique point de recadrage — ne pas
 positionner une nouvelle popup autrement.</p>
+
+<h3 id="piege-39">#39 — <code>attr.x='...'</code> en pug <em>sans crochets</em> n'est pas un binding Angular : l'attribut s'appelle littéralement <code>attr.x</code></h3>
+<p>Le binding d'attribut Angular s'écrit <code>[attr.x]='expr'</code>. Écrit <code>attr.x=''</code>, pug
+produit un attribut HTML statique dont le <strong>nom</strong> est <code>attr.x</code> — vérifié dans
+le template compilé : <code>attr.data-profile-row=""</code> au lieu de <code>data-profile-row=""</code>.
+Aucune erreur de compilation, aucun avertissement Angular : la balise porte simplement un attribut au
+nom inattendu, et tout <code>querySelector</code>/<code>closest('[data-profile-row]')</code> qui le
+cherche échoue silencieusement pour toujours.</p>
+<p>Cas réel (2026-07-29, sélection multiple) : le marqueur servait au
+<code>@HostListener('document:click')</code> à reconnaître une ligne de profil. Ne le reconnaissant
+jamais, le handler vidait la sélection <strong>sur le clic même qui venait de la créer</strong> —
+symptôme observé : « cocher ne fait rien », alors que le clic fonctionnait parfaitement et était
+défait dans le même tick. À ne pas confondre avec le piège #15 : là c'est le principe du
+<code>closest()</code> qui manquait, ici le <code>closest()</code> était bien là mais visait un
+attribut inexistant.</p>
+<p>→ Pour un attribut purement statique servant de marqueur, l'écrire en HTML brut
+(<code>data-profile-row='1'</code>) ; pour une valeur liée, <code>[attr.data-x]='expr'</code>. Et
+vérifier dans <code>dist/index.js</code> que l'attribut sort sous le nom attendu — le template pug
+compilé y est une simple chaîne, un <code>grep</code> suffit.</p>
+
+<h3 id="piege-41">#41 — la reprise après <code>await config.save()</code> ne s'exécute pas dans la zone Angular : l'état change, la vue ne se repeint pas</h3>
+<p>Constaté le 2026-07-29 sur la confirmation transitoire de la barre de sélection : le champ était
+correctement affecté (vérifiable au débogueur) mais <strong>rien ne s'affichait jamais</strong>, et le
+<code>setTimeout</code> d'expiration le remettait à <code>null</code> trois secondes plus tard sans que
+l'utilisateur ait rien vu. Le <code>config.save()</code> de Tabby passe par de l'I/O Electron, et la
+continuation d'un <code>await</code> posé dessus ne revient pas nécessairement dans la zone Angular —
+donc aucune détection de changement n'est déclenchée. Un <code>setTimeout</code> créé depuis cette
+continuation n'est pas davantage patché par Zone.js, ce qui prive aussi l'effacement de son repaint.</p>
+<p>Ce qui rend le diagnostic trompeur : <code>notifications.notice()</code> de Tabby, appelé au même
+endroit, s'affichait normalement (il a son propre mécanisme de rendu). La panne paraît donc
+sélective — « la notification marche, pas mon bandeau » — et oriente à tort vers le template.</p>
+<p>→ Envelopper dans <code>this.zone.run(() =&gt; { ... })</code> (injecter <code>NgZone</code>) toute
+mutation d'état destinée à l'affichage effectuée <em>après</em> un <code>await</code> sur une API
+Tabby. Bonus : les <code>setTimeout</code> créés à l'intérieur redeviennent patchés, donc leur
+expiration repeint toute seule.</p>
 
 <h2 id="cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</h2>
 <p class="muted">La plus grosse source de pièges de ce projet : ce plugin s'appuie par endroits sur
@@ -596,6 +631,32 @@ fin de tri.</p>
 avant toute écriture d'ordre. Mutation sûre uniquement parce que ce nœud vient du
 <code>structuredClone()</code> de <code>loadTreeItems()</code> et jamais d'un objet vivant de
 <code>config.store</code> (piège #12).</p>
+
+<h3 id="piege-40">#40 — Masquer des lignes pendant un glisser CDK (<code>display: none</code>) casse le pointage <em>et</em> le cache de CDK</h3>
+<div class="callout warning"><span class="callout-title">Le symptôme n'est pas « ça s'affiche mal », c'est « le dépôt ne fait plus rien »</span>
+<p>Tentative (2026-07-29) : pendant le glisser d'une sélection multiple, replier les autres lignes
+sélectionnées hors de la liste pour que le lot parte d'un bloc.</p></div>
+<p>Deux dégâts distincts, dont un seul est le piège #25 déjà connu :</p>
+<ol>
+<li><strong>Le pointeur se retrouve hors de toute ligne.</strong> Retirer 2 lignes du flux raccourcit
+  la liste d'environ 60&nbsp;px d'un coup. Le curseur — qui tient toujours la ligne attrapée, restée
+  à hauteur du geste — se retrouve <em>sous</em> la dernière ligne restante.
+  <code>updateHoveredProfile()</code> ne trouve donc plus rien, le placement retombe sur son repli et
+  le dépôt se résout en non-opération. Mesuré par trace temporaire : <code>hovered: null</code> sur
+  chaque tentative, avec un tableau résultat identique au tableau d'entrée.</li>
+<li><strong>Les rects mis en cache par CDK deviennent faux</strong>, exactement comme au piège #25 —
+  sauf que la liste <em>rétrécit</em> au lieu de grandir, donc <code>_canReceive</code> échoue par
+  <code>elementFromPoint</code> plutôt que par le rect.</li>
+</ol>
+<p>→ <code>visibility: hidden</code>, jamais <code>display: none</code> : la ligne disparaît à l'œil
+et conserve sa place, donc toutes les mesures — les nôtres comme celles de CDK — restent valides. Le
+prix est un espace vide transitoire là où étaient les lignes ; l'utilisateur l'a jugé souhaitable
+(« ça permet de se souvenir visuellement d'où on a pris les profils »). Faire disparaître les lignes
+<em>et</em> refermer la liste n'est pas atteignable sans réécrire le pointage.</p>
+<p class="muted">Corollaire de méthode, déjà énoncé au piège #30 et reconfirmé ici : deux cycles de
+correction ont été perdus à raisonner sur ce que <code>CdkDragDrop.currentIndex</code> <em>devrait</em>
+valoir. Une trace de cinq lignes imprimant l'index, la ligne survolée et le tableau avant/après a
+tranché en un seul geste utilisateur. Sur un bug de placement, instrumenter avant de raisonner.</p>
 
 <h3 id="piege-27">#27 — <code>Get-Content</code>/<code>Set-Content -Encoding utf8</code> (PS 5.1) corrompt les accents de <code>config.yaml</code></h3>
 <div class="callout warning"><span class="callout-title">A réellement abîmé la config utilisateur</span>
