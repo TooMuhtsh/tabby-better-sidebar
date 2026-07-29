@@ -24,6 +24,158 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>SFTP contextuel dans la sidebar (2026-07-29)</h2>
+<p>Chantier « SFTP contextuel », premier de la roadmap en priorité absolue. Mené sur la branche
+<code>feat/sftp-panel</code>, en aller-retours serrés avec l'utilisateur : l'assistant pilotait
+Tabby (lancement en <code>--debug --remote-debugging-port=9333</code>, lecture passive de la console
+via CDP, mesures du DOM rendu), l'utilisateur faisait les actions d'interface et validait. Design
+d'origine dans <a href="ROADMAP.html#sftp">ROADMAP § SFTP contextuel</a>.</p>
+
+<div class="callout important"><span class="callout-title">Question tranchée d'entrée : SCP plutôt que SFTP ?</span>
+<p>Non, et pas pour des raisons de performance. Le transport SSH de Tabby est <code>russh</code>, dont
+<code>lib/</code> n'expose que <code>sftp.js</code> — aucune surface SCP ; les seules occurrences de
+« SCP » dans <code>tabby-ssh</code> sont le réglage lançant WinSCP en externe. Faire du SCP
+imposerait de réimplémenter le protocole sur un canal <code>exec</code> brut. Et l'avantage supposé
+ne s'applique pas : SCP ne gagne que sur le streaming d'un gros fichier unique, et n'a
+<strong>ni <code>readdir</code>, ni <code>stat</code>, ni <code>rename</code></strong> — soit
+exactement le métier d'un navigateur de fichiers.</p></div>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-07-29</td><td>e05a761</td>
+<td><strong>Colonnes et options d'affichage dans un menu d'en-tête, façon SFTP+.</strong> Clic droit
+sur les titres de colonnes → réglages directement, au lieu d'un menu générique menant à
+« Paramètres d'affichage » ; le sélecteur en ligne et son bouton de barre d'outils, devenus un
+second chemin vers la même chose, sont supprimés. Agencement repris du leur : colonne Nom d'abord et
+cochée en permanence, puis les colonnes optionnelles, puis quatre options nouvelles
+(<code>sftpFoldersFirst</code>, <code>sftpShowHidden</code>, <code>sftpColumnBorders</code>,
+<code>sftpZebra</code>, toutes déclarées dans les <code>defaults</code>, piège #16). Bordures et
+zébrures deviennent optionnelles, pilotées par une classe sur la grille. La liste est désormais
+<strong>triée</strong> (locale, insensible à la casse, dossiers d'abord au choix) —
+<code>readdir</code> renvoyant l'ordre du serveur, rarement lisible. <code>displayedFiles</code> est
+un getter au-dessus d'un champ privé hérité, donc évalué à chaque cycle de détection : mémoïsé sur
+l'identité de <code>filteredFileList</code>, que le parent réaffecte toujours au lieu de la muter
+(vérifié dans le bundle avant de s'y fier).</td></tr>
+
+<tr><td>2026-07-29</td><td>09c41b2</td>
+<td><strong>Menu contextuel sur le vide de la liste</strong> : créer un dossier, créer un fichier,
+paramètres d'affichage. L'en-tête est volontairement inclus dans la zone déclenchante — ce n'est ni
+un fichier ni un dossier. Créer un fichier passe par <code>SFTPSession.upload()</code> avec un
+transfert de zéro octet : la session n'a pas de « créer un fichier » et <code>open()</code> exigerait
+les drapeaux <code>OPEN_WRITE</code>/<code>OPEN_CREATE</code> de russh, module natif inatteignable
+depuis ce plugin. Nom vérifié contre un <code>stat()</code> préalable, créer par-dessus aurait
+tronqué silencieusement. <code>clampInViewport()</code> sort de
+<code>SidebarPlusTreeComponent</code> vers <code>src/viewport.ts</code> : c'était une méthode
+<code>private static</code> et le navigateur SFTP en avait besoin aussi — une seconde copie est
+précisément ce que le point unique du piège #30 cherche à éviter.</td></tr>
+
+<tr><td>2026-07-29</td><td>90c9fab</td>
+<td><strong>Suppression de la friction à l'ouverture d'un fichier.</strong>
+<code>PlatformService.openExternal()</code> ne transmet une URL directement à l'OS que pour les
+schémas <code>http</code>/<code>https</code>/<code>ftp</code>/<code>mailto</code> ; tout le reste,
+<code>file:</code> compris, passe par <code>confirmAndOpenExternal()</code> et son avertissement
+modal. → <code>openPath()</code>, qui appelle <code>shell.openPath()</code> sans contrôle de schéma
+ni invite, et qui est déclarée sur le service abstrait dans les deux jeux de typings. Reste le
+sélecteur « Comment ouvrir ce fichier ? » de Windows pour une extension sans association : celui-là
+vient de l'OS, aucune API ne l'évite.</td></tr>
+
+<tr><td>2026-07-29</td><td>11768a3</td>
+<td><strong>Clic = sélection, double-clic = ouverture, et édition distante en place.</strong> Un
+dossier navigue ; un fichier est copié dans un dossier temporaire privé, confié à l'application par
+défaut, puis surveillé — chaque enregistrement le renvoie au serveur, avec notification systématique
+(ça écrit sur un serveur vivant, rien ne doit être silencieux). La surveillance porte sur le
+<em>dossier</em> et non le fichier : beaucoup d'éditeurs enregistrent en écrivant un nouveau fichier
+puis en le renommant par-dessus, ce qui casse une surveillance posée sur l'inode d'origine.
+Événements amortis à 400 ms, upload ignoré si ni taille ni mtime n'ont bougé, enregistrements
+concurrents mis en file. <code>LocalFileDownload</code>/<code>LocalFileUpload</code>
+(<code>src/sftpLocalTransfer.ts</code>) parce que les seules implémentations livrées par Tabby
+viennent de <code>startDownload()</code>/<code>startUpload()</code>, qui ouvrent toutes deux un
+sélecteur de fichiers. L'upload passe par <code>SFTPSession.upload()</code> plutôt que d'écrire
+directement : il écrit dans <code>&lt;chemin&gt;.tabby-upload</code> puis renomme, donc un transfert
+interrompu ne tronque jamais la cible.</td></tr>
+
+<tr><td>2026-07-29</td><td>ad1c912</td>
+<td><strong>Refonte visuelle inspirée de <code>tabby-sftp-plus</code></strong>, dont le design a été
+lu directement dans la copie installée chez l'utilisateur. Repris : en-tête collant en couleur
+d'accent sous un filet de 2px (leur signature), survol en teinte d'accent via
+<code>color-mix</code> plutôt qu'un gris, zébrures, séparateurs de colonnes rendus continus par
+<code>align-self: stretch</code>, ellipse sur toutes les cellules. Trois écarts assumés : la colonne
+Taille reste alignée à droite (alignée à gauche dans 60px, on ne compare plus les ordres de
+grandeur), pas de <code>contain: inline-size</code> (nécessaire chez eux car leurs lignes sont en
+<code>width: max-content</code>, inutile avec des pistes fixes), pas de barre de résumé (la leur
+affiche une sélection multiple absente ici). Bordure et arrondi déplacés sur
+<code>.sftp-body</code>, l'élément qui défile lui-même — un cadre l'enveloppant aurait eu besoin de
+son propre <code>overflow</code> et serait devenu l'ancêtre découpant de l'en-tête collant.</td></tr>
+
+<tr><td>2026-07-29</td><td>3b46d47</td>
+<td><strong>Deux bugs d'affichage de Tabby contournés</strong>, révélés en comparant les nouvelles
+colonnes entre elles. <code>getModeString()</code> est faux sous Windows (piège #35) : il masque
+<code>item.mode</code> contre des constantes Node que Windows ne définit pas, d'où
+<code>drw-------</code> pour un dossier 775 — c'est la colonne octale, calculée localement, qui a
+trahi l'incohérence. Et les dates sortaient en <code>7/23/2026</code> dans une interface française,
+la locale JS par défaut d'Electron étant <code>en-US</code> quelles que soient celles de Windows et
+de Tabby (piège #36) — au-delà du style, jour et mois s'inversent à la lecture. →
+<code>longMode()</code> maison et <code>LocaleService.getLocale()</code>.</td></tr>
+
+<tr><td>2026-07-29</td><td>efe9491</td>
+<td><strong>En-tête de colonnes collant et colonnes configurables</strong> (<code>size</code>,
+<code>date</code>, <code>mode</code> par défaut, plus <code>modeLong</code>, <code>type</code>,
+<code>ext</code>), persistées dans <code>sidebarPlus.sftpColumns</code>. Fichiers cachés grisés
+plutôt que filtrés — aucun interrupteur ne permettait alors de les récupérer. L'édition manuelle du
+chemin existait déjà (double-clic sur le fil d'Ariane) mais rien ne l'annonçait : bouton crayon
+ajouté. <strong>Pas de colonne propriétaire/groupe possible</strong> : <code>SFTPFile</code> ne porte
+que <code>name</code>, <code>fullPath</code>, <code>isDirectory</code>, <code>isSymlink</code>,
+<code>mode</code>, <code>size</code>, <code>modified</code>.</td></tr>
+
+<tr><td>2026-07-29</td><td>0e2e772</td>
+<td><strong>Sous-classement de <code>SFTPPanelComponent</code> pour posséder le rendu des lignes.</strong>
+Les demandes de l'utilisateur (date sans horodatage, permissions octales, colonnes toujours alignées,
+infobulles, grille visible) sont hors d'atteinte d'une feuille de style : le template natif rend la
+date par le pipe <code>tabbyDate</code>, les permissions par <code>getModeString()</code>, ne porte
+aucun <code>title</code>, et met un <code>*ngIf</code> sur sa cellule taille — un dossier a donc une
+cellule de moins qu'un fichier et les colonnes ne peuvent pas s'aligner. Patcher ce DOM aurait été
+écrasé au cycle de détection suivant. Plutôt que tout réimplémenter au-dessus de
+<code>SFTPSession</code>, seule la template est redéfinie : navigation, ouverture, transferts, menu
+contextuel, filtre restent hérités. Le glisser-déposer d'upload survit aussi,
+<code>DropZoneDirective</code> étant exportée par <code>TabbyCoreModule</code>.</td></tr>
+
+<tr><td>2026-07-29</td><td>2efc4da</td>
+<td><strong>Dépendance <code>tabby-ssh</code> supprimée, typings vendorisés</strong> — correctif du
+piège #34, découvert en cherchant pourquoi le panneau restait sur « en attente d'une session SSH
+active » alors qu'une session était ouverte. Le chargeur de plugins de Tabby ne met en cache que
+<code>tabby-core</code>, <code>tabby-local</code>, <code>tabby-settings</code> et
+<code>tabby-terminal</code> ; tout autre <code>tabby-*</code> présent dans le
+<code>node_modules</code> du plugin est chargé <strong>une seconde fois</strong>. D'où un
+<code>instanceof</code> toujours faux contre une classe homonyme, et — plus grave car silencieux —
+un <code>SFTPPanelComponent</code> appartenant à un <code>SSHModule</code> jamais bootstrappé par
+Angular. Typings recopiés depuis l'app installée dans <code>src/types/tabby-ssh/</code> et mappés par
+<code>paths</code> : sans copie locale, la résolution retombe sur <code>builtin-plugins/</code>, et
+on compile contre ce qui tourne (ce qui règle aussi le piège #32). Bug propre au dev — un
+utilisateur installant depuis npm n'a pas les <code>devDependencies</code>.</td></tr>
+
+<tr><td>2026-07-29</td><td>db0a9bc</td>
+<td><strong>Correction du piège #33, que j'avais d'abord écrit à l'envers</strong>, et élagage des
+onglets fermés déplacé sur <code>tabClosed$</code>/<code>tabRemoved$</code> au lieu d'un tick d'une
+seconde perpétuel. Les composants de Tabby passent leur SCSS par <code>styles: [...]</code> avec
+l'encapsulation Angular : leur CSS ne fuit donc <strong>pas</strong> sur une instance greffée. Le
+vrai piège est le miroir — le panneau garde sa mise en page interne mais arrive
+<strong>sans aucune taille</strong>, le dimensionnement étant le travail de son hôte d'origine.</td></tr>
+
+<tr><td>2026-07-29</td><td>0746449</td>
+<td><strong>Première tranche : le panneau SFTP natif hébergé dans la sidebar</strong>, lié à l'onglet
+SSH qui a le focus. Monté par <code>createComponent()</code> : <code>SSHModule</code>
+<em>déclare</em> <code>SFTPPanelComponent</code> mais ne l'<em>exporte pas</em>, son sélecteur est
+donc invisible depuis le template d'un autre module. Un panneau mis en cache par onglet plutôt que
+reconstruit : <code>ngOnInit()</code> appelle <code>openSFTP()</code>, qui ouvre un canal neuf à
+chaque fois, et <code>SFTPSession</code> n'a pas de <code>close()</code> — un canal ne meurt qu'avec
+sa session SSH. Le cache donne aussi gratuitement la mémoire de navigation par onglet. Même raison
+pour <code>[hidden]</code> plutôt que <code>*ngIf</code>, avec un <code>[active]</code> empêchant
+d'ouvrir des canaux pour une vue que personne ne regarde. <code>getFocusedTab()</code> est
+indispensable : Tabby enveloppe systématiquement les onglets dans un
+<code>SplitTabComponent</code>.</td></tr>
+</table>
+
 <h2>Favoris d'icônes (2026-07-29)</h2>
 <p>Chantier « Favoris d'icônes » de la roadmap, enchaîné après la validation des Workspaces. Deux
 allers-retours avec l'utilisateur en test manuel, chacun ayant fait évoluer le design initial —

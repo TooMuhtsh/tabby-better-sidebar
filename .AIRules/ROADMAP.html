@@ -15,7 +15,7 @@
 </nav>
 
 <h1>Roadmap</h1>
-<p class="muted">Dernière revue : 2026-07-28</p>
+<p class="muted">Dernière revue : 2026-07-29</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
 techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
@@ -27,7 +27,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
     <td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td>Publication npm</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td>Menu contextuel enrichi (Profils &amp; Groupes)</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
-<tr><td><a href="#sftp">SFTP contextuel</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Absolue</td></tr>
+<tr><td><a href="#sftp">SFTP contextuel</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Absolue</td></tr>
 <tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Absolue</td></tr>
 <tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill planned">📋 Mécanisme tranché</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Moyenne</td></tr>
@@ -76,8 +76,64 @@ par <code>tabby-ssh</code> — pas de réimplémentation locale nécessaire, con
   Pourcentage précis affiché uniquement au survol (tooltip). Mini-gestionnaire pliable en bas de
   sidebar pour l'historique/la file d'attente.</li>
 </ul>
-<p class="muted">À vérifier au moment de l'implémentation : mécanique exacte du bouton de bascule
-(état par onglet ou global ?).</p>
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-29</span>
+<p>Branche <code>feat/sftp-panel</code>, 11 commits, détail dans
+<a href="AI-HISTORY.html">AI-HISTORY</a> (2026-07-29). Le panneau natif est
+<strong>sous-classé</strong> (<code>SidebarPlusSftpBrowserComponent</code>) : toute la logique SFTP
+est héritée, seule la template est à nous — nécessaire dès qu'on a voulu maîtriser le rendu des
+lignes (date, permissions, infobulles, alignement), tout cela étant du contenu de template hors
+d'atteinte du CSS. Six pièges consignés au passage (#32 à #36 et un complément au #6), dont deux
+vrais bugs de Tabby sous Windows.</p>
+<p><strong>Question ouverte tranchée</strong> : la bascule est <strong>globale</strong>, pas par
+onglet. Choix de cette première passe, à rejuger à l'usage — l'état par onglet est un problème de
+gestion de modes qui n'avait pas à être résolu pour prouver le reste.</p>
+</div>
+
+<h4>Livré</h4>
+<ul>
+<li>Bascule Profils/SFTP en haut de la sidebar, suivant l'onglet SSH qui a le focus
+  (<code>getFocusedTab()</code> — Tabby enveloppe tout onglet dans un
+  <code>SplitTabComponent</code>), état « en attente d'une session SSH active » sinon.</li>
+<li>Un panneau en cache par onglet SSH, ce qui fournit au passage la <strong>persistance de
+  navigation</strong> prévue au design, sans rien stocker.</li>
+<li>Colonnes configurables (Taille, Date, Perm. octales par défaut ; plus Droits en format long,
+  Type, Extension) avec en-tête collant, tri, dossiers en premier, fichiers cachés, bordures de
+  colonnes et zébrures — le tout dans un menu au clic droit sur l'en-tête, façon SFTP+.</li>
+<li>Style repris de <code>tabby-sftp-plus</code>, dont le design a été lu dans la copie installée.</li>
+<li>Clic = sélection, double-clic = ouverture. Sur un fichier : copie temporaire, ouverture dans
+  l'application par défaut, et <strong>renvoi au serveur à chaque enregistrement</strong>.</li>
+<li>Menus contextuels sur le vide de la liste (créer dossier/fichier) et sur l'en-tête (affichage).</li>
+</ul>
+
+<h4>Différé, non implémenté</h4>
+<ul>
+<li><strong>Focus multi-split et gel de la vue</strong> : la vue suit bien le pane focalisé, mais
+  l'option de <em>geler</em> la vue active n'est pas construite.</li>
+<li><strong>Chargement par blocs</strong> (lazy loading RxJS) : la liste est chargée d'un coup. À
+  reprendre si un dossier distant très peuplé fige l'interface.</li>
+<li><strong>Suivi des transferts</strong> : ni flèches d'activité sur le profil, ni mini-gestionnaire
+  pliable en bas de sidebar.</li>
+</ul>
+
+<h4>Limites connues du renvoi de fichier édité</h4>
+<div class="callout warning">
+<p><strong>Pas de détection de conflit</strong> : si le fichier distant change entre le
+téléchargement et un enregistrement, l'enregistrement l'écrase. <code>tabby-sftp-plus</code> a un
+<code>panel-conflict-resolver</code> dont s'inspirer le jour où ça remonte.</p>
+<p><strong>Nettoyage des copies temporaires</strong> à la destruction du panneau, pas à la fermeture
+de l'éditeur — un fichier reste donc sur disque tant que la sidebar vit.</p>
+</div>
+
+<h4 id="sftp-scp">Écarté : SCP <span class="pill out">⛔</span></h4>
+<p>Question posée par l'utilisateur au lancement du chantier. Non, et pas pour des raisons de
+performance : le transport SSH de Tabby est <code>russh</code>, dont <code>lib/</code> n'expose que
+<code>sftp.js</code> — aucune surface SCP (les seules occurrences de « SCP » dans
+<code>tabby-ssh</code> sont le réglage lançant WinSCP en externe). Il faudrait réimplémenter le
+protocole sur un canal <code>exec</code> brut. Et l'avantage supposé ne porte pas : SCP ne gagne que
+sur le streaming d'un gros fichier unique, et n'a <strong>ni <code>readdir</code>, ni
+<code>stat</code>, ni <code>rename</code>, ni <code>unlink</code></strong> — soit l'intégralité du
+métier d'un navigateur de fichiers. Il faudrait faire tourner SFTP pour la navigation de toute
+façon.</p>
 
 <h3 id="workspaces">Workspaces</h3>
 <p>Plusieurs espaces de travail nommés (ex. perso / pro / projet X) filtrant la
