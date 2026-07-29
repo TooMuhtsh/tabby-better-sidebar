@@ -9,7 +9,7 @@ Dépôt distant : https://github.com/TooMuhtsh/tabby-better-sidebar (public).
 
 **Avant toute session de travail sur ce projet, lire `.AIRules/README.html`**
 (index + protocole), puis `.AIRules/AI-CONTEXT.html` (invariants, pièges déjà
-rencontrés — numérotés jusqu'à #33, le #7 est un trou hérité de la
+rencontrés — numérotés jusqu'à #34, le #7 est un trou hérité de la
 restructuration doc — et points fragiles à revérifier après mise à jour de Tabby) et
 `.AIRules/AI-HISTORY.html`/`.AIRules/ROADMAP.html` pour l'état d'avancement et
 ce qui reste à faire. Ouvrir ces fichiers directement dans un navigateur
@@ -28,9 +28,18 @@ demandées.
 ## Build
 
 ```
-npm install --ignore-scripts   # --ignore-scripts : tabby-ssh a un postinstall natif inutile ici
+npm install --ignore-scripts   # --ignore-scripts : évite les postinstall natifs inutiles ici
 npm run build                  # ou npm run watch en dev
 ```
+
+**`tabby-ssh` ne doit jamais être réinstallé dans `devDependencies`.** Le chargeur de
+plugins de Tabby ne met en cache que `tabby-core`, `tabby-local`, `tabby-settings` et
+`tabby-terminal` ; tout autre `tabby-*` présent dans le `node_modules` du plugin est
+chargé une **seconde fois**, donnant des classes homonymes mais distinctes — `instanceof`
+toujours faux, et un `SFTPPanelComponent` dont le `SSHModule` n'a jamais été bootstrappé.
+Ses typings sont donc vendorisés dans `src/types/tabby-ssh/` (mappés par `paths` dans
+`tsconfig.json`), copiés depuis l'app installée : voir
+`src/types/tabby-ssh/PROVENANCE.md` et .AIRules/AI-CONTEXT.html, piège #34.
 
 ## Tester dans Tabby
 

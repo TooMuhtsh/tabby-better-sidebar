@@ -1,6 +1,15 @@
 {
   "compilerOptions": {
     "baseUrl": "src",
+    // `tabby-ssh` is deliberately absent from devDependencies: Tabby's plugin
+    // loader does not cache it as a builtin (only tabby-core/-local/-settings/
+    // -terminal), so a copy in node_modules would be loaded a *second* time at
+    // runtime, giving classes that no `instanceof` can ever match. The typings
+    // are vendored instead, straight from the installed app — see
+    // src/types/tabby-ssh/PROVENANCE.md.
+    "paths": {
+      "tabby-ssh": ["types/tabby-ssh"]
+    },
     "module": "es2020",
     "moduleResolution": "node",
     "resolveJsonModule": true,

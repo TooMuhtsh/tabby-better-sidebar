@@ -175,15 +175,19 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * The active tab is not enough: inside a split, every pane is a tab of its
-     * own and only `getFocusedTab()` says which one the user is actually
-     * looking at.
+     * The active tab is not enough: Tabby wraps every tab in a
+     * `SplitTabComponent`, so `app.activeTab` is always the split and only
+     * `getFocusedTab()` names the pane the user is actually looking at.
      */
     private resolveFocusedSSHTab (): SSHTabComponent|null {
         let tab: BaseTabComponent|null = this.app.activeTab
         if (tab instanceof SplitTabComponent) {
             tab = tab.getFocusedTab()
         }
+        // This `instanceof` only holds because `tabby-ssh` is absent from
+        // node_modules — see src/types/tabby-ssh/PROVENANCE.md. Reinstall it
+        // and this silently returns null forever, against a class that merely
+        // shares its name.
         if (!(tab instanceof SSHTabComponent)) {
             return null
         }

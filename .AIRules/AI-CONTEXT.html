@@ -268,6 +268,39 @@ affichent le même numéro. Vérifier par un <code>diff</code> direct entre les 
 qu'ils sont identiques. <code>session/sftp.d.ts</code> est dans ce cas ; seul
 <code>sftpPanel.component.d.ts</code> diverge réellement.</p></div>
 
+<h3 id="piege-34">#34 — Tabby ne met en cache que <em>quatre</em> modules <code>tabby-*</code> : tout autre présent dans le <code>node_modules</code> du plugin est chargé une seconde fois</h3>
+<div class="callout warning"><span class="callout-title">Critique — <code>instanceof</code> muet, symptôme trompeur</span>
+<p>Dans le chargeur de plugins de l'app (<code>app.asar</code>) :</p>
+<pre><code>const builtinModules = [
+    ...Object.keys(cachedBuiltinModules),
+    'tabby-core', 'tabby-local', 'tabby-settings', 'tabby-terminal',
+]</code></pre>
+<p>Ces modules-là sont résolus une fois puis servis à l'identique à tous les plugins. Tout autre
+<code>tabby-*</code> — <code>tabby-ssh</code> en particulier — passe par la résolution Node
+normale, qui commence par le <code>node_modules/</code> du module appelant. Un plugin qui a sa
+propre copie en dépendance charge donc <strong>une seconde instance</strong> du module.</p>
+<p>Conséquences observées le 2026-07-29 en montant le panneau SFTP : <code>tab instanceof
+SSHTabComponent</code> toujours faux alors que <code>tab.constructor.name</code> vaut bien
+<code>'SSHTabComponent'</code> (deux fonctions homonymes distinctes), et — plus grave car
+silencieux — le <code>SFTPPanelComponent</code> importé appartient à un <code>SSHModule</code>
+qu'Angular n'a jamais bootstrappé, donc dépourvu de portée JIT pour ses directives/pipes.
+<strong>Le symptôme ne dit rien de la cause</strong> : ici, un panneau bloqué sur « en attente
+d'une session SSH active » avec une session parfaitement ouverte.</p>
+<p>→ Signature à reconnaître : <code>x.constructor.name === 'Foo'</code> mais
+<code>x instanceof Foo</code> faux. Discriminant utile pour savoir quelle copie on tient : une
+méthode présente dans le bundle installé et absente de celui de npm (piège #32), par exemple
+<code>SFTPPanelComponent.prototype.onFilterChange</code>.</p>
+<p>→ Correctif appliqué : <code>tabby-ssh</code> retiré des <code>devDependencies</code>, ses
+typings vendorisés dans <code>src/types/tabby-ssh/</code> et mappés par <code>paths</code> dans
+<code>tsconfig.json</code> (voir <code>src/types/tabby-ssh/PROVENANCE.md</code>). Sans copie
+locale, la résolution retombe sur <code>builtin-plugins/</code>. Le bug ne se manifestait
+<strong>qu'en dev</strong> — un utilisateur installant depuis npm n'a pas les
+<code>devDependencies</code>, donc obtenait déjà le bon module ; d'où la leçon générale : ne
+jamais conclure d'un « ça marchera en prod » que le dev est sain, ni l'inverse.</p>
+<p class="muted">S'applique à l'identique à tout futur <code>tabby-*</code> hors des quatre
+listés (<code>tabby-electron</code>, <code>tabby-plugin-manager</code>, <code>tabby-serial</code>,
+<code>tabby-telnet</code>…).</p></div>
+
 <h3>Points de veille — <span class="pill warn">⚠️ à revérifier après update Tabby</span></h3>
 
 <h4 id="fragile-1">Édition de profil (clic droit → "Éditer...") — le plus fragile de tous</h4>
@@ -309,16 +342,17 @@ d'export runtime complet est : <code>AutoPrivateKeyLocator</code>,
 <li><code>SFTPFile</code> reste une simple <code>interface</code> (type only, normalement absente du
   bloc d'export runtime) ; <code>SFTPFileHandle</code> n'est pas réexporté au niveau de l'index.</li>
 </ul>
-<div class="callout warning"><span class="callout-title">Pas encore validé dans l'app</span>
-<p>Tout ce qui précède est vérifié sur les typings, le bundle et les métadonnées
-<code>NgModule</code> compilées — donc sur ce que le paquet <em>expose</em>. Ce qui reste à
-prouver par un test manuel dans Tabby, et que rien de statique ne peut établir : qu'un
-<code>SFTPPanelComponent</code> créé par <code>createComponent()</code> <em>se rende</em>
-effectivement hors de son module d'origine (résolution JIT des directives/pipes de la portée de
-<code>SSHModule</code>, notamment <code>dropZone</code> et le pipe <code>filesize</code>), et qu'il
-reste utilisable à la largeur d'une sidebar. Si le rendu échoue, le repli est la réimplémentation
-d'une liste au-dessus de <code>SFTPSession.readdir()</code> — API propre à 12 méthodes, pas de
-dette lourde.</p></div>
+<div class="callout note"><span class="callout-title">Rendu validé dans l'app le 2026-07-29</span>
+<p>Un <code>SFTPPanelComponent</code> créé par <code>createComponent()</code> <strong>se rend
+correctement hors de son module d'origine</strong> : les directives/pipes de la portée de
+<code>SSHModule</code> (<code>dropZone</code>, pipe <code>filesize</code>) sont bien résolues, la
+compilation JIT du composant ayant déjà eu lieu quand Tabby a bootstrappé son propre module.
+Mesuré en direct dans la sidebar sur une session réelle : panneau à 287&nbsp;px de large,
+<code>.body</code> à 994&nbsp;px en <code>overflow-y: auto</code> (la chaîne flex tient),
+breadcrumb fonctionnel, 20 lignes de fichiers distants listées. La réutilisation est donc acquise
+— pas de réimplémentation au-dessus de <code>SFTPSession.readdir()</code>.</p>
+<p><strong>À une condition</strong>, sans laquelle rien de tout cela ne marche : que le plugin
+tienne la <em>vraie</em> classe et non un doublon, cf. piège #34.</p></div>
 
 <h4 id="fragile-6"><code>profile-tree</code> toujours non exporté</h4>
 <p>Vérifier périodiquement (montée majeure de <code>tabby-core</code>) s'il a fini par être

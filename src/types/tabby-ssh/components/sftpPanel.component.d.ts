@@ -1,0 +1,57 @@
+import { EventEmitter } from '@angular/core';
+import { FileUpload, DirectoryUpload, MenuItemOptions, NotificationsService, PlatformService } from 'tabby-core';
+import { SFTPSession, SFTPFile } from '../session/sftp';
+import { SSHSession } from '../session/ssh';
+import { SFTPContextMenuItemProvider } from '../api';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+interface PathSegment {
+    name: string;
+    path: string;
+}
+export declare class SFTPPanelComponent {
+    private ngbModal;
+    private notifications;
+    platform: PlatformService;
+    protected contextMenuProviders: SFTPContextMenuItemProvider[];
+    session: SSHSession;
+    closed: EventEmitter<void>;
+    sftp: SFTPSession;
+    fileList: SFTPFile[] | null;
+    filteredFileList: SFTPFile[];
+    path: string;
+    pathChange: EventEmitter<string>;
+    pathSegments: PathSegment[];
+    cwdDetectionAvailable: boolean;
+    editingPath: string | null;
+    showFilter: boolean;
+    filterText: string;
+    constructor(ngbModal: NgbModal, notifications: NotificationsService, platform: PlatformService, contextMenuProviders: SFTPContextMenuItemProvider[]);
+    ngOnInit(): Promise<void>;
+    navigate(newPath: string, fallbackOnError?: boolean): Promise<void>;
+    getFileType(fileExtension: string): string;
+    getIcon(item: SFTPFile): string;
+    goUp(): void;
+    open(item: SFTPFile): Promise<void>;
+    downloadItem(item: SFTPFile): Promise<void>;
+    openCreateDirectoryModal(): Promise<void>;
+    upload(): Promise<void>;
+    uploadFolder(): Promise<void>;
+    uploadOneFolder(transfer: DirectoryUpload, accumPath?: string): Promise<void>;
+    uploadOne(transfer: FileUpload): Promise<void>;
+    download(itemPath: string, mode: number, size: number): Promise<void>;
+    downloadFolder(folder: SFTPFile): Promise<void>;
+    private calculateFolderSizeAndUpdate;
+    private downloadFolderRecursive;
+    getModeString(item: SFTPFile): string;
+    buildContextMenu(item: SFTPFile): Promise<MenuItemOptions[]>;
+    showContextMenu(item: SFTPFile, event: MouseEvent): Promise<void>;
+    get shouldShowCWDTip(): boolean;
+    dismissCWDTip(): void;
+    editPath(): void;
+    confirmPath(): void;
+    close(): void;
+    clearFilter(): void;
+    onFilterChange(): void;
+    private updateFilteredList;
+}
+export {};
