@@ -298,7 +298,8 @@ sidebar-plus-tree input {
     }
 }
 
-.group-context-menu {
+.group-context-menu,
+.icon-context-menu {
     position: fixed;
     z-index: 100;
     min-width: 140px;
@@ -341,6 +342,15 @@ sidebar-plus-tree input {
         &:hover {
             background-color: var(--theme-secondary);
         }
+
+        // The icon-tile menu shows the icon being pinned instead of a generic
+        // star — sized like the .fa glyphs the other menu items use, so the
+        // labels stay aligned whichever kind of item is rendered.
+        profile-icon {
+            flex: 0 0 auto;
+            width: 15px;
+            height: 15px;
+        }
     }
 }
 
@@ -382,6 +392,16 @@ sidebar-plus-tree input {
 }
 
 .icon-picker {
+    // Placeholder shown while no icon is pinned — the "Favoris" section stays
+    // visible even when empty so the feature is discoverable, which it would
+    // not be if the section only appeared once something had been pinned.
+    .icon-picker-empty {
+        margin-bottom: .4rem;
+        font-size: .7rem;
+        font-style: italic;
+        opacity: .6;
+    }
+
     .icon-picker-grid {
         display: flex;
         flex-wrap: wrap;
@@ -404,6 +424,7 @@ sidebar-plus-tree input {
             &:hover {
                 background-color: var(--theme-secondary);
             }
+
 
             profile-icon {
                 width: 16px;

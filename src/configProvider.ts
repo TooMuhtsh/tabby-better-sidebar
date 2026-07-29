@@ -28,6 +28,10 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             favorites: [] as string[],
             favoriteGroups: [] as string[],
             recentIcons: [] as string[],
+            // Pinned icons, deliberately separate from recentIcons: that list
+            // is a usage trail and evicts its oldest entry once full, so an
+            // icon the user wants permanently at hand cannot live there.
+            favoriteIcons: [] as string[],
             groupOrder: {} as Record<string, string[]>,
             // favorites/favoriteGroups above double as the "Tous" workspace's
             // own favorites (no migration needed — they're already live in

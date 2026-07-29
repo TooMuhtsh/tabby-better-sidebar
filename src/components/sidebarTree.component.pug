@@ -251,11 +251,25 @@
         span Choisir une icône
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
 
+    .text-muted.small(*ngIf='!iconQuery') Favoris
+    .icon-picker-grid(*ngIf='favoriteIcons.length && !iconQuery')
+        a.icon-picker-item(
+            *ngFor='let c of favoriteIcons',
+            (click)='selectIconClass(c)',
+            (contextmenu)='onIconContextMenu($event, c)',
+            [title]='c',
+            href='#'
+        )
+            profile-icon([icon]='c')
+    .icon-picker-empty(*ngIf='!favoriteIcons.length && !iconQuery')
+        | Clic droit sur une icône → « Ajouter aux favoris »
+
     .text-muted.small(*ngIf='recentIcons.length && !iconQuery') Récentes
     .icon-picker-grid(*ngIf='recentIcons.length && !iconQuery')
         a.icon-picker-item(
             *ngFor='let c of recentIcons',
             (click)='selectIconClass(c)',
+            (contextmenu)='onIconContextMenu($event, c)',
             [title]='c',
             href='#'
         )
@@ -271,6 +285,7 @@
         a.icon-picker-item(
             *ngFor='let e of iconMatches',
             (click)='selectIconClass(e.value)',
+            (contextmenu)='onIconContextMenu($event, e.value)',
             [title]='e.name',
             href='#'
         )
@@ -290,6 +305,19 @@
             .text-danger.small.mt-1(*ngIf='customSvgError') {{ customSvgError }}
             .text-warning.small.mt-1(*ngIf='customSvgWarning') {{ customSvgWarning }}
             button.btn.btn-sm.btn-secondary.mt-1((click)='applyCustomSvg()') Appliquer le SVG
+
+// Rendered outside .icon-picker: the picker's grids scroll (overflow-y),
+// which would clip a menu overlapping a tile — the same clipping that made
+// the first attempt, a star badge in the tile's corner, come out cut off.
+.icon-context-menu(
+    *ngIf='iconMenuIcon',
+    [style.left.px]='iconMenuX',
+    [style.top.px]='iconMenuY',
+    (click)='$event.stopPropagation()'
+)
+    a.group-context-menu-item((click)='toggleFavoriteIconFromMenu($event)', href='#')
+        profile-icon.me-2([icon]='iconMenuIcon')
+        | {{ isFavoriteIcon(iconMenuIcon) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}
 
 .create-popup(
     *ngIf='isRenameMode',

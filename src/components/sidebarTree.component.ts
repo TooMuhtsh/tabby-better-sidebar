@@ -89,6 +89,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     /** Set whenever a context menu/popup opens or switches mode — checked once in ngAfterViewChecked() to clamp it back on-screen after Angular renders it at its real size. */
     private menuPositionDirty = false
 
+    ////// ICON TILE CONTEXT MENU //////
+    /** The icon a right-click opened the pin/unpin menu on, or null. Kept outside contextMenuMode on purpose — see onIconContextMenu(). */
+    iconMenuIcon: string|null = null
+    iconMenuX = 0
+    iconMenuY = 0
+    private iconMenuPositionDirty = false
+
     newGroupName = ''
     renameValue = ''
     profileTemplates: { provider: ProfileProvider<Profile>, template: PartialProfile<Profile> }[] = []
@@ -178,6 +185,20 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     ngAfterViewChecked (): void {
+        if (this.iconMenuPositionDirty) {
+            this.iconMenuPositionDirty = false
+            setTimeout(() => {
+                const menu = document.querySelector<HTMLElement>('.icon-context-menu')
+                if (!menu) {
+                    return
+                }
+                const { x, y } = SidebarPlusTreeComponent.clampInViewport(menu, this.iconMenuX, this.iconMenuY)
+                this.iconMenuX = x
+                this.iconMenuY = y
+                menu.style.left = `${x}px`
+                menu.style.top = `${y}px`
+            })
+        }
         if (!this.menuPositionDirty) {
             return
         }
@@ -208,14 +229,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!menu) {
             return
         }
-        const rect = menu.getBoundingClientRect()
-        const margin = 4
-        const maxX = Math.max(margin, window.innerWidth - rect.width - margin)
-        const maxY = Math.max(margin, window.innerHeight - rect.height - margin)
-        // Clamped on both edges: Math.min alone left a popup opened near the
-        // top/left (or one taller than the viewport) sticking out the other way.
-        const x = Math.max(margin, Math.min(this.contextMenuX, maxX))
-        const y = Math.max(margin, Math.min(this.contextMenuY, maxY))
+        const { x, y } = SidebarPlusTreeComponent.clampInViewport(menu, this.contextMenuX, this.contextMenuY)
         if (x !== this.contextMenuX || y !== this.contextMenuY) {
             this.contextMenuX = x
             this.contextMenuY = y
@@ -238,6 +252,18 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // ngAfterViewChecked.
             menu.style.left = `${x}px`
             menu.style.top = `${y}px`
+        }
+    }
+
+    /** Clamped on both edges: Math.min alone left a popup opened near the top/left (or one taller than the viewport) sticking out the other way. */
+    private static clampInViewport (el: HTMLElement, x: number, y: number): { x: number, y: number } {
+        const rect = el.getBoundingClientRect()
+        const margin = 4
+        const maxX = Math.max(margin, window.innerWidth - rect.width - margin)
+        const maxY = Math.max(margin, window.innerHeight - rect.height - margin)
+        return {
+            x: Math.max(margin, Math.min(x, maxX)),
+            y: Math.max(margin, Math.min(y, maxY)),
         }
     }
 
@@ -1351,6 +1377,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.contextMenuRoot = false
         this.contextMenuWorkspace = null
         this.contextMenuMode = 'menu'
+        this.closeIconMenu()
     }
 
     // Checks the click's target rather than relying on descendant
@@ -1361,7 +1388,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     // ancestor .group-context-menu has a stopPropagation click binding).
     @HostListener('document:click', ['$event'])
     onDocumentClick (event: MouseEvent): void {
-        if ((event.target as HTMLElement).closest('.group-context-menu, .icon-picker, .create-popup')) {
+        const target = event.target as HTMLElement
+        if (target.closest('.icon-context-menu')) {
+            return
+        }
+        // Closed on any click outside itself, including clicks landing inside
+        // the picker underneath — that click means "I'm done with this menu",
+        // and the picker must survive it (it is what the menu acts upon).
+        this.closeIconMenu()
+        if (target.closest('.group-context-menu, .icon-picker, .create-popup')) {
             return
         }
         this.closeContextMenu()
@@ -1478,6 +1513,65 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     get recentIcons (): string[] {
         return this.config.store.sidebarPlus?.recentIcons ?? []
+    }
+
+    ////// ICON FAVORITES //////
+    // Permanent counterpart to recentIcons: an entry stays until explicitly
+    // unpinned, where "Récentes" is a usage trail that evicts its oldest entry
+    // past MAX_RECENT_ICONS. Not workspace-scoped — an icon is a rendering
+    // choice, not part of what a workspace shows or hides.
+    get favoriteIcons (): string[] {
+        return this.config.store.sidebarPlus?.favoriteIcons ?? []
+    }
+
+    isFavoriteIcon (icon: string): boolean {
+        return this.favoriteIcons.includes(icon)
+    }
+
+    /**
+     * Right-click on an icon tile. Deliberately NOT routed through
+     * contextMenuMode like every other menu in this component: those modes are
+     * mutually exclusive, so switching to one would unmount the picker the
+     * menu is supposed to act upon. This small menu therefore has its own
+     * open-state and its own coordinates — sharing contextMenuX/Y would move
+     * the picker itself, which is positioned from them.
+     */
+    onIconContextMenu (event: MouseEvent, icon: string): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.iconMenuIcon = icon
+        this.iconMenuX = event.clientX
+        this.iconMenuY = event.clientY
+        this.iconMenuPositionDirty = true
+    }
+
+    closeIconMenu (): void {
+        this.iconMenuIcon = null
+    }
+
+    toggleFavoriteIconFromMenu (event: Event): void {
+        if (this.iconMenuIcon) {
+            this.toggleFavoriteIcon(this.iconMenuIcon, event)
+        }
+        this.closeIconMenu()
+    }
+
+    toggleFavoriteIcon (icon: string, event: Event): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.config.store.sidebarPlus ??= {}
+        const favorites: string[] = [...this.favoriteIcons]
+        const index = favorites.indexOf(icon)
+        if (index === -1) {
+            favorites.push(icon)
+        } else {
+            favorites.splice(index, 1)
+        }
+        // Explicit reassignment, like every other write in this file — a
+        // nested in-place mutation is never picked up as a change to persist
+        // (piège #23).
+        this.config.store.sidebarPlus.favoriteIcons = favorites
+        this.config.save()
     }
 
     onIconQueryChange (): void {
