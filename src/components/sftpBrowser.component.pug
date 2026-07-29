@@ -71,7 +71,7 @@
 
 //- dropZone is tabby-core's DropZoneDirective, exported by TabbyCoreModule —
 //- keeps drag-and-drop upload working exactly as in the native panel.
-.sftp-body(dropZone, (transfer)='uploadOneFolder($event)')
+.sftp-body(dropZone, (transfer)='uploadOneFolder($event)', (contextmenu)='onBackgroundContextMenu($event)')
     .sftp-message(*ngIf='!sftp') Connexion...
     ng-container(*ngIf='sftp')
         .sftp-message(*ngIf='fileList === null') Chargement...
@@ -121,3 +121,21 @@
                 ) {{ cellValue(column, item) }}
 
         .sftp-message(*ngIf='filterFoundNothing') Aucun fichier ne correspond au filtre.
+
+//- Rendered outside .sftp-body: it is `position: fixed`, and living inside the
+//- scrolling element would let it drift away with the list underneath it.
+.sftp-background-menu(
+    *ngIf='backgroundMenuOpen',
+    [style.left.px]='backgroundMenuX',
+    [style.top.px]='backgroundMenuY'
+)
+    a.menu-item((click)='createDirectoryFromMenu()')
+        .fa.fa-fw.fas.fa-folder-plus.me-2
+        span Créer un dossier
+    a.menu-item((click)='createFileFromMenu()')
+        .fa.fa-fw.fas.fa-file-circle-plus.me-2
+        span Créer un fichier
+    .menu-separator
+    a.menu-item((click)='openColumnChooserFromMenu()')
+        .fa.fa-fw.fas.fa-table-columns.me-2
+        span Paramètres d’affichage

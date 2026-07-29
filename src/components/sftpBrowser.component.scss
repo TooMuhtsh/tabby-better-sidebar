@@ -191,6 +191,41 @@ sidebar-plus-sftp-browser .sftp-row {
     }
 }
 
+// Background over --theme-bg, not --theme-bg-more-2: the latter is the
+// sidebar's own colour, which made floating menus invisible on top of it
+// (fixed once already for the tree's menus, commit a2f6a58).
+sidebar-plus-sftp-browser .sftp-background-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 11rem;
+    padding: .25rem 0;
+    font-size: .75rem;
+    background-color: var(--theme-bg);
+    border: 1px solid var(--theme-secondary);
+    border-radius: .25rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+
+    .menu-item {
+        display: flex;
+        align-items: center;
+        padding: .25rem .6rem;
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--theme-secondary);
+        }
+    }
+
+    .menu-separator {
+        height: 1px;
+        margin: .25rem 0;
+        background-color: var(--theme-secondary);
+    }
+}
+
 sidebar-plus-sftp-browser .sftp-zebra {
     background-color: rgba(128, 128, 128, .06);
 }

@@ -21,6 +21,7 @@ import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
 import { ICON_ENTRIES, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
+import { clampInViewport } from '../viewport'
 
 interface CollapsableProfileGroup extends ProfileGroup {
     collapsed: boolean
@@ -206,7 +207,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 if (!menu) {
                     return
                 }
-                const { x, y } = SidebarPlusTreeComponent.clampInViewport(menu, this.iconMenuX, this.iconMenuY)
+                const { x, y } = clampInViewport(menu, this.iconMenuX, this.iconMenuY)
                 this.iconMenuX = x
                 this.iconMenuY = y
                 menu.style.left = `${x}px`
@@ -243,7 +244,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!menu) {
             return
         }
-        const { x, y } = SidebarPlusTreeComponent.clampInViewport(menu, this.contextMenuX, this.contextMenuY)
+        const { x, y } = clampInViewport(menu, this.contextMenuX, this.contextMenuY)
         if (x !== this.contextMenuX || y !== this.contextMenuY) {
             this.contextMenuX = x
             this.contextMenuY = y
@@ -266,18 +267,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // ngAfterViewChecked.
             menu.style.left = `${x}px`
             menu.style.top = `${y}px`
-        }
-    }
-
-    /** Clamped on both edges: Math.min alone left a popup opened near the top/left (or one taller than the viewport) sticking out the other way. */
-    private static clampInViewport (el: HTMLElement, x: number, y: number): { x: number, y: number } {
-        const rect = el.getBoundingClientRect()
-        const margin = 4
-        const maxX = Math.max(margin, window.innerWidth - rect.width - margin)
-        const maxY = Math.max(margin, window.innerHeight - rect.height - margin)
-        return {
-            x: Math.max(margin, Math.min(x, maxX)),
-            y: Math.max(margin, Math.min(y, maxY)),
         }
     }
 

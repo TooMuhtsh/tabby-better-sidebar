@@ -78,6 +78,42 @@ export class LocalFileDownload extends FileDownload {
     }
 }
 
+/**
+ * A zero-byte upload, used to create an empty remote file.
+ *
+ * `SFTPSession` has no "create file" of its own, and `open()` would need
+ * russh's OPEN_WRITE/OPEN_CREATE flags — russh being a native module this
+ * plugin cannot import. Handing an empty transfer to `upload()` gets there
+ * through the public API instead: it opens the temp path with those flags
+ * itself, reads one empty chunk, and renames into place.
+ */
+export class EmptyFileUpload extends FileUpload {
+    constructor (private name: string, private mode: number) {
+        super()
+    }
+
+    getName (): string {
+        return this.name
+    }
+
+    getSize (): number {
+        return 0
+    }
+
+    getMode (): number {
+        return this.mode
+    }
+
+    /** Empty on the first call: that is how upload() detects end of stream. */
+    async read (): Promise<Uint8Array> {
+        return new Uint8Array(0)
+    }
+
+    close (): void {
+        // Nothing to release.
+    }
+}
+
 export class LocalFileUpload extends FileUpload {
     private handle: fs.promises.FileHandle|null = null
     private buffer = Buffer.alloc(CHUNK_SIZE)

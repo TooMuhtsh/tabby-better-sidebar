@@ -1,10 +1,12 @@
 import './sftpBrowser.component.scss'
 import { filesize } from 'filesize'
-import { Component, Inject, OnDestroy } from '@angular/core'
+import { AfterViewChecked, Component, HostListener, Inject, OnDestroy } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
-import { ConfigService, LocaleService, NotificationsService, PlatformService } from 'tabby-core'
+import { ConfigService, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
+import { EmptyFileUpload } from '../sftpLocalTransfer'
 import { SftpRemoteEditor } from '../sftpRemoteEdit'
+import { clampInViewport } from '../viewport'
 
 /** An optional column of the file list. The name column is not one of these — it is always shown. */
 export interface SftpColumn {
@@ -45,7 +47,7 @@ export interface SftpColumn {
     selector: 'sidebar-plus-sftp-browser',
     template: require('./sftpBrowser.component.pug'),
 })
-export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implements OnDestroy {
+export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implements OnDestroy, AfterViewChecked {
     /**
      * Everything `SFTPFile` can actually answer — it carries only name,
      * fullPath, isDirectory, isSymlink, mode, size and modified, so there is
@@ -74,22 +76,142 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
 
     private editor: SftpRemoteEditor
 
-    // `notify` and not `notifications`: the parent already holds a *private*
-    // field by that name, and redeclaring it in a subclass is a type error.
+    // `notify`/`ngbModalService` rather than `notifications`/`ngbModal`: the
+    // parent already holds *private* fields under those names, and
+    // redeclaring one in a subclass is a type error — so the injected
+    // instances have to be kept under names of our own to stay reachable.
     constructor (
         private config: ConfigService,
         private locale: LocaleService,
         private notify: NotificationsService,
-        ngbModal: NgbModal,
+        private ngbModalService: NgbModal,
         platform: PlatformService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
-        super(ngbModal, notify, platform, contextMenuProviders)
+        super(ngbModalService, notify, platform, contextMenuProviders)
         this.editor = new SftpRemoteEditor(notify, platform)
     }
 
     ngOnDestroy (): void {
         this.editor.dispose()
+    }
+
+    ////// EMPTY-SPACE CONTEXT MENU //////
+    backgroundMenuOpen = false
+    backgroundMenuX = 0
+    backgroundMenuY = 0
+    /** Set when the menu opens, consumed once in ngAfterViewChecked — the menu has no measurable size until Angular has rendered it (piège #30). */
+    private backgroundMenuDirty = false
+
+    /**
+     * Right-click anywhere in the listing that is not an entry.
+     *
+     * Entry rows carry their own `(contextmenu)` and this handler sits on
+     * their container, so without the guard below a right-click on a file
+     * would open both menus. The header is deliberately *not* excluded — it is
+     * neither a file nor a folder, and reaching the display settings by
+     * right-clicking the column titles is where one would look first.
+     */
+    onBackgroundContextMenu (event: MouseEvent): void {
+        if ((event.target as HTMLElement).closest('.sftp-row:not(.sftp-header-row)')) {
+            return
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        this.selectedPath = null
+        this.backgroundMenuX = event.clientX
+        this.backgroundMenuY = event.clientY
+        this.backgroundMenuOpen = true
+        this.backgroundMenuDirty = true
+    }
+
+    /**
+     * Closes the menu on any click outside it.
+     *
+     * The `closest()` test is not belt-and-braces: a `document:click`
+     * HostListener fires even when a descendant called stopPropagation() on
+     * the event, so checking the target explicitly is the only thing that
+     * keeps clicking a menu item from dismissing the menu first (piège #15).
+     */
+    @HostListener('document:click', ['$event'])
+    onDocumentClick (event: MouseEvent): void {
+        if (!this.backgroundMenuOpen) {
+            return
+        }
+        if ((event.target as HTMLElement).closest('.sftp-background-menu')) {
+            return
+        }
+        this.backgroundMenuOpen = false
+    }
+
+    ngAfterViewChecked (): void {
+        if (!this.backgroundMenuDirty) {
+            return
+        }
+        this.backgroundMenuDirty = false
+        setTimeout(() => {
+            const menu = document.querySelector<HTMLElement>('.sftp-background-menu')
+            if (!menu) {
+                return
+            }
+            const { x, y } = clampInViewport(menu, this.backgroundMenuX, this.backgroundMenuY)
+            this.backgroundMenuX = x
+            this.backgroundMenuY = y
+            menu.style.left = `${x}px`
+            menu.style.top = `${y}px`
+        })
+    }
+
+    createDirectoryFromMenu (): void {
+        this.backgroundMenuOpen = false
+        void this.openCreateDirectoryModal()
+    }
+
+    openColumnChooserFromMenu (): void {
+        this.backgroundMenuOpen = false
+        this.showColumnChooser = true
+    }
+
+    /**
+     * Creates an empty remote file.
+     *
+     * `SFTPSession` offers no "create file", so this goes through `upload()`
+     * with a zero-byte transfer — see EmptyFileUpload. Mode 0o644, the usual
+     * default for a new file; the context menu on the entry can change it
+     * afterwards.
+     */
+    async createFileFromMenu (): Promise<void> {
+        this.backgroundMenuOpen = false
+        const modal = this.ngbModalService.open(PromptModalComponent)
+        modal.componentInstance.prompt = 'Nom du nouveau fichier'
+        const result = await modal.result.catch(() => null)
+        const name = result?.value?.trim()
+        if (!name) {
+            return
+        }
+        if (name.includes('/')) {
+            this.notify.error('Le nom ne peut pas contenir de « / »')
+            return
+        }
+
+        const fullPath = this.path.endsWith('/') ? `${this.path}${name}` : `${this.path}/${name}`
+        try {
+            // stat() throwing is how a free name is recognised — there is no
+            // exists() on the session, and creating over an existing file
+            // would silently truncate it.
+            await this.sftp.stat(fullPath)
+            this.notify.error(`${name} existe déjà`)
+            return
+        } catch {
+            // Not there: good, carry on.
+        }
+
+        try {
+            await this.sftp.upload(fullPath, new EmptyFileUpload(name, 0o644))
+            await this.navigate(this.path)
+        } catch (e) {
+            this.notify.error(`Impossible de créer ${name}`, String(e))
+        }
     }
 
     ////// SELECTION & OPENING //////
