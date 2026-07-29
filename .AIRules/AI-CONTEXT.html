@@ -233,6 +233,15 @@ Tabby.</p>
 sur <code>ProfileGroup</code> existent à l'exécution (1.0.235) mais pas dans les types publiés (tag
 <code>nightly</code>, plus vieux). → Augmentation de type dédiée
 (<code>src/tabby-core-augment.d.ts</code>) plutôt que des <code>any</code> disséminés.</p>
+<p>Deuxième cas rencontré le 2026-07-29, en dérivant <code>FileDownload</code>/<code>FileUpload</code>
+pour l'édition distante : les typings npm déclarent <code>getMode()</code> abstraite sur
+<code>FileTransfer</code> — donc aussi sur les téléchargements — et ignorent
+<code>setTotalSize()</code>/<code>setStatus()</code>/<code>getTotalSize()</code>, que la classe
+installée possède ; l'installée, elle, ne met <code>getMode()</code> que sur
+<code>FileUpload</code>. Ici l'augmentation n'aide pas (on ne peut pas <em>retirer</em> un membre
+abstrait). → Écrire l'union : implémenter tout ce que les deux exigent et n'appeler aucune méthode
+absente de l'ancienne. Les aides de progression sont sans enjeu dans ce cas précis, ces transferts
+n'étant rattachés à aucune UI de Tabby.</p>
 
 <h3 id="piege-13">#13 — <code>@hidden</code> ne veut pas dire "non exporté"</h3>
 <p>Les deux sont indépendants. <code>EditProfileModalComponent</code> est <code>@hidden</code> ET

@@ -195,6 +195,13 @@ sidebar-plus-sftp-browser .sftp-zebra {
     background-color: rgba(128, 128, 128, .06);
 }
 
+// Selection is stronger than hover, and beats the zebra stripe regardless of
+// which row it lands on — hence the specificity bump rather than source order.
+sidebar-plus-sftp-browser .sftp-row.sftp-selected,
+sidebar-plus-sftp-browser .sftp-row.sftp-selected:hover {
+    background-color: color-mix(in srgb, var(--theme-primary) 60%, transparent);
+}
+
 sidebar-plus-sftp-browser .sftp-header-row {
     position: sticky;
     top: 0;

@@ -1,9 +1,10 @@
 import './sftpBrowser.component.scss'
 import { filesize } from 'filesize'
-import { Component, Inject } from '@angular/core'
+import { Component, Inject, OnDestroy } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService, LocaleService, NotificationsService, PlatformService } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
+import { SftpRemoteEditor } from '../sftpRemoteEdit'
 
 /** An optional column of the file list. The name column is not one of these — it is always shown. */
 export interface SftpColumn {
@@ -44,7 +45,7 @@ export interface SftpColumn {
     selector: 'sidebar-plus-sftp-browser',
     template: require('./sftpBrowser.component.pug'),
 })
-export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
+export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implements OnDestroy {
     /**
      * Everything `SFTPFile` can actually answer — it carries only name,
      * fullPath, isDirectory, isSymlink, mode, size and modified, so there is
@@ -68,15 +69,66 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
     // parent's factory: the parameters are the contract with SSHModule's
     // providers, and spelling them out keeps a future change in tabby-ssh a
     // compile error instead of a runtime injection failure.
+    /** Full path of the selected entry, or null. Single selection only — there is no bulk action to justify more. */
+    selectedPath: string|null = null
+
+    private editor: SftpRemoteEditor
+
+    // `notify` and not `notifications`: the parent already holds a *private*
+    // field by that name, and redeclaring it in a subclass is a type error.
     constructor (
         private config: ConfigService,
         private locale: LocaleService,
+        private notify: NotificationsService,
         ngbModal: NgbModal,
-        notifications: NotificationsService,
         platform: PlatformService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
-        super(ngbModal, notifications, platform, contextMenuProviders)
+        super(ngbModal, notify, platform, contextMenuProviders)
+        this.editor = new SftpRemoteEditor(notify, platform)
+    }
+
+    ngOnDestroy (): void {
+        this.editor.dispose()
+    }
+
+    ////// SELECTION & OPENING //////
+    select (item: SFTPFile): void {
+        this.selectedPath = item.fullPath
+    }
+
+    isSelected (item: SFTPFile): boolean {
+        return this.selectedPath === item.fullPath
+    }
+
+    /**
+     * Double-click. Directories navigate, as the inherited `open()` does; files
+     * take the edit round-trip instead of `open()`'s save-file dialog.
+     */
+    async openItem (item: SFTPFile): Promise<void> {
+        this.select(item)
+        if (item.isDirectory) {
+            await this.navigate(item.fullPath)
+            return
+        }
+        if (item.isSymlink) {
+            // Resolve first: a symlink to a directory has to navigate, and
+            // `item.size`/`item.mode` describe the link, not its target.
+            try {
+                const target = await this.sftp.readlink(item.fullPath)
+                const stat = await this.sftp.stat(target.startsWith('/') ? target : `${this.path}/${target}`)
+                if (stat.isDirectory) {
+                    await this.navigate(item.fullPath)
+                    return
+                }
+                await this.editor.edit(this.sftp, { ...stat, fullPath: item.fullPath, name: item.name })
+                return
+            } catch (e) {
+                this.notify.error(`Impossible de suivre le lien ${item.name}`, String(e))
+                return
+            }
+        }
+        await this.editor.edit(this.sftp, item)
     }
 
     ////// COLUMNS //////

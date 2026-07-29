@@ -105,7 +105,9 @@
                 [style.grid-template-columns]='gridTemplate',
                 [class.sftp-zebra]='i % 2 === 1',
                 [class.sftp-dim]='isHidden(item)',
-                (click)='open(item)',
+                [class.sftp-selected]='isSelected(item)',
+                (click)='select(item)',
+                (dblclick)='openItem(item)',
                 (contextmenu)='showContextMenu(item, $event)',
                 [title]='rowTooltip(item)'
             )
