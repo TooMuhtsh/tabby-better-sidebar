@@ -37,6 +37,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
+<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -112,7 +113,9 @@ gestion de modes qui n'avait pas à être résolu pour prouver le reste.</p>
 <li><strong>Chargement par blocs</strong> (lazy loading RxJS) : la liste est chargée d'un coup. À
   reprendre si un dossier distant très peuplé fige l'interface.</li>
 <li><strong>Suivi des transferts</strong> : ni flèches d'activité sur le profil, ni mini-gestionnaire
-  pliable en bas de sidebar.</li>
+  pliable en bas de sidebar. → repris et détaillé dans
+  <a href="#transferts">Transferts SFTP</a>, <strong>priorité relevée à Haute le 2026-07-29</strong>
+  à la demande de l'utilisateur.</li>
 </ul>
 
 <h4>Limites connues du renvoi de fichier édité</h4>
@@ -331,7 +334,193 @@ masquer serait un moyen de la perdre de vue) ; l'état replié va en <code>local
 dans <code>config.yaml</code>.</p>
 <p><strong>Reste à faire sur ce chantier</strong> : l'intégration visuelle des états de transfert
 SFTP (vitesse, file d'attente) listée ci-dessus n'est pas livrée — elle dépend du mini-gestionnaire
-de transferts différé du chantier <a href="#sftp">SFTP contextuel</a>, et suivra celui-ci.</p></div>
+de transferts différé du chantier <a href="#sftp">SFTP contextuel</a>, et suivra celui-ci, désormais
+repris dans <a href="#transferts">Transferts SFTP</a> (priorité relevée le 2026-07-29).</p></div>
+
+<h3 id="transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</h3>
+<p class="muted">Demandé par l'utilisateur le 2026-07-29, avec une <strong>urgence relevée</strong> :
+ce chantier passe devant <a href="#auto-enter">Auto-Enter</a> et devient le prochain à construire.
+Il absorbe le « mini-gestionnaire de transferts » différé du <a href="#sftp">SFTP contextuel</a> et
+débloque au passage l'affichage des états de transfert attendu par
+<a href="#sessions-actives">Sessions actives</a>. Rien n'est implémenté.</p>
+
+<p>Trois demandes distinctes, à traiter dans cet ordre — la première est autonome, les deux autres
+partagent leur plomberie de dépôt :</p>
+<ol>
+<li><strong>Gestionnaire de transferts</strong> en bas de sidebar, <strong>masqué quand vide</strong>,
+  chaque transfert <strong>horodaté</strong>.</li>
+<li><strong>Dépôt depuis l'OS directement sur un dossier</strong> de la liste distante → envoi
+  <em>dans</em> ce dossier, avec garde-fou : tout dépôt qui ne vise pas un dossier part dans le
+  dossier actif.</li>
+<li><strong>Glisser-déposer interne au panneau SFTP</strong> (déplacer un fichier/dossier distant
+  dans un autre dossier distant), pour l'ergonomie.</li>
+</ol>
+
+<h4>1. Gestionnaire de transferts (bas de sidebar, horodaté)</h4>
+<ul>
+<li><strong>Registre maison comme source de vérité</strong>, alimenté par notre panneau au moment où
+  il lance un transfert. Motif : <code>FileTransfer</code> (tabby-core) ne porte <em>ni</em> le chemin
+  distant de destination <em>ni</em> la session — seulement nom, taille, octets transférés, vitesse,
+  statut. C'est nous qui connaissons « vers <code>/var/www</code> sur <em>prod-web-01</em> », et c'est
+  précisément ce qui rend le panneau utile face au menu natif.</li>
+<li><strong>L'horodatage est à stamper par nous</strong> : ni <code>FileTransfer</code> ni
+  <code>fileTransferStarted$</code> ne datent quoi que ce soit. Début = à l'inscription au registre,
+  fin = au premier passage de polling qui voit <code>isComplete()</code>/<code>isCancelled()</code>.</li>
+<li><strong>Pas de signal de fin de transfert dans l'API</strong> (vérifié sur le source installé,
+  <code>tabby-core/src/api/platform.ts</code>) : <code>FileTransfer</code> n'expose aucun observable,
+  le menu natif ne se rafraîchit que parce que son dropdown re-render. Il faut donc un
+  <strong>polling borné</strong> (~500 ms), démarré à la première inscription et
+  <strong>arrêté dès qu'aucun transfert n'est actif</strong> — sans quoi la sidebar repeint en
+  permanence. Attention au <a href="AI-CONTEXT.html#piege-41">piège #41</a> : un <code>setInterval</code>
+  posé hors zone Angular fera avancer l'état sans repeindre la vue.</li>
+<li><strong>Nos propres transferts n'apparaissent nulle part aujourd'hui</strong> :
+  <code>LocalFileUpload</code>/<code>LocalFileDownload</code>/<code>EmptyFileUpload</code>
+  (<code>src/sftpLocalTransfer.ts</code>) ne passent pas par <code>PlatformService</code>, donc jamais
+  par <code>fileTransferStarted$</code> — l'aller-retour d'édition distante est invisible du menu
+  natif comme du nôtre tant qu'on ne l'inscrit pas explicitement. C'est un des bénéfices immédiats
+  du registre maison.</li>
+<li><strong>Contenu d'une ligne</strong> : sens (<code>↑</code>/<code>↓</code>), nom du fichier,
+  chemin distant cible, session porteuse, horodatage, état. Purge d'un élément et « Tout effacer »
+  comme le menu natif (qui annule le transfert si on retire une ligne encore active — reprendre cette
+  sémantique).</li>
+</ul>
+<div class="callout note"><span class="callout-title">Tranché le 2026-07-29 : ligne sobre, pas de barre de progression</span>
+<p>Le design acté du <a href="#sftp">SFTP contextuel</a> avait <strong>explicitement écarté</strong>
+les barres de progression (« coût de re-render Angular trop élevé avec plusieurs transferts en
+parallèle »), au profit de flèches d'activité et d'un pourcentage au survol. Le
+<code>transfers-menu</code> natif, lui, utilise <code>ngb-progressbar</code> par transfert — recopier
+sa template aurait inversé cette décision sans le dire. <strong>Choix confirmé par l'utilisateur :
+ligne sobre</strong> (état + pourcentage textuel + vitesse). La barre reste possible plus tard si le
+rendu tient.</p></div>
+
+<div class="callout warning"><span class="callout-title">Réutiliser le <code>transfers-menu</code> natif : impossible tel quel, vérifié aux deux niveaux</span>
+<p>Question posée par l'utilisateur le 2026-07-29 (« on peut pas juste piquer le transfers-menu
+natif ? »). Vérification faite selon <a href="AI-CONTEXT.html#piege-13">piège #13</a> sur le paquet
+installé :</p>
+<ul>
+<li><code>TransfersMenuComponent</code> est dans les <code>declarations</code> du NgModule de
+  <code>tabby-core</code> (<code>src/index.ts:130</code>) mais <strong>pas dans ses
+  <code>exports</code></strong> → la balise <code>&lt;transfers-menu&gt;</code> n'est pas
+  utilisable dans notre template. Comparaison utile :
+  <code>DropZoneDirective</code> <em>est</em> dans <code>exports</code>, c'est pourquoi
+  <code>dropZone</code> marche chez nous.</li>
+<li>Il est aussi <strong>absent du bloc d'export runtime</strong> du bundle compilé (73 exports
+  passés en revue ; <code>FileTransfer</code>, <code>FileDownload</code>, <code>FileUpload</code>,
+  <code>DirectoryUpload</code> y sont, lui non) et absent des typings → la classe n'est pas
+  importable non plus. Et la re-déclarer dans notre module serait de toute façon interdit : un
+  composant Angular n'appartient qu'à un seul NgModule.</li>
+</ul>
+<p><strong>Reste donc la reprise de code</strong> (67 lignes de TS + 23 de pug, MIT — même pratique
+que <code>profile-tree</code>, à consigner dans <code>THIRD-PARTY-NOTICES.md</code>). Ce qui vaut
+d'être repris est sa <em>logique</em>, pas sa template : la sémantique de
+<code>removeTransfer()</code> (retirer une ligne encore active <strong>annule</strong> le transfert)
+et la confirmation « des transferts sont en cours, tout abandonner ? » de <code>removeAll()</code>.
+Sa template, elle, part sur la progressbar écartée ci-dessus, et n'a ni horodatage ni chemin distant
+— soit précisément ce qu'on ajoute.</p></div>
+<div class="callout important"><span class="callout-title">Le menu de transferts natif s'ouvre déjà tout seul</span>
+<p>Vérifié sur le source installé : <code>startUploadFromDragEvent()</code> publie
+<em>chaque</em> fichier dans <code>fileTransferStarted$</code> (<code>platform.ts:175</code>), et
+<code>appRoot.component.ts:172-174</code> y est abonné et appelle
+<code>activeTransfersDropdown.open()</code>. Donc <strong>tout dépôt dans la sidebar fait déjà
+apparaître le dropdown natif</strong>, et notre panneau en serait le doublon visuel. Deux issues,
+à arbitrer : (a) assumer le doublon et lier ce chantier à l'« UI trimming » des
+<a href="#ui-polish">options &amp; polissage UI</a> pour masquer le bouton natif ; (b) ne pas passer
+par <code>startUploadFromDragEvent()</code> et construire nous-mêmes les <code>FileUpload</code>
+depuis le <code>DataTransfer</code>, ce qui coupe la publication mais nous met à la charge du
+parcours d'arborescence (<code>webkitGetAsEntry</code>).</p>
+<p><strong>Option (c), recommandée</strong>, issue de la question de l'utilisateur sur la reprise du
+menu natif : <strong>reprendre sa source de données plutôt que son composant</strong>. Notre panneau
+s'abonne au même <code>fileTransferStarted$</code> que <code>appRoot</code> et devient le
+gestionnaire de transferts <em>de toute l'application</em> — il reflète alors aussi les transferts du
+panneau SFTP natif et des autres plugins, ce qui rend le menu natif purement redondant et justifie de
+le neutraliser. Tranche du même coup le point « périmètre » listé plus bas. À noter : un transfert
+capté par cet abonnement mais non lancé par nous n'a <em>ni</em> chemin distant <em>ni</em> session
+associée (<code>FileTransfer</code> ne les porte pas) — ces lignes seront donc moins détaillées, et le
+registre maison reste nécessaire pour nos propres transferts, notamment ceux de l'édition distante.</p>
+<div class="callout warning"><span class="callout-title">Masquer le bouton natif ne suffira pas</span>
+<p>Le dropdown natif est déclaré avec <code>container='body'</code>
+(<code>appRoot.component.pug:61-75</code>) : son menu est <strong>téléporté dans
+<code>&lt;body&gt;</code></strong>, hors du bouton. Une règle d'UI trimming visant le seul bouton
+laisserait donc le menu s'afficher quand même à chaque dépôt (positionné par Popper sur un toggle
+masqué, donc n'importe où). La règle doit viser <code>transfers-menu</code> lui-même. Le bouton, lui,
+porte déjà un <code>[hidden]</code> natif quand la liste est vide.</p></div></div>
+<p><strong>Points à arbitrer</strong> (recommandation en italique, aucun ne bloque le démarrage) :
+persistance de l'historique — <em>en mémoire, vidé à la fermeture de Tabby</em>, plutôt que
+<code>localStorage</code> ou <code>config.yaml</code> (qui n'a pas à grossir d'un journal) ;
+périmètre — nos transferts uniquement, ou <em>refléter aussi ceux du panneau SFTP natif et des
+autres plugins</em> en s'abonnant à <code>fileTransferStarted$</code> (recommandation revue après la
+question du 2026-07-29 sur le menu natif : tout refléter, cf. option (c) ci-dessus).</p>
+<div class="callout note"><span class="callout-title">Placement en bas de sidebar</span>
+<p>Demandé explicitement en bas. À noter pour ne pas le redécouvrir comme une incohérence : le
+panneau des <a href="#tunnels-ssh">tunnels actifs</a> avait été <em>sorti</em> du bas de sidebar au
+profit d'une position sous les sessions actives, l'arbre étant contraint en hauteur. Trois sections
+repliables empilées (sessions, tunnels, transferts) risquent d'écraser l'arbre — d'où l'importance
+du « masqué quand vide », qui est le comportement déjà retenu pour les deux autres.</p></div>
+
+<h4>2. Dépôt depuis l'OS directement sur un dossier distant</h4>
+<p>Aujourd'hui le dépôt fonctionne mais atterrit toujours dans le dossier <em>affiché</em> : la
+template pose <code>dropZone</code> (la directive de tabby-core) sur <code>.sftp-body</code>, qui
+émet un <code>DirectoryUpload</code> transmis à <code>uploadOneFolder()</code>, lequel écrit sous
+<code>this.path</code>.</p>
+<ul>
+<li><strong>Ne pas empiler un <code>dropZone</code> par ligne.</strong> Vérifié sur le source
+  installé (<code>tabby-core/src/directives/dropZone.directive.ts</code>) : la directive écoute
+  <code>drop</code> sur son hôte <strong>sans <code>stopPropagation()</code></strong> et n'émet que
+  le <code>DirectoryUpload</code>, jamais le <code>DragEvent</code>. Un dropZone par ligne
+  <em>plus</em> celui du corps ferait traiter le même dépôt deux fois — soit deux jeux de
+  <code>FileUpload</code> et deux envois concurrents du même fichier.</li>
+<li><strong>Gérer <code>dragover</code>/<code>drop</code> à la main</strong> sur le corps, en un seul
+  point, et appeler <code>platform.startUploadFromDragEvent(event, true)</code> directement (méthode
+  publique de <code>PlatformService</code>, pas propre à Electron). On récupère ainsi la position du
+  curseur, donc la ligne visée, et le contrôle du retour visuel (surlignage de la ligne cible, à la
+  place du « hint » plein cadre de la directive).</li>
+<li><strong>Garde-fou de cible</strong> : ligne de dossier → ce dossier ; ligne de fichier, en-tête,
+  zone vide, ou hors de toute ligne → <strong>dossier actif</strong>. La ligne <code>..</code> peut
+  servir de cible « dossier parent » — bonus naturel, à confirmer comme souhaité.
+  <em>À vérifier avant implémentation</em> : le cas du <strong>lien symbolique vers un dossier</strong>
+  (<code>SFTPFile</code> porte <code>isDirectory</code> <em>et</em> <code>isSymlink</code>) — si
+  <code>isDirectory</code> ne suit pas le lien, traiter comme un fichier et retomber sur le dossier
+  actif, choix conservateur.</li>
+</ul>
+<div class="callout warning"><span class="callout-title">Écrasement silencieux d'un fichier distant</span>
+<p>Point établi, pas une hypothèse : <code>SFTPSession.upload()</code> écrit dans
+<code>&lt;path&gt;.tabby-upload</code> puis <strong>renomme par-dessus la cible</strong> (documenté
+dans <code>src/sftpLocalTransfer.ts</code>). Un dépôt sur le mauvais dossier écrase donc sans un mot
+un fichier de même nom déjà présent sur le serveur. Le geste devenant beaucoup plus facile à
+déclencher par accident une fois qu'on peut viser n'importe quelle ligne, prévoir un garde-fou :
+<code>stat()</code> préalable sur chaque cible et confirmation groupée en cas de collision
+(le <code>panel-conflict-resolver</code> de <code>tabby-sftp-plus</code> reste la référence citée
+pour ce sujet), plus un récapitulatif après coup « N fichiers envoyés vers &lt;chemin&gt; ».</p></div>
+
+<h4>3. Glisser-déposer interne au panneau SFTP</h4>
+<ul>
+<li><strong>Mécanisme</strong> : déplacer une ligne sur la ligne d'un dossier (ou sur
+  <code>..</code>) = <code>SFTPSession.rename(ancien, nouveau)</code> — présent dans les typings
+  vendorisés comme dans le source installé. Un déplacement dans le même système de fichiers distant
+  est instantané, aucun transfert n'a lieu.</li>
+<li><strong>Drag HTML5 natif, pas Angular CDK.</strong> Le CDK est le mécanisme de l'arbre de
+  profils, mais il a coûté cher ici (pièges <a href="AI-CONTEXT.html#piege-24">#24</a>,
+  <a href="AI-CONTEXT.html#piege-26">#26</a>, <a href="AI-CONTEXT.html#piege-40">#40</a>) et
+  n'apporte rien à une liste plate. Conséquence à prévoir : le même conteneur reçoit alors deux
+  natures de dépôt — externe (OS) et interne. Les distinguer sur <code>dataTransfer.types</code>
+  (<code>'Files'</code> pour l'OS, un type maison
+  <code>application/x-tabby-sftp-path</code> pour l'interne), jamais sur la seule position.</li>
+<li><strong>Garde-fous</strong> : refuser de déposer un dossier dans lui-même ou dans un de ses
+  descendants (même esprit que <code>isSelfOrDescendant()</code> côté arbre de profils) ; ne rien
+  faire si la source est déjà dans le dossier cible.</li>
+<li><em>À vérifier avant implémentation, ne pas traiter comme acquis</em> : la sémantique de
+  <code>rename</code> quand la <strong>destination existe déjà</strong> (selon le serveur, échec ou
+  écrasement) et le cas d'un déplacement <strong>franchissant deux points de montage</strong> côté
+  serveur. Faire un <code>stat()</code> préalable et demander confirmation plutôt que de déduire le
+  comportement ; tester sur un chemin jetable avant de le proposer sur de vraies données.</li>
+<li><strong>Sélection multiple</strong> : la liste distante ne gère qu'une sélection simple
+  aujourd'hui. Le déplacement d'un lot est une extension naturelle mais séparée — ne pas l'embarquer
+  dans cette première passe.</li>
+</ul>
+<p class="muted"><strong>Hors périmètre de ce chantier</strong> : le glisser-déposer <em>sortant</em>
+(tirer un fichier distant vers l'Explorateur Windows pour le télécharger). Ce n'est pas un oubli —
+c'est un mécanisme différent (<code>DownloadURL</code>/fichier promis), sans rapport avec la
+plomberie ci-dessus.</p>
 
 <h2>Phase 2 — productivité</h2>
 
@@ -433,6 +622,8 @@ de Tabby (multi-input) pour exécuter la même commande sur plusieurs serveurs e
 basse — pas demandée en premier par l'utilisateur.</p>
 
 <h3 id="auto-enter">Détection et validation des sessions interactives (Auto-Enter)</h3>
+<p class="muted">N'est plus le prochain chantier : <a href="#transferts">Transferts SFTP</a> est
+passé devant le 2026-07-29 à la demande de l'utilisateur.</p>
 <p>Automatisation du login en simulant l'appui sur "Entrée" dès qu'une invite interactive
 (login/password) est détectée. Si le mot de passe est pré-rempli, cela valide ; s'il est vide, cela
 passe l'invite.</p>
