@@ -20,6 +20,7 @@ import {
 import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
 import { ICON_ENTRIES, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
+import { SidebarWorkspace } from '../configProvider'
 
 interface CollapsableProfileGroup extends ProfileGroup {
     collapsed: boolean
@@ -44,6 +45,28 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     @Input() filter = ''
 
+    ////// WORKSPACES //////
+    workspaces: SidebarWorkspace[] = []
+    // Per-machine UI state, not synced config: switching workspaces is not
+    // something that should dirty config.yaml on every click.
+    activeWorkspaceId = window.localStorage.sidebarPlusActiveWorkspace ?? 'all'
+    contextMenuWorkspace: SidebarWorkspace|null = null
+    newWorkspaceName = ''
+    renameWorkspaceValue = ''
+    /** Toggles the sidebar between the normal tree and the "hidden items of this workspace" panel — see hiddenGroupsInWorkspace/hiddenProfilesInWorkspace. */
+    showHiddenPanel = false
+
+    /**
+     * Groups (isTemplate/blacklist already filtered, like profileGroups) but
+     * *not* filtered by the active workspace's visibility — kept around so
+     * the "show hidden" panel can still render a name/icon for something the
+     * main tree currently excludes. Refreshed by every successful
+     * loadTreeItems() call.
+     */
+    private rawGroupsSnapshot: PartialProfileGroup<ProfileGroup>[] = []
+    /** Monotonic counter guarding against overlapping loadTreeItems() calls (e.g. a config.changed$ reload racing an explicit workspace switch) — only the most recently *started* call's results are ever committed, see loadTreeItems(). */
+    private loadTreeRequestId = 0
+
     panelMinWidth = 200
     panelMaxWidth = 600
     panelInternalWidth = parseInt(window.localStorage.sidebarPlusTreeWidth ?? '300')
@@ -60,7 +83,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     contextMenuRoot = false
     contextMenuX = 0
     contextMenuY = 0
-    contextMenuMode: 'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename' = 'menu'
+    contextMenuMode:
+        'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename'|
+        'workspaceMenu'|'createWorkspace'|'renameWorkspace'|'confirmDeleteWorkspace' = 'menu'
     /** Set whenever a context menu/popup opens or switches mode — checked once in ngAfterViewChecked() to clamp it back on-screen after Angular renders it at its real size. */
     private menuPositionDirty = false
 
@@ -95,6 +120,22 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     get isRenameMode (): boolean {
         return this.contextMenuMode === 'rename'
+    }
+
+    get isWorkspaceMenuMode (): boolean {
+        return this.contextMenuMode === 'workspaceMenu'
+    }
+
+    get isCreateWorkspaceMode (): boolean {
+        return this.contextMenuMode === 'createWorkspace'
+    }
+
+    get isRenameWorkspaceMode (): boolean {
+        return this.contextMenuMode === 'renameWorkspace'
+    }
+
+    get isConfirmDeleteWorkspaceMode (): boolean {
+        return this.contextMenuMode === 'confirmDeleteWorkspace'
     }
 
     iconQuery = ''
@@ -141,7 +182,24 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
         this.menuPositionDirty = false
-        this.clampContextMenuPosition()
+        // Deferred by one turn of the event loop instead of measuring right
+        // here. When a menu item swaps one popup for another (mode 'menu' →
+        // 'createGroup'), both *ngIf branches flip in the SAME change
+        // detection pass, and the DOM read from ngAfterViewChecked still
+        // contains the OUTGOING element: the clamp then measures the old
+        // menu's height instead of the new popup's and concludes there is
+        // nothing to correct. Measured 2026-07-29 on the real bug:
+        // `mode=createGroup elt=group-context-menu h=74` while the popup that
+        // actually rendered was 109px tall — off-screen by exactly the 35px
+        // difference. Opening a menu by right-click was unaffected only
+        // because the previous popup had been destroyed in an earlier pass,
+        // leaving the DOM already consistent.
+        //
+        // setTimeout is patched by Zone.js, so the callback runs inside
+        // Angular and the corrected contextMenuX/Y are picked up by the pass
+        // it schedules. No loop: menuPositionDirty is already false and the
+        // clamp never sets it back.
+        setTimeout(() => this.clampContextMenuPosition())
     }
 
     /** Keeps whichever context menu/popup is currently open fully within the viewport — a right-click near the bottom/right edge of a tall sidebar would otherwise render partially under the taskbar or off-screen and be unusable. */
@@ -154,16 +212,60 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const margin = 4
         const maxX = Math.max(margin, window.innerWidth - rect.width - margin)
         const maxY = Math.max(margin, window.innerHeight - rect.height - margin)
-        const x = Math.min(this.contextMenuX, maxX)
-        const y = Math.min(this.contextMenuY, maxY)
+        // Clamped on both edges: Math.min alone left a popup opened near the
+        // top/left (or one taller than the viewport) sticking out the other way.
+        const x = Math.max(margin, Math.min(this.contextMenuX, maxX))
+        const y = Math.max(margin, Math.min(this.contextMenuY, maxY))
         if (x !== this.contextMenuX || y !== this.contextMenuY) {
             this.contextMenuX = x
             this.contextMenuY = y
+            // Written straight onto the element as well as onto the bound
+            // fields. This runs in ngAfterViewChecked, i.e. *after* Angular
+            // has already rendered [style.left.px]/[style.top.px] for this
+            // pass, so updating the fields alone only reaches the DOM if some
+            // later event happens to schedule another change-detection pass.
+            //
+            // That is exactly why the bug looked selective: a right-click menu
+            // is opened on `contextmenu`, which is followed by `mouseup` —
+            // that extra event ran another pass and the corrected position
+            // landed by luck. A popup opened from a menu item (new folder,
+            // rename, delete confirmation, icon picker) is opened on `click`,
+            // the LAST event of its sequence, so nothing ever repainted it and
+            // it stayed wherever it first rendered, off-screen included.
+            // Assigning the style here makes the clamp land on the same frame
+            // the popup appears, for every popup, whatever opened it.
+            // detectChanges() would also work but risks a loop from inside
+            // ngAfterViewChecked.
+            menu.style.left = `${x}px`
+            menu.style.top = `${y}px`
         }
     }
 
-    private async loadTreeItems (): Promise<void> {
+    /**
+     * Returns whether this call's results were actually applied to
+     * this.profileGroups/this.rootGroups. False means a newer loadTreeItems()
+     * call was started (by config.changed$ or an explicit workspace switch)
+     * before this one finished, and its results were discarded in favor of
+     * that newer call's — see the requestId guard at the end.
+     */
+    private async loadTreeItems (): Promise<boolean> {
+        const requestId = ++this.loadTreeRequestId
         const profileGroupCollapsed = JSON.parse(window.localStorage.sidebarPlusGroupCollapsed ?? '{}')
+
+        // Snapshot workspace state now, before the first await below.
+        // Re-reading this.activeWorkspaceId/this.workspaces *after* an await
+        // would risk this call picking up a mutation made by a different,
+        // concurrently-running call (e.g. switching workspaces twice in
+        // quick succession) partway through its own computation — exactly
+        // the class of bug the final requestId check guards against.
+        const workspaces = this.config.store.sidebarPlus?.workspaces ?? []
+        let activeWorkspaceId = this.activeWorkspaceId
+        if (activeWorkspaceId !== 'all' && !workspaces.some(w => w.id === activeWorkspaceId)) {
+            // Active workspace was deleted (e.g. from another machine's sync) — fall back rather than filtering on stale ids forever.
+            activeWorkspaceId = 'all'
+        }
+        const workspace = activeWorkspaceId === 'all' ? null : (workspaces.find(w => w.id === activeWorkspaceId) ?? null)
+
         let groups = await this.profilesService.getProfileGroups({ includeNonUserGroup: true, includeProfiles: true })
         // getProfileGroups() does not guarantee a deep clone. buildGroupTree()
         // below assigns a computed `.children` array onto each group object —
@@ -177,7 +279,53 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             if (group.profiles?.length) {
                 group.profiles = group.profiles.filter(x => !x.isTemplate)
                 group.profiles = group.profiles.filter(x => x.id && !this.config.store.profileBlacklist.includes(x.id))
-                group.profiles.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
+            }
+        }
+
+        // Independent copy, kept *not* filtered by workspace visibility —
+        // the "show hidden" panel (hiddenGroupsInWorkspace/
+        // hiddenProfilesInWorkspace) needs to render name/icon for groups
+        // and profiles the tree below is about to filter out. Must be a
+        // separate clone, not just a reference to `groups`: the profile
+        // sort/filter below mutates each group's `.profiles` in place.
+        const rawGroupsSnapshot = structuredClone(groups)
+
+        const { hiddenGroupIds, hiddenProfileIds } = SidebarPlusTreeComponent.computeWorkspaceFilterState(groups, workspace)
+
+        if (hiddenGroupIds.size) {
+            groups = groups.filter(g => !hiddenGroupIds.has(g.id))
+        }
+
+        // Sibling order (both groups and profiles) is independent per
+        // workspace: a workspace's own groupOrder/profileOrder takes
+        // priority when it has an entry for that parent/group, otherwise
+        // falls back to the "Tous" order (top-level groupOrder / native
+        // weight) — so a freshly created workspace starts out matching the
+        // current visual order until the user reorders within it.
+        for (const group of groups) {
+            if (group.profiles?.length) {
+                if (hiddenProfileIds.size) {
+                    group.profiles = group.profiles.filter(x => !hiddenProfileIds.has(x.id!))
+                }
+                const workspaceProfileOrder = workspace?.profileOrder?.[group.id]
+                if (workspaceProfileOrder?.length) {
+                    // Same per-item fallback as groupOrderIndex() below: a
+                    // profile the user never reordered in this workspace keeps
+                    // its "Tous" position (native weight) instead of being
+                    // dumped at the end of the list.
+                    const profileOrderIndex = (p: PartialProfile<Profile>): number =>
+                        (p.id ? workspaceProfileOrder.indexOf(p.id) : -1)
+                    group.profiles.sort((a, b) => {
+                        const ia = profileOrderIndex(a)
+                        const ib = profileOrderIndex(b)
+                        if (ia !== -1 && ib !== -1) {
+                            return ia - ib
+                        }
+                        return (a.weight ?? 0) - (b.weight ?? 0)
+                    })
+                } else {
+                    group.profiles.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
+                }
             }
         }
 
@@ -186,17 +334,86 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         groups = groups.filter(g => g.id !== 'ungrouped' || (g.profiles?.length ?? 0) > 0)
 
-        const groupOrder: Record<string, string[]> = this.config.store.sidebarPlus?.groupOrder ?? {}
+        const topGroupOrder: Record<string, string[]> = this.config.store.sidebarPlus?.groupOrder ?? {}
+        // Fallback resolved PER ITEM, not per parent key. The roadmap's rule
+        // is "a folder not yet reordered in this workspace falls back to the
+        // Tous order", and gating on the whole list (`workspaceOrder?.length
+        // ? ... : ...`) did not implement it: as soon as a workspace had any
+        // entry for that parent, every folder missing from it — including one
+        // the user had never touched there — skipped the "Tous" order entirely
+        // and went to MAX_SAFE_INTEGER, i.e. straight to alphabetical.
+        // A list holding only dead ids (which the reparent bug above produced)
+        // is the extreme case: non-empty, so it suppressed the fallback
+        // completely while ordering nothing at all.
         const groupOrderIndex = (g: PartialProfileGroup<ProfileGroup>): number => {
-            const siblingOrder = groupOrder[(g as any).parentGroupId ?? 'root'] ?? []
-            const index = siblingOrder.indexOf(g.id)
-            return index === -1 ? Number.MAX_SAFE_INTEGER : index
+            const parentKey = (g as any).parentGroupId ?? 'root'
+            const workspaceIndex = workspace?.groupOrder?.[parentKey]?.indexOf(g.id) ?? -1
+            if (workspaceIndex !== -1) {
+                return workspaceIndex
+            }
+            const topIndex = topGroupOrder[parentKey]?.indexOf(g.id) ?? -1
+            return topIndex === -1 ? Number.MAX_SAFE_INTEGER : topIndex
         }
         groups.sort((a, b) => groupOrderIndex(a) - groupOrderIndex(b) || a.name.localeCompare(b.name))
         groups.sort((a, b) => (a.id === 'built-in' || !a.editable ? 1 : 0) - (b.id === 'built-in' || !b.editable ? 1 : 0))
         groups.sort((a, b) => (a.id === 'ungrouped' ? 0 : 1) - (b.id === 'ungrouped' ? 0 : 1))
-        this.profileGroups = groups.map(g => SidebarPlusTreeComponent.intoCollapsable(g, profileGroupCollapsed[g.id] ?? false))
-        this.rootGroups = this.applyFavorites(this.profilesService.buildGroupTree(this.profileGroups))
+
+        const profileGroups = groups.map(g => SidebarPlusTreeComponent.intoCollapsable(g, profileGroupCollapsed[g.id] ?? false))
+        const rootGroups = this.applyFavorites(this.profilesService.buildGroupTree(profileGroups), workspace, profileGroups)
+
+        if (requestId !== this.loadTreeRequestId) {
+            // Superseded by a newer call started while we were awaiting above — discard, the newer call owns the final state.
+            return false
+        }
+
+        this.workspaces = workspaces
+        this.activeWorkspaceId = activeWorkspaceId
+        window.localStorage.sidebarPlusActiveWorkspace = activeWorkspaceId
+        this.rawGroupsSnapshot = rawGroupsSnapshot
+        this.profileGroups = profileGroups
+        this.rootGroups = rootGroups
+        return true
+    }
+
+    /**
+     * Computes, from the *unfiltered* raw group list, the cascaded set of
+     * hidden group ids (a hidden parent hides its descendants too, for
+     * rendering — buildGroupTree() would otherwise silently drop orphaned
+     * children rather than promoting them) and the hidden profile ids. Pure
+     * function of its arguments so loadTreeItems() can call it safely
+     * regardless of what this.activeWorkspace might have changed to by the
+     * time an overlapping call resumes.
+     */
+    private static computeWorkspaceFilterState (
+        rawGroups: PartialProfileGroup<ProfileGroup>[],
+        workspace: SidebarWorkspace|null,
+    ): { hiddenGroupIds: Set<string>, hiddenProfileIds: Set<string> } {
+        if (!workspace) {
+            return { hiddenGroupIds: new Set(), hiddenProfileIds: new Set() }
+        }
+
+        const byId = new Map(rawGroups.map(g => [g.id, g]))
+        const directHidden = new Set(workspace.hiddenGroupIds)
+        const cache = new Map<string, boolean>()
+        const isHiddenById = (id: string): boolean => {
+            if (cache.has(id)) {
+                return cache.get(id)!
+            }
+            let result: boolean
+            if (directHidden.has(id)) {
+                result = true
+            } else {
+                const parentId = byId.get(id)?.parentGroupId
+                result = parentId ? isHiddenById(parentId) : false
+            }
+            cache.set(id, result)
+            return result
+        }
+
+        return {
+            hiddenGroupIds: new Set(rawGroups.filter(g => isHiddenById(g.id)).map(g => g.id)),
+            hiddenProfileIds: new Set(workspace.hiddenProfileIds),
+        }
     }
 
     async launchProfile<P extends Profile> (profile: PartialProfile<P>): Promise<any> {
@@ -237,6 +454,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             clone: true,
         })
 
+        // Deliberately searches everywhere, ignoring the active workspace's
+        // visibility filter — a workspace only controls what the *tree*
+        // shows by default, it shouldn't make something unfindable by name.
         const matches = new FuzzySearch(
             profiles.filter(p => !p.isTemplate),
             ['name', 'description'],
@@ -254,6 +474,196 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         ]
     }
 
+    ////// WORKSPACES //////
+    get activeWorkspace (): SidebarWorkspace|null {
+        if (this.activeWorkspaceId === 'all') {
+            return null
+        }
+        return this.workspaces.find(w => w.id === this.activeWorkspaceId) ?? null
+    }
+
+    selectWorkspace (id: string): void {
+        this.activeWorkspaceId = id
+        window.localStorage.sidebarPlusActiveWorkspace = id
+        this.showHiddenPanel = false
+        this.closeContextMenu()
+        this.refreshTree()
+    }
+
+    /** Single re-entry point after anything that changes what should be visible (workspace switch, config change) — re-derives rootGroups from scratch, honoring an in-progress text filter if there is one. */
+    private async refreshTree (): Promise<void> {
+        const applied = await this.loadTreeItems()
+        if (applied && this.filter.trim()) {
+            await this.onFilterChange()
+        }
+    }
+
+    onWorkspaceTabContextMenu (event: MouseEvent, workspace: SidebarWorkspace): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.contextMenuGroup = null
+        this.contextMenuProfile = null
+        this.contextMenuRoot = false
+        this.contextMenuWorkspace = workspace
+        this.contextMenuMode = 'workspaceMenu'
+        this.contextMenuX = event.clientX
+        this.contextMenuY = event.clientY
+        this.menuPositionDirty = true
+    }
+
+    openCreateWorkspacePrompt (event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.contextMenuWorkspace = null
+        this.contextMenuMode = 'createWorkspace'
+        this.newWorkspaceName = ''
+        this.contextMenuX = event.clientX
+        this.contextMenuY = event.clientY
+        this.menuPositionDirty = true
+    }
+
+    async createWorkspace (): Promise<void> {
+        const name = this.newWorkspaceName.trim()
+        if (!name) {
+            return
+        }
+        this.config.store.sidebarPlus ??= {}
+        const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
+        const id = `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+        workspaces.push({
+            id,
+            name,
+            hiddenProfileIds: [],
+            hiddenGroupIds: [],
+            favorites: [],
+            favoriteGroups: [],
+            groupOrder: {},
+            profileOrder: {},
+        })
+        this.config.store.sidebarPlus.workspaces = workspaces
+        await this.config.save()
+        this.closeContextMenu()
+        this.selectWorkspace(id)
+    }
+
+    openRenameWorkspacePrompt (): void {
+        this.renameWorkspaceValue = this.contextMenuWorkspace?.name ?? ''
+        this.contextMenuMode = 'renameWorkspace'
+        this.menuPositionDirty = true
+    }
+
+    async confirmRenameWorkspace (): Promise<void> {
+        const name = this.renameWorkspaceValue.trim()
+        if (!name || !this.contextMenuWorkspace) {
+            return
+        }
+        this.config.store.sidebarPlus ??= {}
+        const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
+        const target = workspaces.find(w => w.id === this.contextMenuWorkspace!.id)
+        if (target) {
+            target.name = name
+        }
+        this.config.store.sidebarPlus.workspaces = workspaces
+        await this.config.save()
+        this.closeContextMenu()
+    }
+
+    confirmDeleteWorkspacePrompt (): void {
+        this.contextMenuMode = 'confirmDeleteWorkspace'
+        this.menuPositionDirty = true
+    }
+
+    async deleteWorkspace (): Promise<void> {
+        if (!this.contextMenuWorkspace) {
+            return
+        }
+        const id = this.contextMenuWorkspace.id
+        this.config.store.sidebarPlus ??= {}
+        const workspaces: SidebarWorkspace[] = (this.config.store.sidebarPlus.workspaces ?? []).filter(w => w.id !== id)
+        this.config.store.sidebarPlus.workspaces = workspaces
+        await this.config.save()
+        this.closeContextMenu()
+        if (this.activeWorkspaceId === id) {
+            this.selectWorkspace('all')
+        }
+    }
+
+    ////// WORKSPACE VISIBILITY (hide from the profile/group context menu, restore from the hidden-items panel) //////
+    /** Single-click hide, no picker — always targets the active workspace. Meaningless (and hidden in the template) on "Tous", which never hides anything. */
+    async hideInActiveWorkspace (): Promise<void> {
+        const workspace = this.activeWorkspace
+        if (!workspace) {
+            return
+        }
+        if (this.contextMenuProfile?.id) {
+            if (!workspace.hiddenProfileIds.includes(this.contextMenuProfile.id)) {
+                workspace.hiddenProfileIds.push(this.contextMenuProfile.id)
+            }
+        } else if (this.contextMenuGroup) {
+            if (!workspace.hiddenGroupIds.includes(this.contextMenuGroup.id)) {
+                workspace.hiddenGroupIds.push(this.contextMenuGroup.id)
+            }
+        } else {
+            return
+        }
+        this.config.store.sidebarPlus ??= {}
+        this.config.store.sidebarPlus.workspaces = this.workspaces
+        await this.config.save()
+        this.closeContextMenu()
+    }
+
+    /**
+     * Groups/profiles *directly* hidden in the active workspace (not
+     * cascade-hidden descendants of a hidden parent) — backs the "show
+     * hidden" panel next to the filter bar. Reads rawGroupsSnapshot (not
+     * profileGroups) since these items are, by definition, excluded from
+     * the normal filtered tree.
+     */
+    get hiddenGroupsInWorkspace (): PartialProfileGroup<ProfileGroup>[] {
+        const workspace = this.activeWorkspace
+        if (!workspace?.hiddenGroupIds.length) {
+            return []
+        }
+        return this.rawGroupsSnapshot.filter(g => workspace.hiddenGroupIds.includes(g.id))
+    }
+
+    get hiddenProfilesInWorkspace (): PartialProfile<Profile>[] {
+        const workspace = this.activeWorkspace
+        if (!workspace?.hiddenProfileIds.length) {
+            return []
+        }
+        const allProfiles = this.rawGroupsSnapshot.flatMap(g => g.profiles ?? [])
+        return allProfiles.filter(p => p.id && workspace.hiddenProfileIds.includes(p.id))
+    }
+
+    async restoreGroupInWorkspace (group: PartialProfileGroup<ProfileGroup>): Promise<void> {
+        const workspace = this.activeWorkspace
+        if (!workspace) {
+            return
+        }
+        const index = workspace.hiddenGroupIds.indexOf(group.id)
+        if (index !== -1) {
+            workspace.hiddenGroupIds.splice(index, 1)
+        }
+        this.config.store.sidebarPlus ??= {}
+        this.config.store.sidebarPlus.workspaces = this.workspaces
+        await this.config.save()
+    }
+
+    async restoreProfileInWorkspace (profile: PartialProfile<Profile>): Promise<void> {
+        const workspace = this.activeWorkspace
+        if (!workspace || !profile.id) {
+            return
+        }
+        const index = workspace.hiddenProfileIds.indexOf(profile.id)
+        if (index !== -1) {
+            workspace.hiddenProfileIds.splice(index, 1)
+        }
+        this.config.store.sidebarPlus ??= {}
+        this.config.store.sidebarPlus.workspaces = this.workspaces
+        await this.config.save()
+    }
+
     ////// RESIZING //////
     startResize (event: MouseEvent): void {
         this.panelIsResizing = true
@@ -262,8 +672,68 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         event.preventDefault()
     }
 
+    ////// DRAG DIRECTION RESCUE //////
+    // CDK caches every connected list's clientRect when the drag starts and
+    // never refreshes it, but its own reorder preview shifts the intervening
+    // rows by `transform` — so when a folder is dragged *downwards*, each
+    // candidate target's cached rect and its on-screen rect end up 29px apart
+    // (one row) and never overlap. `_canReceive` needs the pointer inside
+    // both at once, so there is literally no position that lets CDK see the
+    // drop: every downward nest silently degrades into a root-level reorder.
+    // Dragging upwards works because the pointer meets the target's drop zone
+    // before crossing the row centre that triggers the shift.
+    //
+    // Rather than fight the cache, track the folder actually under the
+    // pointer ourselves, measured live (so transforms are included — it is
+    // what the user sees), and let onGroupDrop() use it to rescue a drop CDK
+    // resolved to the root. Verified 2026-07-28: downward drops onto a
+    // neighbour one *and* three rows below both failed before this.
+    private draggedGroupId: string|null = null
+    /** Folder whose row the pointer is over, or null — only meaningful while draggedGroupId is set. */
+    private hoveredGroupId: string|null = null
+
+    onGroupDragStarted (group: PartialProfileGroup<CollapsableProfileGroup>): void {
+        this.draggedGroupId = group.id
+        this.hoveredGroupId = null
+    }
+
+    /**
+     * Only stops the tracking — `hoveredGroupId` is deliberately left set.
+     * CDK emits `cdkDragEnded` *before* `cdkDropListDropped`, so clearing it
+     * here would wipe the value a fraction of a millisecond before
+     * onGroupDrop() reads it, and the rescue would never once fire.
+     * onGroupDragStarted() resets it instead.
+     */
+    onGroupDragEnded (): void {
+        this.draggedGroupId = null
+    }
+
+    /**
+     * Hit-tests the folder rows directly rather than going through
+     * `document.elementFromPoint`: the drop-zone overlays defined in the scss
+     * cover the lower half of a row and would answer instead of the row
+     * itself, and they are exactly what is unreliable here.
+     */
+    private updateHoveredGroup (x: number, y: number): void {
+        this.hoveredGroupId = null
+        const rows = document.querySelectorAll<HTMLElement>('.sidebar-plus-tree a.tree-item[data-group-id]')
+        for (const row of Array.from(rows)) {
+            const rect = row.getBoundingClientRect()
+            // Lower half only: the upper half keeps meaning "reorder next to
+            // this folder", matching the resting drop-zone geometry so the
+            // gesture is the same whichever way CDK happens to resolve it.
+            if (x >= rect.left && x <= rect.right && y >= rect.top + rect.height / 2 && y <= rect.bottom) {
+                this.hoveredGroupId = row.dataset.groupId ?? null
+                return
+            }
+        }
+    }
+
     @HostListener('document:mousemove', ['$event'])
     onMouseMove (event: MouseEvent): void {
+        if (this.draggedGroupId) {
+            this.updateHoveredGroup(event.clientX, event.clientY)
+        }
         if (!this.panelIsResizing) { return }
         const delta = event.clientX - this.panelStartX
         const width = Math.min(Math.max(this.panelMinWidth, this.panelStartWidth + delta), this.panelMaxWidth)
@@ -298,6 +768,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return { ...group, collapsed } as PartialProfileGroup<CollapsableProfileGroup>
     }
 
+    private static groupIdFromContainerId (containerId: string): string {
+        return containerId.replace(/^profiles-/, '')
+    }
+
+    /** `groups-<id>` → that group's id, `groups-root` → null (the shape persistGroupOrder() expects for the root level). */
+    private static parentGroupIdFromGroupContainerId (containerId: string): string|null {
+        const id = containerId.replace(/^groups-/, '')
+        return id === 'root' ? null : id
+    }
+
     ////// FAVORITES //////
     isFavorite (profile: PartialProfile<Profile>): boolean {
         return !!profile.id && this.favoriteIds.includes(profile.id)
@@ -310,14 +790,23 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
         this.config.store.sidebarPlus ??= {}
-        const favorites: string[] = this.config.store.sidebarPlus.favorites ?? []
+        // "Tous" reuses the pre-existing top-level favorites/favoriteGroups
+        // keys (already live in every user's config.yaml, zero migration);
+        // every other workspace gets its own list on the workspace object.
+        const favorites: string[] = this.activeWorkspace
+            ? (this.activeWorkspace.favorites ??= [])
+            : (this.config.store.sidebarPlus.favorites ??= [])
         const index = favorites.indexOf(profile.id)
         if (index === -1) {
             favorites.push(profile.id)
         } else {
             favorites.splice(index, 1)
         }
-        this.config.store.sidebarPlus.favorites = favorites
+        if (this.activeWorkspace) {
+            this.config.store.sidebarPlus.workspaces = this.workspaces
+        } else {
+            this.config.store.sidebarPlus.favorites = favorites
+        }
         this.config.save()
         this.rootGroups = this.applyFavorites(this.rootGroups.filter(g => g.id !== 'favorites'))
     }
@@ -328,7 +817,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     private get favoriteIds (): string[] {
-        return this.config.store.sidebarPlus?.favorites ?? []
+        return this.activeWorkspace ? (this.activeWorkspace.favorites ?? []) : (this.config.store.sidebarPlus?.favorites ?? [])
     }
 
     ////// GROUP FAVORITES //////
@@ -343,31 +832,46 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         event.preventDefault()
         event.stopPropagation()
         this.config.store.sidebarPlus ??= {}
-        const favoriteGroups: string[] = this.config.store.sidebarPlus.favoriteGroups ?? []
+        const favoriteGroups: string[] = this.activeWorkspace
+            ? (this.activeWorkspace.favoriteGroups ??= [])
+            : (this.config.store.sidebarPlus.favoriteGroups ??= [])
         const index = favoriteGroups.indexOf(group.id)
         if (index === -1) {
             favoriteGroups.push(group.id)
         } else {
             favoriteGroups.splice(index, 1)
         }
-        this.config.store.sidebarPlus.favoriteGroups = favoriteGroups
+        if (this.activeWorkspace) {
+            this.config.store.sidebarPlus.workspaces = this.workspaces
+        } else {
+            this.config.store.sidebarPlus.favoriteGroups = favoriteGroups
+        }
         this.config.save()
         this.closeContextMenu()
     }
 
     private get favoriteGroupIds (): string[] {
-        return this.config.store.sidebarPlus?.favoriteGroups ?? []
+        return this.activeWorkspace ? (this.activeWorkspace.favoriteGroups ?? []) : (this.config.store.sidebarPlus?.favoriteGroups ?? [])
     }
 
+    /**
+     * `workspace`/`sourceProfileGroups` default to live instance state for
+     * the synchronous, non-racy call sites (toggleFavorite*, onFilterChange).
+     * loadTreeItems() passes them explicitly instead — it computes against a
+     * local snapshot taken before its own await, per the requestId-guard
+     * discipline described there, and must not fall back to `this.*` here.
+     */
     private applyFavorites (
         groups: PartialProfileGroup<CollapsableProfileGroup>[],
+        workspace: SidebarWorkspace|null = this.activeWorkspace,
+        sourceProfileGroups: PartialProfileGroup<ProfileGroup>[] = this.profileGroups,
     ): PartialProfileGroup<CollapsableProfileGroup>[] {
-        const favoriteIds = this.favoriteIds
+        const favoriteIds = workspace ? (workspace.favorites ?? []) : (this.config.store.sidebarPlus?.favorites ?? [])
         if (!favoriteIds.length) {
             return groups
         }
 
-        const allProfiles = this.profileGroups.flatMap(g => g.profiles ?? [])
+        const allProfiles = sourceProfileGroups.flatMap(g => g.profiles ?? [])
         const favoriteProfiles = favoriteIds
             .map(id => allProfiles.find(p => p.id === id))
             .filter((p): p is PartialProfile<Profile> => !!p)
@@ -429,6 +933,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
 
+        const sourceGroupId = SidebarPlusTreeComponent.groupIdFromContainerId(event.previousContainer.id)
+
         if (event.previousContainer === event.container) {
             moveItemInArray(event.container.data, event.previousIndex, event.currentIndex)
         } else {
@@ -436,10 +942,34 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex)
             profile.group = targetGroup.id === 'ungrouped' ? undefined : targetGroup.id
             await this.profilesService.writeProfile(profile)
-            await this.persistProfileWeights(event.previousContainer.data)
+            await this.persistProfileOrder(sourceGroupId, event.previousContainer.data)
         }
-        await this.persistProfileWeights(event.container.data)
+        await this.persistProfileOrder(targetGroup.id, event.container.data)
         this.config.save()
+    }
+
+    /**
+     * Sibling order is per-workspace (see configProvider.ts SidebarWorkspace)
+     * — outside "Tous", reordering never touches the profile's own native
+     * `weight` (which stays whatever "Tous" last set it to) and instead
+     * writes the displayed order into the active workspace's own
+     * `profileOrder[groupId]`. This is safe against hidden items: a
+     * workspace's order list only needs to describe the profiles actually
+     * visible in it, since a hidden profile is never rendered there
+     * regardless of its recorded position.
+     */
+    private async persistProfileOrder (groupId: string, profiles: PartialProfile<Profile>[]): Promise<void> {
+        // Before the write, never after: pruning replaces the order maps with
+        // fresh objects, so pruning last would discard the entry just made.
+        this.pruneDeadOrderIds()
+        if (this.activeWorkspace) {
+            this.activeWorkspace.profileOrder ??= {}
+            this.activeWorkspace.profileOrder[groupId] = profiles.map(p => p.id).filter((id): id is string => !!id)
+            this.config.store.sidebarPlus ??= {}
+            this.config.store.sidebarPlus.workspaces = this.workspaces
+            return
+        }
+        await this.persistProfileWeights(profiles)
     }
 
     private async persistProfileWeights (profiles: PartialProfile<Profile>[]): Promise<void> {
@@ -452,8 +982,36 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }))
     }
 
+    /**
+     * CDK resolves a drop's target container by walking this array in order
+     * and taking the FIRST connected list whose element contains the drop
+     * point. Every nested `groups-<id>` list is rendered *inside*
+     * `#groups-root` (recursive template), so `#groups-root`'s element
+     * DOM-contains all of them — if it came first (as it used to), it always
+     * won, and a folder drag could never register as entering a nested
+     * folder no matter how precisely the user targeted it (confirmed via
+     * CDP: `containerId` was `groups-root` on every attempt, even aimed
+     * directly at a visible child row). Deepest-nested groups must be
+     * checked first, `groups-root` last, so an ancestor list never
+     * shadows a descendant one it happens to contain.
+     */
     get groupListIds (): string[] {
-        return ['groups-root', ...this.profileGroups.map(g => `groups-${g.id}`)]
+        return [...SidebarPlusTreeComponent.sortGroupIdsByDepthDesc(this.profileGroups), 'groups-root']
+    }
+
+    private static sortGroupIdsByDepthDesc (groups: PartialProfileGroup<ProfileGroup>[]): string[] {
+        const byId = new Map(groups.map(g => [g.id, g]))
+        const depthCache = new Map<string, number>()
+        const depthOf = (id: string): number => {
+            if (depthCache.has(id)) {
+                return depthCache.get(id)!
+            }
+            const parentId = (byId.get(id) as any)?.parentGroupId
+            const depth = parentId && byId.has(parentId) ? depthOf(parentId) + 1 : 0
+            depthCache.set(id, depth)
+            return depth
+        }
+        return [...groups].sort((a, b) => depthOf(b.id) - depthOf(a.id)).map(g => `groups-${g.id}`)
     }
 
     async onGroupDrop (
@@ -466,6 +1024,20 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
 
         if (event.previousContainer === event.container) {
+            // Before treating this as a plain reorder, check whether the
+            // pointer was actually sitting on another folder's row — see the
+            // "drag direction rescue" note above: on a downward drag CDK
+            // cannot see the nested list at all and reports a root reorder
+            // even though the user clearly aimed inside a folder.
+            const rescued = this.rescueTargetGroupId(dragged.id)
+            if (rescued) {
+                // Drop it out of the sibling list we are about to persist:
+                // it is leaving this level, so recording it here would write
+                // an order entry for a folder that no longer belongs to it.
+                const siblings = event.container.data.filter(g => g.id !== dragged.id)
+                await this.reparentDraggedGroup(dragged, rescued, targetParentGroupId, siblings)
+                return
+            }
             moveItemInArray(event.container.data, event.previousIndex, event.currentIndex)
             this.persistGroupOrder(targetParentGroupId, event.container.data)
             await this.config.save()
@@ -480,22 +1052,162 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
 
         transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex)
-        try {
-            await this.reparentGroup(dragged, targetParentGroupId)
-        } catch (err) {
-            this.notifications.error('Le déplacement du dossier a échoué', String(err))
-            throw err
+        // The folder is leaving this list, so the parent it came from must be
+        // re-persisted without it — mirrors what onProfileDrop() already does
+        // for the source group. Skipping it left the moved folder's id sitting
+        // in its former parent's order list forever (seen in the user's real
+        // config on 2026-07-29: the same id listed both under `root` and under
+        // the folder it had been nested into).
+        this.persistGroupOrder(
+            SidebarPlusTreeComponent.parentGroupIdFromGroupContainerId(event.previousContainer.id),
+            event.previousContainer.data,
+        )
+        await this.reparentDraggedGroup(dragged, targetParentGroupId, targetParentGroupId, event.container.data)
+    }
+
+    /**
+     * The folder the pointer was really over, when it is a legal nest target
+     * for `draggedId` — or null, meaning the drop should stay a plain
+     * reorder. See the "drag direction rescue" note above for why CDK cannot
+     * be trusted to have noticed it on a downward drag.
+     */
+    private rescueTargetGroupId (draggedId: string): string|null {
+        const hovered = this.hoveredGroupId
+        if (!hovered || hovered === draggedId) {
+            return null
         }
-        this.persistGroupOrder(targetParentGroupId, event.container.data)
+        const target = this.profileGroups.find(g => g.id === hovered)
+        if (!target?.editable || this.isSelfOrDescendant(hovered, draggedId)) {
+            return null
+        }
+        // Already sitting in that folder: nesting would be a no-op that still
+        // pays the full recreate/migrate/delete cost (and a new id), so let
+        // the normal reorder run instead.
+        if (this.rawGroupsSnapshot.find(g => g.id === draggedId)?.parentGroupId === hovered) {
+            return null
+        }
+        return hovered
+    }
+
+    private async reparentDraggedGroup (
+        dragged: PartialProfileGroup<CollapsableProfileGroup>,
+        newParentGroupId: string|null,
+        orderKeyParentGroupId: string|null,
+        siblingsToPersist: PartialProfileGroup<CollapsableProfileGroup>[],
+    ): Promise<void> {
+        let allGroups = await this.profilesService.getProfileGroups({ includeNonUserGroup: true, includeProfiles: true })
+        allGroups = structuredClone(allGroups)
+        try {
+            const newId = await this.reparentGroup(dragged.id, dragged, newParentGroupId, allGroups)
+            // The folder now lives under a brand-new id, but `dragged` is the
+            // rendered tree node and still carries the old one — and it is a
+            // member of siblingsToPersist. Without this, persistGroupOrder()
+            // below writes the OLD id into the new parent's order list, right
+            // after migrateWorkspaceGroupId() has carefully rewritten every
+            // other reference to the new one: the entry then points at a group
+            // that no longer exists, the folder has no recorded position in
+            // its new parent, and it silently falls back to being sorted last.
+            // Found in the user's real config on 2026-07-29 as a dead id
+            // (`526eac40: [a776a5b3]`) after a nesting drag.
+            //
+            // Safe to mutate: this node comes from the structuredClone() taken
+            // in loadTreeItems(), never from a live config.store object
+            // (piège #12).
+            dragged.id = newId
+        } catch (err) {
+            // Deliberately not rethrown: this runs as an async Angular event
+            // handler, so a rethrow becomes an unhandled promise rejection —
+            // noise on top of the toast the user already gets, and it would
+            // skip the config.save() below that persists whatever partial
+            // migration did land. console.error keeps it diagnosable.
+            // eslint-disable-next-line no-console
+            console.error('[sidebarPlus] reparentGroup a échoué', err)
+            this.notifications.error('Le déplacement du dossier a échoué', String(err))
+        }
+        this.persistGroupOrder(orderKeyParentGroupId, siblingsToPersist)
         await this.config.save()
     }
 
+    /**
+     * Drops ids that match no existing group/profile from every order map —
+     * top-level and per workspace, keys as well as values.
+     *
+     * Order lists accumulate dead ids on their own: re-parenting a folder
+     * retires its id (piège #12 forces a recreate), deleting a group or
+     * profile retires it outright, and neither path can rewrite every list
+     * that happened to mention it. Left alone they are mostly inert, but they
+     * make the maps unreadable when diagnosing an ordering problem, and one
+     * of them masked a real bug once (piège #31: a list holding nothing but
+     * dead ids still counted as "non-empty").
+     *
+     * Runs on every order write rather than on load: self-repairing without
+     * ever rewriting config.yaml behind a user who is only reading the tree.
+     */
+    private pruneDeadOrderIds (): void {
+        const groups = this.config.store.groups
+        const profiles = this.config.store.profiles
+        // Guard against wiping every order map if the store is momentarily
+        // empty (mid-load, or a config that failed to parse): no groups means
+        // no evidence, not "nothing exists".
+        if (!groups?.length) {
+            return
+        }
+        const liveGroupIds = new Set<string>(groups.map((g: PartialProfileGroup<ProfileGroup>) => g.id))
+        const liveProfileIds = new Set<string>((profiles ?? []).map((p: PartialProfile<Profile>) => p.id).filter(Boolean))
+
+        // 'root' is the top level itself and 'ungrouped' is Tabby's synthetic
+        // catch-all — neither is a real group, both are legitimate keys.
+        const keptKey = (key: string): boolean => key === 'root' || key === 'ungrouped' || liveGroupIds.has(key)
+
+        // Returns a fresh object rather than mutating in place: the result is
+        // assigned back explicitly below, which is what actually makes the
+        // change persist (piège #23).
+        const prune = (order: Record<string, string[]>|undefined, liveValues: Set<string>): Record<string, string[]> => {
+            const pruned: Record<string, string[]> = {}
+            for (const [key, ids] of Object.entries(order ?? {})) {
+                if (keptKey(key)) {
+                    pruned[key] = ids.filter(id => liveValues.has(id))
+                }
+            }
+            return pruned
+        }
+
+        const sidebarPlus = this.config.store.sidebarPlus
+        if (!sidebarPlus) {
+            return
+        }
+        sidebarPlus.groupOrder = prune(sidebarPlus.groupOrder, liveGroupIds)
+        const workspaces: SidebarWorkspace[] = sidebarPlus.workspaces ?? []
+        for (const ws of workspaces) {
+            ws.groupOrder = prune(ws.groupOrder, liveGroupIds)
+            ws.profileOrder = prune(ws.profileOrder, liveProfileIds)
+        }
+        sidebarPlus.workspaces = workspaces
+    }
+
+    /** Sibling order is per-workspace — see persistProfileOrder() above for the same reasoning applied to groups. */
     private persistGroupOrder (parentGroupId: string|null, groups: PartialProfileGroup<CollapsableProfileGroup>[]): void {
+        const key = parentGroupId ?? 'root'
+        const orderedIds = groups.filter(g => g.editable).map(g => g.id)
         this.config.store.sidebarPlus ??= {}
-        this.config.store.sidebarPlus.groupOrder ??= {}
-        this.config.store.sidebarPlus.groupOrder[parentGroupId ?? 'root'] = groups
-            .filter(g => g.editable)
-            .map(g => g.id)
+        this.pruneDeadOrderIds()
+        if (this.activeWorkspace) {
+            this.activeWorkspace.groupOrder ??= {}
+            this.activeWorkspace.groupOrder[key] = orderedIds
+            this.config.store.sidebarPlus.workspaces = this.workspaces
+            return
+        }
+        // this.config.store.sidebarPlus is Tabby's reactive config store —
+        // mutating a nested property in place (`.groupOrder[key] = ...`)
+        // without a final explicit assignment back onto `sidebarPlus` is
+        // never picked up as a change to persist, unlike every other write
+        // in this file (favorites/recentIcons/workspaces), which all end
+        // with an explicit `this.config.store.sidebarPlus.X = value`. Real
+        // bug found 2026-07-28: root-level (and nested) group reordering on
+        // "Tous" silently never persisted, snapping back on every reload.
+        const groupOrder = this.config.store.sidebarPlus.groupOrder ?? {}
+        groupOrder[key] = orderedIds
+        this.config.store.sidebarPlus.groupOrder = groupOrder
     }
 
     /**
@@ -507,38 +1219,99 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * groups into it one at a time (writeProfile/newProfileGroup/
      * deleteProfileGroup are all already proven safe), then delete the
      * now-empty original.
+     *
+     * Migrates from `allGroups` — a full, workspace-*unfiltered* snapshot
+     * fetched once by the caller — rather than the dragged item's own
+     * `.children`/`.profiles` (which come from the displayed, possibly
+     * workspace-filtered tree). Using the filtered tree would silently
+     * orphan anything hidden in the active workspace: its parentGroupId
+     * would keep pointing at the original group id after that id is
+     * deleted below.
      */
     private async reparentGroup (
-        group: PartialProfileGroup<CollapsableProfileGroup>,
+        groupId: string,
+        meta: { name: string, icon?: string, color?: string },
         newParentGroupId: string|null,
-    ): Promise<void> {
+        allGroups: PartialProfileGroup<ProfileGroup>[],
+    ): Promise<string> {
         const replacement = {
             id: '',
-            name: group.name,
-            icon: group.icon,
-            color: group.color,
+            name: meta.name,
+            icon: meta.icon,
+            color: meta.color,
             parentGroupId: newParentGroupId ?? undefined,
         } as PartialProfileGroup<ProfileGroup>
         await this.profilesService.newProfileGroup(replacement, { genId: true })
 
-        for (const profile of group.profiles ?? []) {
+        const fullGroup = allGroups.find(g => g.id === groupId)
+        for (const profile of (fullGroup?.profiles ?? []).filter(p => !p.isTemplate)) {
             profile.group = replacement.id
             await this.profilesService.writeProfile(profile)
         }
-        for (const child of group.children ?? []) {
-            await this.reparentGroup(child, replacement.id)
+        for (const child of allGroups.filter(g => g.parentGroupId === groupId)) {
+            await this.reparentGroup(child.id, child, replacement.id, allGroups)
         }
-        await this.profilesService.deleteProfileGroup(group)
+
+        // The group just got a brand-new id — every workspace's hide/order
+        // state that referenced the old one must follow, or the move
+        // silently drops it out of whatever hide/order state it had
+        // everywhere (not just in the workspace the move was made from).
+        this.migrateWorkspaceGroupId(groupId, replacement.id)
+
+        await this.profilesService.deleteProfileGroup((fullGroup ?? { id: groupId }) as PartialProfileGroup<ProfileGroup>)
+        // Returned so the caller can persist the sibling order under the NEW
+        // id — see reparentDraggedGroup().
+        return replacement.id
     }
 
-    /** True if `candidateId` is `ancestorId` itself or nested somewhere under it (used to block re-parenting a group into its own subtree). */
+    private migrateWorkspaceGroupId (oldId: string, newId: string): void {
+        this.config.store.sidebarPlus ??= {}
+        const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
+        for (const ws of workspaces) {
+            const hiddenIndex = ws.hiddenGroupIds.indexOf(oldId)
+            if (hiddenIndex !== -1) {
+                ws.hiddenGroupIds[hiddenIndex] = newId
+            }
+            SidebarPlusTreeComponent.renameOrderKey(ws.groupOrder, oldId, newId)
+        }
+        this.config.store.sidebarPlus.workspaces = workspaces
+
+        this.config.store.sidebarPlus.groupOrder ??= {}
+        SidebarPlusTreeComponent.renameOrderKey(this.config.store.sidebarPlus.groupOrder, oldId, newId)
+    }
+
+    /** Renames `oldId` to `newId` both as a value wherever it appears in a sibling order list, and as the map's own parent key (siblings ordered *under* that group). */
+    private static renameOrderKey (order: Record<string, string[]>|undefined, oldId: string, newId: string): void {
+        if (!order) {
+            return
+        }
+        for (const key of Object.keys(order)) {
+            const index = order[key].indexOf(oldId)
+            if (index !== -1) {
+                order[key][index] = newId
+            }
+        }
+        if (order[oldId]) {
+            order[newId] = order[oldId]
+            delete order[oldId]
+        }
+    }
+
+    /**
+     * True if `candidateId` is `ancestorId` itself or nested somewhere under
+     * it (used to block re-parenting a group into its own subtree). Walks
+     * `rawGroupsSnapshot` (workspace-*unfiltered*) rather than
+     * `profileGroups` — an ancestor chain that happens to pass through a
+     * group hidden in the active workspace would otherwise break the walk
+     * early and under-detect a genuine self/descendant cycle.
+     */
     private isSelfOrDescendant (candidateId: string, ancestorId: string): boolean {
-        let current = this.profileGroups.find(g => g.id === candidateId)
+        let current = this.rawGroupsSnapshot.find(g => g.id === candidateId)
         while (current) {
             if (current.id === ancestorId) {
                 return true
             }
-            current = current.parentGroupId ? this.profileGroups.find(g => g.id === current!.parentGroupId) : undefined
+            current = current.parentGroupId ? this.rawGroupsSnapshot.find(g => g.id === current!.parentGroupId) : undefined
         }
         return false
     }
@@ -576,6 +1349,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.contextMenuGroup = null
         this.contextMenuProfile = null
         this.contextMenuRoot = false
+        this.contextMenuWorkspace = null
         this.contextMenuMode = 'menu'
     }
 

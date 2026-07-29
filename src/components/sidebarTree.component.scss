@@ -12,8 +12,54 @@ sidebar-plus-tree {
     border-right: 1px solid var(--theme-secondary);
 }
 
-input {
+// Scoped to the component's own tag, not left as a bare `input` selector.
+// This stylesheet is injected as plain global CSS (see the note above), so an
+// unqualified `input { ... }` restyled every text field in Tabby — settings,
+// modals, the SSH password prompt — not just this sidebar's.
+//
+// The tag selector is enough: every input this plugin renders is a descendant
+// of <sidebar-plus-tree>. The floating popups (.icon-picker, .create-popup,
+// .group-context-menu) are `position: fixed`, which changes their containing
+// block but never reparents them; only CDK's drag preview/placeholder are
+// moved out to <body>, and those contain no input.
+sidebar-plus-tree input {
     border: 1px solid var(--theme-secondary);
+}
+
+.workspace-bar {
+    gap: .25rem;
+    margin-bottom: .35rem;
+
+    .workspace-tab {
+        display: inline-flex;
+        align-items: center;
+        max-width: 110px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: .15rem .5rem;
+        border-radius: .2rem;
+        font-size: .75rem;
+        color: inherit;
+        text-decoration: none;
+        background-color: var(--theme-bg-more-2);
+        border: 1px solid var(--theme-secondary);
+
+        &:hover {
+            background-color: var(--theme-secondary);
+        }
+
+        &.active {
+            background-color: var(--theme-primary);
+            color: var(--theme-bg);
+            border-color: var(--theme-primary);
+        }
+    }
+
+    .workspace-tab-add {
+        max-width: none;
+        padding: .15rem .4rem;
+    }
 }
 
 .sidebar-plus-tree {
@@ -25,9 +71,68 @@ input {
     // 0 height, making it an almost impossible drop target for dragging a
     // profile/subfolder into it. A small guaranteed height keeps it a real,
     // reachable drop zone without adding a visually obtrusive empty gap.
-    div[id^='profiles-'],
-    div[id^='groups-'] {
-        min-height: 8px;
+    //
+    // An empty folder stacks *two* of these strips right under its row
+    // (profiles-<id>, then groups-<id>) with nothing to visually tell them
+    // apart — CDK tags the one actually compatible with the in-progress drag
+    // via .cdk-drop-list-receiving, so surface that rather than leaving both
+    // silently identical.
+    //
+    // CRITICAL: this highlight must never change the element's *size*.
+    // A `min-height` that grows on .cdk-drop-list-receiving reflows the whole
+    // tree the instant a drag starts — CDK marks every connected list as
+    // receiving at once, so with N collapsed folders above the cursor
+    // everything below jumps down by N × the growth. Measured 2026-07-28 with
+    // a 8px → 26px growth: the tree shifted ~90px mid-drag, so the folder the
+    // user aimed at was no longer under the pointer and the drop landed on a
+    // completely different list. Highlight with colour/outline only.
+    // These two strips are not decoration — they ARE the drop targets.
+    // "Nest folder A into folder B" is expressed, in CDK's model, as dropping
+    // onto B's own children list, which sits under B's row and collapses to
+    // zero height whenever B is collapsed or has no sub-folder yet. Left at
+    // their natural size they are unaimable, and padding them out adds dead
+    // space under every single folder.
+    //
+    // So when (and only when) such a list is empty, it is made 16px tall and
+    // pulled back up by exactly the same amount: its margin box contributes
+    // 0px to the flow — the tree gets *tighter* than an 8px spacer, not
+    // taller — while its border box overlays the bottom half of the folder
+    // row above it. Dropping on the lower half of a folder's row therefore
+    // means "into this folder", the upper half still belongs to the parent
+    // list and means "reorder next to it".
+    //
+    // `pointer-events` is what makes the overlay safe: while nothing is being
+    // dragged the box is transparent to the mouse, so it never steals a click
+    // meant for the folder row (collapse toggle, context menu). CDK caches
+    // each list's clientRect at drag start, and pointer-events does not
+    // affect layout, so the cached rect is already the full 16px box; only
+    // `elementFromPoint` needs the box to become solid, and that is exactly
+    // what the receiving state below turns on.
+    //
+    // Do NOT express this by growing the box on `.cdk-drop-list-receiving`
+    // instead. That fails twice over: CDK flags every connected list at once,
+    // so growth reflows the whole tree mid-drag (measured: ~90px jump, the
+    // aimed-at folder no longer under the pointer), and the class is only
+    // emitted *after* `_startReceiving()` has already cached the old rect, so
+    // `_canReceive` compares against a box that no longer exists and the drop
+    // silently never registers.
+    div[id^='profiles-']:empty,
+    div[id^='groups-']:empty {
+        position: relative;
+        z-index: 1;
+        min-height: 16px;
+        margin-top: -16px;
+        pointer-events: none;
+    }
+
+    // `pointer-events` only — deliberately no outline/background here. The
+    // feedback that matters is CDK's own: the dragged row's placeholder moves
+    // into the folder as soon as it is the active target, which already shows
+    // exactly where the item will land. Painting the strips on top of that
+    // just adds boxes flickering across the tree.
+    div[id^='profiles-'].cdk-drop-list-receiving,
+    div[id^='groups-'].cdk-drop-list-receiving {
+        pointer-events: auto;
     }
 
     .fw-20 {
@@ -157,7 +262,18 @@ input {
 }
 
 .cdk-drag-placeholder {
-    opacity: .25;
+    // Zero height rather than `display: none`: CDK animates the preview onto
+    // the placeholder's box when the drag ends, and a display:none placeholder
+    // has no box at all — the drop event then never fires. Collapsing it
+    // instead keeps the box measurable while stopping it from reserving a
+    // row's worth of space, which is what makes the tree shift under the
+    // pointer every time the item enters or leaves a folder.
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+    opacity: 0;
 }
 
 .cdk-drag-animating {
@@ -300,6 +416,70 @@ input {
         font-family: monospace;
         font-size: .75rem;
         resize: vertical;
+    }
+}
+
+.btn-hidden-toggle {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 .5rem;
+    color: inherit;
+    background-color: transparent;
+    border: 1px solid var(--theme-secondary);
+
+    &:hover {
+        background-color: var(--theme-secondary);
+    }
+
+    &.active {
+        background-color: var(--theme-primary);
+        color: var(--theme-bg);
+        border-color: var(--theme-primary);
+    }
+}
+
+.hidden-items-panel {
+    overflow-y: auto;
+    max-height: 100%;
+
+    .hidden-item {
+        display: flex;
+        align-items: center;
+        padding: .3rem .25rem;
+        border-radius: .2rem;
+
+        &:hover {
+            background-color: var(--theme-secondary);
+
+            .action {
+                display: flex;
+            }
+        }
+
+        profile-icon {
+            width: 15px;
+            height: 15px;
+        }
+
+        .action {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            font-size: .7rem;
+            color: inherit;
+            text-decoration: none;
+            border-radius: .2rem;
+            background-color: var(--theme-bg-more-2);
+
+            &:hover {
+                background-color: var(--theme-primary);
+                color: var(--theme-secondary);
+            }
+        }
     }
 }
 

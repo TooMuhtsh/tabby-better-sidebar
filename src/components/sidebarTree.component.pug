@@ -1,12 +1,55 @@
 .p-2.h-100.d-flex.flex-column
-    input.form-control.form-control-sm.mb-1(
-        type='text',
-        [(ngModel)]='filter',
-        placeholder='Filter',
-        (ngModelChange)='onFilterChange()'
-    )
+    .workspace-bar.d-flex.align-items-center.flex-wrap
+        a.workspace-tab(
+            [class.active]='activeWorkspaceId === "all"',
+            (click)='selectWorkspace("all")',
+            href='#'
+        ) Tous
+        a.workspace-tab(
+            *ngFor='let ws of workspaces',
+            [class.active]='activeWorkspaceId === ws.id',
+            (click)='selectWorkspace(ws.id)',
+            (contextmenu)='onWorkspaceTabContextMenu($event, ws)',
+            [title]='ws.name',
+            href='#'
+        ) {{ ws.name }}
+        a.workspace-tab.workspace-tab-add(
+            (click)='openCreateWorkspacePrompt($event)',
+            title='Nouveau workspace',
+            href='#'
+        )
+            .fa.fa-fw.fas.fa-plus
 
-    .sidebar-plus-tree.h-100((contextmenu)='onSidebarContextMenu($event)')
+    .d-flex.align-items-center.gap-1.mb-1
+        input.form-control.form-control-sm(
+            type='text',
+            [(ngModel)]='filter',
+            placeholder='Filter',
+            (ngModelChange)='onFilterChange()'
+        )
+        button.btn.btn-sm.btn-hidden-toggle(
+            *ngIf='activeWorkspace',
+            type='button',
+            [class.active]='showHiddenPanel',
+            (click)='showHiddenPanel = !showHiddenPanel',
+            title='Éléments masqués dans ce workspace'
+        )
+            .fa.fa-fw.fas.fa-eye-slash
+
+    .hidden-items-panel(*ngIf='showHiddenPanel')
+        .text-muted.small(*ngIf='!hiddenGroupsInWorkspace.length && !hiddenProfilesInWorkspace.length') Aucun élément masqué dans ce workspace.
+        .hidden-item(*ngFor='let g of hiddenGroupsInWorkspace')
+            profile-icon.me-2([icon]='g.icon ?? "far fa-folder"', [color]='g.color')
+            span.me-auto.no-wrap {{ g.name || 'Ungrouped' }}
+            a.action((click)='restoreGroupInWorkspace(g)', title='Réafficher', href='#')
+                .fa.fa-fw.fas.fa-eye
+        .hidden-item(*ngFor='let p of hiddenProfilesInWorkspace')
+            profile-icon.me-2([icon]='p.icon', [color]='p.color')
+            span.me-auto.no-wrap {{ p.name }}
+            a.action((click)='restoreProfileInWorkspace(p)', title='Réafficher', href='#')
+                .fa.fa-fw.fas.fa-eye
+
+    .sidebar-plus-tree.h-100(*ngIf='!showHiddenPanel', (contextmenu)='onSidebarContextMenu($event)')
         .d-flex.flex-column.p-2.sidebar-plus-tree-container(
             cdkDropList,
             id='groups-root',
@@ -15,7 +58,13 @@
             (cdkDropListDropped)='onGroupDrop($event, null)'
         )
             ng-container(*ngFor='let group of rootGroups')
-                div(cdkDrag, [cdkDragData]='group', [cdkDragDisabled]='!group.editable')
+                div(
+                    cdkDrag,
+                    [cdkDragData]='group',
+                    [cdkDragDisabled]='!group.editable',
+                    (cdkDragStarted)='onGroupDragStarted(group)',
+                    (cdkDragEnded)='onGroupDragEnded()'
+                )
                     .group-drag-preview(*cdkDragPreview)
                         profile-icon([icon]='group.icon ?? "far fa-folder"', [color]='group.color')
                         span.ms-2 {{ group.name || 'Ungrouped' }}
@@ -23,6 +72,7 @@
 
             ng-template(#recursiveGroup let-group let-depth='depth')
                 a.tree-item(
+                    [attr.data-group-id]='group.id',
                     (click)='toggleGroupCollapse(group)',
                     (contextmenu)='onGroupContextMenu($event, group)',
                     [style.paddingLeft.px]='depth * 20',
@@ -36,14 +86,14 @@
                     span.ms-2.me-auto {{ group.name || 'Ungrouped' }}
                     .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavoriteGroup(group)')
 
-                ng-container(*ngIf='!group.collapsed')
-                    div(
-                        cdkDropList,
-                        [id]='"profiles-" + group.id',
-                        [cdkDropListData]='group.profiles',
-                        [cdkDropListConnectedTo]='profileListIds',
-                        (cdkDropListDropped)='onProfileDrop($event, group)'
-                    )
+                div(
+                    cdkDropList,
+                    [id]='"profiles-" + group.id',
+                    [cdkDropListData]='group.profiles',
+                    [cdkDropListConnectedTo]='profileListIds',
+                    (cdkDropListDropped)='onProfileDrop($event, group)'
+                )
+                    ng-container(*ngIf='!group.collapsed')
                         ng-container(*ngFor='let profile of group.profiles')
                             a.tree-item(
                                 cdkDrag,
@@ -73,15 +123,29 @@
                                     .action((click)='launchProfile(profile)')
                                         .fa.fa-fw.fas.fa-play
 
-                    div(
-                        cdkDropList,
-                        [id]='"groups-" + group.id',
-                        [cdkDropListData]='group.children',
-                        [cdkDropListConnectedTo]='groupListIds',
-                        (cdkDropListDropped)='onGroupDrop($event, group.id)'
-                    )
+                // cdkDropList kept in the DOM even while collapsed (only the
+                // rows inside are conditionally hidden) — a *ngIf on the
+                // whole block used to unmount it entirely when collapsed,
+                // so CDK never registered it as a connected drop target and
+                // dragging a folder onto a collapsed one showed no drop zone
+                // at all (see .sidebar-plus-tree min-height rule in the
+                // scss, which keeps it a reachable ~8px target either way).
+                div(
+                    cdkDropList,
+                    [id]='"groups-" + group.id',
+                    [cdkDropListData]='group.children',
+                    [cdkDropListConnectedTo]='groupListIds',
+                    (cdkDropListDropped)='onGroupDrop($event, group.id)'
+                )
+                    ng-container(*ngIf='!group.collapsed')
                         ng-container(*ngFor='let child of group.children')
-                            div(cdkDrag, [cdkDragData]='child', [cdkDragDisabled]='!child.editable')
+                            div(
+                                cdkDrag,
+                                [cdkDragData]='child',
+                                [cdkDragDisabled]='!child.editable',
+                                (cdkDragStarted)='onGroupDragStarted(child)',
+                                (cdkDragEnded)='onGroupDragEnded()'
+                            )
                                 .group-drag-preview(*cdkDragPreview)
                                     profile-icon([icon]='child.icon ?? "far fa-folder"', [color]='child.color')
                                     span.ms-2 {{ child.name || 'Ungrouped' }}
@@ -122,6 +186,9 @@
     a.group-context-menu-item((click)='openIconPicker()', href='#')
         .fa.fa-fw.fas.fa-icons.me-2
         | Changer l'icône...
+    a.group-context-menu-item(*ngIf='activeWorkspace', (click)='hideInActiveWorkspace()', href='#')
+        .fa.fa-fw.fas.fa-eye-slash.me-2
+        | Cacher dans le workspace
     a.group-context-menu-item((click)='deleteGroup(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-trash.me-2
         | Supprimer
@@ -167,6 +234,9 @@
     a.group-context-menu-item((click)='openIconPicker()', href='#')
         .fa.fa-fw.fas.fa-icons.me-2
         | Changer l'icône...
+    a.group-context-menu-item(*ngIf='activeWorkspace', (click)='hideInActiveWorkspace()', href='#')
+        .fa.fa-fw.fas.fa-eye-slash.me-2
+        | Cacher dans le workspace
     a.group-context-menu-item((click)='confirmDeleteProfile()', href='#')
         .fa.fa-fw.fas.fa-trash.me-2
         | Supprimer
@@ -285,4 +355,67 @@
     .small.mb-2 Supprimer « {{ contextMenuProfile.name }} » ? Cette action est irréversible.
     .d-flex.gap-2
         button.btn.btn-sm.btn-danger((click)='deleteProfile(contextMenuProfile)') Supprimer
+        button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') Annuler
+
+.group-context-menu(
+    *ngIf='contextMenuWorkspace && isWorkspaceMenuMode',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .group-context-menu-header
+        span.no-wrap {{ contextMenuWorkspace.name }}
+    a.group-context-menu-item((click)='openRenameWorkspacePrompt()', href='#')
+        .fa.fa-fw.fas.fa-i-cursor.me-2
+        | Renommer...
+    a.group-context-menu-item((click)='confirmDeleteWorkspacePrompt()', href='#')
+        .fa.fa-fw.fas.fa-trash.me-2
+        | Supprimer
+
+.create-popup(
+    *ngIf='isCreateWorkspaceMode',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Nouveau workspace
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    input.form-control.form-control-sm.mt-1(
+        type='text',
+        [(ngModel)]='newWorkspaceName',
+        placeholder='Nom du workspace',
+        (keydown.enter)='createWorkspace()'
+    )
+    button.btn.btn-sm.btn-primary.mt-2((click)='createWorkspace()') Créer
+
+.create-popup(
+    *ngIf='isRenameWorkspaceMode && contextMenuWorkspace',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Renommer le workspace
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    input.form-control.form-control-sm.mt-1(
+        type='text',
+        [(ngModel)]='renameWorkspaceValue',
+        (keydown.enter)='confirmRenameWorkspace()',
+        (keydown.escape)='closeContextMenu()'
+    )
+    button.btn.btn-sm.btn-primary.mt-2((click)='confirmRenameWorkspace()') Renommer
+
+.create-popup(
+    *ngIf='isConfirmDeleteWorkspaceMode && contextMenuWorkspace',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Supprimer le workspace
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    .small.mb-2 Supprimer « {{ contextMenuWorkspace.name }} » ? Les profils et dossiers masqués redeviennent visibles partout ailleurs. Cette action est irréversible.
+    .d-flex.gap-2
+        button.btn.btn-sm.btn-danger((click)='deleteWorkspace()') Supprimer
         button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') Annuler
