@@ -30,6 +30,41 @@
         (closed)='setSftpMode(false)'
     )
 
+    //- Hidden outright when nothing is connected rather than shown empty: a
+    //- permanently visible "aucune session" header would cost a line of the
+    //- tree for no information. Also hidden in SFTP mode, like every block
+    //- below it.
+    .active-sessions(*ngIf='!sftpMode && activeSessions.length')
+        a.active-sessions-header((click)='toggleActiveSessions()', href='#')
+            .fa.fa-fw.fas.me-1(
+                [class.fa-chevron-down]='!activeSessionsCollapsed',
+                [class.fa-chevron-right]='activeSessionsCollapsed'
+            )
+            span.me-auto Sessions actives
+            span.active-sessions-count {{ activeSessions.length }}
+        div(*ngIf='!activeSessionsCollapsed')
+            //- The SFTP shortcut is a div inside .actions, not a nested <a>:
+            //- the row itself is an <a>, and an anchor inside an anchor is
+            //- invalid HTML that the parser silently un-nests. Same shape as
+            //- the profile rows' own .actions block below.
+            a.active-session(
+                *ngFor='let session of activeSessions',
+                [class.focused]='session.focused',
+                (click)='focusSession(session, $event)',
+                [title]='session.title',
+                href='#'
+            )
+                span.status-dot.status-dot-connected.ms-1
+                .fw-20
+                    profile-icon.ms-1([icon]='session.icon', [color]='session.color')
+                span.ms-2.me-auto.no-wrap {{ session.name }}
+                .actions
+                    .action(
+                        (click)='openSessionSftp(session, $event)',
+                        title='Ouvrir le SFTP de cette session'
+                    )
+                        .fa.fa-fw.fas.fa-folder-open
+
     .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='!sftpMode')
         a.workspace-tab(
             [class.active]='activeWorkspaceId === "all"',

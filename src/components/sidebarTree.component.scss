@@ -57,6 +57,116 @@ sidebar-plus-tree .view-mode-bar {
     }
 }
 
+// Scoped to the plugin's tag, like the .view-mode-bar rules above: this file
+// is injected as global CSS, and these class names are generic enough to hit
+// the rest of Tabby otherwise.
+//
+// The row styles are deliberately restated here rather than shared with
+// `.tree-item`: that block is nested inside `.sidebar-plus-tree`, and this
+// section sits *above* it as a sibling, so none of it would apply.
+sidebar-plus-tree .active-sessions {
+    margin-bottom: .35rem;
+
+    .active-sessions-header {
+        display: flex;
+        align-items: center;
+        padding: .15rem .25rem;
+        border-radius: .2rem;
+        font-size: .7rem;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: var(--theme-secondary-fg);
+        text-decoration: none;
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--theme-secondary);
+        }
+
+        .fa-chevron-right,
+        .fa-chevron-down {
+            font-size: .6rem;
+        }
+    }
+
+    .active-sessions-count {
+        font-size: .65rem;
+        padding: 0 .3rem;
+        border-radius: .5rem;
+        background-color: var(--theme-secondary);
+    }
+
+    .active-session {
+        display: flex;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+        padding: .25rem;
+        border-radius: .3rem;
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--theme-secondary);
+
+            .actions {
+                display: flex;
+            }
+        }
+
+        // The pane currently in view. A left bar rather than a filled
+        // background: the row is already highlighted on hover, and two
+        // background states on the same row are indistinguishable in passing.
+        &.focused {
+            box-shadow: inset 2px 0 0 var(--theme-primary);
+        }
+
+        .status-dot {
+            flex: 0 0 auto;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #3fb950;
+        }
+
+        .fw-20 {
+            width: 20px;
+        }
+
+        profile-icon {
+            width: 15px;
+            height: 15px;
+        }
+
+        .actions {
+            display: none;
+            position: absolute;
+            right: 0;
+            flex-direction: row;
+            height: 100%;
+            padding: .25rem;
+            background: var(--theme-secondary);
+
+            .action {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100%;
+                font-size: .6rem;
+                background-color: var(--theme-bg-more-2);
+                border-radius: .2rem;
+                padding: 0 .34rem;
+
+                &:hover {
+                    background-color: var(--theme-primary);
+                    color: var(--theme-secondary);
+                }
+            }
+        }
+    }
+}
+
 .workspace-bar {
     gap: .25rem;
     margin-bottom: .35rem;

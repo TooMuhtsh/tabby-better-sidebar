@@ -18,9 +18,11 @@ import {
     SplitTabComponent,
 } from 'tabby-core'
 import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
+import { SSHTabComponent } from 'tabby-ssh'
 import { ICON_ENTRIES, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
+import { focusTab, getAllOpenTabs } from '../tabs'
 import { clampInViewport } from '../viewport'
 
 interface CollapsableProfileGroup extends ProfileGroup {
@@ -32,8 +34,20 @@ type ProfileConnectionStatus = 'connected' | 'error'
 
 /** Duck-typed shape of tabs that carry a launching profile and a live session (e.g. BaseTerminalTabComponent). */
 interface ProfileBackedTab {
-    profile?: { id?: string }
+    profile?: { id?: string, name?: string, icon?: string, color?: string }
     session?: unknown
+}
+
+/** One row of the "Sessions actives" section — a live SSH tab, flattened out of its split if it is in one. */
+interface ActiveSession {
+    tab: SSHTabComponent
+    /** The launching profile's name, falling back to the tab's own title for a tab opened outside any saved profile (quick connect). */
+    name: string
+    icon: string
+    color: string|null
+    /** The tab's live title (usually `user@host: cwd`), shown as a tooltip since it moves around too much to be the label. */
+    title: string
+    focused: boolean
 }
 
 @Component({
@@ -89,8 +103,23 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     panelIsResizing = false
     panelStartX = 0
 
+    ////// ACTIVE SESSIONS //////
+    /**
+     * The live SSH sessions listed at the top of the sidebar, rebuilt by the
+     * same pass that refreshes the connection dots. Deliberately *not*
+     * filtered by the active workspace: unlike visibility, favorites and
+     * order, an open session is a fact about the app, not about the workspace
+     * you happen to be looking at — hiding one you have open would be a way to
+     * lose track of it.
+     */
+    activeSessions: ActiveSession[] = []
+    /** Per-machine UI state (localStorage, like sftpMode) rather than a `sidebarPlus.*` config key — nothing worth syncing across machines, and it sidesteps piège #16 entirely. */
+    activeSessionsCollapsed = window.localStorage.sidebarPlusActiveSessionsCollapsed === 'true'
+
     profileStatuses = new Map<string, ProfileConnectionStatus>()
     private statusSubscription: Subscription|null = null
+    /** Focus moves *between panes* of the active split emit nothing on AppService — see watchSplitFocus(). */
+    private splitFocusSubscription: Subscription|null = null
     private modalWatchInterval: ReturnType<typeof setInterval>|null = null
 
     contextMenuGroup: PartialProfileGroup<CollapsableProfileGroup>|null = null
@@ -183,17 +212,33 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.config.changed$.subscribe(() => this.loadTreeItems())
 
         this.refreshProfileStatuses()
+        this.refreshActiveSessions()
+        this.watchSplitFocus()
         this.statusSubscription = merge(
             this.app.tabsChanged$,
             this.app.tabOpened$,
             this.app.tabClosed$,
             this.app.tabRemoved$,
+            // Drives the "focused" highlight of the active sessions list. The
+            // periodic timer below would eventually catch up, but a highlight
+            // trailing the user's own tab switch by up to two seconds reads as
+            // a bug.
+            this.app.activeTabChange$,
+            // Nothing emits when a session merely *dies* (server-side drop,
+            // network loss): the tab lives on showing "Reconnecter" while
+            // `sshSession.open` has already flipped. Hence the poll — it is
+            // what keeps a dead session from staying listed as live.
             timer(2000, 2000),
-        ).subscribe(() => this.refreshProfileStatuses())
+        ).subscribe(() => {
+            this.refreshProfileStatuses()
+            this.refreshActiveSessions()
+            this.watchSplitFocus()
+        })
     }
 
     ngOnDestroy (): void {
         this.statusSubscription?.unsubscribe()
+        this.splitFocusSubscription?.unsubscribe()
         if (this.modalWatchInterval) {
             clearInterval(this.modalWatchInterval)
         }
@@ -941,7 +986,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     private refreshProfileStatuses (): void {
         const statuses = new Map<string, ProfileConnectionStatus>()
-        for (const tab of this.getAllOpenTabs() as unknown as ProfileBackedTab[]) {
+        for (const tab of getAllOpenTabs(this.app) as unknown as ProfileBackedTab[]) {
             const profileId = tab.profile?.id
             if (!profileId) {
                 continue
@@ -955,8 +1000,110 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.profileStatuses = statuses
     }
 
-    private getAllOpenTabs (): BaseTabComponent[] {
-        return this.app.tabs.flatMap(tab => tab instanceof SplitTabComponent ? tab.getAllTabs() : [tab])
+    ////// ACTIVE SESSIONS //////
+    /**
+     * Rebuilds the list of live SSH sessions, one row per *pane* — a split
+     * holding three sessions is three rows, since focusing "the tab" would be
+     * ambiguous otherwise.
+     *
+     * Only SSH tabs are listed, per the roadmap. Widening this to local/serial
+     * tabs later is a matter of relaxing the `instanceof` and reading liveness
+     * off `session` instead of `sshSession`.
+     */
+    private refreshActiveSessions (): void {
+        const focused = this.resolveFocusedTab()
+        const sessions: ActiveSession[] = []
+        for (const tab of getAllOpenTabs(this.app)) {
+            // Same caveat as the SFTP panel's own instanceof: this narrowing
+            // only holds while `tabby-ssh` stays out of node_modules
+            // (src/types/tabby-ssh/PROVENANCE.md, piège #34).
+            if (!(tab instanceof SSHTabComponent)) {
+                continue
+            }
+            // Two conditions, and both are needed — see piège #37.
+            //
+            // `sshSession` is the SSH *transport*, and it deliberately outlives
+            // the shell: it is reference-counted for multiplexing and still
+            // carries the SFTP channel, so `sshSession.open` stays true after
+            // an `exit` on the server. Alone, it left ended sessions listed as
+            // live indefinitely (found in manual testing on 2026-07-29).
+            //
+            // `session` is the shell itself, and Tabby nulls it out on session
+            // end (`onSessionDestroyed()` → `setSession(null)`, verified in the
+            // installed app's compiled tabby-terminal). That is what the tab's
+            // own "Reconnecter" banner keys off, so it is the honest answer to
+            // "is this session live". Keeping the transport check too means a
+            // listed row can always serve the SFTP shortcut.
+            if (!tab.sshSession?.open || !(tab as unknown as ProfileBackedTab).session) {
+                continue
+            }
+            const profile = (tab as unknown as ProfileBackedTab).profile
+            sessions.push({
+                tab,
+                name: profile?.name || tab.title || 'Session SSH',
+                icon: profile?.icon || tab.icon || 'fas fa-terminal',
+                color: profile?.color ?? tab.color ?? null,
+                title: tab.title,
+                focused: tab === focused,
+            })
+        }
+        // Only swap the array in when something actually changed. This runs on
+        // a 2s timer, and `*ngFor` tracks rows by object identity: reassigning
+        // unconditionally would rebuild every row's DOM twice a second, which
+        // drops the `:hover` state the `.actions` overlay depends on — the SFTP
+        // button would blink out from under the cursor and swallow the click.
+        if (!SidebarPlusTreeComponent.sameSessions(this.activeSessions, sessions)) {
+            this.activeSessions = sessions
+        }
+    }
+
+    private static sameSessions (a: ActiveSession[], b: ActiveSession[]): boolean {
+        return a.length === b.length && a.every((session, i) =>
+            session.tab === b[i].tab &&
+            session.focused === b[i].focused &&
+            session.name === b[i].name &&
+            session.icon === b[i].icon &&
+            session.color === b[i].color &&
+            session.title === b[i].title)
+    }
+
+    /** The pane the user is actually looking at: `app.activeTab` is the split, not the session inside it. */
+    private resolveFocusedTab (): BaseTabComponent|null {
+        const active = this.app.activeTab
+        return active instanceof SplitTabComponent ? active.getFocusedTab() : active
+    }
+
+    /**
+     * Keeps the focused-row highlight in step with focus moves *inside* the
+     * active split, which AppService knows nothing about. Re-subscribed on
+     * every refresh: dropping the old subscription unconditionally is what
+     * makes switching from one split to another actually follow the new one.
+     */
+    private watchSplitFocus (): void {
+        this.splitFocusSubscription?.unsubscribe()
+        this.splitFocusSubscription = null
+        const active = this.app.activeTab
+        if (active instanceof SplitTabComponent) {
+            this.splitFocusSubscription = active.focusChanged$.subscribe(() => this.refreshActiveSessions())
+        }
+    }
+
+    toggleActiveSessions (): void {
+        this.activeSessionsCollapsed = !this.activeSessionsCollapsed
+        window.localStorage.sidebarPlusActiveSessionsCollapsed = this.activeSessionsCollapsed
+    }
+
+    focusSession (session: ActiveSession, event?: MouseEvent): void {
+        event?.preventDefault()
+        focusTab(this.app, session.tab)
+    }
+
+    /** Jumps to the session *and* swaps the sidebar to its SFTP view — the panel follows the focused tab, so the order matters. */
+    openSessionSftp (session: ActiveSession, event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        focusTab(this.app, session.tab)
+        this.setSftpMode(true)
     }
 
     ////// DRAG & DROP //////
