@@ -24,6 +24,44 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Section « Sessions actives » (2026-07-29)</h2>
+<p>Premier chantier de la <a href="ROADMAP.html#sessions-actives">liste restante</a>, mené
+directement sur <code>master</code>. Même répartition que le chantier précédent : l'assistant
+lançait Tabby en <code>--debug --remote-debugging-port=9333</code> et lisait la console via CDP,
+l'utilisateur faisait les gestes d'interface et validait point par point.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-07-29</td><td>7adca38</td>
+<td><strong>La section elle-même</strong>, en haut de la sidebar, repliable, masquée quand rien
+n'est connecté. Une ligne <strong>par pane</strong> et non par onglet : un split de trois sessions
+donne trois lignes, « aller à l'onglet » n'aurait pas eu de sens. Clic = focus, action de survol
+pour ouvrir le SFTP de cette session. La vivacité exige <em>deux</em> conditions — d'abord testée
+sur le seul <code>sshSession.open</code>, elle laissait les sessions terminées listées
+indéfiniment après un <code>exit</code> (piège #37 : le transport survit au shell). La liste se
+reconstruit sur le sondage de statut existant à 2 s, seul mécanisme qui rattrape une coupure côté
+serveur, mais le tableau n'est réaffecté que s'il a réellement changé : le réassigner deux fois par
+seconde reconstruisait chaque ligne et faisait perdre le <code>:hover</code> dont dépend la
+superposition des actions — le bouton SFTP disparaissait sous le curseur. État replié en
+<code>localStorage</code> plutôt qu'en clé <code>sidebarPlus.*</code> (rien à synchroniser entre
+machines, et le piège #16 est contourné plutôt que respecté). Les boutons d'action sont des
+<code>div</code>, jamais des <code>&lt;a&gt;</code> (piège #38).</td></tr>
+
+<tr><td>2026-07-29</td><td>3f61951</td>
+<td><strong>Socle partagé et correctif du suivi de focus.</strong>
+<code>getAllOpenTabs()</code> était dupliqué mot pour mot entre l'arbre et le panneau SFTP, et la
+liste des sessions en devenait le troisième consommateur → <code>src/tabs.ts</code>, avec
+<code>findParentSplit()</code> et <code>focusTab()</code> (sélectionner le split <em>puis</em>
+déplacer le focus dedans ; <code>selectTab()</code> seul ramène le split sur le pane qu'il avait en
+dernier). Corrige au passage un bug préexistant du panneau SFTP : <code>watchSplitFocus()</code>
+gardait son abonnement dès qu'il en avait un, donc après un passage du split A au split B il
+continuait d'écouter A pour toujours. Invisible jusqu'ici parce que sélectionner un split ne fixe
+pas en soi le pane focalisé — seul un changement de focus <em>ultérieur</em> dans B aurait corrigé,
+et il n'arrivait jamais. Le nouveau raccourci « ouvrir le SFTP de cette session » emprunte
+exactement ce chemin et aurait lié le panneau au mauvais pane.</td></tr>
+</table>
+
 <h2>SFTP contextuel dans la sidebar (2026-07-29)</h2>
 <p>Chantier « SFTP contextuel », premier de la roadmap en priorité absolue. Mené sur la branche
 <code>feat/sftp-panel</code>, en aller-retours serrés avec l'utilisateur : l'assistant pilotait

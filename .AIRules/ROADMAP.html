@@ -36,7 +36,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#robustesse">Robustesse édition de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
-<tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute</td></tr>
+<tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -317,6 +317,21 @@ ouvertes en arrière-plan.</p>
 <p>Bien que SCP ait été évoqué, le socle de Tabby (<code>tabby-ssh</code>) exporte déjà
 <code>SFTPSession</code> (voir <a href="AI-CONTEXT.html#fragile-3">point de veille AI-CONTEXT</a>),
 il est donc impératif de s'appuyer sur SFTP pour garantir la stabilité globale.</p></div>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-29</span>
+<p>Commits <code>3f61951</code> (socle partagé) et <code>7adca38</code> (la section), détail dans
+<a href="AI-HISTORY.html">AI-HISTORY</a>. Une ligne <strong>par pane</strong>, pas par onglet ; clic
+= focus (y compris à l'intérieur d'un split) ; action de survol pour sauter à la session et basculer
+la sidebar sur son SFTP. Deux pièges consignés (#37, #38) et un bug préexistant du panneau SFTP
+corrigé au passage (son suivi de focus restait collé au premier split rencontré).</p>
+<p><strong>Trois décisions prises</strong>, à rejuger à l'usage : la section est <em>masquée
+entièrement</em> quand rien n'est connecté plutôt qu'affichée vide ; elle n'est <em>pas</em>
+cloisonnée par workspace (une session ouverte est un fait de l'app, pas du workspace regardé — la
+masquer serait un moyen de la perdre de vue) ; l'état replié va en <code>localStorage</code>, pas
+dans <code>config.yaml</code>.</p>
+<p><strong>Reste à faire sur ce chantier</strong> : l'intégration visuelle des états de transfert
+SFTP (vitesse, file d'attente) listée ci-dessus n'est pas livrée — elle dépend du mini-gestionnaire
+de transferts différé du chantier <a href="#sftp">SFTP contextuel</a>, et suivra celui-ci.</p></div>
 
 <h2>Phase 2 — productivité</h2>
 

@@ -337,6 +337,33 @@ configurée. → Toujours lui passer <code>this.locale.getLocale()</code>. C'est
 explique que le panneau SFTP natif affiche bien « 23 juil. 2026 » : son pipe
 <code>tabbyDate</code> passe par ce service.</p>
 
+<h3 id="piege-37">#37 — <code>sshSession.open</code> reste vrai après la fin du shell : ce n'est pas le
+transport qui dit si une session est vivante</h3>
+<p>Constaté en test manuel le 2026-07-29 sur la section « Sessions actives » : un <code>exit</code>
+côté serveur déconnecte bien le terminal (l'onglet bascule sur « Reconnecter ») mais la session
+restait listée comme active indéfiniment. <code>SSHTabComponent.sshSession</code> est le
+<strong>transport</strong> SSH — compté par référence pour le multiplexage, et porteur du canal
+SFTP — il survit donc délibérément au shell. Ce qui répond honnêtement à « cette session est-elle
+vivante » est <code>SSHTabComponent.session</code> (la <code>SSHShellSession</code>) : Tabby la met
+à <code>null</code> à la fin de la session (<code>onSessionDestroyed()</code> →
+<code>setSession(null)</code>, vérifié dans le <code>tabby-terminal</code> compilé de l'app
+installée, lignes ~42077 et ~42156), et c'est aussi ce sur quoi la bannière « Reconnecter » de
+l'onglet se règle. → Tester <strong>les deux</strong> : <code>session</code> pour la vivacité,
+<code>sshSession?.open</code> pour garantir qu'une ligne affichée peut toujours ouvrir son SFTP.
+Le piège #6 distingue déjà ces deux champs côté SFTP ; ici c'est leur <em>durée de vie</em> qui
+diffère, pas seulement leur type.</p>
+
+<h3 id="piege-38">#38 — un <code>&lt;a&gt;</code> dans un <code>&lt;a&gt;</code> est silencieusement
+désimbriqué par le parseur HTML</h3>
+<p>Les lignes de l'arbre sont des <code>a.tree-item</code> et leurs boutons d'action des
+<code>div.action</code>, pas des <code>&lt;a&gt;</code> — ce n'est pas un hasard de style. Un
+<code>&lt;a&gt;</code> imbriqué dans un <code>&lt;a&gt;</code> est invalide : le parseur ferme
+l'ancre extérieure et sort l'ancre intérieure du flux, ce qui casse la mise en page de la ligne
+sans aucune erreur ni avertissement. Le motif <code>.actions &gt; .action</code> en
+<code>div</code> est à reprendre tel quel pour toute nouvelle ligne cliquable. À ne pas confondre
+avec le piège #21, qui portait sur l'indentation pug : ici l'indentation est correcte, c'est le
+choix du tag qui casse.</p>
+
 <h3>Points de veille — <span class="pill warn">⚠️ à revérifier après update Tabby</span></h3>
 
 <h4 id="fragile-1">Édition de profil (clic droit → "Éditer...") — le plus fragile de tous</h4>
