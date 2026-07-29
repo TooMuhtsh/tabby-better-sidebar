@@ -14,6 +14,13 @@ export interface SftpColumn {
     description: string
     /** A fixed grid track — fixed is the point, it is what keeps the columns aligned at any width. */
     width: string
+    /**
+     * Right-aligned. Deliberately only the size: `4.2 MB` / `856 B` / `1.1 GB`
+     * left-aligned in a 60px track makes magnitudes unscannable, which is the
+     * one thing a size column is for. SFTP+ left-aligns everything; this is
+     * the single place this panel departs from it.
+     */
+    numeric?: boolean
 }
 
 /**
@@ -45,7 +52,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent {
      * one.
      */
     static readonly AVAILABLE_COLUMNS: SftpColumn[] = [
-        { id: 'size', label: 'Taille', description: 'Taille du fichier', width: '3.9rem' },
+        { id: 'size', label: 'Taille', description: 'Taille du fichier', width: '3.9rem', numeric: true },
         { id: 'date', label: 'Date', description: 'Date de modification', width: '4.5rem' },
         { id: 'mode', label: 'Perm.', description: 'Permissions en octal (755)', width: '2.1rem' },
         { id: 'modeLong', label: 'Droits', description: 'Permissions en format long (drwxr-xr-x)', width: '5.2rem' },

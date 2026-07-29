@@ -79,7 +79,11 @@
             .sftp-row.sftp-header-row([style.grid-template-columns]='gridTemplate')
                 .cell-icon
                 .cell-name Nom
-                .cell-value(*ngFor='let column of visibleColumns', [title]='column.description') {{ column.label }}
+                .cell-value(
+                    *ngFor='let column of visibleColumns',
+                    [class.cell-right]='column.numeric',
+                    [title]='column.description'
+                ) {{ column.label }}
 
             .sftp-row.sftp-row-up(
                 *ngIf='canGoUp',
@@ -92,9 +96,14 @@
                 .cell-name ..
                 .cell-value(*ngFor='let column of visibleColumns')
 
+            //- The zebra class is driven by the loop index, not by
+            //- :nth-child: the header is the first child and the "go up" row
+            //- comes and goes, so a CSS-side parity would flip whenever the
+            //- panel is at the root.
             .sftp-row(
-                *ngFor='let item of filteredFileList',
+                *ngFor='let item of filteredFileList; let i = index',
                 [style.grid-template-columns]='gridTemplate',
+                [class.sftp-zebra]='i % 2 === 1',
                 [class.sftp-dim]='isHidden(item)',
                 (click)='open(item)',
                 (contextmenu)='showContextMenu(item, $event)',
@@ -103,6 +112,10 @@
                 .cell-icon
                     i.fa-fw([class]='getIcon(item)')
                 .cell-name {{ item.name }}
-                .cell-value(*ngFor='let column of visibleColumns') {{ cellValue(column, item) }}
+                .cell-value(
+                    *ngFor='let column of visibleColumns',
+                    [class.cell-right]='column.numeric',
+                    [title]='cellValue(column, item)'
+                ) {{ cellValue(column, item) }}
 
         .sftp-message(*ngIf='filterFoundNothing') Aucun fichier ne correspond au filtre.
