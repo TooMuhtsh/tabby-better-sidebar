@@ -102,6 +102,21 @@
         )
             .fa.fa-fw.fas.fa-eye-slash
 
+    //- Readout of the current selection and reminder of both gestures. Shown
+    //- from one profile on: the count is the only statement of how many rows
+    //- are held, since the rows themselves may have scrolled out of sight.
+    //- Doubles as the transient confirmation once a move lands.
+    .selection-bar(*ngIf='(selectionActive || selectionNotice) && !sftpMode')
+        .d-flex.align-items-center(*ngIf='selectionNotice')
+            .fa.fa-fw.fas.fa-check.me-2
+            span.me-auto {{ selectionNotice }}
+        ng-container(*ngIf='!selectionNotice')
+            .d-flex.align-items-center
+                span.me-auto {{ selectedProfileIds.size }} profil{{ selectedProfileIds.size > 1 ? 's' : '' }} sélectionné{{ selectedProfileIds.size > 1 ? 's' : '' }}
+                .selection-clear((click)='clearSelection()', title='Annuler la sélection')
+                    .fa.fa-fw.fas.fa-xmark
+            .selection-hint Glissez la sélection, ou clic droit sur le dossier de destination
+
     .hidden-items-panel(*ngIf='showHiddenPanel && !sftpMode')
         .text-muted.small(*ngIf='!hiddenGroupsInWorkspace.length && !hiddenProfilesInWorkspace.length') Aucun élément masqué dans ce workspace.
         .hidden-item(*ngFor='let g of hiddenGroupsInWorkspace')
@@ -164,11 +179,26 @@
                             a.tree-item(
                                 cdkDrag,
                                 [cdkDragData]='profile',
+                                [class.selected]='isProfileSelected(profile)',
+                                [class.drag-hidden]='isHiddenWhileDragging(profile)',
+                                data-profile-row='1',
+                                [attr.data-profile-id]='profile.id',
+                                (cdkDragStarted)='onProfileDragStarted(profile)',
+                                (cdkDragEnded)='onProfileDragEnded()',
+                                (click)='onProfileClick(profile, group, $event)',
                                 (dblclick)='launchProfile(profile)',
                                 (contextmenu)='onProfileContextMenu($event, profile)',
                                 [style.paddingLeft.px]='(depth + 1) * 20',
                                 href='#'
                             )
+                                //- Custom preview so a multi-selection drag
+                                //- carries a single card with a count, instead
+                                //- of CDK's default clone of the one row that
+                                //- happened to be grabbed.
+                                .profile-drag-preview(*cdkDragPreview)
+                                    profile-icon([icon]='profile.icon', [color]='profile.color')
+                                    span.ms-2 {{ profile.name }}
+                                    span.drag-count(*ngIf='selectedProfileIds.size > 1 && isProfileSelected(profile)') +{{ selectedProfileIds.size - 1 }}
                                 .fw-20
                                     profile-icon.ms-1([icon]='profile.icon', [color]='profile.color')
                                 span.status-dot.ms-1(
@@ -221,8 +251,11 @@
     (mousedown)='startResize($event)'
 )
 
+//- Reduced menu for 'ungrouped': not editable, so nothing on the normal folder
+//- menu applies to it, but it IS a legal move target (onProfileDrop() accepts
+//- it) — without this the drag could drop profiles there and the menu could not.
 .group-context-menu(
-    *ngIf='contextMenuGroup && isMenuMode',
+    *ngIf='contextMenuGroup && isMenuMode && !contextMenuGroup.editable',
     [style.left.px]='contextMenuX',
     [style.top.px]='contextMenuY',
     (click)='$event.stopPropagation()'
@@ -230,6 +263,22 @@
     .group-context-menu-header
         profile-icon.me-2([icon]='contextMenuGroup.icon ?? "far fa-folder"', [color]='contextMenuGroup.color')
         span.no-wrap {{ contextMenuGroup.name || 'Ungrouped' }}
+    a.group-context-menu-item((click)='moveSelectionToGroup(contextMenuGroup)', href='#')
+        .fa.fa-fw.fas.fa-arrow-right-to-bracket.me-2
+        | Déplacer la sélection ici ({{ selectedProfileIds.size }})
+
+.group-context-menu(
+    *ngIf='contextMenuGroup && isMenuMode && contextMenuGroup.editable',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .group-context-menu-header
+        profile-icon.me-2([icon]='contextMenuGroup.icon ?? "far fa-folder"', [color]='contextMenuGroup.color')
+        span.no-wrap {{ contextMenuGroup.name || 'Ungrouped' }}
+    a.group-context-menu-item(*ngIf='canMoveSelectionTo(contextMenuGroup)', (click)='moveSelectionToGroup(contextMenuGroup)', href='#')
+        .fa.fa-fw.fas.fa-arrow-right-to-bracket.me-2
+        | Déplacer la sélection ici ({{ selectedProfileIds.size }})
     a.group-context-menu-item((click)='launchGroupSessions(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | Lancer toutes les sessions

@@ -2,7 +2,7 @@ import './sidebarTree.component.scss'
 import FuzzySearch from 'fuzzy-search'
 import { merge, Subscription, timer } from 'rxjs'
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop'
-import { AfterViewChecked, Component, HostBinding, HostListener, Inject, Input, OnDestroy, OnInit } from '@angular/core'
+import { AfterViewChecked, Component, HostBinding, HostListener, Inject, Input, NgZone, OnDestroy, OnInit } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import {
     AppService,
@@ -204,6 +204,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private app: AppService,
         private notifications: NotificationsService,
         private ngbModal: NgbModal,
+        private zone: NgZone,
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
     ) { }
 
@@ -241,6 +242,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.splitFocusSubscription?.unsubscribe()
         if (this.modalWatchInterval) {
             clearInterval(this.modalWatchInterval)
+        }
+        if (this.selectionNoticeTimer) {
+            clearTimeout(this.selectionNoticeTimer)
         }
     }
 
@@ -776,6 +780,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     private draggedGroupId: string|null = null
     /** Folder whose row the pointer is over, or null — only meaningful while draggedGroupId is set. */
     private hoveredGroupId: string|null = null
+    /** Same pair for profile rows, driving multi-selection reorder placement — see updateHoveredProfile(). */
+    private draggedProfileId: string|null = null
+    private hoveredProfileId: string|null = null
 
     onGroupDragStarted (group: PartialProfileGroup<CollapsableProfileGroup>): void {
         this.draggedGroupId = group.id
@@ -818,6 +825,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     onMouseMove (event: MouseEvent): void {
         if (this.draggedGroupId) {
             this.updateHoveredGroup(event.clientX, event.clientY)
+        }
+        if (this.draggedProfileId) {
+            this.updateHoveredProfile(event.clientX, event.clientY)
         }
         if (!this.panelIsResizing) { return }
         const delta = event.clientX - this.panelStartX
@@ -1106,6 +1116,307 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.setSftpMode(true)
     }
 
+    ////// MULTI-SELECTION (profiles only, never groups) //////
+    /**
+     * Ephemeral and never persisted — and deliberately a set of *ids* rather
+     * than of profile objects. Every config.save() fires config.changed$ →
+     * loadTreeItems(), which structuredClone()s the whole tree and hands back
+     * brand-new profile objects; a set of references would therefore empty
+     * itself silently the first time the user pinned a favorite mid-selection.
+     */
+    selectedProfileIds = new Set<string>()
+    /** Where a Shift+click extends *from*. Carries its group id because extending only ever happens within one container — see extendSelectionTo(). */
+    private selectionAnchor: { groupId: string, profileId: string }|null = null
+
+    /**
+     * Transient confirmation shown in the selection bar *after* the selection
+     * itself is gone. Without it the bar vanishes the instant a move lands,
+     * which reads as "did that do anything?" — the tree has already
+     * re-rendered elsewhere, so nothing on screen acknowledges the action.
+     */
+    selectionNotice: string|null = null
+    private selectionNoticeTimer: ReturnType<typeof setTimeout>|null = null
+
+    get selectionActive (): boolean {
+        return this.selectedProfileIds.size > 0
+    }
+
+    /**
+     * Wrapped in zone.run() because every caller reaches this *after*
+     * `await config.save()`, and that continuation does not resume inside
+     * Angular's zone — the field was being set correctly and the view simply
+     * never repainted, so the confirmation was invisible from the first
+     * version (reported in manual testing: "pas de notification"). Tabby's own
+     * `notifications.notice()` was unaffected, which is what made the failure
+     * look selective.
+     *
+     * Running inside the zone also means the setTimeout below is Zone-patched,
+     * so its expiry triggers a change detection pass of its own and the
+     * confirmation disappears on time without further help.
+     */
+    private showSelectionNotice (text: string): void {
+        this.zone.run(() => {
+            this.selectionNotice = text
+            if (this.selectionNoticeTimer) {
+                clearTimeout(this.selectionNoticeTimer)
+            }
+            this.selectionNoticeTimer = setTimeout(() => {
+                this.selectionNotice = null
+                this.selectionNoticeTimer = null
+            }, 3000)
+        })
+    }
+
+    isProfileSelected (profile: PartialProfile<Profile>): boolean {
+        return !!profile.id && this.selectedProfileIds.has(profile.id)
+    }
+
+    clearSelection (): void {
+        if (!this.selectedProfileIds.size) {
+            return
+        }
+        this.selectedProfileIds = new Set()
+        this.selectionAnchor = null
+    }
+
+    /**
+     * Left-click on a profile row, with the modifier semantics of any OS file
+     * manager: a plain click selects that row alone, Ctrl/Cmd toggles one row
+     * in or out, Shift extends from the anchor. Double-click still launches the
+     * profile, so selecting costs nothing.
+     *
+     * The tick boxes this replaced were dropped at the user's request after
+     * manual testing — the row highlight plus the selection bar carry the state
+     * on their own, and the row contents no longer pay a permanent indent for a
+     * control that was only visible on hover.
+     *
+     * preventDefault() because the row is an `<a href="#">` — without it every
+     * click pushes a history entry.
+     */
+    onProfileClick (profile: PartialProfile<Profile>, group: PartialProfileGroup<ProfileGroup>, event: MouseEvent): void {
+        event.preventDefault()
+        if (!profile.id) {
+            return
+        }
+        if (event.shiftKey) {
+            this.extendSelectionTo(profile, group)
+        } else if (event.ctrlKey || event.metaKey) {
+            this.toggleProfileSelection(profile, group)
+        } else if (this.selectedProfileIds.size === 1 && this.selectedProfileIds.has(profile.id)) {
+            // Clicking the only selected row again clears it, so a selection
+            // can always be undone with the same gesture that made it.
+            this.clearSelection()
+        } else {
+            this.selectedProfileIds = new Set([profile.id])
+            this.selectionAnchor = { groupId: group.id, profileId: profile.id }
+        }
+    }
+
+    toggleProfileSelection (profile: PartialProfile<Profile>, group: PartialProfileGroup<ProfileGroup>): void {
+        if (!profile.id) {
+            return
+        }
+        // Reassigned rather than mutated in place: cheap here, and it keeps the
+        // field honest for any future OnPush-style change detection.
+        const selected = new Set(this.selectedProfileIds)
+        if (selected.has(profile.id)) {
+            selected.delete(profile.id)
+        } else {
+            selected.add(profile.id)
+        }
+        this.selectedProfileIds = selected
+        this.selectionAnchor = { groupId: group.id, profileId: profile.id }
+    }
+
+    /**
+     * Extends the selection **within the anchor's own container only**.
+     * "Everything between A and B in display order" has no honest answer
+     * across containers here: applyFavorites() prepends a synthetic "Épinglés"
+     * group rendering the very same profile ids a second time, a collapsed
+     * folder renders none of its rows at all, and the filter mode replaces the
+     * whole tree with one synthetic 'search' group. Anchored in a different
+     * group, this degrades to a plain toggle instead of guessing.
+     */
+    private extendSelectionTo (profile: PartialProfile<Profile>, group: PartialProfileGroup<ProfileGroup>): void {
+        const anchor = this.selectionAnchor
+        if (!anchor || anchor.groupId !== group.id) {
+            this.toggleProfileSelection(profile, group)
+            return
+        }
+        const profiles = group.profiles ?? []
+        const from = profiles.findIndex(p => p.id === anchor.profileId)
+        const to = profiles.findIndex(p => p.id === profile.id)
+        if (from === -1 || to === -1) {
+            this.toggleProfileSelection(profile, group)
+            return
+        }
+        const selected = new Set(this.selectedProfileIds)
+        for (let i = Math.min(from, to); i <= Math.max(from, to); i++) {
+            const id = profiles[i].id
+            if (id) {
+                selected.add(id)
+            }
+        }
+        this.selectedProfileIds = selected
+        // Anchor left untouched on purpose: a second Shift+click should
+        // re-extend from the same origin, not from the previous endpoint.
+    }
+
+    /** Whether "Déplacer la sélection ici" should show on this folder's menu — same target rule as onProfileDrop(). */
+    canMoveSelectionTo (group: PartialProfileGroup<ProfileGroup>): boolean {
+        return this.selectionActive && (!!group.editable || group.id === 'ungrouped')
+    }
+
+    /**
+     * Moves every selected profile into `targetGroup` in one pass.
+     *
+     * The whole move is snapshotted *before* the first write. writeProfile()
+     * only mutates config.store.profiles (verified in the installed bundle: it
+     * never calls config.save()), so nothing here can fire config.changed$ and
+     * swap this.profileGroups out from under the loop — but the order writes
+     * below still have to be computed against the state as it was, and a single
+     * config.save() at the very end keeps the whole batch atomic from the
+     * config's point of view.
+     */
+    async moveSelectionToGroup (
+        targetGroup: PartialProfileGroup<ProfileGroup>,
+        insertAfterProfileId: string|null = null,
+    ): Promise<void> {
+        this.closeContextMenu()
+        if (!this.canMoveSelectionTo(targetGroup)) {
+            return
+        }
+        // Tabby stores "no group" as an absent `group`, not as the id of its
+        // synthetic 'ungrouped' bucket — same mapping onProfileDrop() applies.
+        const targetGroupValue = targetGroup.id === 'ungrouped' ? undefined : targetGroup.id
+
+        const moves: { profile: PartialProfile<Profile>, sourceGroupId: string }[] = []
+        for (const group of this.profileGroups) {
+            if (group.id === targetGroup.id) {
+                // Already where it is being sent: skip the write, and leave it
+                // out of the moved set so the target order below keeps it in
+                // place instead of shuffling it to the end.
+                continue
+            }
+            for (const profile of group.profiles ?? []) {
+                if (profile.id && this.selectedProfileIds.has(profile.id)) {
+                    moves.push({ profile, sourceGroupId: group.id })
+                }
+            }
+        }
+        if (!moves.length) {
+            this.clearSelection()
+            return
+        }
+
+        for (const { profile } of moves) {
+            profile.group = targetGroupValue
+            await this.profilesService.writeProfile(profile)
+        }
+
+        // Re-persist every source's order without the profiles that left, then
+        // the target's with them appended — mirrors what onProfileDrop() does
+        // for its single profile. Skipping the sources would leave their ids
+        // sitting in their former folder's order list indefinitely.
+        const movedIds = new Set(moves.map(m => m.profile.id))
+        for (const sourceGroupId of new Set(moves.map(m => m.sourceGroupId))) {
+            const source = this.profileGroups.find(g => g.id === sourceGroupId)
+            await this.persistProfileOrder(sourceGroupId, (source?.profiles ?? []).filter(p => !movedIds.has(p.id)))
+        }
+        const target = this.profileGroups.find(g => g.id === targetGroup.id)
+        const remaining = (target?.profiles ?? []).filter(p => !movedIds.has(p.id))
+        // Dropped straight onto the folder's own row (or moved from the context
+        // menu, which has no drop point at all): the batch goes to the TOP.
+        // Appending it instead buried the profiles under everything already
+        // there, which reads as "nothing happened" on a well-filled folder.
+        // Landing on a profile row keeps the same rule as an in-folder
+        // reorder — the batch goes just below the row aimed at.
+        let insertAt = 0
+        if (insertAfterProfileId) {
+            const anchorIndex = remaining.findIndex(p => p.id === insertAfterProfileId)
+            if (anchorIndex !== -1) {
+                insertAt = anchorIndex + 1
+            }
+        }
+        const ordered = [...remaining]
+        ordered.splice(insertAt, 0, ...moves.map(m => m.profile))
+        await this.persistProfileOrder(targetGroup.id, ordered)
+
+        await this.config.save()
+        const where = targetGroup.name || 'Sans groupe'
+        this.clearSelection()
+        this.showSelectionNotice(
+            moves.length > 1
+                ? `${moves.length} profils déplacés vers « ${where} »`
+                : `Profil déplacé vers « ${where} »`,
+        )
+    }
+
+    /**
+     * Starting a drag on a profile that is *not* part of the current selection
+     * drops that selection, exactly as right-clicking outside it does. Without
+     * this the user drags one row while three others stay ticked somewhere
+     * above, with nothing on screen saying which of the two the drop will act
+     * on — reported as confusing in manual testing.
+     */
+    onProfileDragStarted (profile: PartialProfile<Profile>): void {
+        if (!this.isProfileSelected(profile)) {
+            this.clearSelection()
+        }
+        this.draggedProfileId = profile.id ?? null
+        this.hoveredProfileId = null
+    }
+
+    /**
+     * Releases the tracking only — `hoveredProfileId` is deliberately kept, for
+     * the same reason as onGroupDragEnded(): CDK emits `cdkDragEnded` *before*
+     * `cdkDropListDropped` (piège #29), so clearing it here would wipe the value
+     * a moment before the drop handler reads it.
+     */
+    onProfileDragEnded (): void {
+        this.draggedProfileId = null
+    }
+
+    /**
+     * True for the selected rows that are *not* the one under the cursor, while
+     * a multi-selection drag is running: they are collapsed out of the list so
+     * the whole batch visibly leaves together, instead of one row vanishing and
+     * the rest sitting there as if they were staying put.
+     *
+     * Restoration is guaranteed by `cdkDragEnded`, which CDK emits even when a
+     * drag is abandoned outside any drop list — so a cancelled drag puts every
+     * row back rather than leaving them hidden.
+     */
+    isHiddenWhileDragging (profile: PartialProfile<Profile>): boolean {
+        return !!this.draggedProfileId &&
+            this.selectedProfileIds.size > 1 &&
+            profile.id !== this.draggedProfileId &&
+            this.isProfileSelected(profile)
+    }
+
+    /**
+     * The profile row physically under the pointer, measured live.
+     *
+     * CDK's `currentIndex` turned out not to mean what the first version
+     * assumed — a block reordered from it landed above the targeted row every
+     * time, whichever direction the drag came from. Rather than reverse-engineer
+     * its convention, the drop point is resolved the same way the folder rescue
+     * already does it: by hit-testing the rendered rows. The drag placeholder is
+     * height: 0 here (piège #28), so the rows do not shift during a drag and
+     * what is measured is exactly what the user is pointing at.
+     */
+    private updateHoveredProfile (x: number, y: number): void {
+        this.hoveredProfileId = null
+        const rows = document.querySelectorAll<HTMLElement>('.sidebar-plus-tree a.tree-item[data-profile-id]')
+        for (const row of Array.from(rows)) {
+            const rect = row.getBoundingClientRect()
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                this.hoveredProfileId = row.dataset.profileId ?? null
+                return
+            }
+        }
+    }
+
     ////// DRAG & DROP //////
     get profileListIds (): string[] {
         return this.profileGroups.map(g => `profiles-${g.id}`)
@@ -1115,15 +1426,55 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         event: CdkDragDrop<PartialProfile<Profile>[]>,
         targetGroup: PartialProfileGroup<ProfileGroup>,
     ): Promise<void> {
+        // Nothing happens on a drop that resolves to no usable target, and the
+        // selection is deliberately left intact so the user can simply try
+        // again. A drop released outside every drop list never reaches this
+        // handler at all — CDK only emits `cdkDropListDropped` for a container
+        // it recognises — and `cdkDragEnded` fires either way, which is what
+        // brings the hidden rows back.
         const isRealTarget = targetGroup.editable || targetGroup.id === 'ungrouped'
         if (!isRealTarget) {
+            return
+        }
+
+        // Dragging one row of a multi-selection moves the whole batch. The
+        // roadmap had ruled multi-drag out as too fragile, which was true while
+        // it would have meant teaching onProfileDrop() and the drag preview to
+        // carry N items; now that moveSelectionToGroup() exists and is tested,
+        // the drop just delegates to it. Only when the profile actually leaves
+        // its container: a drop inside the same folder is a reorder, which the
+        // selection has nothing to say about.
+        //
+        // Known cosmetic limit: CDK's drag preview still shows the single row
+        // being dragged, not the stack.
+        const draggedProfile = event.previousContainer.data[event.previousIndex]
+        if (
+            event.previousContainer !== event.container &&
+            this.selectedProfileIds.size > 1 &&
+            this.isProfileSelected(draggedProfile)
+        ) {
+            await this.moveSelectionToGroup(targetGroup, this.hoveredProfileId)
             return
         }
 
         const sourceGroupId = SidebarPlusTreeComponent.groupIdFromContainerId(event.previousContainer.id)
 
         if (event.previousContainer === event.container) {
-            moveItemInArray(event.container.data, event.previousIndex, event.currentIndex)
+            // Reordering inside one folder goes through the same placement
+            // rule whether one row or a whole selection is moving: the batch
+            // lands just below the row actually under the pointer. A single
+            // row used to take CDK's own moveItemInArray() path instead, which
+            // dropped it *above* the row aimed at — the same mismatch already
+            // fixed for multi-selections.
+            const movingIds = this.selectedProfileIds.size > 1 && this.isProfileSelected(draggedProfile)
+                ? this.selectedProfileIds
+                : new Set(draggedProfile.id ? [draggedProfile.id] : [])
+            SidebarPlusTreeComponent.moveSelectionWithinArray(
+                event.container.data,
+                movingIds,
+                event.currentIndex,
+                this.hoveredProfileId,
+            )
         } else {
             const profile = event.previousContainer.data[event.previousIndex]
             transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex)
@@ -1133,6 +1484,71 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         await this.persistProfileOrder(targetGroup.id, event.container.data)
         this.config.save()
+    }
+
+    /**
+     * Reorders a whole multi-selection within one folder: every selected row
+     * is pulled out and re-inserted as a single contiguous block at the drop
+     * point.
+     *
+     * Placement is driven by `hoveredProfileId` — the row genuinely under the
+     * pointer — and the block goes *below* it, which the user found the natural
+     * reading of dropping onto a row.
+     *
+     * `targetIndex` (CDK's `currentIndex`) is only a fallback for when the
+     * pointer is over no row at all, or over one of the dragged rows
+     * themselves. Deriving the position from it was the first approach and it
+     * was wrong in both directions: the block landed above the targeted row
+     * whichever way the drag came from, because `currentIndex` is expressed
+     * against the array minus the single row CDK tracked, not minus the whole
+     * selection.
+     */
+    private static moveSelectionWithinArray (
+        data: PartialProfile<Profile>[],
+        selectedIds: Set<string>,
+        targetIndex: number,
+        hoveredProfileId: string|null,
+    ): void {
+        const isSelected = (p: PartialProfile<Profile>): boolean => !!p.id && selectedIds.has(p.id)
+        const block = data.filter(isSelected)
+        const rest = data.filter(p => !isSelected(p))
+
+        let insertAt = -1
+        if (hoveredProfileId) {
+            const hoveredIndex = data.findIndex(p => p.id === hoveredProfileId)
+            if (hoveredIndex !== -1) {
+                // The hovered row may itself be part of the block — easy to hit
+                // when dragging upwards, since the selected rows travel under
+                // the cursor. Anchor on the nearest *unselected* row at or
+                // above it instead of giving up: that row is what the block
+                // should land beneath. None above at all means the block
+                // belongs at the very top.
+                let anchorIndex = -1
+                for (let i = hoveredIndex; i >= 0; i--) {
+                    if (!isSelected(data[i])) {
+                        anchorIndex = i
+                        break
+                    }
+                }
+                if (anchorIndex === -1) {
+                    insertAt = 0
+                } else {
+                    insertAt = rest.findIndex(p => p.id === data[anchorIndex].id) + 1
+                }
+            }
+        }
+        if (insertAt === -1) {
+            insertAt = 0
+            for (let i = 0; i < Math.min(targetIndex, data.length); i++) {
+                if (!isSelected(data[i])) {
+                    insertAt++
+                }
+            }
+        }
+        rest.splice(insertAt, 0, ...block)
+        // Spliced in place rather than reassigned: `data` is the very array the
+        // template renders and CDK holds a reference to.
+        data.splice(0, data.length, ...rest)
     }
 
     /**
@@ -1507,7 +1923,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     onGroupContextMenu (event: MouseEvent, group: PartialProfileGroup<CollapsableProfileGroup>): void {
         event.preventDefault()
         event.stopPropagation()
-        if (!group.editable) {
+        // 'ungrouped' is not editable (it is Tabby's synthetic bucket, it has
+        // no name/icon/children to act on) but it *is* a legal move target —
+        // onProfileDrop() accepts it, so a drag can put profiles there while
+        // the menu could not. Opened for that one purpose when a selection is
+        // waiting, with a reduced menu offering only the move.
+        if (!group.editable && !this.canMoveSelectionTo(group)) {
             return
         }
         this.contextMenuProfile = null
@@ -1561,6 +1982,20 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
         this.closeContextMenu()
+        // Clicking anywhere that is not a profile row drops the selection
+        // (empty space, a folder row, the workspace bar) — the OS-standard
+        // "click away to deselect". Profile rows are excluded because
+        // onProfileClick() owns that case and needs to read the modifier keys;
+        // letting this run there would clear the selection on the very click
+        // meant to extend it. Tested by attribute rather than by trusting a
+        // descendant's stopPropagation(), which does not suppress this
+        // HostListener at all (piège #15).
+        // .selection-bar is excluded too: it is the readout of the selection,
+        // so clicking it must not be what destroys it. Its own ✕ clears
+        // explicitly.
+        if (!target.closest('[data-profile-row], .selection-bar')) {
+            this.clearSelection()
+        }
     }
 
     ////// RENAME (context menu, inline — no modal) //////
@@ -1651,6 +2086,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     onProfileContextMenu (event: MouseEvent, profile: PartialProfile<Profile>): void {
         event.preventDefault()
         event.stopPropagation()
+        // OS-standard, and spelled out in the roadmap: right-clicking *outside*
+        // the current selection drops it and opens the plain single-profile
+        // menu. Right-clicking inside it leaves the selection alone.
+        if (!this.isProfileSelected(profile)) {
+            this.clearSelection()
+        }
         this.contextMenuGroup = null
         this.contextMenuProfile = profile
         this.contextMenuRoot = false

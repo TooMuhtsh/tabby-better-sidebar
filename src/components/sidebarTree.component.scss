@@ -334,6 +334,32 @@ sidebar-plus-tree .active-sessions {
             }
         }
 
+        // The only persistent sign that a row is selected now that the tick
+        // boxes are gone, so it has to read at a glance against the plain hover
+        // state. The accent bar is an inset box-shadow rather than a border on
+        // purpose: it paints inside the existing box and changes no geometry,
+        // which a drop target must never do mid-drag (piège #25).
+        &.selected {
+            background-color: var(--theme-secondary);
+            box-shadow: inset 2px 0 0 var(--theme-primary);
+        }
+
+        // Hides the rest of a dragged multi-selection so the batch visibly
+        // leaves as one.
+        //
+        // `visibility`, never `display: none`, and this is not a style
+        // preference. Collapsing the rows out of the flow shrinks the list by a
+        // row height each: measured on the real bug, the pointer — still
+        // holding the row it grabbed — ended up *below* every remaining row, so
+        // updateHoveredProfile() found nothing, the placement fell back to
+        // CDK's index and the drop silently became a no-op. It also invalidates
+        // the container rects CDK caches at drag start (piège #25). Keeping the
+        // space costs a transient gap where the rows were, and keeps every
+        // measurement — mine and CDK's — valid.
+        &.drag-hidden {
+            visibility: hidden;
+        }
+
         .actions {
             display: none;
             position: absolute;
@@ -384,6 +410,30 @@ sidebar-plus-tree .active-sessions {
 
     .actions {
         display: none !important;
+    }
+}
+
+// Lives outside .sidebar-plus-tree for the same reason as .cdk-drag-preview
+// above: CDK relocates the preview into a body-level overlay, so an
+// ancestor-scoped selector would never match it.
+.profile-drag-preview {
+    display: flex;
+    align-items: center;
+    padding: .25rem .5rem;
+    font-size: .8rem;
+
+    profile-icon {
+        width: 15px;
+        height: 15px;
+    }
+
+    .drag-count {
+        margin-left: .5rem;
+        padding: 0 .35rem;
+        border-radius: .6rem;
+        font-size: .7rem;
+        background-color: var(--theme-primary);
+        color: var(--theme-secondary);
     }
 }
 
@@ -599,6 +649,47 @@ sidebar-plus-tree .active-sessions {
         background-color: var(--theme-primary);
         color: var(--theme-bg);
         border-color: var(--theme-primary);
+    }
+}
+
+// Pinned to the bottom of the sidebar rather than left in the flow under the
+// filter bar: at the top it sat between the controls and the tree, pushing the
+// whole tree down by two lines every time a selection existed. Anchored on the
+// <sidebar-plus-tree> tag, which is already position: relative for .grabber.
+// `right` clears the resize grabber so it stays grabbable.
+.selection-bar {
+    position: absolute;
+    left: .5rem;
+    right: .75rem;
+    bottom: .5rem;
+    z-index: 5;
+    padding: .3rem .4rem;
+    border-radius: .3rem;
+    font-size: .75rem;
+    background-color: var(--theme-bg-more-2);
+    border-left: 2px solid var(--theme-primary);
+    // It now floats over the bottom of the tree instead of displacing it, so it
+    // needs to read as a layer above rather than as another row.
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+
+    .selection-clear {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: .7;
+        font-size: .7rem;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    .selection-hint {
+        margin-top: .1rem;
+        font-size: .68rem;
+        opacity: .6;
+        line-height: 1.2;
     }
 }
 
