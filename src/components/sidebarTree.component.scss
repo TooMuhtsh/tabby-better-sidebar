@@ -657,6 +657,162 @@ sidebar-plus-tree .active-sessions {
 // whole tree down by two lines every time a selection existed. Anchored on the
 // <sidebar-plus-tree> tag, which is already position: relative for .grabber.
 // `right` clears the resize grabber so it stays grabbable.
+// Reuses .active-sessions-header/-count from the sessions block above, so the
+// two live-state sections read as one family.
+.active-tunnels {
+    flex: 0 0 auto;
+    margin-bottom: .35rem;
+
+    .active-tunnel {
+        display: flex;
+        align-items: center;
+        padding: .15rem .25rem;
+        border-radius: .3rem;
+        text-decoration: none;
+        color: inherit;
+        font-size: .75rem;
+        overflow: hidden;
+        position: relative;
+
+        &:hover {
+            background-color: var(--theme-secondary);
+        }
+
+        .tunnel-icon {
+            font-size: .6rem;
+            opacity: .6;
+        }
+
+        // Which session carries the tunnel, kept on the row rather than folded
+        // away: with several sessions open, a description alone does not say
+        // where the tunnel runs.
+        .tunnel-session {
+            font-size: .65rem;
+            opacity: .5;
+            margin-left: .4rem;
+            max-width: 35%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 0 1 auto;
+        }
+
+        // Unlike the profile rows', these buttons stay put instead of appearing
+        // on hover: as an absolutely-positioned overlay they covered the
+        // session name, and a tunnel you cannot open without hovering first is
+        // one you forget is openable. Laid out in flow, so the session name is
+        // sized around them rather than under them.
+        .actions {
+            display: flex;
+            flex: 0 0 auto;
+            flex-direction: row;
+            gap: .2rem;
+            margin-left: .35rem;
+
+            .action {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-size: .6rem;
+                opacity: .55;
+                border-radius: .2rem;
+                padding: .1rem .28rem;
+
+                &:hover {
+                    opacity: 1;
+                    background-color: var(--theme-primary);
+                    color: var(--theme-secondary);
+                }
+            }
+        }
+    }
+
+    .tunnel-details {
+        padding: .1rem .25rem .25rem 1.6rem;
+        font-size: .68rem;
+        opacity: .6;
+    }
+}
+
+.tunnel-badge {
+    font-size: .6rem;
+    opacity: .75;
+    color: var(--theme-primary);
+
+    // Configured but not mounted: present enough to warn, quiet enough not to
+    // be mistaken for a running tunnel.
+    &.tunnel-badge-idle {
+        opacity: .35;
+        color: inherit;
+    }
+}
+
+.tunnels-popup {
+    width: 320px;
+
+    .tunnel-row {
+        display: flex;
+        align-items: center;
+        padding: .2rem .25rem;
+        border-radius: .2rem;
+        font-size: .75rem;
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--theme-secondary);
+        }
+
+        // Marks which row the form below is currently editing — without it the
+        // form silently overwrites a row the user can no longer identify.
+        &.editing {
+            background-color: var(--theme-secondary);
+            box-shadow: inset 2px 0 0 var(--theme-primary);
+        }
+
+        .action {
+            cursor: pointer;
+            font-size: .65rem;
+            opacity: .6;
+
+            &:hover {
+                opacity: 1;
+                color: var(--theme-primary);
+            }
+
+            // Kept in place rather than removed outright: a button that simply
+            // vanishes reads as a bug, a padlock states why it is unavailable.
+            &.disabled {
+                cursor: default;
+                opacity: .35;
+
+                &:hover {
+                    opacity: .35;
+                    color: inherit;
+                }
+            }
+        }
+    }
+
+
+    // The `sidebar-plus-tree input` rule below only reaches <input>; a <select>
+    // needs the border spelled out or it renders flat against the popup.
+    .tunnel-type {
+        flex: 0 0 auto;
+        width: 90px;
+        border: 1px solid var(--theme-secondary);
+    }
+
+    .tunnel-hint {
+        opacity: .55;
+        line-height: 1.25;
+        font-size: .68rem;
+    }
+
+    hr {
+        margin: .5rem 0;
+        opacity: .2;
+    }
+}
+
 .selection-bar {
     position: absolute;
     left: .5rem;

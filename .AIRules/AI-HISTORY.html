@@ -24,6 +24,67 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Tunnels SSH (2026-07-29)</h2>
+<p>Deuxième des trois chantiers de priorité moyenne attaqués d'affilée. Ouvert par une
+<strong>note de faisabilité avant tout code</strong>, sur le paquet <code>tabby-ssh</code> installé
+et non celui de <code>node_modules</code> (piège #32), aux deux niveaux typings + bundle. C'est
+cette vérification qui a délimité le chantier : la lecture de l'état et l'écriture en configuration
+sont acquises, l'action sur une session vivante ne l'est pas.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-07-29</td><td>(ce commit)</td>
+<td><strong>Tunnels SSH</strong> : popup « Tunnels du profil… » (liste, ajout, suppression,
+modification par double-clic), pastille à deux états sur les profils — allumée si des tunnels sont
+montés, estompée s'ils sont seulement configurés — et section « Tunnels actifs » repliable montrant
+la description de chaque tunnel, avec ouverture dans le navigateur
+(<code>PlatformService.openExternal()</code>) et saut vers la session.
+<br><br>
+<strong>Périmètre restreint en cours de route.</strong> Une entrée « Gérer les tunnels… » déléguant à
+<code>SSHTabComponent.showPortForwarding()</code> a été livrée et validée, puis retirée à la demande
+de l'utilisateur (« je veux uniquement ma solution maison »). Il en découle que rien ne peut agir sur
+une session ouverte, et que ce n'est pas contournable — <code>addPortForward()</code> exige un
+<code>ForwardedPort</code>, classe non exportée à l'exécution. D'où le toast de rappel après
+enregistrement et le verrou de suppression sur les seuls tunnels réellement montés (les autres se
+suppriment librement — première version bloquant tout dès qu'une session existait, corrigée sur
+retour de test).
+<br><br>
+Deux détails tranchés en test : le toast passe par <code>notifications.info()</code> et non
+<code>notice()</code>, ce dernier codant <code>timeOut: 1000</code> en dur dans
+<code>tabby-core</code> — une seconde pour lire une phrase d'explication ; et les boutons de la
+section restent affichés en permanence, en flux, après une première version en survol qui recouvrait
+le nom de la session.</td></tr>
+</table>
+
+<h2>Sélection multiple (2026-07-29)</h2>
+<p>Premier des trois chantiers de priorité moyenne. Mené sur <code>master</code>, avec la
+répartition désormais habituelle : l'assistant pilote le cycle de vie de Tabby
+(<code>--debug --remote-debugging-port=9333</code>) et lit la console via CDP, l'utilisateur fait les
+gestes d'interface et valide point par point.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-07-29</td><td>9459883</td>
+<td><strong>Trois pièges consignés</strong> dans AI-CONTEXT : #39 (<code>attr.x</code> sans crochets
+en pug n'est pas un binding), #40 (masquer des lignes pendant un glisser CDK casse le pointage et le
+cache), #41 (la reprise après <code>await config.save()</code> sort de la zone Angular).</td></tr>
+
+<tr><td>2026-07-29</td><td>1725671</td>
+<td><strong>Sélection multiple et déplacement en lot</strong> : clic simple/Ctrl/Shift, déplacement
+par glisser ou par le menu du dossier cible, barre de sélection en bas de sidebar faisant aussi
+office de confirmation. Le multi-drag, écarté en roadmap comme trop fragile, est devenu trivial une
+fois <code>moveSelectionToGroup()</code> écrit et testé pour le menu.
+<br><br>
+<strong>Trois cycles de correction ont porté sur le seul placement du lot</strong>, tous parce que
+<code>CdkDragDrop.currentIndex</code> ne veut pas dire ce qu'il semble dire (il s'exprime contre le
+tableau privé de la <em>seule</em> ligne suivie par CDK). Ce qui a tranché est une trace de cinq
+lignes imprimant l'index, la ligne survolée et le tableau avant/après — après quoi le placement est
+passé sur une mesure directe des lignes rendues. Leçon déjà écrite au piège #30, re-vérifiée ici :
+sur un bug de placement, instrumenter avant de raisonner.</td></tr>
+</table>
+
 <h2>Section « Sessions actives » (2026-07-29)</h2>
 <p>Premier chantier de la <a href="ROADMAP.html#sessions-actives">liste restante</a>, mené
 directement sur <code>master</code>. Même répartition que le chantier précédent : l'assistant

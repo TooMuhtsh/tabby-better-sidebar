@@ -10,6 +10,7 @@ import {
     ConfigService,
     NotificationsService,
     PartialProfile,
+    PlatformService,
     PartialProfileGroup,
     Profile,
     ProfileGroup,
@@ -18,7 +19,7 @@ import {
     SplitTabComponent,
 } from 'tabby-core'
 import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
-import { SSHTabComponent } from 'tabby-ssh'
+import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh'
 import { ICON_ENTRIES, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
@@ -36,6 +37,34 @@ type ProfileConnectionStatus = 'connected' | 'error'
 interface ProfileBackedTab {
     profile?: { id?: string, name?: string, icon?: string, color?: string }
     session?: unknown
+}
+
+/**
+ * The tunnel form's working copy. Ports are nullable here where
+ * `ForwardedPortConfig` types them as `number`: a numeric input bound to 0
+ * renders a literal "0" the user has to clear before typing, so the draft
+ * starts empty and only becomes a ForwardedPortConfig once validated.
+ */
+interface TunnelDraft {
+    type: PortForwardType
+    host: string
+    port: number|null
+    targetAddress: string
+    targetPort: number|null
+    description: string
+}
+
+/** One row of the "Tunnels actifs" section — a single live port forward, tied back to the session carrying it. */
+interface ActiveTunnel {
+    tab: SSHTabComponent
+    /** Owning session's display name, so a tunnel can be read without cross-referencing the sessions list. */
+    sessionName: string
+    /** What the row shows: the user's own description when there is one, since that is what they named it for. */
+    label: string
+    /** Technical form (`L 127.0.0.1:8181 → localhost:8181`), revealed on click rather than shown by default. */
+    detail: string
+    /** Browsable address, for a Local forward only — Remote listens on the far end, Dynamic is a SOCKS proxy with no page to open. */
+    url: string|null
 }
 
 /** One row of the "Sessions actives" section — a live SSH tab, flattened out of its split if it is in one. */
@@ -116,6 +145,30 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     /** Per-machine UI state (localStorage, like sftpMode) rather than a `sidebarPlus.*` config key — nothing worth syncing across machines, and it sidesteps piège #16 entirely. */
     activeSessionsCollapsed = window.localStorage.sidebarPlusActiveSessionsCollapsed === 'true'
 
+    ////// SSH TUNNELS //////
+    /**
+     * Live port forwards, flattened across every open SSH session, and the
+     * per-profile count backing the badge in the tree. Both are rebuilt by the
+     * same pass that refreshes the active sessions — Tabby emits nothing when a
+     * forward is added or removed, so this rides the existing 2s poll rather
+     * than introducing a second one.
+     */
+    activeTunnels: ActiveTunnel[] = []
+    tunnelCounts = new Map<string, number>()
+    /**
+     * profileId → signatures of the forwards actually mounted on its live
+     * session. Lets the config popup tell a tunnel Tabby is really running from
+     * one merely written down — only the former resists deletion.
+     */
+    private liveTunnelKeys = new Map<string, Set<string>>()
+    activeTunnelsCollapsed = window.localStorage.sidebarPlusActiveTunnelsCollapsed === 'true'
+
+    /** The profile whose configured tunnels the popup is editing, and its working copy. */
+    tunnelDraft: TunnelDraft = SidebarPlusTreeComponent.emptyTunnel()
+    tunnelError: string|null = null
+    /** Index of the tunnel the form is editing, or null when it is adding a new one. */
+    editingTunnelIndex: number|null = null
+
     profileStatuses = new Map<string, ProfileConnectionStatus>()
     private statusSubscription: Subscription|null = null
     /** Focus moves *between panes* of the active split emit nothing on AppService — see watchSplitFocus(). */
@@ -128,7 +181,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     contextMenuX = 0
     contextMenuY = 0
     contextMenuMode:
-        'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename'|
+        'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename'|'tunnels'|
         'workspaceMenu'|'createWorkspace'|'renameWorkspace'|'confirmDeleteWorkspace' = 'menu'
     /** Set whenever a context menu/popup opens or switches mode — checked once in ngAfterViewChecked() to clamp it back on-screen after Angular renders it at its real size. */
     private menuPositionDirty = false
@@ -173,6 +226,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return this.contextMenuMode === 'rename'
     }
 
+    get isTunnelsMode (): boolean {
+        return this.contextMenuMode === 'tunnels'
+    }
+
     get isWorkspaceMenuMode (): boolean {
         return this.contextMenuMode === 'workspaceMenu'
     }
@@ -205,6 +262,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private notifications: NotificationsService,
         private ngbModal: NgbModal,
         private zone: NgZone,
+        private platform: PlatformService,
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
     ) { }
 
@@ -1023,6 +1081,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     private refreshActiveSessions (): void {
         const focused = this.resolveFocusedTab()
         const sessions: ActiveSession[] = []
+        const tunnels: ActiveTunnel[] = []
+        const tunnelCounts = new Map<string, number>()
+        const liveTunnelKeys = new Map<string, Set<string>>()
         for (const tab of getAllOpenTabs(this.app)) {
             // Same caveat as the SFTP panel's own instanceof: this narrowing
             // only holds while `tabby-ssh` stays out of node_modules
@@ -1048,15 +1109,46 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 continue
             }
             const profile = (tab as unknown as ProfileBackedTab).profile
+            const sessionName = profile?.name || tab.title || 'Session SSH'
             sessions.push({
                 tab,
-                name: profile?.name || tab.title || 'Session SSH',
+                name: sessionName,
                 icon: profile?.icon || tab.icon || 'fas fa-terminal',
                 color: profile?.color ?? tab.color ?? null,
                 title: tab.title,
                 focused: tab === focused,
             })
+
+            // Read straight off the live transport. Tabby owns the forwarding
+            // engine entirely — this plugin only mirrors its state, per the
+            // roadmap's "surcouche visuelle" framing.
+            for (const forward of tab.sshSession.forwardedPorts ?? []) {
+                const detail = SidebarPlusTreeComponent.formatTunnel(forward)
+                tunnels.push({
+                    tab,
+                    sessionName,
+                    label: forward.description?.trim() || detail,
+                    detail,
+                    url: SidebarPlusTreeComponent.tunnelUrl(forward),
+                })
+                if (profile?.id) {
+                    tunnelCounts.set(profile.id, (tunnelCounts.get(profile.id) ?? 0) + 1)
+                    const keys = liveTunnelKeys.get(profile.id) ?? new Set<string>()
+                    keys.add(SidebarPlusTreeComponent.tunnelKey(forward))
+                    liveTunnelKeys.set(profile.id, keys)
+                }
+            }
         }
+        // Same guard as the sessions list above, and for the same reason: this
+        // runs every 2s and *ngFor tracks by object identity, so reassigning
+        // unconditionally would rebuild every row twice a second and drop the
+        // :hover state the open-in-browser button lives in — it would blink out
+        // from under the cursor and swallow the click.
+        if (!SidebarPlusTreeComponent.sameTunnels(this.activeTunnels, tunnels)) {
+            this.activeTunnels = tunnels
+        }
+        this.tunnelCounts = tunnelCounts
+        this.liveTunnelKeys = liveTunnelKeys
         // Only swap the array in when something actually changed. This runs on
         // a 2s timer, and `*ngFor` tracks rows by object identity: reassigning
         // unconditionally would rebuild every row's DOM twice a second, which
@@ -1096,6 +1188,350 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (active instanceof SplitTabComponent) {
             this.splitFocusSubscription = active.focusChanged$.subscribe(() => this.refreshActiveSessions())
         }
+    }
+
+    ////// SSH TUNNELS //////
+    /**
+     * Formatted here rather than through `ForwardedPort.toString()`: inheriting
+     * a display helper from Tabby also inherits whatever it gets wrong, and a
+     * wrong rendering raises no error (piège #35). The shapes follow ssh(1)'s
+     * own -L/-R/-D notation, which is what anyone reading a tunnel list expects.
+     */
+    private static formatTunnel (forward: ForwardedPortConfig): string {
+        if (forward.type === PortForwardType.Dynamic) {
+            return `D ${forward.host}:${forward.port} (SOCKS)`
+        }
+        const arrow = forward.type === PortForwardType.Remote ? 'R' : 'L'
+        return `${arrow} ${forward.host}:${forward.port} → ${forward.targetAddress}:${forward.targetPort}`
+    }
+
+    /**
+     * Identity of a forward across the config/live boundary. The two sides are
+     * different objects — the modal builds a fresh `ForwardedPort` from the
+     * config values — so they can only be matched on what they describe.
+     * `description` is left out: it is a label, editing it does not make it a
+     * different tunnel.
+     */
+    private static tunnelKey (forward: ForwardedPortConfig): string {
+        return [forward.type, forward.host, forward.port, forward.targetAddress, forward.targetPort].join('|')
+    }
+
+    /** Whether this configured tunnel is one Tabby currently has mounted — the only kind whose deletion is withheld. */
+    isTunnelLive (forward: ForwardedPortConfig): boolean {
+        const profileId = this.contextMenuProfile?.id
+        if (!profileId) {
+            return false
+        }
+        return this.liveTunnelKeys.get(profileId)?.has(SidebarPlusTreeComponent.tunnelKey(forward)) ?? false
+    }
+
+    private static sameTunnels (a: ActiveTunnel[], b: ActiveTunnel[]): boolean {
+        return a.length === b.length && a.every((tunnel, i) =>
+            tunnel.tab === b[i].tab &&
+            tunnel.label === b[i].label &&
+            tunnel.detail === b[i].detail &&
+            tunnel.url === b[i].url &&
+            tunnel.sessionName === b[i].sessionName)
+    }
+
+    /**
+     * The address a Local forward can be opened at, or null.
+     *
+     * Only Local is browsable: Remote listens on the far end of the connection,
+     * and Dynamic is a SOCKS proxy with no page behind it. `0.0.0.0` means
+     * "every interface", which is not an address a browser can be pointed at —
+     * loopback is the one that reaches it. https is inferred from the usual
+     * ports only; guessing further would produce links that fail to load.
+     */
+    private static tunnelUrl (forward: ForwardedPortConfig): string|null {
+        if (forward.type !== PortForwardType.Local) {
+            return null
+        }
+        const host = !forward.host || forward.host === '0.0.0.0' ? '127.0.0.1' : forward.host
+        const scheme = forward.port === 443 || forward.targetPort === 443 ? 'https' : 'http'
+        return `${scheme}://${host}:${forward.port}`
+    }
+
+    openTunnelUrl (tunnel: ActiveTunnel, event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        if (tunnel.url) {
+            this.platform.openExternal(tunnel.url)
+        }
+    }
+
+    /** Which tunnel row has its technical details unfolded, by index — clicking a row toggles it. */
+    expandedTunnelIndex: number|null = null
+
+    toggleTunnelDetails (index: number, event: MouseEvent): void {
+        event.preventDefault()
+        this.expandedTunnelIndex = this.expandedTunnelIndex === index ? null : index
+    }
+
+    /** Backs the chain badge in the tree — number of live forwards across every open session of this profile. */
+    tunnelCount (profile: PartialProfile<Profile>): number {
+        return (profile.id && this.tunnelCounts.get(profile.id)) || 0
+    }
+
+    /**
+     * Tunnels written on the profile, mounted or not. Drives a dimmed badge so
+     * a profile carrying forwards is recognisable before it is launched —
+     * otherwise they only ever appear once connected, which is precisely when
+     * a surprise is least welcome.
+     */
+    configuredTunnelCount (profile: PartialProfile<Profile>): number {
+        return (profile.options as { forwardedPorts?: ForwardedPortConfig[] }|undefined)?.forwardedPorts?.length ?? 0
+    }
+
+    toggleActiveTunnels (): void {
+        this.activeTunnelsCollapsed = !this.activeTunnelsCollapsed
+        window.localStorage.sidebarPlusActiveTunnelsCollapsed = this.activeTunnelsCollapsed
+    }
+
+    /** stopPropagation, not just preventDefault: the row itself is a click target now (it folds the details open), and without this the button did both. */
+    focusTunnelSession (tunnel: ActiveTunnel, event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        focusTab(this.app, tunnel.tab)
+    }
+
+    /**
+     * The live SSH tab of a profile, if one is connected — decides which of the
+     * two tunnel entries the profile menu offers.
+     */
+    private connectedTabForProfile (profile: PartialProfile<Profile>): SSHTabComponent|null {
+        if (!profile.id) {
+            return null
+        }
+        for (const tab of getAllOpenTabs(this.app)) {
+            if (!(tab instanceof SSHTabComponent)) {
+                continue
+            }
+            const backing = tab as unknown as ProfileBackedTab
+            if (backing.profile?.id === profile.id && tab.sshSession?.open && backing.session) {
+                return tab
+            }
+        }
+        return null
+    }
+
+    ////// PROFILE TUNNEL CONFIGURATION (popup) //////
+    /**
+     * The plugin's own tunnel editor, and — by the user's explicit choice —
+     * the only one. An entry handing over to Tabby's native
+     * `showPortForwarding()` modal was built and validated alongside it, then
+     * dropped: "je veux uniquement ma solution maison".
+     *
+     * What that settles, so it is not rediscovered as a bug: nothing here can
+     * touch a session that is already running. Everything written goes to the
+     * profile's configuration, which Tabby reads only when a session starts.
+     * Acting on a live session would mean calling
+     * `SSHSession.addPortForward()`, which calls `fw.startLocalListener()` and
+     * therefore needs a genuine `ForwardedPort` — a class tabby-ssh does not
+     * export at runtime (checked against the installed bundle, piège #13).
+     * Rebuilding one from an existing forward's prototype would only work once
+     * the user already had a tunnel, which is circular.
+     */
+    private static emptyTunnel (): TunnelDraft {
+        return {
+            type: PortForwardType.Local,
+            // Hosts keep a sensible default — they are almost always these —
+            // while both ports start empty rather than at 0, which would have
+            // to be cleared by hand before typing.
+            host: '127.0.0.1',
+            port: null,
+            targetAddress: 'localhost',
+            targetPort: null,
+            description: '',
+        }
+    }
+
+    /** Port forwarding is an SSH-profile notion — the menu entries stay hidden on local/serial/telnet profiles rather than offering a setting Tabby would ignore. */
+    get isSshProfileMenu (): boolean {
+        return this.contextMenuProfile?.type === 'ssh'
+    }
+
+    /** Tunnels stored on the profile itself. Empty for a non-SSH profile, which simply has no such option. */
+    get profileTunnels (): ForwardedPortConfig[] {
+        return (this.contextMenuProfile?.options as { forwardedPorts?: ForwardedPortConfig[] }|undefined)?.forwardedPorts ?? []
+    }
+
+    /**
+     * Whether the profile this popup is editing has a live session.
+     *
+     * Everything written here lands in the profile's configuration and is only
+     * read when a session starts, so on a running session: added and edited
+     * tunnels stay dormant until relaunch, and deleting one would remove the
+     * configuration while the forward Tabby already mounted keeps running —
+     * the user would believe it gone. Deletion of a *mounted* tunnel is
+     * therefore withheld until the session is closed; see isTunnelLive(), which
+     * is what narrows that rule to the forwards actually running.
+     */
+    get hasLiveSessionForMenuProfile (): boolean {
+        return !!this.contextMenuProfile && !!this.connectedTabForProfile(this.contextMenuProfile)
+    }
+
+    get tunnelTypes (): PortForwardType[] {
+        return [PortForwardType.Local, PortForwardType.Remote, PortForwardType.Dynamic]
+    }
+
+    formatTunnelRow (forward: ForwardedPortConfig): string {
+        return SidebarPlusTreeComponent.formatTunnel(forward)
+    }
+
+    openProfileTunnels (): void {
+        this.tunnelDraft = SidebarPlusTreeComponent.emptyTunnel()
+        this.tunnelError = null
+        this.editingTunnelIndex = null
+        this.contextMenuMode = 'tunnels'
+        this.menuPositionDirty = true
+    }
+
+    /**
+     * Loads an existing tunnel back into the form (double-click on its row).
+     * Ports come back as null when zero so the field reads empty rather than
+     * "0" — same reason the draft keeps them nullable in the first place; a
+     * Dynamic forward is stored with an empty destination, and editing one
+     * should not show a phantom port.
+     */
+    startEditTunnel (index: number): void {
+        const forward = this.profileTunnels[index]
+        if (!forward) {
+            return
+        }
+        this.tunnelDraft = {
+            type: forward.type,
+            host: forward.host,
+            port: forward.port || null,
+            targetAddress: forward.targetAddress || 'localhost',
+            targetPort: forward.targetPort || null,
+            description: forward.description ?? '',
+        }
+        this.editingTunnelIndex = index
+        this.tunnelError = null
+    }
+
+    cancelEditTunnel (): void {
+        this.tunnelDraft = SidebarPlusTreeComponent.emptyTunnel()
+        this.editingTunnelIndex = null
+        this.tunnelError = null
+    }
+
+    get isDynamicDraft (): boolean {
+        return this.tunnelDraft.type === PortForwardType.Dynamic
+    }
+
+    /**
+     * Which side of the connection each field refers to — it *inverts* between
+     * Local and Remote, and the destination is always resolved from the far end
+     * of the tunnel, so `localhost` means the server for a Local forward. Left
+     * implicit, this is the kind of thing that gets a forward pointed at the
+     * wrong machine on real infrastructure.
+     */
+    get tunnelHint (): string {
+        if (this.tunnelDraft.type === PortForwardType.Remote) {
+            return 'Écoute sur le serveur distant. La destination est résolue depuis votre PC.'
+        }
+        if (this.tunnelDraft.type === PortForwardType.Dynamic) {
+            return 'Ouvre un proxy SOCKS sur votre PC, sans destination fixe.'
+        }
+        return 'Écoute sur votre PC. La destination est résolue depuis le serveur — « localhost » y désigne donc le serveur.'
+    }
+
+    async addProfileTunnel (): Promise<void> {
+        const profile = this.contextMenuProfile
+        if (!profile) {
+            return
+        }
+        const draft = this.tunnelDraft
+        if (!draft.port) {
+            this.tunnelError = 'Indiquez un port d\'écoute.'
+            return
+        }
+        if (!this.isDynamicDraft && (!draft.targetAddress || !draft.targetPort)) {
+            this.tunnelError = 'Indiquez l\'hôte et le port de destination.'
+            return
+        }
+        this.tunnelError = null
+
+        // Dynamic forwards have no destination — Tabby still expects the fields
+        // to exist, so they are written as empty/0 rather than left undefined.
+        const forward: ForwardedPortConfig = {
+            type: draft.type,
+            host: draft.host,
+            port: draft.port,
+            targetAddress: this.isDynamicDraft ? '' : draft.targetAddress,
+            targetPort: this.isDynamicDraft ? 0 : draft.targetPort!,
+            description: draft.description,
+        }
+
+        const options = (profile.options ??= {}) as { forwardedPorts?: ForwardedPortConfig[] }
+        // Reassigned rather than pushed into: writeProfile() replaces the
+        // stored profile wholesale, so what matters is that `profile` carries
+        // the final array — but a fresh array also keeps the rendered list from
+        // sharing structure with the draft.
+        const forwards = [...(options.forwardedPorts ?? [])]
+        if (this.editingTunnelIndex !== null && forwards[this.editingTunnelIndex]) {
+            forwards[this.editingTunnelIndex] = forward
+        } else {
+            forwards.push(forward)
+        }
+        options.forwardedPorts = forwards
+        const wasEditing = this.editingTunnelIndex !== null
+        await this.profilesService.writeProfile(profile)
+        await this.config.save()
+        this.tunnelDraft = SidebarPlusTreeComponent.emptyTunnel()
+        this.editingTunnelIndex = null
+
+        // Said once, when it actually matters, rather than as a banner sitting
+        // permanently above the form: what is written here is configuration,
+        // and Tabby only reads it when a session starts.
+        //
+        // info() rather than notice(): the latter hard-codes `timeOut: 1000` in
+        // tabby-core, a second being far too short for a sentence explaining
+        // *why* nothing seems to have happened. info() leaves ngx-toastr its
+        // own timeout and splits the message into title and detail.
+        if (this.hasLiveSessionForMenuProfile) {
+            this.notifications.info(
+                wasEditing ? 'Tunnel modifié' : 'Tunnel enregistré',
+                wasEditing
+                    ? 'La session en cours garde l\'ancien tant qu\'elle n\'est pas relancée.'
+                    : 'Il sera monté au prochain lancement de cette session.',
+            )
+        }
+    }
+
+    async removeProfileTunnel (index: number): Promise<void> {
+        const profile = this.contextMenuProfile
+        if (!profile) {
+            return
+        }
+        // Only a tunnel Tabby has actually mounted resists deletion: removing
+        // its configuration would leave the forward running while the user
+        // believes it gone. One merely written down — added since the session
+        // started, or never launched — deletes freely. Guarded here as well as
+        // in the template: the rule belongs with the data.
+        const target = this.profileTunnels[index]
+        if (target && this.isTunnelLive(target)) {
+            this.tunnelError = 'Ce tunnel est monté sur la session en cours. Fermez la session pour pouvoir le supprimer.'
+            return
+        }
+        const options = (profile.options ??= {}) as { forwardedPorts?: ForwardedPortConfig[] }
+        const forwards = [...(options.forwardedPorts ?? [])]
+        forwards.splice(index, 1)
+        options.forwardedPorts = forwards
+        // A pending edit is indexed into the list that just shifted: cancel it
+        // if its target is gone, and follow the shift otherwise — saving
+        // against a stale index would overwrite the wrong tunnel.
+        if (this.editingTunnelIndex !== null) {
+            if (this.editingTunnelIndex === index) {
+                this.cancelEditTunnel()
+            } else if (this.editingTunnelIndex > index) {
+                this.editingTunnelIndex--
+            }
+        }
+        await this.profilesService.writeProfile(profile)
+        await this.config.save()
     }
 
     toggleActiveSessions (): void {
@@ -1981,7 +2417,14 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (target.closest('.group-context-menu, .icon-picker, .create-popup')) {
             return
         }
-        this.closeContextMenu()
+        // The tunnels popup is the only one holding a form the user may have
+        // half filled in, and losing it to a stray click is destructive in a
+        // way none of the other popups are (they either hold nothing or a
+        // single field). It closes on its ✕ or on Escape, never on an outside
+        // click.
+        if (!this.isTunnelsMode) {
+            this.closeContextMenu()
+        }
         // Clicking anywhere that is not a profile row drops the selection
         // (empty space, a folder row, the workspace bar) — the OS-standard
         // "click away to deselect". Profile rows are excluded because

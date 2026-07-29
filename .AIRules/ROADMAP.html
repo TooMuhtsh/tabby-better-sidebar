@@ -29,8 +29,8 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td>Menu contextuel enrichi (Profils &amp; Groupes)</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td><a href="#sftp">SFTP contextuel</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Absolue</td></tr>
 <tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Absolue</td></tr>
-<tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill planned">📋 Mécanisme tranché</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill planned">📋 Design validé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#robustesse">Robustesse édition de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
@@ -350,6 +350,29 @@ profils puis de les déplacer tous ensemble vers un autre groupe en un seul gest
   suppression) plutôt que le menu de déplacement.</li>
 </ul>
 
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-29</span>
+<p>Deux écarts au design ci-dessus, tous deux décidés en test manuel :</p>
+<ul>
+<li><strong>Les cases à cocher ont été retirées</strong> au profit du clic simple (« possible de
+  retirer le concept de coche, mais la sélection au simple clic ? »). Sémantique d'explorateur de
+  fichiers : clic = sélectionner cette ligne seule, re-clic dessus = désélectionner, Ctrl+clic =
+  ajouter/retirer, Shift+clic = étendre, double-clic = lancer. Les profils récupèrent les 14&nbsp;px
+  que la case réservait ; la ligne sélectionnée porte un fond et une barre d'accent.</li>
+<li><strong>Le multi-drag a finalement été implémenté</strong>, alors qu'il était écarté ici comme
+  trop fragile. L'objection portait sur le coût d'apprendre à <code>onProfileDrop()</code> et à
+  l'aperçu à porter N éléments ; une fois <code>moveSelectionToGroup()</code> écrit et testé pour le
+  menu contextuel, le dépôt lui délègue en trois lignes. Limite cosmétique assumée : l'aperçu de CDK
+  montre une carte unique avec un badge <code>+N</code>, pas la pile.</li>
+</ul>
+<p><strong>Placement du lot</strong> : il se pose <em>sous</em> la ligne visée, et en tête du dossier
+quand on vise la ligne d'un dossier (l'ajouter à la fin l'enfouissait sous tout le contenu existant).
+Le point de dépôt est déterminé par mesure directe des lignes rendues, pas par
+<code>CdkDragDrop.currentIndex</code> — voir piège #40. Pendant le glisser, les autres lignes du lot
+passent en <code>visibility: hidden</code> ; les replier hors du flux cassait le dépôt.</p>
+<p><strong>Cible « Sans groupe »</strong> : le clic droit y est désormais possible, avec un menu
+réduit à la seule entrée de déplacement — <code>onProfileDrop()</code> l'acceptait déjà comme cible,
+le menu non.</p></div>
+
 <h3 id="tunnels-ssh">Tunnels SSH</h3>
 <p>Conçu comme une <strong>surcouche visuelle</strong> branchée directement sur le moteur de
 port-forwarding déjà natif de Tabby — pas de réimplémentation du tunneling lui-même. Le plugin se
@@ -363,6 +386,45 @@ refléter l'état des tunnels déjà gérés par Tabby.</p>
 <li>Si Tabby gère déjà la reprise sur micro-coupure réseau nativement, le plugin n'a qu'à en
   afficher l'état plutôt qu'à réimplémenter l'auto-reconnexion.</li>
 </ul>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-29 sur de vrais tunnels</span>
+<p>Vérification d'API préalable sur le paquet <strong>installé</strong> (typings + bloc d'export
+runtime, méthode du piège #13/#32). Livré :</p>
+<ul>
+<li><strong>« Tunnels du profil… »</strong> au clic droit d'un profil SSH : popup maison listant les
+  tunnels configurés, ajout (type Local/Remote/Dynamic, port d'écoute, hôte et port cible,
+  description), suppression, et <strong>modification par double-clic</strong> sur une ligne. Écrit
+  dans <code>options.forwardedPorts</code> via <code>writeProfile()</code>.</li>
+<li><strong>Pastille « maillon »</strong> sur les profils, en deux états : allumée quand des tunnels
+  sont réellement montés, estompée quand le profil en porte seulement en configuration (demande
+  utilisateur : « pour qu'il n'y ait pas de surprise »).</li>
+<li><strong>Section « Tunnels actifs »</strong> repliable, sous les sessions actives. Chaque ligne
+  montre la <em>description</em> du tunnel (repli sur la forme ssh(1) <code>L host:port →
+  cible</code> si elle est vide) et le nom de la session porteuse ; clic = déplie la forme technique.
+  Deux boutons permanents : <strong>ouvrir dans le navigateur</strong>
+  (<code>PlatformService.openExternal()</code>) et aller à la session.</li>
+</ul>
+<div class="callout warning"><span class="callout-title">Périmètre restreint par choix utilisateur — ne pas le rouvrir comme un manque</span>
+<p>Une entrée <strong>« Gérer les tunnels… »</strong> déléguant à la modale native de Tabby
+(<code>SSHTabComponent.showPortForwarding()</code>) a été construite, testée et validée, puis
+<strong>retirée à la demande explicite</strong> de l'utilisateur (« je veux uniquement ma solution
+maison »).</p>
+<p>Conséquence actée : <strong>rien ne peut plus agir sur une session déjà ouverte</strong>. Tout
+passe par la configuration du profil, lue par Tabby au seul démarrage d'une session. Ce n'est pas un
+oubli et ce n'est pas contournable : <code>SSHSession.addPortForward()</code> appelle
+<code>fw.startLocalListener()</code>, donc exige une instance de <code>ForwardedPort</code> — classe
+absente du bloc d'export runtime de <code>tabby-ssh</code>. La reconstruire depuis le prototype d'un
+tunnel existant ne marcherait que si l'utilisateur en avait déjà un, ce qui est circulaire.</p>
+<p>D'où deux garde-fous : un <strong>toast</strong> après enregistrement rappelant que le tunnel
+montera au prochain lancement, et la <strong>suppression bloquée (cadenas + infobulle) sur les seuls
+tunnels effectivement montés</strong> — retirer leur configuration les laisserait tourner pendant que
+l'utilisateur les croit supprimés. Un tunnel configuré mais non monté se supprime librement.</p></div>
+<p><strong>Écarts au design ci-dessus</strong> : le panneau est sous les sessions actives et non en
+bas de sidebar (l'arbre y est contraint en hauteur, et les deux blocs d'état live se lisent mieux
+ensemble) ; le bouton navigateur n'apparaît que sur les tunnels <em>Local</em> (un Remote écoute à
+l'autre bout, un Dynamic est un proxy SOCKS), et <code>https</code> n'est déduit que des ports
+usuels.</p>
+<p><strong>Non traité</strong> : l'affichage de l'état de reprise sur micro-coupure réseau.</p></div>
 
 <h3 id="group-exec">Ouverture groupée d'un dossier ("Group Exec")</h3>
 <p>Clic droit sur un dossier → "Ouvrir tout" : lance une session pour chaque profil du dossier, en

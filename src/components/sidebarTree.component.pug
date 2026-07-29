@@ -65,6 +65,50 @@
                     )
                         .fa.fa-fw.fas.fa-folder-open
 
+    //- Mirrors Tabby's own forwarding state, never drives it: the roadmap frames
+    //- this chantier as a "surcouche visuelle" over the native engine. Sits
+    //- under the sessions it belongs to rather than at the very bottom of the
+    //- sidebar as first sketched — the tree below is height-constrained, and a
+    //- second live-state block reads better next to the first.
+    .active-tunnels(*ngIf='!sftpMode && activeTunnels.length')
+        a.active-sessions-header((click)='toggleActiveTunnels()', href='#')
+            .fa.fa-fw.fas.me-1(
+                [class.fa-chevron-down]='!activeTunnelsCollapsed',
+                [class.fa-chevron-right]='activeTunnelsCollapsed'
+            )
+            span.me-auto Tunnels actifs
+            span.active-sessions-count {{ activeTunnels.length }}
+        div(*ngIf='!activeTunnelsCollapsed')
+            //- The row shows the description the user gave the tunnel; the
+            //- technical form is one click away rather than in the way. Action
+            //- buttons are divs, never nested <a> — the parser un-nests those
+            //- silently and breaks the row (piège #38).
+            ng-container(*ngFor='let tunnel of activeTunnels; let i = index')
+                a.active-tunnel(
+                    (click)='toggleTunnelDetails(i, $event)',
+                    [title]='tunnel.detail',
+                    href='#'
+                )
+                    .fa.fa-fw.fas.fa-link.ms-1.tunnel-icon
+                    span.ms-2.me-auto.no-wrap {{ tunnel.label }}
+                    span.tunnel-session.no-wrap {{ tunnel.sessionName }}
+                    .actions
+                        .action(
+                            *ngIf='tunnel.url',
+                            (click)='openTunnelUrl(tunnel, $event)',
+                            [title]='"Ouvrir " + tunnel.url + " dans le navigateur"'
+                        )
+                            .fa.fa-fw.fas.fa-arrow-up-right-from-square
+                        .action(
+                            (click)='focusTunnelSession(tunnel, $event)',
+                            title='Aller à la session'
+                        )
+                            .fa.fa-fw.fas.fa-terminal
+                //- Session name stays on the row itself, so the unfolded part
+                //- only adds what the row cannot show: the technical form.
+                .tunnel-details(*ngIf='expandedTunnelIndex === i')
+                    .no-wrap {{ tunnel.detail }}
+
     .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='!sftpMode')
         a.workspace-tab(
             [class.active]='activeWorkspaceId === "all"',
@@ -208,6 +252,19 @@
                                 )
                                 span.ms-2.no-wrap {{ profile.name }}
                                 .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavorite(profile)')
+                                //- Two states, one badge: lit when forwards are
+                                //- actually mounted, dimmed when the profile
+                                //- merely carries some in its configuration.
+                                .tunnel-badge.ms-1(
+                                    *ngIf='tunnelCount(profile)',
+                                    [title]='tunnelCount(profile) + " tunnel(s) monté(s) sur cette session"'
+                                )
+                                    .fa.fa-fw.fas.fa-link
+                                .tunnel-badge.tunnel-badge-idle.ms-1(
+                                    *ngIf='!tunnelCount(profile) && configuredTunnelCount(profile)',
+                                    [title]='configuredTunnelCount(profile) + " tunnel(s) configuré(s) — montés au lancement de la session"'
+                                )
+                                    .fa.fa-fw.fas.fa-link
 
                                 .actions
                                     .action((click)='toggleFavorite(profile, $event)')
@@ -340,6 +397,12 @@
             class='fa-star'
         )
         | {{ isFavorite(contextMenuProfile) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}
+    //- Single entry, editing the profile's own configuration. Handing over to
+    //- Tabby's native modal for live sessions was built and then dropped at the
+    //- user's request — see openProfileTunnels() for what that costs.
+    a.group-context-menu-item(*ngIf='isSshProfileMenu', (click)='openProfileTunnels()', href='#')
+        .fa.fa-fw.fas.fa-link.me-2
+        | Tunnels du profil...
     a.group-context-menu-item((click)='openRenamePrompt()', href='#')
         .fa.fa-fw.fas.fa-i-cursor.me-2
         | Renommer...
@@ -467,6 +530,72 @@
         (keydown.enter)='createGroup()'
     )
     button.btn.btn-sm.btn-primary.mt-2((click)='createGroup()') Créer
+
+.create-popup.tunnels-popup(
+    *ngIf='isTunnelsMode && contextMenuProfile',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span.no-wrap Tunnels — {{ contextMenuProfile.name }}
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    .text-muted.small.mt-1(*ngIf='!profileTunnels.length') Aucun tunnel configuré sur ce profil.
+    .tunnel-row(
+        *ngFor='let fw of profileTunnels; let i = index',
+        [class.editing]='editingTunnelIndex === i',
+        (dblclick)='startEditTunnel(i)',
+        title='Double-cliquez pour modifier ce tunnel'
+    )
+        span.me-auto.no-wrap {{ formatTunnelRow(fw) }}
+        .action(
+            *ngIf='!isTunnelLive(fw)',
+            (click)='removeProfileTunnel(i)',
+            title='Supprimer ce tunnel'
+        )
+            .fa.fa-fw.fas.fa-trash
+        .action.disabled(
+            *ngIf='isTunnelLive(fw)',
+            title='Ce tunnel est actuellement monté sur la session ouverte. Le supprimer ici retirerait sa configuration sans couper le tunnel, qui continuerait de tourner jusqu\'à la fermeture de la session. Fermez la session pour pouvoir le supprimer.'
+        )
+            .fa.fa-fw.fas.fa-lock
+    hr
+    .d-flex.gap-1.mb-1
+        select.form-control.form-control-sm.tunnel-type([(ngModel)]='tunnelDraft.type')
+            option(*ngFor='let t of tunnelTypes', [value]='t') {{ t }}
+        //- Placeholder says which machine listens; the hint below spells out
+        //- which end resolves the destination, since that flips with the type.
+        input.form-control.form-control-sm(
+            type='number',
+            [(ngModel)]='tunnelDraft.port',
+            placeholder='Port d\'écoute',
+            (keydown.enter)='addProfileTunnel()',
+            (keydown.escape)='closeContextMenu()'
+        )
+    .d-flex.gap-1.mb-1(*ngIf='!isDynamicDraft')
+        input.form-control.form-control-sm(
+            type='text',
+            [(ngModel)]='tunnelDraft.targetAddress',
+            placeholder='Hôte cible'
+        )
+        input.form-control.form-control-sm(
+            type='number',
+            [(ngModel)]='tunnelDraft.targetPort',
+            placeholder='Port cible',
+            (keydown.enter)='addProfileTunnel()',
+            (keydown.escape)='closeContextMenu()'
+        )
+    input.form-control.form-control-sm.mb-1(
+        type='text',
+        [(ngModel)]='tunnelDraft.description',
+        placeholder='Description (optionnel)'
+    )
+    .tunnel-hint.small.mb-1 {{ tunnelHint }}
+    .text-danger.small.mb-1(*ngIf='tunnelError') {{ tunnelError }}
+    .d-flex.gap-2
+        button.btn.btn-sm.btn-primary((click)='addProfileTunnel()') {{ editingTunnelIndex === null ? 'Ajouter le tunnel' : 'Enregistrer' }}
+        button.btn.btn-sm.btn-secondary(*ngIf='editingTunnelIndex !== null', (click)='cancelEditTunnel()') Annuler
+    .text-muted.small.mt-2 Prend effet au prochain lancement de la session.
 
 .create-popup(
     *ngIf='isCreateProfileMode',
