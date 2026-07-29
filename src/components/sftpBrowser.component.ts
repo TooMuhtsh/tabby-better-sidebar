@@ -64,8 +64,20 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     ]
 
     availableColumns = SidebarPlusSftpBrowserComponent.AVAILABLE_COLUMNS
-    /** Toggles the inline column chooser. Inline, not a floating popup: a dropdown in a 300px sidebar would need positioning and outside-click handling (piège #15) for no gain. */
-    showColumnChooser = false
+
+    /**
+     * The display toggles that sit under the column list in the header menu,
+     * modelled on SFTP+'s. Each is a `sidebarPlus` key, declared in the
+     * ConfigProvider defaults (piège #16).
+     */
+    static readonly DISPLAY_TOGGLES = [
+        { key: 'sftpFoldersFirst', label: 'Dossiers en premier' },
+        { key: 'sftpShowHidden', label: 'Afficher les fichiers cachés' },
+        { key: 'sftpColumnBorders', label: 'Bordures de colonnes' },
+        { key: 'sftpZebra', label: 'Lignes alternées' },
+    ]
+
+    displayToggles = SidebarPlusSftpBrowserComponent.DISPLAY_TOGGLES
 
     // Declared explicitly rather than relying on Angular inheriting the
     // parent's factory: the parameters are the contract with SSHModule's
@@ -96,11 +108,14 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.editor.dispose()
     }
 
-    ////// EMPTY-SPACE CONTEXT MENU //////
+    ////// CONTEXT MENUS //////
+    /** Create actions, on a right-click over the empty area of the listing. */
     backgroundMenuOpen = false
+    /** Columns and display toggles. Opened by right-clicking the header — where SFTP+ puts it, and where one looks for column settings — or from the background menu. */
+    displayMenuOpen = false
     backgroundMenuX = 0
     backgroundMenuY = 0
-    /** Set when the menu opens, consumed once in ngAfterViewChecked — the menu has no measurable size until Angular has rendered it (piège #30). */
+    /** Set when either menu opens, consumed once in ngAfterViewChecked — a menu has no measurable size until Angular has rendered it (piège #30). */
     private backgroundMenuDirty = false
 
     /**
@@ -113,15 +128,21 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * right-clicking the column titles is where one would look first.
      */
     onBackgroundContextMenu (event: MouseEvent): void {
-        if ((event.target as HTMLElement).closest('.sftp-row:not(.sftp-header-row)')) {
+        const target = event.target as HTMLElement
+        if (target.closest('.sftp-row:not(.sftp-header-row)')) {
             return
         }
         event.preventDefault()
         event.stopPropagation()
+        // Right-clicking the column titles goes straight to the display
+        // settings — one click instead of two, as in SFTP+. Elsewhere in the
+        // empty area, the create actions.
+        const onHeader = !!target.closest('.sftp-header-row')
         this.selectedPath = null
         this.backgroundMenuX = event.clientX
         this.backgroundMenuY = event.clientY
-        this.backgroundMenuOpen = true
+        this.backgroundMenuOpen = !onHeader
+        this.displayMenuOpen = onHeader
         this.backgroundMenuDirty = true
     }
 
@@ -135,13 +156,14 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      */
     @HostListener('document:click', ['$event'])
     onDocumentClick (event: MouseEvent): void {
-        if (!this.backgroundMenuOpen) {
+        if (!this.backgroundMenuOpen && !this.displayMenuOpen) {
             return
         }
-        if ((event.target as HTMLElement).closest('.sftp-background-menu')) {
+        if ((event.target as HTMLElement).closest('.sftp-floating-menu')) {
             return
         }
         this.backgroundMenuOpen = false
+        this.displayMenuOpen = false
     }
 
     ngAfterViewChecked (): void {
@@ -150,7 +172,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         }
         this.backgroundMenuDirty = false
         setTimeout(() => {
-            const menu = document.querySelector<HTMLElement>('.sftp-background-menu')
+            const menu = document.querySelector<HTMLElement>('.sftp-floating-menu')
             if (!menu) {
                 return
             }
@@ -167,9 +189,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         void this.openCreateDirectoryModal()
     }
 
-    openColumnChooserFromMenu (): void {
+    /** Swaps one menu for the other in place, so the display settings appear where the cursor already is. */
+    openDisplayMenu (): void {
         this.backgroundMenuOpen = false
-        this.showColumnChooser = true
+        this.displayMenuOpen = true
+        this.backgroundMenuDirty = true
     }
 
     /**
@@ -271,6 +295,64 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
 
     isColumnVisible (column: SftpColumn): boolean {
         return this.visibleColumns.some(c => c.id === column.id)
+    }
+
+    isToggleOn (key: string): boolean {
+        return this.config.store.sidebarPlus?.[key] ?? false
+    }
+
+    toggleDisplayOption (key: string): void {
+        this.config.store.sidebarPlus[key] = !this.isToggleOn(key)
+        this.config.save()
+    }
+
+    private displayCache: {
+        source: SFTPFile[]
+        showHidden: boolean
+        foldersFirst: boolean
+        result: SFTPFile[]
+    }|null = null
+
+    /**
+     * What the list actually renders: `filteredFileList` sorted, and with the
+     * dotfiles dropped when the user asked for it.
+     *
+     * A getter rather than a field kept in sync, because `filteredFileList` is
+     * rebuilt by the inherited — and private — `updateFilteredList()`, with no
+     * hook to piggyback on. Which makes this run on every change detection
+     * pass, hence the cache: sorting a large directory several times a second,
+     * and handing Angular a new array each time for it to diff, is a cost
+     * neither side needs to pay. `updateFilteredList()` always *reassigns*
+     * `filteredFileList` rather than mutating it, so reference equality is a
+     * sound invalidation signal.
+     */
+    get displayedFiles (): SFTPFile[] {
+        const showHidden = this.isToggleOn('sftpShowHidden')
+        const foldersFirst = this.isToggleOn('sftpFoldersFirst')
+        const cached = this.displayCache
+        if (cached
+            && cached.source === this.filteredFileList
+            && cached.showHidden === showHidden
+            && cached.foldersFirst === foldersFirst) {
+            return cached.result
+        }
+
+        const files = this.filteredFileList.filter(f => showHidden || !this.isHidden(f))
+        files.sort((a, b) => {
+            if (foldersFirst && a.isDirectory !== b.isDirectory) {
+                return a.isDirectory ? -1 : 1
+            }
+            // Locale-aware and case-insensitive: readdir returns whatever
+            // order the server felt like, which is rarely one a human reads.
+            return a.name.localeCompare(b.name, this.locale.getLocale(), { sensitivity: 'base' })
+        })
+
+        this.displayCache = { source: this.filteredFileList, showHidden, foldersFirst, result: files }
+        return files
+    }
+
+    trackByPath (_index: number, item: SFTPFile): string {
+        return item.fullPath
     }
 
     toggleColumn (column: SftpColumn): void {
@@ -419,10 +501,18 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     get filterFoundNothing (): boolean {
-        return this.fileList !== null && this.filteredFileList.length === 0 && this.hasActiveFilter
+        return this.fileList !== null && this.displayedFiles.length === 0 && this.hasActiveFilter
     }
 
     goRoot (): void {
         void this.navigate('/')
+    }
+
+    get showColumnBorders (): boolean {
+        return this.isToggleOn('sftpColumnBorders')
+    }
+
+    get showZebra (): boolean {
+        return this.isToggleOn('sftpZebra')
     }
 }

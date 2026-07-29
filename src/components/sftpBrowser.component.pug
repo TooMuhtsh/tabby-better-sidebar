@@ -36,13 +36,6 @@
         .fa.fa-fw.fas.fa-sync-alt
     button.btn.btn-link.btn-sm.sftp-tool(type='button', *ngIf='!showFilter', (click)='showFilter = true', title='Filtrer la liste')
         .fa.fa-fw.fas.fa-filter
-    button.btn.btn-link.btn-sm.sftp-tool(
-        type='button',
-        [class.active]='showColumnChooser',
-        (click)='showColumnChooser = !showColumnChooser',
-        title='Choisir les colonnes affichées'
-    )
-        .fa.fa-fw.fas.fa-table-columns
     button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='openCreateDirectoryModal()', title='Nouveau dossier distant')
         .fa.fa-fw.fas.fa-folder-plus
     button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='upload()', title='Envoyer des fichiers vers le serveur')
@@ -62,20 +55,17 @@
     button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='clearFilter()', title='Effacer le filtre')
         .fa.fa-fw.fas.fa-times
 
-//- Inline rather than a floating dropdown: see showColumnChooser.
-.sftp-column-chooser(*ngIf='showColumnChooser')
-    .chooser-title Colonnes
-    label.chooser-item(*ngFor='let column of availableColumns', [title]='column.description')
-        input(type='checkbox', [checked]='isColumnVisible(column)', (change)='toggleColumn(column)')
-        span.ms-1 {{ column.description }}
-
 //- dropZone is tabby-core's DropZoneDirective, exported by TabbyCoreModule —
 //- keeps drag-and-drop upload working exactly as in the native panel.
 .sftp-body(dropZone, (transfer)='uploadOneFolder($event)', (contextmenu)='onBackgroundContextMenu($event)')
     .sftp-message(*ngIf='!sftp') Connexion...
     ng-container(*ngIf='sftp')
         .sftp-message(*ngIf='fileList === null') Chargement...
-        .sftp-grid(*ngIf='fileList !== null')
+        .sftp-grid(
+            *ngIf='fileList !== null',
+            [class.with-col-borders]='showColumnBorders',
+            [class.with-zebra]='showZebra'
+        )
             .sftp-row.sftp-header-row([style.grid-template-columns]='gridTemplate')
                 .cell-icon
                 .cell-name Nom
@@ -101,7 +91,7 @@
             //- comes and goes, so a CSS-side parity would flip whenever the
             //- panel is at the root.
             .sftp-row(
-                *ngFor='let item of filteredFileList; let i = index',
+                *ngFor='let item of displayedFiles; let i = index; trackBy: trackByPath',
                 [style.grid-template-columns]='gridTemplate',
                 [class.sftp-zebra]='i % 2 === 1',
                 [class.sftp-dim]='isHidden(item)',
@@ -122,9 +112,11 @@
 
         .sftp-message(*ngIf='filterFoundNothing') Aucun fichier ne correspond au filtre.
 
-//- Rendered outside .sftp-body: it is `position: fixed`, and living inside the
-//- scrolling element would let it drift away with the list underneath it.
-.sftp-background-menu(
+//- Both menus are rendered outside .sftp-body: they are `position: fixed`, and
+//- living inside the scrolling element would let them drift with the list.
+//- They share the .sftp-floating-menu class, which is the single hook used by
+//- the outside-click handler and by the viewport clamping.
+.sftp-floating-menu(
     *ngIf='backgroundMenuOpen',
     [style.left.px]='backgroundMenuX',
     [style.top.px]='backgroundMenuY'
@@ -136,6 +128,25 @@
         .fa.fa-fw.fas.fa-file-circle-plus.me-2
         span Créer un fichier
     .menu-separator
-    a.menu-item((click)='openColumnChooserFromMenu()')
+    a.menu-item((click)='openDisplayMenu()')
         .fa.fa-fw.fas.fa-table-columns.me-2
         span Paramètres d’affichage
+
+//- Columns and display toggles, laid out as in SFTP+: the name column first
+//- and permanently checked, then the optional ones, then the display options.
+.sftp-floating-menu(
+    *ngIf='displayMenuOpen',
+    [style.left.px]='backgroundMenuX',
+    [style.top.px]='backgroundMenuY'
+)
+    .menu-title Colonnes
+    .menu-item.menu-item-disabled
+        .menu-check ✓
+        span Nom
+    a.menu-item(*ngFor='let column of availableColumns', (click)='toggleColumn(column)', [title]='column.description')
+        .menu-check {{ isColumnVisible(column) ? '✓' : '' }}
+        span {{ column.description }}
+    .menu-separator
+    a.menu-item(*ngFor='let toggle of displayToggles', (click)='toggleDisplayOption(toggle.key)')
+        .menu-check {{ isToggleOn(toggle.key) ? '✓' : '' }}
+        span {{ toggle.label }}

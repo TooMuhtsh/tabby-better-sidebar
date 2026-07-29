@@ -37,6 +37,11 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // the name column is always shown and never listed here. See
             // SidebarPlusSftpBrowserComponent.AVAILABLE_COLUMNS for the ids.
             sftpColumns: ['size', 'date', 'mode'] as string[],
+            // Display toggles of the SFTP browser's header menu.
+            sftpFoldersFirst: true,
+            sftpShowHidden: true,
+            sftpColumnBorders: true,
+            sftpZebra: true,
             // favorites/favoriteGroups above double as the "Tous" workspace's
             // own favorites (no migration needed — they're already live in
             // the user's config.yaml). Each entry here carries its own.

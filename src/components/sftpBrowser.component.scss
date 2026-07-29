@@ -73,36 +73,6 @@ sidebar-plus-sftp-browser .sftp-breadcrumb {
     }
 }
 
-sidebar-plus-sftp-browser .sftp-column-chooser {
-    flex: none;
-    padding: .3rem .4rem .4rem;
-    margin: 0 .1rem .25rem;
-    font-size: .75rem;
-    background-color: var(--theme-bg);
-    border: 1px solid var(--theme-secondary);
-    border-radius: .2rem;
-
-    .chooser-title {
-        opacity: .6;
-        text-transform: uppercase;
-        font-size: .65rem;
-        letter-spacing: .04em;
-        margin-bottom: .2rem;
-    }
-
-    .chooser-item {
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-        padding: .05rem 0;
-        margin: 0;
-
-        &:hover {
-            opacity: .85;
-        }
-    }
-}
-
 // The scrolling container, and the framed panel, are one and the same element
 // on purpose. A rounded frame wrapped *around* the scroller would need its own
 // `overflow: hidden`, and that would make it the sticky header's nearest
@@ -175,7 +145,6 @@ sidebar-plus-sftp-browser .sftp-row {
     }
 
     .cell-value {
-        border-left: 1px solid var(--theme-secondary);
         font-family: monospace;
         opacity: .7;
     }
@@ -194,16 +163,24 @@ sidebar-plus-sftp-browser .sftp-row {
 // Background over --theme-bg, not --theme-bg-more-2: the latter is the
 // sidebar's own colour, which made floating menus invisible on top of it
 // (fixed once already for the tree's menus, commit a2f6a58).
-sidebar-plus-sftp-browser .sftp-background-menu {
+sidebar-plus-sftp-browser .sftp-floating-menu {
     position: fixed;
     z-index: 1000;
-    min-width: 11rem;
+    min-width: 12rem;
     padding: .25rem 0;
     font-size: .75rem;
     background-color: var(--theme-bg);
     border: 1px solid var(--theme-secondary);
     border-radius: .25rem;
     box-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+
+    .menu-title {
+        padding: .15rem .6rem .25rem;
+        opacity: .5;
+        text-transform: uppercase;
+        font-size: .65rem;
+        letter-spacing: .04em;
+    }
 
     .menu-item {
         display: flex;
@@ -219,6 +196,24 @@ sidebar-plus-sftp-browser .sftp-background-menu {
         }
     }
 
+    // The name column, shown checked but not actionable — it cannot be hidden.
+    .menu-item-disabled {
+        cursor: default;
+        opacity: .5;
+
+        &:hover {
+            background-color: transparent;
+        }
+    }
+
+    // A fixed-width gutter so the labels line up whether or not they are
+    // ticked, rather than shifting as options are toggled.
+    .menu-check {
+        width: 1rem;
+        flex: none;
+        color: var(--theme-primary);
+    }
+
     .menu-separator {
         height: 1px;
         margin: .25rem 0;
@@ -226,7 +221,13 @@ sidebar-plus-sftp-browser .sftp-background-menu {
     }
 }
 
-sidebar-plus-sftp-browser .sftp-zebra {
+// Both optional, as in SFTP+, and both driven by a class on the grid so the
+// toggle costs nothing per row.
+sidebar-plus-sftp-browser .sftp-grid.with-col-borders .cell-value {
+    border-left: 1px solid var(--theme-secondary);
+}
+
+sidebar-plus-sftp-browser .sftp-grid.with-zebra .sftp-zebra {
     background-color: rgba(128, 128, 128, .06);
 }
 
