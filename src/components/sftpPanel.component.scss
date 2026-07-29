@@ -50,7 +50,7 @@ sidebar-plus-sftp .sftp-panel-container[hidden] {
     display: none;
 }
 
-sidebar-plus-sftp sftp-panel {
+sidebar-plus-sftp sidebar-plus-sftp-browser {
     flex: 1 1 auto;
     min-height: 0;
 }
@@ -73,29 +73,3 @@ sidebar-plus-sftp .sftp-bound-tab {
     }
 }
 
-// The native panel's toolbar is built for a full-width tab: five buttons that
-// each pair an icon with a text caption, plus a breadcrumb. At sidebar width
-// the captions alone overflow the row, so drop them and keep the icons.
-//
-// These rules are unencapsulated, so they reach inside the panel's view
-// regardless of its `_ngcontent-…` attributes — but they only *add*
-// properties the panel's own stylesheet doesn't set. Anything it does set
-// wins: its `:host > .header` selector carries two attribute selectors and
-// outranks the tag chain here.
-sidebar-plus-sftp sftp-panel .header {
-    flex-wrap: wrap;
-
-    button div {
-        display: none;
-    }
-
-    .btn {
-        padding-left: .3rem;
-        padding-right: .3rem;
-    }
-
-    // Bootstrap's `me-1` is `!important`, so undoing it has to be too.
-    i {
-        margin-right: 0 !important;
-    }
-}

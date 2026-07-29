@@ -15,19 +15,19 @@ import {
     createComponent,
 } from '@angular/core'
 import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
-import { SFTPPanelComponent, SSHTabComponent } from 'tabby-ssh'
+import { SSHTabComponent } from 'tabby-ssh'
+import { SidebarPlusSftpBrowserComponent } from './sftpBrowser.component'
 
 /**
- * Hosts Tabby's own `SFTPPanelComponent` inside the sidebar, bound to whatever
- * SSH tab currently has focus.
+ * Hosts the SFTP browser inside the sidebar, bound to whatever SSH tab
+ * currently has focus.
  *
- * The panel is created imperatively rather than written as `<sftp-panel>` in
- * this component's template: `SSHModule` *declares* SFTPPanelComponent but
- * does not list it in `exports`, so its selector is not visible to any other
- * module's templates (verified in the compiled NgModule metadata of the
- * installed tabby-ssh). `createComponent()` bypasses template scope entirely —
- * the same trick already used by SidebarPlusMountService to graft this
- * plugin's own tree into Tabby's shell.
+ * The browser is `SidebarPlusSftpBrowserComponent` — tabby-ssh's own
+ * `SFTPPanelComponent` subclassed with our template, see that file. It is
+ * created imperatively rather than written into this template because the
+ * caching below needs to own its lifecycle: a view built by `*ngFor`/`*ngIf`
+ * is destroyed the moment its condition flips, which is exactly what must not
+ * happen here.
  */
 @Component({
     selector: 'sidebar-plus-sftp',
@@ -72,14 +72,15 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
 
     /**
      * One panel per SSH tab, kept alive across tab switches instead of being
-     * rebuilt. Two reasons, both load-bearing: `SFTPPanelComponent.ngOnInit()`
-     * calls `session.openSFTP()`, which opens a *new* SFTP channel every time
+     * rebuilt. Two reasons, both load-bearing: the inherited
+     * `SFTPPanelComponent.ngOnInit()` calls `session.openSFTP()`, which opens
+     * a *new* SFTP channel every time
      * (and `SFTPSession` exposes no `close()` — the channel only dies with the
      * SSH session), so rebuilding on every switch would leak one channel per
      * switch; and the panel's own `path` is what gives us the roadmap's
      * per-tab navigation memory for free, with nothing persisted.
      */
-    private panels = new Map<SSHTabComponent, ComponentRef<SFTPPanelComponent>>()
+    private panels = new Map<SSHTabComponent, ComponentRef<SidebarPlusSftpBrowserComponent>>()
     private boundTab: SSHTabComponent|null = null
     private subscription: Subscription|null = null
     /** Tracks the focus changes *within* the active split tab, re-subscribed whenever the active tab changes. */
@@ -192,8 +193,8 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             return null
         }
         // A tab whose session is still negotiating (or already dropped) has no
-        // usable transport — SFTPPanelComponent would call openSFTP() on it
-        // and throw. Stay on the placeholder until it is genuinely up.
+        // usable transport — the browser's ngOnInit would call openSFTP() on
+        // it and throw. Stay on the placeholder until it is genuinely up.
         return tab.sshSession?.open ? tab : null
     }
 
@@ -233,7 +234,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
     private attachPanel (tab: SSHTabComponent): void {
         let ref = this.panels.get(tab)
         if (!ref) {
-            ref = createComponent(SFTPPanelComponent, {
+            ref = createComponent(SidebarPlusSftpBrowserComponent, {
                 environmentInjector: this.environmentInjector,
             })
             // Both inputs must be set before the view is attached: attachView()
@@ -263,13 +264,13 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         this.appRef.detachView(ref.hostView)
     }
 
-    private destroyPanel (ref: ComponentRef<SFTPPanelComponent>): void {
+    private destroyPanel (ref: ComponentRef<SidebarPlusSftpBrowserComponent>): void {
         this.rootNodeOf(ref).remove()
         this.appRef.detachView(ref.hostView)
         ref.destroy()
     }
 
-    private rootNodeOf (ref: ComponentRef<SFTPPanelComponent>): HTMLElement {
+    private rootNodeOf (ref: ComponentRef<SidebarPlusSftpBrowserComponent>): HTMLElement {
         return (ref.hostView as unknown as { rootNodes: HTMLElement[] }).rootNodes[0]
     }
 }

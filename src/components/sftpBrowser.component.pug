@@ -1,0 +1,79 @@
+//- Presentation-only override of tabby-ssh's SFTPPanelComponent template.
+//- Every handler and field below is inherited — see the component's doc
+//- comment for why the template had to be ours.
+//-
+//- No expression here contains a string literal: pug escapes whichever quote
+//- style it isn't using as the attribute delimiter, which corrupts Angular
+//- expressions. Anything that needed one is a getter or a wrapper method.
+.sftp-toolbar.d-flex.align-items-center
+    input.form-control.form-control-sm.flex-grow-1(
+        *ngIf='editingPath !== null',
+        type='text',
+        autofocus,
+        (keydown.enter)='confirmPath()',
+        (keydown.esc)='editingPath = null',
+        (blur)='editingPath = null',
+        [(ngModel)]='editingPath'
+    )
+    .sftp-breadcrumb.flex-grow-1(
+        *ngIf='editingPath === null',
+        (dblclick)='editPath()',
+        title='Double-cliquer pour saisir un chemin'
+    )
+        a.crumb((click)='goRoot()') /
+        a.crumb(*ngFor='let segment of pathSegments', (click)='navigate(segment.path)') {{ segment.name }}
+
+    //- A title on every button: the captions the native template pairs with
+    //- each icon do not fit a sidebar, and an icon on its own says nothing.
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='navigate(path)', title='Actualiser')
+        .fa.fa-fw.fas.fa-sync-alt
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', *ngIf='!showFilter', (click)='showFilter = true', title='Filtrer la liste')
+        .fa.fa-fw.fas.fa-filter
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='openCreateDirectoryModal()', title='Nouveau dossier distant')
+        .fa.fa-fw.fas.fa-folder-plus
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='upload()', title='Envoyer des fichiers vers le serveur')
+        .fa.fa-fw.fas.fa-file-upload
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='uploadFolder()', title='Envoyer un dossier vers le serveur')
+        .fa.fa-fw.fas.fa-file-import
+
+.sftp-filter-bar.d-flex.align-items-center(*ngIf='showFilter')
+    input.form-control.form-control-sm.flex-grow-1(
+        type='text',
+        placeholder='Filtrer...',
+        autofocus,
+        [(ngModel)]='filterText',
+        (input)='onFilterChange()',
+        (keydown.escape)='clearFilter()'
+    )
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='clearFilter()', title='Effacer le filtre')
+        .fa.fa-fw.fas.fa-times
+
+//- dropZone is tabby-core's DropZoneDirective, exported by TabbyCoreModule —
+//- keeps drag-and-drop upload working exactly as in the native panel.
+.sftp-body(dropZone, (transfer)='uploadOneFolder($event)')
+    .sftp-message(*ngIf='!sftp') Connexion...
+    ng-container(*ngIf='sftp')
+        .sftp-message(*ngIf='fileList === null') Chargement...
+        .sftp-grid(*ngIf='fileList !== null')
+            .sftp-row.sftp-row-up(*ngIf='canGoUp', (click)='goUp()', title='Remonter d’un niveau')
+                .cell-icon
+                    .fa.fa-fw.fas.fa-level-up-alt
+                .cell-name ..
+                .cell-size
+                .cell-date
+                .cell-mode
+
+            .sftp-row(
+                *ngFor='let item of filteredFileList',
+                (click)='open(item)',
+                (contextmenu)='showContextMenu(item, $event)',
+                [title]='rowTooltip(item)'
+            )
+                .cell-icon
+                    i.fa-fw([class]='getIcon(item)')
+                .cell-name {{ item.name }}
+                .cell-size {{ sizeCell(item) }}
+                .cell-date {{ shortDate(item.modified) }}
+                .cell-mode {{ octalMode(item) }}
+
+        .sftp-message(*ngIf='filterFoundNothing') Aucun fichier ne correspond au filtre.

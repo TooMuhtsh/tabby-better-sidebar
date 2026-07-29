@@ -1,0 +1,143 @@
+// Global CSS like every stylesheet in this plugin (piège #14), so everything
+// is anchored on the component's own tag. Nothing here relies on the native
+// panel's stylesheet: this component has its own template, so the `:host`
+// rules of SFTPPanelComponent — which carry *its* host attribute, not ours —
+// never apply. Layout is entirely our responsibility.
+sidebar-plus-sftp-browser {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+sidebar-plus-sftp-browser .sftp-toolbar,
+sidebar-plus-sftp-browser .sftp-filter-bar {
+    flex: none;
+    gap: .1rem;
+    padding: .15rem .1rem;
+    min-width: 0;
+}
+
+sidebar-plus-sftp-browser .sftp-tool {
+    flex: none;
+    padding: .1rem .25rem;
+    color: inherit;
+    opacity: .75;
+    text-decoration: none;
+
+    &:hover {
+        opacity: 1;
+        background-color: var(--theme-secondary);
+        border-radius: .2rem;
+    }
+}
+
+sidebar-plus-sftp-browser .sftp-breadcrumb {
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    font-size: .75rem;
+    // Horizontal scrollbars in a 300px sidebar eat a row of pixels for no
+    // benefit — the path is draggable and the full one is a double-click away.
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    .crumb {
+        cursor: pointer;
+        opacity: .75;
+
+        &:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        &::after {
+            content: '/';
+            opacity: .4;
+            margin: 0 .15rem;
+        }
+
+        &:last-child::after {
+            content: '';
+        }
+    }
+}
+
+sidebar-plus-sftp-browser .sftp-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    // Far tighter than the native panel's 10px/20px, which was sized for a
+    // full-width tab and left almost nothing for the name column here.
+    padding: .1rem .15rem .5rem;
+}
+
+sidebar-plus-sftp-browser .sftp-message {
+    padding: .75rem .25rem;
+    opacity: .6;
+    font-size: .8rem;
+    text-align: center;
+}
+
+// The grid proper. Fixed tracks for the three trailing columns and a single
+// flexible one for the name: the columns therefore stay aligned at any sidebar
+// width, and a directory — which has no size to show — simply leaves its track
+// empty instead of shifting everything left, which is what the native
+// template's `*ngIf` on the size cell used to do.
+sidebar-plus-sftp-browser .sftp-grid {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--theme-secondary);
+    border-radius: .2rem;
+    overflow: hidden;
+}
+
+sidebar-plus-sftp-browser .sftp-row {
+    display: grid;
+    grid-template-columns: 1.15rem minmax(0, 1fr) 3.9rem 4.5rem 1.9rem;
+    align-items: center;
+    font-size: .75rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--theme-secondary);
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    &:hover {
+        background-color: var(--theme-secondary);
+    }
+
+    > * {
+        padding: .18rem .2rem;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    // Column separators, so the grid reads as a grid rather than as rows.
+    .cell-size,
+    .cell-date,
+    .cell-mode {
+        border-left: 1px solid var(--theme-secondary);
+        font-family: monospace;
+        text-align: right;
+        opacity: .65;
+        text-overflow: clip;
+    }
+
+    .cell-name {
+        text-overflow: ellipsis;
+    }
+
+    .cell-icon {
+        opacity: .8;
+    }
+}
+
+sidebar-plus-sftp-browser .sftp-row-up .cell-name {
+    opacity: .7;
+    font-family: monospace;
+}
