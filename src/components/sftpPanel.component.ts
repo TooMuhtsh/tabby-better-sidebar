@@ -16,6 +16,7 @@ import {
 } from '@angular/core'
 import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
 import { SSHTabComponent } from 'tabby-ssh'
+import { getAllOpenTabs } from '../tabs'
 import { SidebarPlusSftpBrowserComponent } from './sftpBrowser.component'
 
 /**
@@ -198,23 +199,32 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         return tab.sshSession?.open ? tab : null
     }
 
-    /** Follows focus moves between panes of the active split tab, which emit nothing on AppService. */
+    /**
+     * Follows focus moves between panes of the active split tab, which emit
+     * nothing on AppService.
+     *
+     * Unsubscribes unconditionally before resubscribing: an earlier version
+     * kept the existing subscription whenever there was one, which meant that
+     * after moving from split A to split B the panel went on listening to A
+     * forever. Only visible in a specific sequence — selecting a split does not
+     * itself settle which pane is focused, so a *later* focus change inside B
+     * was the only correction available, and it never arrived. The sidebar's
+     * "open this session's SFTP" shortcut walks exactly that path (selectTab
+     * then focus), so it would have bound the panel to whichever pane B last
+     * had focused instead of the one asked for.
+     */
     private watchSplitFocus (): void {
+        this.splitFocusSubscription?.unsubscribe()
+        this.splitFocusSubscription = null
         const active = this.app.activeTab
-        if (!(active instanceof SplitTabComponent)) {
-            this.splitFocusSubscription?.unsubscribe()
-            this.splitFocusSubscription = null
-            return
+        if (active instanceof SplitTabComponent) {
+            this.splitFocusSubscription = active.focusChanged$.subscribe(() => this.sync())
         }
-        if (this.splitFocusSubscription) {
-            return
-        }
-        this.splitFocusSubscription = active.focusChanged$.subscribe(() => this.sync())
     }
 
     /** Drops cached panels whose tab is gone, so a long session doesn't accumulate dead views. */
     private pruneClosedTabs (): void {
-        const open = new Set(this.getAllOpenTabs())
+        const open = new Set(getAllOpenTabs(this.app))
         for (const [tab, ref] of this.panels) {
             if (!open.has(tab)) {
                 this.destroyPanel(ref)
@@ -225,10 +235,6 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
                 }
             }
         }
-    }
-
-    private getAllOpenTabs (): BaseTabComponent[] {
-        return this.app.tabs.flatMap(tab => tab instanceof SplitTabComponent ? tab.getAllTabs() : [tab])
     }
 
     private attachPanel (tab: SSHTabComponent): void {
