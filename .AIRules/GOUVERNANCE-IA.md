@@ -12,6 +12,23 @@ d'aucun projet en particulier. C'est un modèle à appliquer dans quatre situati
 - un projet **déjà au format `.AIRules/` mais dont le contenu a dérivé**, ou qui est resté conforme
   à une révision antérieure de cette charte — **Règle 7, Cas B**.
 
+### Ce fichier reste la référence, à tout moment
+
+La charte ne se lit pas seulement au moment d'un SETUP ou d'une mise en conformité : **elle est la
+référence pendant toute session, sur tout projet du workspace**, y compris quand la session démarre
+directement dans un projet. En cas de contradiction entre elle et un `CLAUDE.md`, une page
+`.AIRules/` ou une habitude prise en cours de route, c'est elle qui tranche — et la contradiction
+elle-même est à signaler plutôt qu'à contourner (règle de détection de dérive, Règle 4).
+
+Elle est aussi **susceptible d'évoluer à tout moment** : une révision peut ajouter, réécrire ou
+retirer une règle. Deux conséquences pratiques, détaillées Règle 7 § « Suivre les révisions de la
+charte » :
+
+- la date du pied de page est le seul numéro de version — celle de l'original comme celle des copies
+  `.AIRules/` et des mentions « Conforme à la charte de gouvernance du {{date}} » ;
+- une révision **ne s'applique jamais d'office** à un projet déjà conforme à une révision
+  antérieure : l'écart se signale, la remise à niveau se propose.
+
 ## Règle 1 — Un dossier `.AIRules/` par projet, versionné avec le code
 
 Chaque dépôt de projet contient à sa racine un dossier `.AIRules/` qui porte sa gouvernance IA.
@@ -32,8 +49,10 @@ Chaque dépôt de projet contient à sa racine un dossier `.AIRules/` qui porte 
     AI-CONTEXT.html     (invariants, pièges numérotés, points fragiles)
     AI-HISTORY.html     (journal chronologique par chantier)
     ROADMAP.html        (statut / priorité / design des chantiers restants)
-    style.css           (partagé par les 4 pages)
+    style.css           (partagé par toutes les pages, y compris annexes et archive)
     GOUVERNANCE-IA.md   (copie conforme de la charte appliquée — voir ci-dessous)
+    annexes/            (optionnel — pièces jointes volumineuses, voir ci-dessous)
+    archive/            (optionnel — délestage des pages principales, voir ci-dessous)
   ```
 
 #### La charte voyage avec le projet
@@ -59,6 +78,55 @@ qui le régissent, pas seulement les documents qu'elles produisent.
   `.AIRules/`, mémoire persistante), ils se suppriment directement, sans demander confirmation et
   sans les laisser traîner. La règle ne s'étend à aucun fichier de code ou de configuration — dans
   le doute sur l'utilité résiduelle d'un fichier, demander.
+
+#### Fichiers annexes — dossier `annexes/`
+
+Les quatre pages sont volontairement peu nombreuses ; certains contenus n'y tiennent pourtant pas
+sans les rendre illisibles (relevé de mesures, tableau de correspondance long, capture d'une
+configuration de référence, note de conception détaillée sur un seul chantier). Ces contenus vont
+dans un sous-dossier `annexes/`, **versionné comme le reste de `.AIRules/`** — à ne pas confondre
+avec `.tempfiles/`, qui est ignoré par Git et jetable par construction.
+
+- **Optionnel** : `annexes/` ne se crée qu'au moment où un premier fichier annexe existe. Pas de
+  dossier vide « au cas où ».
+- **Aucune annexe orpheline** : tout fichier d'`annexes/` est atteignable par un lien depuis l'une
+  des quatre pages, à l'endroit où sa lecture devient pertinente. Une annexe qu'aucune page ne cite
+  n'est pas une annexe, c'est un fichier oublié.
+- **Une annexe complète, elle ne remplace pas.** Le fait, l'invariant ou la décision reste énoncé
+  dans la page principale ; l'annexe ne porte que le détail volumineux qui l'étaye. Déporter la
+  conclusion elle-même en annexe recrée exactement le problème que ce format évite.
+- Un format non-HTML est acceptable quand il est plus adapté (`.md`, `.json`, `.csv`, capture
+  d'écran) : une annexe est une pièce jointe, pas une cinquième page de gouvernance.
+
+#### Archive — dossier `archive/`
+
+Un document principal qui a beaucoup servi devient long, et sa longueur finit par nuire à ce pour
+quoi il existe : `AI-HISTORY.html` accumule les chantiers clos depuis des mois, `ROADMAP.html`
+traîne des sections « Hors périmètre » que plus personne ne relit. Un sous-dossier `archive/` permet
+de **délester une page principale sans rien perdre**.
+
+- **Déplacement intégral, jamais réécriture.** Un chantier s'archive en entier — son `<h2>`, son
+  paragraphe de contexte, son tableau complet — recopié tel quel. Le contenu archivé reste, comme sur
+  la page d'origine, en **ajout seul** : il ne se corrige pas, ne se résume pas, ne se condense pas.
+  Un archivage n'est pas l'occasion de réécrire l'histoire.
+- **Une ligne de renvoi reste en place** dans la page principale, à la position chronologique du
+  contenu déplacé : titre du chantier, sa période, et le lien vers la page d'archive. Sans elle, le
+  lecteur de la page principale ne peut pas savoir que quelque chose a existé — c'est précisément ce
+  qui distingue un archivage d'une suppression.
+- **Un archivage attend le feu vert explicite de l'utilisateur**, comme toute écriture dans
+  `AI-HISTORY.html`/`ROADMAP.html` (Règle 2) : sortir un chantier du journal *est* une écriture dans
+  le journal. La proposition dit quels chantiers partiraient et ce que la page principale garderait.
+- **`AI-CONTEXT.html` ne s'archive pas.** Ses ancres `#piege-N` sont référencées depuis `CLAUDE.md`
+  et depuis `ROADMAP.html` : déplacer un piège dans un sous-dossier casse silencieusement chacune de
+  ces références, sans message d'erreur ni moyen de s'en apercevoir. S'y ajoute qu'un piège résolu se
+  conserve en place parce qu'il documente pourquoi le code est écrit ainsi (Règle 7, Cas B). Une
+  catégorie entière peut à la rigueur partir si le composant qu'elle décrit a disparu du projet — à
+  condition de vérifier d'abord qu'aucun `#piege-N` qu'elle contient n'est cité ailleurs.
+- Les numéros `#N` d'un contenu archivé **restent consommés** : un numéro libéré par un archivage ne
+  se réattribue jamais.
+- Une archive ne s'élague pas et ne se supprime pas. Un contenu dont on accepte la perte n'avait pas
+  à être archivé — il avait à être supprimé, par une décision explicite, pas comme effet de bord d'un
+  rangement.
 
 ### Trois questions à poser au SETUP, avant de créer quoi que ce soit
 
@@ -149,6 +217,36 @@ générateur — HTML/CSS écrits à la main, aucun JavaScript.
   - des pastilles de statut `.pill.done` / `.pill.progress` / `.pill.planned` / `.pill.out` /
     `.pill.warn` pour les tableaux de roadmap et les points à revérifier ;
   - police système, largeur de lecture max ~900px centrée, tableaux avec lignes zébrées.
+
+#### Pages placées dans un sous-dossier (`annexes/`, `archive/`)
+
+**La navbar `nav.tabbar` est réservée aux quatre pages principales.** Elle sert à identifier la
+gouvernance elle-même : une page qui la porte est l'une des quatre, point. Une page annexe ou
+d'archive n'en a donc pas — elle se rattache à la gouvernance par des hyperliens, pas par une barre
+de navigation.
+
+Le squelette d'une telle page est celui ci-dessus **sans le bloc `<nav class="tabbar">`**, avec :
+
+- une ligne `<p class="muted">` juste sous le `<h1>`, qui dit de quelle page elle dépend et porte le
+  lien de retour vers l'endroit exact qui la cite — ex. « Annexe de
+  <a href="../ROADMAP.html#slug">Roadmap → {{chantier}}</a> ». C'est le seul chemin de retour, donc
+  il est obligatoire : sans lui, une page atteinte par un signet ou une recherche est un cul-de-sac ;
+- la feuille de style partagée atteinte par le même mécanisme (`../style.css`), jamais recopiée dans
+  le sous-dossier ;
+- un `<footer>` identique à celui des pages principales.
+
+#### Tous les liens internes sont relatifs, jamais en dur
+
+Cette règle vaut pour les quatre pages comme pour les annexes et les archives : un lien vers un autre
+fichier de gouvernance, vers `style.css`, vers un fichier du dépôt ou vers le `.AIRules/` d'un projet
+voisin s'écrit **en chemin relatif**, avec autant de `../` que la profondeur réelle du fichier
+l'exige (`../` depuis `annexes/`, `../../` depuis un sous-dossier d'`annexes/`, et ainsi de suite).
+
+Jamais de chemin absolu, jamais de chemin de machine (`file:///C:/Users/...`, `/home/...`), jamais de
+`/` initial. Motif : `.AIRules/` est versionné et doit s'ouvrir tel quel après un `git clone` sur
+n'importe quelle machine, sous n'importe quel chemin — un lien en dur y casse silencieusement.
+Corollaire : déplacer une page dans un sous-dossier impose de recalculer ses liens ; ce n'est pas un
+copier-coller.
 
 ### Contenu détaillé et agencement, page par page
 
@@ -434,29 +532,137 @@ dans `~/.claude/settings.json`, hors de tout dépôt Git) doit avoir une statusL
 garder en permanence sous les yeux le niveau de consommation de contexte et de quota, sans avoir à
 le demander explicitement.
 
-- **Config** (`~/.claude/settings.json`) :
-  ```json
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh",
-    "refreshInterval": 1
+Ni `~/.claude/settings.json` ni le script ne sont versionnés où que ce soit : **les deux blocs
+ci-dessous sont leur seule sauvegarde**, et c'est à ce titre qu'ils figurent intégralement ici,
+recopiables tels quels sur une machine neuve.
+
+### Config — `~/.claude/settings.json`
+
+```json
+"statusLine": {
+  "type": "command",
+  "command": "bash ~/.claude/statusline-command.sh",
+  "refreshInterval": 1
+}
+```
+
+Le `refreshInterval: 1` (en secondes) est nécessaire pour un affichage dès le démarrage de session :
+sans lui, Claude Code applique un debouncing d'environ 300 ms sur les événements qui déclenchent le
+script (démarrage/reprise de session, nouveau message assistant, `/compact`, changement de
+permission mode, bascule vim mode...), et la statusline peut rester invisible tant qu'aucun échange
+n'a eu lieu.
+
+### Script — `~/.claude/statusline-command.sh`
+
+Le script lit sur stdin le JSON fourni par Claude Code (`model`, `workspace.current_dir`,
+`context_window.used_percentage`, `rate_limits.five_hour` / `seven_day`). Il doit être exécutable
+(`chmod +x`). Le wrapper bash n'existe que pour déléguer à Node : les caractères de barre (`█`,
+`░`) et les séquences ANSI passent mal par un shell Windows, pas par Node.
+
+```bash
+#!/usr/bin/env bash
+# Claude Code statusLine:
+# [barre] pct% Tkn | Branche (ou Modele si pas de repo git)
+# [barre] pct% 5H  | temps avant reset
+# [barre] pct% 7D  | temps avant reset (jours seuls si > 24h)
+# Texte en blanc, barres en vert/orange/rouge selon le niveau.
+
+node -e '
+const { execSync } = require("child_process");
+
+let input = "";
+process.stdin.on("data", d => input += d);
+process.stdin.on("end", () => {
+  let data;
+  try { data = JSON.parse(input); } catch { data = {}; }
+
+  const RESET = "\x1b[0m";
+  const DIM = "\x1b[2m";
+  const WHITE = "\x1b[97m";
+  const GREEN = "\x1b[32m";
+  const YELLOW = "\x1b[33m";
+  const RED = "\x1b[31m";
+
+  const now = Math.floor(Date.now() / 1000);
+
+  function pctColor(pct) {
+    if (pct >= 80) return RED;
+    if (pct >= 50) return YELLOW;
+    return GREEN;
   }
-  ```
-  Le `refreshInterval: 1` (en secondes) est nécessaire pour un affichage dès le démarrage de
-  session : sans lui, Claude Code applique un debouncing d'environ 300 ms sur les événements qui
-  déclenchent le script (démarrage/reprise de session, nouveau message assistant, `/compact`,
-  changement de permission mode, bascule vim mode...), et la statusline peut rester invisible tant
-  qu'aucun échange n'a eu lieu.
-- **Script** (`~/.claude/statusline-command.sh`) : lit le JSON fourni sur stdin (`model`,
-  `workspace.current_dir`, `context_window.used_percentage`, `rate_limits.five_hour` /
-  `seven_day`) et affiche deux à trois lignes : une barre + pourcentage de contexte utilisé
-  accompagné du modèle et de la branche git courante, puis une ligne par fenêtre de quota (5h,
-  7 jours) avec le temps avant reset. Couleurs vert/orange/rouge selon le seuil (< 50 % / < 80 % /
-  ≥ 80 %).
-- Si l'entrée `statusLine` ou le script disparaît de `~/.claude/settings.json` (réinstallation,
-  nouvelle machine, settings écrasés), le recréer à l'identique plutôt que d'improviser un format
-  différent — la valeur vient de la cohérence d'affichage d'un environnement à l'autre, pas du
-  détail exact du rendu.
+
+  function bar(pct, width = 10) {
+    const filled = Math.max(0, Math.min(width, Math.round((pct / 100) * width)));
+    const empty = width - filled;
+    return `${pctColor(pct)}${"█".repeat(filled)}${DIM}${"░".repeat(empty)}${RESET}`;
+  }
+
+  function fmtTime(resetsAt, allowDaysOnly) {
+    let diff = resetsAt - now;
+    if (diff < 0) diff = 0;
+    if (allowDaysOnly && diff > 86400) {
+      const days = Math.floor(diff / 86400);
+      return `${days}j`;
+    }
+    const hours = Math.floor(diff / 3600);
+    const minutes = Math.floor((diff % 3600) / 60);
+    return `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
+  }
+
+  function gitBranch(cwd) {
+    if (!cwd) return null;
+    try {
+      return execSync("git branch --show-current", { cwd, stdio: ["ignore", "pipe", "ignore"] })
+        .toString()
+        .trim() || null;
+    } catch {
+      return null;
+    }
+  }
+
+  const model = (data.model && data.model.display_name) || "?";
+  const cwd = data.workspace && data.workspace.current_dir;
+  const branch = gitBranch(cwd);
+  const rightLabel = branch ? `${model} ${DIM}·${RESET}${WHITE} ${branch}` : model;
+
+  const ctx = data.context_window || {};
+  const ctxPct = typeof ctx.used_percentage === "number" ? Math.round(ctx.used_percentage) : null;
+
+  function row(pct, label, rightText) {
+    const pctStr = String(Math.round(pct)).padStart(3);
+    return `${WHITE}[${bar(pct)}]${RESET} ${WHITE}${pctStr}% ${label}${RESET} ${WHITE}|${RESET} ${WHITE}${rightText}${RESET}`;
+  }
+
+  const line1 = ctxPct === null
+    ? `${WHITE}${rightLabel}${RESET}`
+    : row(ctxPct, "Tkn", rightLabel);
+
+  const rl = data.rate_limits || {};
+
+  function usageRow(label, entry, allowDaysOnly) {
+    if (!entry || typeof entry.used_percentage !== "number") return null;
+    const pct = Math.round(entry.used_percentage);
+    const time = typeof entry.resets_at === "number" ? fmtTime(entry.resets_at, allowDaysOnly) : "--";
+    return row(pct, label, time);
+  }
+
+  const lines = [
+    line1,
+    usageRow("5H ", rl.five_hour, false),
+    usageRow("7D ", rl.seven_day, true),
+  ].filter(Boolean);
+
+  process.stdout.write(lines.join("\n"));
+});
+'
+```
+
+- Si l'entrée `statusLine` ou le script disparaît de `~/.claude/` (réinstallation, nouvelle machine,
+  settings écrasés), **le recréer depuis les deux blocs ci-dessus** plutôt que d'improviser un format
+  différent — la valeur vient de la cohérence d'affichage d'un environnement à l'autre, pas du détail
+  exact du rendu.
+- Corollaire : toute évolution volontaire du script se reporte **ici en même temps**, sinon la copie
+  de référence devient fausse sans que rien ne le signale.
 
 ## Règle 6 — Une idée passe par la roadmap avant de passer par le code
 
@@ -630,11 +836,16 @@ le sien :
 | `tabby-better-vault` | [TooMuhtsh/tabby-better-vault](https://github.com/TooMuhtsh/tabby-better-vault) — public | [`.AIRules/README.html`](./tabby-better-vault/.AIRules/README.html) |
 
 ---
-*Dernière mise à jour de cette charte : **2026-07-29** (Règle 1 : ajout des trois questions à poser
-au SETUP d'un nouveau projet — nom du dépôt distant, privé ou public, authentification `gh` en
-place).*
+*Dernière mise à jour de cette charte : **2026-07-30** (préambule : la charte est la référence à tout
+moment et est susceptible d'évoluer ; Règle 1 : dossiers optionnels `annexes/` et `archive/` ;
+Règle 2 : navbar réservée aux quatre pages principales, squelette des pages de sous-dossier, liens
+internes toujours relatifs ; Règle 5 : script de statusline intégré verbatim comme copie de
+référence).*
 
-*Révision précédente : **2026-07-28** (ajout des Règles 6 et 7 — cette dernière couvrant à la fois
+*Révision précédente : **2026-07-29** (Règle 1 : ajout des trois questions à poser au SETUP d'un
+nouveau projet — nom du dépôt distant, privé ou public, authentification `gh` en place).*
+
+*Révision antérieure : **2026-07-28** (ajout des Règles 6 et 7 — cette dernière couvrant à la fois
 la transposition d'un existant et la remise à niveau d'un `.AIRules/` qui a dérivé —, révision des
 cadences d'écriture de la Règle 2 et de la discipline de vérification de la Règle 4).*
 
