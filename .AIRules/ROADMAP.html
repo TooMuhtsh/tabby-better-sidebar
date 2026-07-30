@@ -41,6 +41,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -624,6 +625,33 @@ par double-clic.</li>
 utilisé côté renderer dans <code>tabby-electron/src/services/electron.service.ts</code>
 (<code>remote.dialog</code>, entre autres) — le sélecteur de fichier natif est donc accessible
 depuis le plugin sans plomberie IPC supplémentaire.</p>
+
+<h3 id="editeur-par-type">Éditeur par type de fichier (notamment les images)</h3>
+<p class="muted">Demandé par l'utilisateur le 2026-07-30, en constatant à l'usage que l'éditeur
+retenu par <a href="#editeur-force">l'éditeur forcé</a> est <strong>global</strong> : une seule clé
+<code>sidebarPlus.sftpEditorPath</code>, appliquée à tous les fichiers. Un éditeur de texte convient
+à un <code>.yml</code> ou à un fichier de conf sans extension, beaucoup moins à un
+<code>.png</code>.</p>
+<ul>
+<li><strong>Forme de la config</strong> : la clé de chemin unique devient une table
+  <em>extension → programme</em> avec une entrée par défaut, par exemple
+  <code>sidebarPlus.sftpEditors: { '': 'C:\\...\\Code.exe', '.png': 'C:\\...\\viewer.exe' }</code>.
+  L'entrée de clé vide sert aussi bien de défaut que d'éditeur des fichiers sans extension.
+  Extensions normalisées en minuscules à l'écriture comme à la lecture. Nouvelle clé à déclarer
+  dans les <code>defaults</code> (piège #16) ; migration de l'ancienne <code>sftpEditorPath</code>
+  vers l'entrée par défaut, sans la perdre.</li>
+<li><strong>Apprentissage automatique</strong> : la détection du programme choisi (voir l'éditeur
+  forcé) enregistrerait sous l'extension du fichier ouvert plutôt qu'en global. Point à trancher
+  avec l'utilisateur avant de coder : faut-il alors la fenêtre « Ouvrir avec » de Windows à chaque
+  <em>nouveau</em> type rencontré — cohérent, mais plus bavard qu'aujourd'hui — ou un repli
+  silencieux sur l'entrée par défaut, l'association par type restant à faire à la main dans les
+  réglages ?</li>
+<li><strong>Réglages</strong> : le champ unique de l'onglet « Better Sidebar » devient une petite
+  table (ajouter/supprimer une ligne), l'entrée par défaut étant toujours présente et non
+  supprimable.</li>
+<li><strong>Inchangé</strong> : « Ouvrir avec... » du clic droit reste l'échappatoire ponctuelle et
+  ne doit jamais écrire dans cette table, quelle que soit la décision ci-dessus.</li>
+</ul>
 
 <h3 id="drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</h3>
 <p>Demandé par l'utilisateur le 2026-07-30 — le geste symétrique du dépôt entrant du
