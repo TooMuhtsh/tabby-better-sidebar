@@ -38,11 +38,11 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
 <tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
-<tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute</td></tr>
-<tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
+<tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill planned">📋 Proposé — écart trouvé</span></td><td>Invariant à maintenir</td></tr>
+<tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -546,6 +546,25 @@ retirer la condition <code>!sftpMode</code> de ce <code>*ngIf</code>, et vérifi
 <a href="#tunnels-ssh">tunnels actifs</a> porte la même restriction héritée (à corriger de la même
 façon si c'est le cas).</p>
 
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-30</span>
+<p>Commits <code>3b158c3</code> (la condition retirée) puis <code>0e87258</code> (tout le reste),
+détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>. <strong>Retirer le
+<code>!sftpMode</code> ne suffisait pas</strong> : les blocs étaient placés <em>après</em>
+<code>&lt;sidebar-plus-sftp&gt;</code>, qui est <code>flex-grow-1</code> dans la colonne flex, donc
+tout ce qui le suit est rejeté en bas de la sidebar. L'ordre du template comptait autant que la
+condition — les deux blocs sont désormais avant le panneau.</p>
+<p><strong>Trois décisions prises pendant le test</strong>, à rejuger à l'usage : les
+<a href="#tunnels-ssh">tunnels actifs</a> sont au contraire <em>masqués</em> en vue SFTP (demande
+explicite de l'utilisateur — l'onglet SFTP n'a pas d'usage de l'état de forwarding), ce qui
+tranche la question laissée ouverte ci-dessus ; la liste des sessions plafonne à
+<strong>4 lignes puis défile</strong>, l'en-tête et son compteur restant fixes ; le libellé d'une
+ligne suit désormais le <strong>renommage manuel de l'onglet</strong> quand il y en a un, avant le
+nom du profil, pour distinguer plusieurs sessions ouvertes sur la même machine.</p>
+<p><strong>Écart de comportement assumé</strong> avec Tabby : effacer un renommage (modale vidée)
+laisse l'en-tête d'onglet natif vide jusqu'au prochain titre dynamique, là où la sidebar retombe
+proprement sur le nom du profil. Constaté au test, conservé tel quel — la sidebar ne pilote pas le
+titre des onglets.</p></div>
+
 <h3 id="suppr-sftp">Suppression SFTP par touche Suppr</h3>
 <p>Demandé par l'utilisateur le 2026-07-30, explicitement <strong>limité au panneau SFTP
 distant</strong> — ne touche pas à l'arbre de profils/groupes, qui a son propre mécanisme de
@@ -567,6 +586,14 @@ Angular séparée).</li>
 dossier, via l'API SFTP existante) — à confirmer que <code>deleteItem()</code>
 (<code>sftpContextMenu.d.ts</code>) gère déjà la récursion ou s'il faut la construire.</li>
 </ul>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-30</span>
+<p>Commits <code>3b158c3</code> (le geste et la modale) et <code>293d9a4</code> (garde-fous),
+détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>. <code>SFTPDeleteModalComponent</code> n'a pas
+été retenu : un <code>ConfirmModalComponent</code> maison (NgbModal) sert à la fois la touche
+<kbd>Suppr</kbd> et l'entrée « Delete » du clic droit, ce qui referme du même geste l'écart
+d'<a href="#confirmations-html">audit des confirmations</a> — les deux chemins passent désormais par
+la même modale HTML.</p></div>
 
 <h3 id="editeur-force">Double-clic force un éditeur de code, jamais une exécution</h3>
 <p>Demandé par l'utilisateur le 2026-07-30. Bug de sécurité/UX confirmé dans le code :
@@ -652,7 +679,12 @@ natif, <code>CommonSFTPContextMenu</code>) confirme via <code>platform.showMessa
 <a href="AI-CONTEXT.html#piege-42">piège #42</a>. À traiter dans le même geste que
 <a href="#suppr-sftp">suppression SFTP par Suppr</a> ci-dessous : <code>showContextMenu()</code> à
 surcharger pour remplacer cette entrée par une ouvrant une modale HTML/NgbModal maison, partagée avec
-le geste Suppr.</p></div>
+le geste Suppr.</p>
+<p><strong>Corrigé et validé le 2026-07-30</strong> (<code>3b158c3</code>, garde-fous
+<code>293d9a4</code>) : les deux chemins de suppression SFTP — touche <kbd>Suppr</kbd> et entrée du
+clic droit — ouvrent la même modale HTML maison. Le retrait de l'entrée native se fait
+<strong>par position</strong> et non par libellé traduit : l'app installée n'a pas de catalogue
+français pour cette clé, un test de texte y était donc inopérant.</p></div>
 <p><strong>Invariant à maintenir</strong> pour tout ce qui s'ajoute désormais : la confirmation de
 <a href="#suppr-sftp">suppression SFTP par Suppr</a> et celle, déjà notée dans
 <a href="#transferts">Transferts SFTP</a>, sur l'abandon de transferts en cours. Les sélecteurs de

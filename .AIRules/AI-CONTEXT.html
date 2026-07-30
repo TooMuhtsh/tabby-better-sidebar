@@ -36,9 +36,9 @@ Tabby.</p>
 <ul>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
-<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #39, #41</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17 + 5 points de veille</li>
-<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #40 + 2 points de veille</li>
+<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43 + 5 points de veille</li>
+<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
 <li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20</li>
@@ -424,6 +424,26 @@ sans aucune erreur ni avertissement. Le motif <code>.actions &gt; .action</code>
 <code>div</code> est à reprendre tel quel pour toute nouvelle ligne cliquable. À ne pas confondre
 avec le piège #21, qui portait sur l'indentation pug : ici l'indentation est correcte, c'est le
 choix du tag qui casse.</p>
+
+<h3 id="piege-43">#43 — Le renommage manuel d'un onglet vit sur l'onglet de <em>haut niveau</em>, jamais
+sur le pane</h3>
+<p>Constaté le 2026-07-30 en faisant suivre le nom d'onglet aux lignes de « Sessions actives ».
+Le titre affiché par Tabby est <code>tab.customTitle || tab.title</code>
+(<code>tabHeader.component.pug</code>), <code>customTitle</code> n'étant posé que par
+<code>AppService.renameTab()</code> — c'est donc le signal fiable d'un renommage <em>manuel</em>,
+par opposition à <code>title</code> qui bouge tout seul. Mais les deux seuls points d'entrée du
+renommage (double-clic sur l'en-tête et entrée « Rename » du menu contextuel) passent
+<code>this.tab</code>, l'onglet de haut niveau : pour une session ouverte dans un split, le
+<code>customTitle</code> est porté par le <code>SplitTabComponent</code> et le pane n'en a jamais.
+Lire <code>customTitle</code> sur un pane retourne donc systématiquement vide.</p>
+<p>→ <code>tab.customTitle || tab.topmostParent?.customTitle</code> — <code>parent</code> est bien
+renseigné sur chaque pane par <code>SplitTabComponent</code>, et <code>topmostParent</code>
+(<code>BaseTabComponent</code>) remonte la chaîne. Les deux sont présents dans les typings npm comme
+dans le bundle compilé (piège #13). Conséquence à assumer côté affichage : deux panes d'un même
+onglet renommé portent le même libellé — c'est exactement ce que montre leur en-tête d'onglet.
+Corollaire pour le rafraîchissement : <code>renameTab()</code> se termine par
+<code>emitTabsChanged()</code>, donc un abonnement à <code>tabsChanged$</code> voit le changement
+immédiatement, sans attendre un sondage périodique.</p>
 
 <h3>Points de veille — <span class="pill warn">⚠️ à revérifier après update Tabby</span></h3>
 

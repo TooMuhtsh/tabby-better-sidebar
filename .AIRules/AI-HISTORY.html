@@ -24,6 +24,63 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Campagne UX/sécurité du 2026-07-30 — suppression SFTP et sessions actives</h2>
+<p>Trois des cinq axes demandés le 2026-07-30 (<a href="ROADMAP.html#suppr-sftp">suppression SFTP par
+Suppr</a>, <a href="ROADMAP.html#confirmations-html">audit des confirmations</a>,
+<a href="ROADMAP.html#sessions-sftp-visibles">sessions actives en vue SFTP</a>), menés directement sur
+<code>master</code>. Les deux premiers commits ont été poussés <em>non testés</em> ; la passe de test
+de l'utilisateur les a validés et a fait apparaître, sur le troisième, un défaut de mise en page que
+la correction d'origine ne pouvait pas résoudre seule.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-07-30</td><td><code>0e87258</code></td>
+<td><strong>Trois correctifs sur la section « Sessions actives », issus du test.</strong>
+(1) <em>Placement</em> : retirer le <code>!sftpMode</code> du <code>*ngIf</code> (commit précédent)
+rendait bien la section visible en vue SFTP, mais elle s'affichait <strong>sous</strong> le panneau,
+rejetée en bas de la sidebar — les blocs étaient placés après <code>&lt;sidebar-plus-sftp&gt;</code>,
+qui est <code>flex-grow-1</code> dans la colonne flex. L'ordre du template comptait autant que la
+condition. Leçon : une section « visible en mode X » ne se corrige pas seulement par sa condition
+d'affichage tant qu'un frère extensible la précède. (2) <em>Compression</em> :
+<code>.active-sessions</code> n'avait pas de déclaration <code>flex</code>, contrairement à
+<code>.active-tunnels</code> — donc <code>flex-shrink: 1</code> par défaut, et le panneau juste en
+dessous écrasait la boîte sans écraser ses lignes, qui débordaient par-dessus. Passé en
+<code>flex: 0 0 auto</code>. (3) <em>Plafond</em> : la liste s'arrête à 4 lignes puis défile, sur un
+wrapper <code>.active-sessions-list</code> pour que l'en-tête et son compteur restent fixes ; le
+<code>line-height</code> des lignes est <strong>figé à 1.25rem</strong> parce que la hauteur maximale
+en dérive — une valeur héritée du thème aurait fait tomber le plafond sur 3,5 ou 4,5 lignes.
+Deux décisions de l'utilisateur au passage : les <strong>tunnels actifs sont masqués</strong> en vue
+SFTP (l'inverse des sessions, l'onglet SFTP n'ayant pas d'usage de l'état de forwarding), et le
+libellé d'une ligne suit le <strong>renommage manuel de l'onglet</strong> quand il y en a un —
+<code>customTitle || topmostParent.customTitle || profil || titre</code>, la précédence de l'en-tête
+d'onglet natif. Le repli sur <code>topmostParent</code> est structurel : les deux points d'entrée du
+renommage (double-clic sur l'en-tête, menu contextuel) visent l'onglet de haut niveau, donc pour un
+pane le <code>customTitle</code> vit sur le <code>SplitTabComponent</code> et jamais sur le pane.
+Au passage, <code>.active-tunnels</code> était la seule règle du SCSS non scopée à
+<code>sidebar-plus-tree</code> — elle fuyait en CSS globale dans le reste de Tabby.</td></tr>
+
+<tr><td>2026-07-30</td><td><code>293d9a4</code></td>
+<td><strong>Garde-fous sur la suppression SFTP.</strong> <code>event.repeat</code> et un drapeau
+<code>deleteInFlight</code> empêchent le <code>keydown</code> de <kbd>Suppr</kbd> de se
+re-déclencher en boucle pendant que la modale est ouverte — le focus y atterrit sur un bouton et non
+sur un champ, le filtre existant ne suffisait donc pas. Le retrait de l'entrée « Delete » native se
+fait désormais <strong>par position</strong> (<code>CommonSFTPContextMenu</code> est l'unique
+provider, vérifié) plutôt qu'en testant un libellé traduit : l'app installée n'a pas de catalogue
+français pour cette clé, le test de texte était inopérant. Il reste comme simple
+<code>console.warn</code> de diagnostic si un futur Tabby réordonne le menu.</td></tr>
+
+<tr><td>2026-07-30</td><td><code>3b158c3</code></td>
+<td><strong>Suppression SFTP par <kbd>Suppr</kbd> et sessions actives en vue SFTP.</strong> Nouveau
+<code>ConfirmModalComponent</code> (NgbModal) partagé par toutes les confirmations de suppression
+SFTP : la touche <kbd>Suppr</kbd> sur l'entrée sélectionnée de la liste distante, et l'entrée
+« Delete » du clic droit — celle-ci, héritée telle quelle de <code>SFTPPanelComponent</code>,
+confirmait par <code>platform.showMessageBox()</code>, un vrai dialogue OS (piège #42), en
+contradiction avec l'invariant de confirmation en HTML. Suppression récursive pour un dossier.
+Retrait de la condition <code>!sftpMode</code> sur les sections « sessions actives » et « tunnels
+actifs » — correction incomplète, voir <code>0e87258</code> ci-dessus.</td></tr>
+</table>
+
 <h2>Revue de gouvernance — mise en conformité à la charte (2026-07-29)</h2>
 <p>Revue au sens de la <a href="GOUVERNANCE-IA.md">charte</a>, Règle 7 Cas B : audit d'un
 <code>.AIRules/</code> déjà au format mais qui a dérivé. Déclenchée en cours de session ordinaire,
