@@ -1,0 +1,9 @@
+.modal-body
+    p.mb-3 {{ message }}
+    .d-flex
+        button.btn.btn-secondary.ms-auto((click)='cancel()') Annuler
+        button.btn.ms-2(
+            [class.btn-danger]='danger',
+            [class.btn-primary]='!danger',
+            (click)='confirm()',
+        ) {{ confirmLabel }}

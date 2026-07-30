@@ -256,6 +256,32 @@ mutation d'état destinée à l'affichage effectuée <em>après</em> un <code>aw
 Tabby. Bonus : les <code>setTimeout</code> créés à l'intérieur redeviennent patchés, donc leur
 expiration repeint toute seule.</p>
 
+<h3 id="piege-42">#42 — Le clic droit « Supprimer » hérité du panneau SFTP natif confirme via un dialogue OS, pas une modale HTML</h3>
+<p>Découvert le 2026-07-30 en creusant la demande utilisateur « toutes les confirmations en modale
+HTML, jamais un appel système ». <code>SidebarPlusSftpBrowserComponent</code> sous-classe
+<code>SFTPPanelComponent</code> et hérite tel quel de son <code>showContextMenu()</code>, qui appelle
+<code>platform.popupContextMenu()</code> (menu natif Electron) construit à partir des
+<code>SFTPContextMenuItemProvider</code> enregistrés — dont l'unique fourni nativement,
+<code>CommonSFTPContextMenu</code> (<code>tabby-ssh/src/sftpContextMenu.ts</code>), dont l'entrée
+« Delete » confirme via <code>platform.showMessageBox()</code>, un <strong>vrai dialogue OS</strong>,
+avant d'ouvrir <code>SFTPDeleteModalComponent</code> (lui, HTML/<code>NgbModal</code>, mais purement
+un modal de <em>progression</em> de la suppression récursive — pas la confirmation elle-même).</p>
+<p>Un menu contextuel <em>sous-classé</em> n'est donc pas automatiquement conforme aux invariants de
+ce plugin simplement parce que le composant qui l'affiche l'est : chaque entrée héritée porte son
+propre code, à vérifier au même titre qu'une classe Tabby avant de la considérer acquise.
+<code>SFTPDeleteModalComponent</code> a par ailleurs été vérifié <strong>absent du bloc d'export
+runtime</strong> de <code>tabby-ssh</code> (piège #13) — <code>@hidden</code> l'est vraiment ici,
+contrairement au cas de <code>EditProfileModalComponent</code> cité au piège #17 — donc pas
+réutilisable tel quel malgré sa présence dans les typings vendorisés ; sa logique de récursion
+(<code>readdir</code> puis <code>rmdir</code>/<code>unlink</code>) a été reprise en petit, pas le
+composant.</p>
+<p>→ <code>showContextMenu()</code> est surchargé dans <code>SidebarPlusSftpBrowserComponent</code> :
+l'entrée « Delete »/« Supprimer » du menu construit par <code>buildContextMenu()</code> (hérité) est
+retirée — <code>CommonSFTPContextMenu</code> étant l'unique provider natif, elle est toujours la
+<strong>dernière</strong> de la liste, avec un contrôle sur son libellé en filet de sécurité — puis
+remplacée par une entrée maison ouvrant <code>ConfirmModalComponent</code> (HTML/<code>NgbModal</code>
+maison) avant de supprimer.</p>
+
 <h2 id="cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</h2>
 <p class="muted">La plus grosse source de pièges de ce projet : ce plugin s'appuie par endroits sur
 des classes/composants internes de Tabby non garantis par une API publique stable. La méthode de

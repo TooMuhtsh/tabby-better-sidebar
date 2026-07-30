@@ -32,9 +32,11 @@
 
     //- Hidden outright when nothing is connected rather than shown empty: a
     //- permanently visible "aucune session" header would cost a line of the
-    //- tree for no information. Also hidden in SFTP mode, like every block
-    //- below it.
-    .active-sessions(*ngIf='!sftpMode && activeSessions.length')
+    //- tree for no information. Stays visible in SFTP mode too — an open
+    //- session is a fact of the app, not something the current sidebar tab
+    //- should hide (same reasoning as its own SFTP-mode independence, see
+    //- ROADMAP #sessions-actives).
+    .active-sessions(*ngIf='activeSessions.length')
         a.active-sessions-header((click)='toggleActiveSessions()', href='#')
             .fa.fa-fw.fas.me-1(
                 [class.fa-chevron-down]='!activeSessionsCollapsed',
@@ -69,8 +71,9 @@
     //- this chantier as a "surcouche visuelle" over the native engine. Sits
     //- under the sessions it belongs to rather than at the very bottom of the
     //- sidebar as first sketched — the tree below is height-constrained, and a
-    //- second live-state block reads better next to the first.
-    .active-tunnels(*ngIf='!sftpMode && activeTunnels.length')
+    //- second live-state block reads better next to the first. Stays visible
+    //- in SFTP mode too, for the same reason as the sessions block above it.
+    .active-tunnels(*ngIf='activeTunnels.length')
         a.active-sessions-header((click)='toggleActiveTunnels()', href='#')
             .fa.fa-fw.fas.me-1(
                 [class.fa-chevron-down]='!activeTunnelsCollapsed',

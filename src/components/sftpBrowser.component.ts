@@ -1,12 +1,13 @@
 import './sftpBrowser.component.scss'
 import { filesize } from 'filesize'
-import { AfterViewChecked, Component, HostListener, Inject, OnDestroy } from '@angular/core'
+import { AfterViewChecked, Component, ElementRef, HostListener, Inject, OnDestroy } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { EmptyFileUpload } from '../sftpLocalTransfer'
 import { SftpRemoteEditor } from '../sftpRemoteEdit'
 import { clampInViewport } from '../viewport'
+import { ConfirmModalComponent } from './confirmModal.component'
 
 /** An optional column of the file list. The name column is not one of these — it is always shown. */
 export interface SftpColumn {
@@ -97,6 +98,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         private locale: LocaleService,
         private notify: NotificationsService,
         private ngbModalService: NgbModal,
+        private elementRef: ElementRef<HTMLElement>,
         platform: PlatformService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
@@ -275,6 +277,86 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             }
         }
         await this.editor.edit(this.sftp, item)
+    }
+
+    ////// DELETE //////
+    /**
+     * Overridden rather than left inherited: the native `showContextMenu()`
+     * (`SFTPPanelComponent`/`CommonSFTPContextMenu`) confirms its "Delete"
+     * entry with `platform.showMessageBox()` — a native OS dialog, exactly
+     * what this plugin's confirmations are meant never to be (piège #42).
+     * `CommonSFTPContextMenu` is the only built-in provider, and always
+     * pushes its "Delete" entry last (verified on the installed source) — so
+     * the native one is dropped by position, with a label sanity check in
+     * case a future Tabby version reorders it, and ours is appended in its
+     * place.
+     */
+    async showContextMenu (item: SFTPFile, event: MouseEvent): Promise<void> {
+        event.preventDefault()
+        const items = await this.buildContextMenu(item)
+        const last = items[items.length - 1]
+        if (last && /^(delete|supprimer)/i.test(String(last.label ?? ''))) {
+            items.pop()
+        }
+        items.push({
+            label: 'Supprimer',
+            click: () => { void this.confirmAndDelete(item) },
+        })
+        this.platform.popupContextMenu(items, event)
+    }
+
+    /** `Suppr` on the selected entry — same confirm-then-delete path as the context menu entry above. */
+    @HostListener('document:keydown', ['$event'])
+    onDocumentKeydown (event: KeyboardEvent): void {
+        if (event.key !== 'Delete' || !this.selectedPath) {
+            return
+        }
+        // Guards against firing while this panel is cached-but-hidden
+        // (`[hidden]`, never destroyed — see sidebarTree.component.pug) or
+        // while a text field (rename, filter, prompt modal…) has focus.
+        if (!this.elementRef.nativeElement.offsetParent) {
+            return
+        }
+        const target = event.target as HTMLElement
+        if (target.closest('input, textarea, [contenteditable]')) {
+            return
+        }
+        const item = this.fileList?.find(f => f.fullPath === this.selectedPath)
+        if (item) {
+            void this.confirmAndDelete(item)
+        }
+    }
+
+    async confirmAndDelete (item: SFTPFile): Promise<void> {
+        const modal = this.ngbModalService.open(ConfirmModalComponent)
+        modal.componentInstance.message = item.isDirectory
+            ? `Supprimer le dossier "${item.name}" et tout son contenu ?`
+            : `Supprimer "${item.name}" ?`
+        modal.componentInstance.confirmLabel = 'Supprimer'
+        const confirmed = await modal.result.catch(() => false)
+        if (!confirmed) {
+            return
+        }
+        try {
+            await this.deleteRecursive(item)
+            this.notify.notice(`${item.name} supprimé`)
+            this.selectedPath = null
+            await this.navigate(this.path)
+        } catch (e) {
+            this.notify.error(`Impossible de supprimer ${item.name}`, String(e))
+        }
+    }
+
+    /** Same recursion as the native (non-exported) `SFTPDeleteModalComponent.run()` — no progress UI, single-item selection makes it unnecessary in this pass. */
+    private async deleteRecursive (item: SFTPFile): Promise<void> {
+        if (item.isDirectory) {
+            for (const child of await this.sftp.readdir(item.fullPath)) {
+                await this.deleteRecursive(child)
+            }
+            await this.sftp.rmdir(item.fullPath)
+        } else {
+            await this.sftp.unlink(item.fullPath)
+        }
     }
 
     ////// COLUMNS //////

@@ -7,6 +7,7 @@ import TabbyCoreModule, { ConfigProvider } from 'tabby-core'
 import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
 import { SidebarPlusSftpComponent } from './components/sftpPanel.component'
 import { SidebarPlusSftpBrowserComponent } from './components/sftpBrowser.component'
+import { ConfirmModalComponent } from './components/confirmModal.component'
 import { SidebarPlusConfigProvider } from './configProvider'
 import { SidebarPlusMountService } from './mount.service'
 
@@ -24,6 +25,7 @@ import { SidebarPlusMountService } from './mount.service'
         SidebarPlusTreeComponent,
         SidebarPlusSftpComponent,
         SidebarPlusSftpBrowserComponent,
+        ConfirmModalComponent,
     ],
 })
 export default class SidebarPlusModule {

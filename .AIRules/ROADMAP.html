@@ -42,7 +42,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Déjà conforme (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
+<tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill planned">📋 Proposé — écart trouvé</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -638,18 +638,27 @@ elle-même) — s'assurer qu'aucun fichier temporaire ne reste orphelin indéfin
 </ul>
 
 <h3 id="confirmations-html">Confirmations en modale HTML (audit de conformité)</h3>
-<p class="muted">Demandé par l'utilisateur le 2026-07-30 comme principe transversal, pas comme un
-chantier de correction : audit fait, <strong>déjà conforme</strong> aujourd'hui.</p>
-<p>Vérification faite sur l'intégralité de <code>src/</code> : aucune occurrence de
+<p class="muted">Demandé par l'utilisateur le 2026-07-30 comme principe transversal. Audit fait sur
+notre propre code (<code>src/</code>) : conforme — aucune occurrence de
 <code>window.confirm</code>/<code>window.alert</code>/<code>dialog.showMessageBox</code>. Les
 suppressions de profil/groupe/workspace passent par un mode de menu contextuel inline en HTML
 (<code>contextMenuMode</code> — <code>confirmDeleteProfile</code>, etc.), et le panneau SFTP utilise
-<code>NgbModal</code>/<code>PromptModalComponent</code> (Bootstrap). <strong>Invariant à maintenir</strong>
-pour tout ce qui s'ajoute désormais : la confirmation de <a href="#suppr-sftp">suppression SFTP par
-Suppr</a> et celle, déjà notée dans <a href="#transferts">Transferts SFTP</a>, sur l'abandon de
-transferts en cours. Les sélecteurs de fichiers système utilisés par
-<a href="#editeur-force">l'éditeur forcé</a> (choix de l'exécutable, "Ouvrir avec...") ne sont pas
-concernés par cet invariant — ce sont des sélecteurs de fichiers, pas des confirmations.</p>
+déjà <code>NgbModal</code>/<code>PromptModalComponent</code> (Bootstrap) pour ses propres popups.</p>
+<div class="callout warning"><span class="callout-title">Écart trouvé en creusant — pas dans notre code, dans ce qu'on hérite</span>
+<p><code>SidebarPlusSftpBrowserComponent</code> sous-classe <code>SFTPPanelComponent</code> et hérite
+tel quel de <code>showContextMenu()</code>, dont l'entrée « Delete » (fournie par l'unique provider
+natif, <code>CommonSFTPContextMenu</code>) confirme via <code>platform.showMessageBox()</code> — un
+<strong>vrai dialogue OS</strong>, pas une modale HTML. Détail complet :
+<a href="AI-CONTEXT.html#piege-42">piège #42</a>. À traiter dans le même geste que
+<a href="#suppr-sftp">suppression SFTP par Suppr</a> ci-dessous : <code>showContextMenu()</code> à
+surcharger pour remplacer cette entrée par une ouvrant une modale HTML/NgbModal maison, partagée avec
+le geste Suppr.</p></div>
+<p><strong>Invariant à maintenir</strong> pour tout ce qui s'ajoute désormais : la confirmation de
+<a href="#suppr-sftp">suppression SFTP par Suppr</a> et celle, déjà notée dans
+<a href="#transferts">Transferts SFTP</a>, sur l'abandon de transferts en cours. Les sélecteurs de
+fichiers système utilisés par <a href="#editeur-force">l'éditeur forcé</a> (choix de l'exécutable,
+"Ouvrir avec...") ne sont pas concernés par cet invariant — ce sont des sélecteurs de fichiers, pas
+des confirmations.</p>
 
 <h2>Phase 2 — productivité</h2>
 
