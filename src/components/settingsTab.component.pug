@@ -1,0 +1,52 @@
+.sidebar-plus-settings
+  h3.mb-1 Éditeur des fichiers distants
+  p.text-muted.small.mb-3
+    | Le double-clic sur un fichier du panneau SFTP le télécharge puis l'ouvre
+    | toujours dans cet éditeur — jamais avec l'application associée par le
+    | système, qui <strong>exécuterait</strong> un programme ou un script au lieu
+    | de l'éditer.
+
+  .form-group.mb-2
+    label.form-label(for='sidebar-plus-editor-path') Chemin de l'éditeur
+    .d-flex.align-items-center.gap-2
+      input#sidebar-plus-editor-path.form-control(
+        type='text',
+        [(ngModel)]='editorPath',
+        (change)='save()',
+        placeholder='Aucun éditeur choisi'
+      )
+      button.btn.btn-primary.text-nowrap((click)='browse()')
+        i.fas.fa-folder-open.me-2
+        | Parcourir...
+      button.btn.btn-secondary.text-nowrap(*ngIf='editorPath', (click)='clear()')
+        i.fas.fa-times.me-2
+        | Effacer
+
+  p.text-muted.small(*ngIf='!editorPath && canOpenWith')
+    | Tant qu'aucun éditeur n'est choisi ici, chaque double-clic sur un fichier
+    | ouvre la fenêtre « Ouvrir avec » de Windows. Elle ne peut pas être
+    | mémorisée — Windows ne dit pas quelle application a été retenue — donc
+    | elle reviendra à chaque fois tant que ce champ reste vide.
+
+  p.text-muted.small(*ngIf='!editorPath && !canOpenWith')
+    | Tant qu'aucun éditeur n'est choisi, le premier double-clic sur un fichier
+    | ouvre ce sélecteur ; annuler n'ouvre rien.
+
+  h3.mt-4.mb-1 Suppression dans le panneau SFTP
+  .form-group.mb-2
+    label.form-label(for='sidebar-plus-delete-default') Bouton activé par Entrée dans la confirmation
+    select#sidebar-plus-delete-default.form-control(
+      [ngModel]='deleteDefaultButton',
+      (ngModelChange)='setDeleteDefaultButton($event)'
+    )
+      option(value='cancel') Annuler — la réponse sûre sous la touche (défaut)
+      option(value='confirm') Supprimer — Suppr puis Entrée en un geste
+  p.text-muted.small
+    | S'applique aux deux façons de supprimer, la touche
+    |  #[kbd Suppr] comme le clic droit. #[kbd Échap] annule dans tous les cas.
+
+  p.text-muted.small(*ngIf='canOpenWith')
+    | Pour ouvrir un fichier autrement — l'exécuter, le confier à une autre
+    | application — utilisez « Ouvrir avec... » dans le menu du clic droit. C'est
+    | le seul chemin qui passe par l'association du système, et il est toujours
+    | explicite.

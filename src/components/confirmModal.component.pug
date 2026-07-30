@@ -1,8 +1,12 @@
 .modal-body
     p.mb-3 {{ message }}
     .d-flex
-        button.btn.btn-secondary.ms-auto((click)='cancel()') Annuler
+        button.btn.btn-secondary.ms-auto(#cancelButton, (click)='cancel()') Annuler
+        //- One of the two is focused on open (see the component): whichever it
+            is, that is what Entrée activates. Échap always reaches Annuler,
+            through NgbModal's own dismiss.
         button.btn.ms-2(
+            #confirmButton,
             [class.btn-danger]='danger',
             [class.btn-primary]='!danger',
             (click)='confirm()',

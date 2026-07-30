@@ -4,8 +4,9 @@ import { AfterViewChecked, Component, ElementRef, HostListener, Inject, OnDestro
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
+import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { EmptyFileUpload } from '../sftpLocalTransfer'
-import { SftpRemoteEditor } from '../sftpRemoteEdit'
+import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
 import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
 
@@ -99,11 +100,12 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         private notify: NotificationsService,
         private ngbModalService: NgbModal,
         private elementRef: ElementRef<HTMLElement>,
+        private editors: SidebarPlusEditorService,
         platform: PlatformService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
-        this.editor = new SftpRemoteEditor(notify, platform)
+        this.editor = new SftpRemoteEditor(notify, editors)
     }
 
     ngOnDestroy (): void {
@@ -252,10 +254,37 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     /**
      * Double-click. Directories navigate, as the inherited `open()` does; files
      * take the edit round-trip instead of `open()`'s save-file dialog.
+     *
+     * Always `editor` mode: a double-click must never reach the OS association,
+     * which would run an executable rather than open it. `openWith` exists, but
+     * only behind the explicit context-menu entry.
      */
     async openItem (item: SFTPFile): Promise<void> {
+        await this.openEntry(item, 'editor')
+    }
+
+    /**
+     * `isDirectory` is not enough on its own.
+     *
+     * `SFTPSession` fills it from `metadata.type`, a field the SFTP v3 wire
+     * format does not carry — servers answer `SSH_FXP_STAT` with a permissions
+     * word and nothing else, so a `stat()` on a symlink's target can come back
+     * with `isDirectory === false` for a directory. The mode does carry the
+     * type (Tabby's own `getModeString()` reads it the same way), so the two
+     * are checked together. Without this, a symlink to a directory fell through
+     * to the download path and the server answered `Failure` — "Impossible de
+     * télécharger <nom>", found in testing on 2026-07-30.
+     */
+    private static readonly S_IFMT = 0o170000
+    private static readonly S_IFDIR = 0o040000
+
+    private isDirectoryEntry (f: SFTPFile): boolean {
+        return f.isDirectory || (f.mode & SidebarPlusSftpBrowserComponent.S_IFMT) === SidebarPlusSftpBrowserComponent.S_IFDIR
+    }
+
+    private async openEntry (item: SFTPFile, mode: OpenMode): Promise<void> {
         this.select(item)
-        if (item.isDirectory) {
+        if (this.isDirectoryEntry(item)) {
             await this.navigate(item.fullPath)
             return
         }
@@ -264,19 +293,20 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             // `item.size`/`item.mode` describe the link, not its target.
             try {
                 const target = await this.sftp.readlink(item.fullPath)
-                const stat = await this.sftp.stat(target.startsWith('/') ? target : `${this.path}/${target}`)
-                if (stat.isDirectory) {
+                const base = this.path.endsWith('/') ? this.path.slice(0, -1) : this.path
+                const stat = await this.sftp.stat(target.startsWith('/') ? target : `${base}/${target}`)
+                if (this.isDirectoryEntry(stat)) {
                     await this.navigate(item.fullPath)
                     return
                 }
-                await this.editor.edit(this.sftp, { ...stat, fullPath: item.fullPath, name: item.name })
+                await this.editor.edit(this.sftp, { ...stat, fullPath: item.fullPath, name: item.name }, mode)
                 return
             } catch (e) {
                 this.notify.error(`Impossible de suivre le lien ${item.name}`, String(e))
                 return
             }
         }
-        await this.editor.edit(this.sftp, item)
+        await this.editor.edit(this.sftp, item, mode)
     }
 
     ////// DELETE //////
@@ -309,6 +339,17 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         const last = items.pop()
         if (last && !/^(delete|supprimer)/i.test(String(last.label ?? ''))) {
             console.warn('sidebar-plus: expected the native SFTP context menu to end with "Delete"', last)
+        }
+        // Pushed after the pop() above, never before: the native "Delete" entry
+        // is dropped by position, so inserting anything first would remove the
+        // wrong item. The one route to the OS association, and only from here —
+        // a double-click can never reach it. Windows-only: `OpenAs_RunDLL` has
+        // no equivalent elsewhere, and this plugin is published publicly.
+        if (!this.isDirectoryEntry(item) && this.editors.canOpenWith) {
+            items.push({
+                label: 'Ouvrir avec...',
+                click: () => { void this.openEntry(item, 'openWith') },
+            })
         }
         items.push({
             label: 'Supprimer',
@@ -359,6 +400,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             ? `Supprimer le dossier "${item.name}" et tout son contenu ?`
             : `Supprimer "${item.name}" ?`
         modal.componentInstance.confirmLabel = 'Supprimer'
+        // Which button `Entrée` hits, from the settings tab. Applied to both
+        // triggers, not just the `Suppr` key that prompted the request: the
+        // same modal answering the same question differently depending on how
+        // it was opened would be a trap, not a feature.
+        modal.componentInstance.defaultButton = this.config.store.sidebarPlus?.sftpDeleteDefaultButton ?? 'cancel'
         const confirmed = await modal.result.catch(() => false)
         if (!confirmed) {
             return

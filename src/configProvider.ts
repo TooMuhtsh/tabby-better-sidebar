@@ -37,6 +37,17 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // the name column is always shown and never listed here. See
             // SidebarPlusSftpBrowserComponent.AVAILABLE_COLUMNS for the ids.
             sftpColumns: ['size', 'date', 'mode'] as string[],
+            // Editor a double-clicked remote file opens in — never the OS
+            // association, which would *run* an executable instead of editing
+            // it. Empty until the first double-click asks for one (or the
+            // settings tab sets it). Prefixed like its SFTP siblings above.
+            sftpEditorPath: '',
+            // Which button of the SFTP delete confirmation holds the focus,
+            // i.e. what `Entrée` triggers. Defaults to the non-destructive
+            // answer: a confirmation whose default is "yes" deletes on a reflex
+            // Entrée, and this one has no undo. 'confirm' is opt-in, from the
+            // settings tab, and makes Suppr puis Entrée a single gesture.
+            sftpDeleteDefaultButton: 'cancel' as 'confirm'|'cancel',
             // Display toggles of the SFTP browser's header menu.
             sftpFoldersFirst: true,
             sftpShowHidden: true,

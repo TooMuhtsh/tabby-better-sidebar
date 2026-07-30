@@ -1,9 +1,18 @@
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { NotificationsService, PlatformService } from 'tabby-core'
+import { NotificationsService } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
+import { Opener, SidebarPlusEditorService } from './editorLauncher.service'
 import { LocalFileDownload, LocalFileUpload } from './sftpLocalTransfer'
+
+/**
+ * How the local copy is handed over once downloaded.
+ *
+ * `editor` is the only thing a double-click can reach; `openWith` is the
+ * explicit context-menu escape hatch (Windows' own "Open with..." dialog).
+ */
+export type OpenMode = 'editor'|'openWith'
 
 /** The live SFTP transport, borrowed from the one member that publicly exposes its type. */
 type SftpSession = SFTPPanelComponent['sftp']
@@ -21,12 +30,18 @@ interface EditSession {
 }
 
 /**
- * Opens a remote file in whatever the OS uses for its type, and sends it back
- * on every save.
+ * Opens a remote file in the configured editor, and sends it back on every
+ * save.
  *
- * The file is copied to a private temp directory, handed to the OS, and
+ * The file is copied to a private temp directory, handed to the editor, and
  * watched; each save re-uploads it. Nothing is ever silent — every upload
  * raises a notification, because this writes to a live server.
+ *
+ * Never `shell.openPath()`, which is what this used to do: opening by OS
+ * association *runs* an executable, or a script whose extension is bound to an
+ * interpreter, instead of editing it. The editor is spawned explicitly, and the
+ * only route to the OS association is the caller passing `openWith` — the
+ * context menu's deliberate escape hatch, unreachable by double-click.
  *
  * Not implemented, and worth knowing before relying on this: there is no
  * conflict detection. If the remote file changes between the download and a
@@ -38,26 +53,16 @@ export class SftpRemoteEditor {
 
     constructor (
         private notifications: NotificationsService,
-        private platform: PlatformService,
+        private editors: SidebarPlusEditorService,
     ) { }
 
-    /**
-     * `openPath()` and not `openExternal()`.
-     *
-     * `PlatformService.openExternal()` only hands a URL straight to the OS
-     * when its scheme is one of http/https/ftp/mailto; anything else — `file:`
-     * included — goes through `confirmAndOpenExternal()`, which raises a
-     * modal warning first. That guard is aimed at app-specific URI schemes and
-     * makes sense there, but here it put a confirmation dialog between the
-     * user and every single file they opened. `openPath()` calls
-     * `shell.openPath()` directly, with no scheme check and no prompt, and is
-     * declared on the abstract PlatformService in both the npm typings and the
-     * installed app's.
-     *
-     * It takes a plain filesystem path, not a URL — no pathToFileURL needed.
-     */
-    private open (localPath: string): void {
-        this.platform.openPath(localPath)
+    /** Hands a local copy over. The opener is settled by `edit()` before anything is downloaded. */
+    private open (localPath: string, opener: Opener): void {
+        if (opener.kind === 'openWith') {
+            this.editors.openWith(localPath, opener.learn)
+            return
+        }
+        this.editors.launchEditor(opener.path, localPath)
     }
 
     /**
@@ -66,12 +71,24 @@ export class SftpRemoteEditor {
      * watch held on the original inode and would make the second save onwards
      * go unnoticed.
      */
-    async edit (sftp: SftpSession, item: SFTPFile): Promise<void> {
+    async edit (sftp: SftpSession, item: SFTPFile, mode: OpenMode = 'editor'): Promise<void> {
+        // Settled first, and deliberately before the temp dir and the
+        // download: on a platform with no "open with" dialog this raises a file
+        // picker that can be cancelled, and bailing out later would leave a
+        // downloaded copy, a live fs.watch and a registered session for a file
+        // nobody ever opened.
+        const opener: Opener|null = mode === 'openWith'
+            ? { kind: 'openWith' }
+            : await this.editors.resolveOpener()
+        if (!opener) {
+            return
+        }
+
         const existing = this.sessions.get(item.fullPath)
         if (existing) {
             // Already open somewhere — just bring it back to the front rather
             // than downloading a second copy over the user's unsaved work.
-            this.open(existing.localPath)
+            this.open(existing.localPath, opener)
             return
         }
 
@@ -85,7 +102,11 @@ export class SftpRemoteEditor {
             await sftp.download(item.fullPath, download)
         } catch (e) {
             await fs.promises.rm(localDir, { recursive: true, force: true }).catch(() => null)
-            this.notifications.error(`Impossible de télécharger ${item.name}`, String(e))
+            // The full path, not just the name: a `Failure` status here is
+            // usually the server refusing to open something that is not a
+            // regular file (EISDIR is reported as a plain FAILURE), and knowing
+            // *which* path was asked for is what tells the two apart.
+            this.notifications.error(`Impossible de télécharger ${item.fullPath}`, String(e))
             return
         }
 
@@ -106,7 +127,7 @@ export class SftpRemoteEditor {
         }
         this.sessions.set(item.fullPath, session)
 
-        this.open(localPath)
+        this.open(localPath, opener)
         this.notifications.notice(`${item.name} ouvert — chaque enregistrement sera renvoyé au serveur`)
     }
 
