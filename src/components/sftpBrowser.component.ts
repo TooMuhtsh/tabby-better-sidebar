@@ -1,11 +1,12 @@
 import './sftpBrowser.component.scss'
 import { filesize } from 'filesize'
-import { AfterViewChecked, Component, ElementRef, HostListener, Inject, OnDestroy } from '@angular/core'
+import { AfterViewChecked, Component, ElementRef, HostListener, Inject, NgZone, OnDestroy } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { EmptyFileUpload } from '../sftpLocalTransfer'
+import { DirectoryWeight, SftpDragOut } from '../sftpDragOut'
 import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
 import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
@@ -89,6 +90,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     selectedPath: string|null = null
 
     private editor: SftpRemoteEditor
+    private dragOut: SftpDragOut
 
     // `notify`/`ngbModalService` rather than `notifications`/`ngbModal`: the
     // parent already holds *private* fields under those names, and
@@ -100,16 +102,19 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         private notify: NotificationsService,
         private ngbModalService: NgbModal,
         private elementRef: ElementRef<HTMLElement>,
+        zone: NgZone,
         private editors: SidebarPlusEditorService,
         platform: PlatformService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
         this.editor = new SftpRemoteEditor(notify, editors)
+        this.dragOut = new SftpDragOut(notify, zone)
     }
 
     ngOnDestroy (): void {
         this.editor.dispose()
+        this.dragOut.dispose()
     }
 
     ////// CONTEXT MENUS //////
@@ -307,6 +312,79 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             }
         }
         await this.editor.edit(this.sftp, item, mode)
+    }
+
+    ////// DRAG OUT //////
+    /**
+     * Past either of these, a directory is confirmed before being downloaded.
+     * Low on purpose: the cost being guarded against is not disk space but a
+     * gesture that appears to do nothing for minutes, with no way to cancel it.
+     */
+    private static readonly DRAG_OUT_MAX_FILES = 25
+    private static readonly DRAG_OUT_MAX_BYTES = 20 * 1024 * 1024
+
+    isDragPreparing (item: SFTPFile): boolean {
+        return this.dragOut.isPreparing(item.fullPath)
+    }
+
+    /**
+     * Native drag towards the OS.
+     *
+     * `preventDefault()` in every path: the HTML drag is never the one that
+     * runs. Either `startDrag()` takes over immediately — the entry is already
+     * downloaded — or this gesture only prepares the copy, and the next drag is
+     * the one that carries it out. Letting the HTML drag proceed would drag the
+     * row's text into whatever accepts it.
+     */
+    onDragStart (item: SFTPFile, event: DragEvent): void {
+        event.preventDefault()
+        const isDirectory = this.isDirectoryEntry(item)
+        if (isDirectory && !this.config.store.sidebarPlus?.sftpDragOutFolders) {
+            this.notify.notice('Le glisser-déposer des dossiers est désactivé — activez-le dans Paramètres → Better Sidebar')
+            return
+        }
+        if (this.dragOut.startDrag(item.fullPath) || this.dragOut.isPreparing(item.fullPath)) {
+            return
+        }
+        void this.prepareDrag(item, isDirectory)
+    }
+
+    private async prepareDrag (item: SFTPFile, isDirectory: boolean): Promise<void> {
+        if (isDirectory && !await this.confirmHeavyDirectory(item)) {
+            return
+        }
+        await this.dragOut.prepare(this.sftp, item, isDirectory)
+    }
+
+    /**
+     * Asks before pulling a large directory down, and only then.
+     *
+     * The count itself stops at the thresholds (see `weigh()`), so a small
+     * directory costs one quick walk and no question at all.
+     */
+    private async confirmHeavyDirectory (item: SFTPFile): Promise<boolean> {
+        let weight: DirectoryWeight
+        try {
+            weight = await this.dragOut.weigh(
+                this.sftp,
+                item.fullPath,
+                SidebarPlusSftpBrowserComponent.DRAG_OUT_MAX_FILES,
+                SidebarPlusSftpBrowserComponent.DRAG_OUT_MAX_BYTES,
+            )
+        } catch (e) {
+            this.notify.error(`Impossible de lire le contenu de ${item.name}`, String(e))
+            return false
+        }
+        if (!weight.truncated) {
+            return true
+        }
+        const modal = this.ngbModalService.open(ConfirmModalComponent)
+        modal.componentInstance.message =
+            `"${item.name}" contient plus de ${weight.files} fichiers (${filesize(weight.bytes)} au moins). `
+            + 'Tout sera téléchargé avant que le glisser-déposer ne devienne possible, sans progression ni annulation. Continuer ?'
+        modal.componentInstance.confirmLabel = 'Télécharger'
+        modal.componentInstance.defaultButton = 'cancel'
+        return await modal.result.catch(() => false)
     }
 
     ////// DELETE //////

@@ -2,6 +2,7 @@ import { execFile, spawn } from 'child_process'
 import { existsSync } from 'fs'
 import { Inject, Injectable, Optional } from '@angular/core'
 import { ConfigService, FileProvider, NotificationsService } from 'tabby-core'
+import { electronRemote } from './electronRemote'
 
 /**
  * What a downloaded copy is handed to: the configured editor, or the OS's own
@@ -97,7 +98,7 @@ export class SidebarPlusEditorService {
      * Returns null on cancel and on a dialog that could not be opened at all.
      */
     async pickEditorPath (): Promise<string|null> {
-        const remote = this.electronRemote()
+        const remote = electronRemote()
         if (!remote) {
             return this.pickEditorPathFallback()
         }
@@ -123,26 +124,6 @@ export class SidebarPlusEditorService {
             return null
         }
         return this.resolveShortcut(result.filePaths[0], remote)
-    }
-
-    /**
-     * `@electron/remote`, or null when it cannot be reached.
-     *
-     * Loaded through the global `require` rather than an `import`: webpack
-     * would otherwise try to resolve it at build time, and declaring it as an
-     * external would hoist the require to module load — turning a missing
-     * module into a plugin that fails to load at all, instead of one feature
-     * quietly falling back. Tabby's plugin loader puts `app.asar/node_modules`
-     * on NODE_PATH (`initModuleLookup()`, verified in the compiled app), which
-     * is what makes this resolvable from a third-party plugin at all.
-     */
-    private electronRemote (): any|null {
-        try {
-            const req = (window as any).require ?? (global as any).require
-            return req?.('@electron/remote') ?? null
-        } catch {
-            return null
-        }
     }
 
     /**

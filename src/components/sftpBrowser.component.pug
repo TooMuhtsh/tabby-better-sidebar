@@ -90,12 +90,21 @@
             //- :nth-child: the header is the first child and the "go up" row
             //- comes and goes, so a CSS-side parity would flip whenever the
             //- panel is at the root.
+            //-
+            //- `draggable` + (dragstart) is the native drag towards the OS. The
+            //- handler always calls preventDefault(): either startDrag() takes
+            //- over, or the gesture merely downloads the copy that the next one
+            //- will carry. A pug comment cannot live inside an attribute list —
+            //- it parses as attributes and fails on the first repeated word.
             .sftp-row(
                 *ngFor='let item of displayedFiles; let i = index; trackBy: trackByPath',
                 [style.grid-template-columns]='gridTemplate',
                 [class.sftp-zebra]='i % 2 === 1',
                 [class.sftp-dim]='isHidden(item)',
                 [class.sftp-selected]='isSelected(item)',
+                [class.sftp-preparing]='isDragPreparing(item)',
+                draggable='true',
+                (dragstart)='onDragStart(item, $event)',
                 (click)='select(item)',
                 (dblclick)='openItem(item)',
                 (contextmenu)='showContextMenu(item, $event)',

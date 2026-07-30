@@ -32,6 +32,34 @@
     | Tant qu'aucun éditeur n'est choisi, le premier double-clic sur un fichier
     | ouvre ce sélecteur ; annuler n'ouvre rien.
 
+  h3.mt-4.mb-1 Glisser-déposer sortant
+  p.text-muted.small.mb-2
+    | Glisser une entrée du panneau SFTP vers l'Explorateur la télécharge à cet
+    | endroit. Le fichier doit être copié localement avant que le système ne
+    | puisse le prendre : le premier glisser d'une entrée sert à la préparer, le
+    | suivant l'emporte.
+
+  .form-check.mb-2
+    input#sidebar-plus-dragout-folders.form-check-input(
+      type='checkbox',
+      [ngModel]='dragOutFolders',
+      (ngModelChange)='setDragOutFolders($event)'
+    )
+    label.form-check-label(for='sidebar-plus-dragout-folders') Autoriser aussi les dossiers
+
+  .alert.alert-warning.small(*ngIf='dragOutFolders')
+    strong Un dossier est aspiré en entier avant de pouvoir être déposé.
+    .mt-1
+      | Toute l'arborescence est téléchargée d'abord — sans barre de progression
+      | et sans annulation possible. Sur un dossier distant très peuplé, le
+      | geste reste sans effet visible pendant tout ce temps. Au-delà de
+      | 25 fichiers ou 20 Mo, une confirmation est demandée avec le volume
+      | constaté.
+    .mt-1.text-muted
+      | Les liens symboliques ne sont pas suivis comme des dossiers : ils
+      | arrivent en copies vides. Un traitement correct viendra avec le
+      | gestionnaire de transferts.
+
   h3.mt-4.mb-1 Suppression dans le panneau SFTP
   .form-group.mb-2
     label.form-label(for='sidebar-plus-delete-default') Bouton activé par Entrée dans la confirmation

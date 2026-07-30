@@ -48,6 +48,11 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // Entrée, and this one has no undo. 'confirm' is opt-in, from the
             // settings tab, and makes Suppr puis Entrée a single gesture.
             sftpDeleteDefaultButton: 'cancel' as 'confirm'|'cancel',
+            // Whether a directory can be dragged out to the OS. Off by
+            // default: `startDrag()` needs the whole tree on disk first, so the
+            // gesture appears to do nothing while it downloads — with no
+            // progress and no way to cancel. Files are always draggable.
+            sftpDragOutFolders: false,
             // Display toggles of the SFTP browser's header menu.
             sftpFoldersFirst: true,
             sftpShowHidden: true,

@@ -27,6 +27,15 @@ export class SidebarPlusSettingsTabComponent {
         this.editorPath = this.editors.editorPath
     }
 
+    get dragOutFolders (): boolean {
+        return !!this.config.store.sidebarPlus?.sftpDragOutFolders
+    }
+
+    async setDragOutFolders (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.sftpDragOutFolders = value
+        await this.config.save()
+    }
+
     get deleteDefaultButton (): string {
         return this.config.store.sidebarPlus?.sftpDeleteDefaultButton ?? 'cancel'
     }

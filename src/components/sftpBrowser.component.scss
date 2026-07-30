@@ -274,3 +274,18 @@ sidebar-plus-sftp-browser .sftp-row-up {
 sidebar-plus-sftp-browser .sftp-row.sftp-dim {
     opacity: .5;
 }
+
+// Being copied locally for a drag towards the OS. The gesture that started it
+// is already over — a native drag cannot begin before the file exists — so this
+// is the only thing telling the user the next drag will work, and why this one
+// seemed to do nothing.
+sidebar-plus-sftp-browser .sftp-row.sftp-preparing {
+    cursor: progress;
+    box-shadow: inset 2px 0 0 var(--theme-primary);
+
+    .cell-name::after {
+        content: ' — préparation...';
+        opacity: .6;
+        font-style: italic;
+    }
+}
