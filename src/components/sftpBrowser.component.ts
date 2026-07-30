@@ -281,22 +281,34 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
 
     ////// DELETE //////
     /**
+     * Set for the duration of confirm-then-delete, from either trigger below.
+     * Without it, holding Delete re-fires `onDocumentKeydown` at keyboard
+     * repeat rate while the confirm modal is up (focus lands on one of its
+     * *buttons*, not an input, so the input/textarea check doesn't help), and
+     * a second click on the context menu entry before the first delete
+     * finishes would race two deletions of the same path.
+     */
+    private deleteInFlight = false
+
+    /**
      * Overridden rather than left inherited: the native `showContextMenu()`
      * (`SFTPPanelComponent`/`CommonSFTPContextMenu`) confirms its "Delete"
      * entry with `platform.showMessageBox()` — a native OS dialog, exactly
      * what this plugin's confirmations are meant never to be (piège #42).
      * `CommonSFTPContextMenu` is the only built-in provider, and always
-     * pushes its "Delete" entry last (verified on the installed source) — so
-     * the native one is dropped by position, with a label sanity check in
-     * case a future Tabby version reorders it, and ours is appended in its
-     * place.
+     * pushes its "Delete" entry last (verified on the installed source), so
+     * it is dropped by position unconditionally — the label is only checked
+     * to `console.warn` if a future Tabby version ever reorders it, rather
+     * than gating the removal on a translation string this plugin doesn't
+     * control (the installed app has no French catalog entry for it — it
+     * would render in English regardless of this plugin's own locale).
      */
     async showContextMenu (item: SFTPFile, event: MouseEvent): Promise<void> {
         event.preventDefault()
         const items = await this.buildContextMenu(item)
-        const last = items[items.length - 1]
-        if (last && /^(delete|supprimer)/i.test(String(last.label ?? ''))) {
-            items.pop()
+        const last = items.pop()
+        if (last && !/^(delete|supprimer)/i.test(String(last.label ?? ''))) {
+            console.warn('sidebar-plus: expected the native SFTP context menu to end with "Delete"', last)
         }
         items.push({
             label: 'Supprimer',
@@ -308,12 +320,14 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     /** `Suppr` on the selected entry — same confirm-then-delete path as the context menu entry above. */
     @HostListener('document:keydown', ['$event'])
     onDocumentKeydown (event: KeyboardEvent): void {
-        if (event.key !== 'Delete' || !this.selectedPath) {
+        if (event.key !== 'Delete' || event.repeat || !this.selectedPath || this.deleteInFlight) {
             return
         }
-        // Guards against firing while this panel is cached-but-hidden
-        // (`[hidden]`, never destroyed — see sidebarTree.component.pug) or
-        // while a text field (rename, filter, prompt modal…) has focus.
+        // Guards against firing while this panel is cached-but-detached for a
+        // different SSH tab: `SidebarPlusSftpComponent.detachPanel()` calls
+        // `.remove()` on the root node rather than merely hiding it (only the
+        // currently focused tab's browser is ever attached to `document`), so
+        // `offsetParent` is reliably null on every other cached instance.
         if (!this.elementRef.nativeElement.offsetParent) {
             return
         }
@@ -328,6 +342,18 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     async confirmAndDelete (item: SFTPFile): Promise<void> {
+        if (this.deleteInFlight) {
+            return
+        }
+        this.deleteInFlight = true
+        try {
+            await this.runDeleteConfirmation(item)
+        } finally {
+            this.deleteInFlight = false
+        }
+    }
+
+    private async runDeleteConfirmation (item: SFTPFile): Promise<void> {
         const modal = this.ngbModalService.open(ConfirmModalComponent)
         modal.componentInstance.message = item.isDirectory
             ? `Supprimer le dossier "${item.name}" et tout son contenu ?`
