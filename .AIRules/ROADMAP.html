@@ -15,7 +15,7 @@
 </nav>
 
 <h1>Roadmap</h1>
-<p class="muted">Dernière revue : 2026-07-29</p>
+<p class="muted">Dernière revue : 2026-07-30</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
 techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
@@ -38,6 +38,11 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
 <tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
+<tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute</td></tr>
+<tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Déjà conforme (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -522,7 +527,129 @@ pour ce sujet), plus un récapitulatif après coup « N fichiers envoyés vers &
 <p class="muted"><strong>Hors périmètre de ce chantier</strong> : le glisser-déposer <em>sortant</em>
 (tirer un fichier distant vers l'Explorateur Windows pour le télécharger). Ce n'est pas un oubli —
 c'est un mécanisme différent (<code>DownloadURL</code>/fichier promis), sans rapport avec la
-plomberie ci-dessus.</p>
+plomberie ci-dessus. Repris et détaillé dans <a href="#drag-out">Glisser-déposer sortant</a>
+ci-dessous.</p>
+
+<h3 id="sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</h3>
+<p class="muted">Demandé par l'utilisateur le 2026-07-30, avec trois autres axes UX/sécurité —
+<a href="#suppr-sftp">suppression SFTP par Suppr</a>, <a href="#editeur-force">éditeur forcé au
+double-clic</a>, <a href="#drag-out">glisser-déposer sortant</a> — et un audit de conformité
+(<a href="#confirmations-html">confirmations en modale HTML</a>). Traité en premier, comme le plus
+simple des cinq.</p>
+<p>Bug de régression de périmètre constaté dans le code : la section
+<a href="#sessions-actives">Sessions Actives</a>, livrée et validée le 2026-07-29, se masque
+entièrement dès qu'on bascule sur la vue SFTP (<code>*ngIf='!sftpMode &amp;&amp;
+activeSessions.length'</code> dans <code>sidebarTree.component.pug</code>). Or le design d'origine
+ne prévoyait aucune exception liée au mode d'affichage — la section doit rester visible et se
+comporter à l'identique, quel que soit l'onglet actif de la sidebar (Profils ou SFTP). Correctif :
+retirer la condition <code>!sftpMode</code> de ce <code>*ngIf</code>, et vérifier si le panneau des
+<a href="#tunnels-ssh">tunnels actifs</a> porte la même restriction héritée (à corriger de la même
+façon si c'est le cas).</p>
+
+<h3 id="suppr-sftp">Suppression SFTP par touche Suppr</h3>
+<p>Demandé par l'utilisateur le 2026-07-30, explicitement <strong>limité au panneau SFTP
+distant</strong> — ne touche pas à l'arbre de profils/groupes, qui a son propre mécanisme de
+suppression au clic droit (<code>confirmDeleteProfile</code>/<code>deleteGroup</code>), non
+concerné par cette demande.</p>
+<ul>
+<li><strong>Déclencheur</strong> : élément sélectionné dans la liste distante + touche
+<kbd>Suppr</kbd>. La sélection y est simple aujourd'hui (voir <a href="#transferts">Transferts
+SFTP</a>, point 3) — cette passe s'appuie sur elle telle quelle, sans construire de multi-sélection ;
+l'extension au lot suivra si la multi-sélection distante est un jour construite pour le
+glisser-déposer interne.</li>
+<li><strong>Confirmation obligatoire</strong>, en modale HTML — jamais de dialogue système (cohérent
+avec <a href="#confirmations-html">l'invariant de confirmation</a>). <code>SFTPDeleteModalComponent</code>
+(natif, exporté par <code>tabby-ssh</code>) est le candidat naturel : à vérifier aux deux niveaux
+(typings + bundle compilé, piège #13) avant de l'utiliser tel quel ; à défaut, reprendre le pattern
+inline déjà en place pour <code>confirmDeleteProfile</code> (mode de menu contextuel, pas de popup
+Angular séparée).</li>
+<li><strong>Portée du geste</strong> : fichier ou dossier (suppression récursive côté serveur pour un
+dossier, via l'API SFTP existante) — à confirmer que <code>deleteItem()</code>
+(<code>sftpContextMenu.d.ts</code>) gère déjà la récursion ou s'il faut la construire.</li>
+</ul>
+
+<h3 id="editeur-force">Double-clic force un éditeur de code, jamais une exécution</h3>
+<p>Demandé par l'utilisateur le 2026-07-30. Bug de sécurité/UX confirmé dans le code :
+<code>SftpRemoteEditor.open()</code> (<code>src/sftpRemoteEdit.ts:59-61</code>) appelle
+<code>platform.openPath()</code>, donc <code>shell.openPath()</code> d'Electron — ouverture avec
+l'application associée par l'OS. Pour un exécutable ou un script dont l'extension est associée à un
+interpréteur, un double-clic peut donc <strong>lancer</strong> le fichier plutôt que l'éditer.</p>
+<ul>
+<li><strong>Nouvelle clé de config</strong> <code>sidebarPlus.editorPath: string</code> (vide par
+défaut, à déclarer dans les <code>defaults</code> de <code>SidebarPlusConfigProvider</code>, piège
+#16).</li>
+<li><strong>Premier double-clic sans chemin configuré</strong> : ouverture d'un sélecteur de fichier
+natif (<code>remote.dialog.showOpenDialog</code>, filtré sur les exécutables) pour choisir
+l'éditeur une fois ; le chemin choisi est mémorisé pour tous les double-clics suivants. Ce n'est
+pas une confirmation au sens de <a href="#confirmations-html">l'invariant</a> — c'est un sélecteur
+de fichier système, catégorie distincte.</li>
+<li><strong>Champ dans les réglages</strong> pour revoir/changer ce chemin à tout moment, sans
+attendre un nouveau double-clic.</li>
+<li><strong>Lancement</strong> : <code>child_process.spawn(editorPath, [localPath])</code> à la
+place de <code>platform.openPath()</code> pour l'édition forcée.</li>
+<li><strong>Échappatoire volontaire — "Ouvrir avec..."</strong> : nouvelle entrée dans le menu
+contextuel d'un fichier (clic droit) invoquant le vrai sélecteur système Windows
+(<code>rundll32 shell32.dll,OpenAs_RunDLL &lt;chemin&gt;</code> via <code>child_process.exec</code>).
+Seul chemin explicite pour exécuter/ouvrir autrement qu'avec l'éditeur configuré — jamais accessible
+par double-clic.</li>
+</ul>
+<p class="muted">Vérifié avant conception : <code>@electron/remote</code> est déjà initialisé et
+utilisé côté renderer dans <code>tabby-electron/src/services/electron.service.ts</code>
+(<code>remote.dialog</code>, entre autres) — le sélecteur de fichier natif est donc accessible
+depuis le plugin sans plomberie IPC supplémentaire.</p>
+
+<h3 id="drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</h3>
+<p>Demandé par l'utilisateur le 2026-07-30 — le geste symétrique du dépôt entrant du
+<a href="#transferts">chantier Transferts SFTP</a> : glisser un fichier ou dossier distant hors de
+la sidebar et le lâcher dans l'Explorateur Windows (ou toute autre cible OS) pour le télécharger à
+cet endroit. Explicitement <strong>hors périmètre</strong> du chantier Transferts SFTP (mécanisme
+différent), repris ici comme chantier séparé.</p>
+<div class="callout important"><span class="callout-title">Contrainte explicite de l'utilisateur : ne jamais faire quitter/planter Tabby</span>
+<p>Le geste doit être totalement transparent pour l'application — pas de fermeture, pas de gel, pas
+de plantage pendant ou après le drag, quelle que soit la cible du dépôt (y compris un dépôt annulé
+ou hors d'une cible valide).</p></div>
+<ul>
+<li><strong>Vérifié sur le source installé</strong> (<code>resources/builtin-plugins/</code> de
+l'app Tabby, méthode du piège #13) : <strong>aucune</strong> occurrence de
+<code>webContents.startDrag</code> dans <code>tabby-core</code>, <code>tabby-electron</code> ou
+<code>tabby-ssh</code> — Tabby n'a nativement aucun mécanisme de drag sortant, ce n'était donc pas
+un oubli de notre côté à chercher dans une API existante.</li>
+<li><strong>API retenue</strong> : <code>remote.getCurrentWindow().webContents.startDrag({ file,
+icon })</code> (via <code>@electron/remote</code>, déjà initialisé — voir
+<a href="#editeur-force">chantier éditeur</a>). C'est l'API native standard pour ce geste (utilisée
+par ex. par VS Code) : elle ne touche ni au cycle de vie de l'app ni à la fenêtre, contrairement à
+un contournement à base de process externe — c'est ce qui garantit la contrainte ci-dessus, pas une
+précaution ajoutée après coup.</li>
+<li><strong>Contrainte de <code>startDrag</code> à concevoir autour</strong> : exige un fichier
+<strong>déjà présent localement</strong> au moment de l'appel. Pour un fichier, téléchargement dans
+un dossier temporaire (même mécanisme que <code>SftpRemoteEditor</code>) avant de déclencher le
+drag natif — potentiellement instantané si déjà mis en cache par une édition récente. Pour un
+dossier, il faut télécharger l'arborescence complète au préalable : potentiellement lent sur un
+dossier distant très peuplé (même limite que le <a href="#sftp">chargement par blocs</a> différé du
+panneau SFTP) — prévoir un retour visuel de préparation (curseur ou état de la ligne) pendant le
+téléchargement, avant que le drag ne devienne effectif.</li>
+<li><strong>Icône de drag</strong> : <code>startDrag</code> exige une <code>NativeImage</code> —
+prévoir une icône générique fichier/dossier à défaut d'aperçu spécifique.</li>
+<li><em>À vérifier avant implémentation, ne pas traiter comme acquis</em> : le comportement d'un
+dépôt annulé (relâché hors de toute cible valide, ex. dans le vide ou repris dans la sidebar
+elle-même) — s'assurer qu'aucun fichier temporaire ne reste orphelin indéfiniment sur disque
+(nettoyage à prévoir, sur le même principe que les copies temporaires d'édition, voir
+<a href="#sftp">limites connues du renvoi de fichier édité</a>).</li>
+</ul>
+
+<h3 id="confirmations-html">Confirmations en modale HTML (audit de conformité)</h3>
+<p class="muted">Demandé par l'utilisateur le 2026-07-30 comme principe transversal, pas comme un
+chantier de correction : audit fait, <strong>déjà conforme</strong> aujourd'hui.</p>
+<p>Vérification faite sur l'intégralité de <code>src/</code> : aucune occurrence de
+<code>window.confirm</code>/<code>window.alert</code>/<code>dialog.showMessageBox</code>. Les
+suppressions de profil/groupe/workspace passent par un mode de menu contextuel inline en HTML
+(<code>contextMenuMode</code> — <code>confirmDeleteProfile</code>, etc.), et le panneau SFTP utilise
+<code>NgbModal</code>/<code>PromptModalComponent</code> (Bootstrap). <strong>Invariant à maintenir</strong>
+pour tout ce qui s'ajoute désormais : la confirmation de <a href="#suppr-sftp">suppression SFTP par
+Suppr</a> et celle, déjà notée dans <a href="#transferts">Transferts SFTP</a>, sur l'abandon de
+transferts en cours. Les sélecteurs de fichiers système utilisés par
+<a href="#editeur-force">l'éditeur forcé</a> (choix de l'exécutable, "Ouvrir avec...") ne sont pas
+concernés par cet invariant — ce sont des sélecteurs de fichiers, pas des confirmations.</p>
 
 <h2>Phase 2 — productivité</h2>
 
