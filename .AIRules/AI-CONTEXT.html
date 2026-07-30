@@ -37,7 +37,7 @@ Tabby.</p>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43 + 5 points de veille</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46 + 5 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
@@ -444,6 +444,71 @@ onglet renommé portent le même libellé — c'est exactement ce que montre leu
 Corollaire pour le rafraîchissement : <code>renameTab()</code> se termine par
 <code>emitTabsChanged()</code>, donc un abonnement à <code>tabsChanged$</code> voit le changement
 immédiatement, sans attendre un sondage périodique.</p>
+
+<h3 id="piege-44">#44 — Aucun sélecteur de fichier de Tabby n'accepte de dossier de départ ;
+<code>@electron/remote</code> est atteignable depuis un plugin, mais pas par un <code>import</code></h3>
+<p>Constaté le 2026-07-30 en construisant le choix de l'éditeur distant. Tabby offre deux façons
+d'ouvrir un dialogue de fichier, aucune paramétrable : <code>PlatformService.startUpload()</code> et
+<code>FileProvider.selectAndStoreFile()</code> figent leurs <code>properties</code> et n'exposent ni
+<code>defaultPath</code> ni <code>filters</code> — le dialogue s'ouvre donc là où le système l'a
+laissé, en pratique le dossier des téléchargements. Deux pièges de plus si l'on passe par les
+providers : <code>FileProvidersService.selectAndStoreFile()</code> demande d'abord <em>quel
+stockage</em> dès que plus d'un provider est disponible, et Tabby en a un second
+(<code>VaultFileProvider</code>) dont le résultat est une clé <code>vault://</code>, pas un chemin —
+viser directement le provider nommé <code>Filesystem</code> évite la question et le résultat
+inutilisable ; son retour est préfixé <code>file://</code> et il <em>lève</em> à l'annulation au lieu
+de rendre <code>null</code>.</p>
+<p>→ Pour un vrai dialogue paramétrable, <code>@electron/remote</code>. Il est résolvable depuis un
+plugin tiers parce que le chargeur ajoute <code>app.asar/node_modules</code> au <code>NODE_PATH</code>
+(<code>initModuleLookup()</code>, vérifié dans le <code>bundle.js</code> de l'app), mais il n'est
+<strong>pas</strong> dans les <code>cachedBuiltinModules</code> — seuls Angular, rxjs, ng-bootstrap,
+ngx-toastr et zone.js y sont, avec les quatre <code>tabby-*</code> du piège #34. Le charger par un
+<code>import</code> ferait échouer le build webpack, et le déclarer en <code>externals</code>
+hisserait le <code>require</code> au chargement du module : un module absent ne dégraderait plus une
+fonctionnalité, il empêcherait le plugin entier de se charger. Passer par le <code>require</code>
+global — <code>(window as any).require('@electron/remote')</code> — dans un <code>try</code>, au
+moment de l'appel, avec un repli sur le sélecteur de Tabby.</p>
+
+<h3 id="piege-45">#45 — <code>SFTPFile.isDirectory</code> vient d'un champ que le protocole SFTP v3
+ne transporte pas</h3>
+<p>Trouvé en test le 2026-07-30, sur un lien symbolique vers un dossier qui partait au téléchargement
+au lieu d'être parcouru (<em>« Impossible de télécharger infra »</em>, avec un
+<code>Status Failure</code> — ce qu'OpenSSH renvoie pour EISDIR).
+<code>SFTPSession</code> remplit <code>isDirectory</code>/<code>isSymlink</code> depuis
+<code>entry.metadata.type</code>, or un serveur ne répond à <code>SSH_FXP_STAT</code> qu'avec un mot
+de permissions : le type n'est pas dans la réponse. Le <code>stat()</code> de la cible d'un lien
+rend donc <code>isDirectory: false</code> pour un dossier — le <code>readdir()</code>, lui, est
+correct, ce qui rend le défaut invisible tant qu'on ne suit pas un lien.</p>
+<p>→ Lire le type dans le mode : <code>(mode &amp; 0o170000) === 0o040000</code>, en gardant
+<code>isDirectory</code> comme premier test. C'est déjà ce que fait le template natif de Tabby
+(<code>getModeString()</code> teste <code>mode &amp; S_IFDIR</code>). Règle générale à retenir : un
+booléen dérivé d'un champ que le protocole ne porte pas ment <em>silencieusement</em>, et un
+<code>Status Failure</code> générique côté russh vaut la peine d'être retraduit en code POSIX avant
+de suspecter son propre code.</p>
+
+<h3 id="piege-46">#46 — La fenêtre « Ouvrir avec » de Windows ne rend pas le programme choisi ; la
+liste des processus, si</h3>
+<p>Construit le 2026-07-30 pour mémoriser l'éditeur choisi au premier double-clic.
+<code>rundll32 shell32.dll,OpenAs_RunDLL &lt;chemin&gt;</code> ouvre le fichier avec l'application
+retenue et ne renvoie rien ; aucune API Windows publique ne restitue ce choix. La trace registre
+qu'elle laisse (<code>FileExts\&lt;.ext&gt;\OpenWithList</code>) est <strong>indexée par
+extension</strong> — inutilisable ici, où les fichiers ouverts sont des fichiers de conf distants le
+plus souvent sans extension.</p>
+<p>→ L'application reçoit notre chemin temporaire sur sa ligne de commande : un
+<code>Get-CimInstance Win32_Process</code> filtré sur ce chemin l'identifie, quelle que soit
+l'extension. Trois détails qui font la différence entre marche et ne marche pas :
+<strong>(1)</strong> le callback d'<code>execFile</code> sur <code>rundll32</code> se déclenche à la
+fermeture de la boîte, c'est le bon moment pour commencer à chercher ; <strong>(2)</strong> un seul
+processus PowerShell qui sonde lui-même en boucle, jamais un <em>spawn</em> par tentative — le coût
+de démarrage de PowerShell dépasserait celui de la recherche entière ; <strong>(3)</strong> retenir
+le <em>premier token de la ligne de commande</em> et non <code>ExecutablePath</code> : pour une
+application du Store celui-ci pointe dans <code>WindowsApps</code>, dont les ACL refusent
+généralement un <code>spawn</code> direct, là où la ligne de commande porte le lanceur qui
+fonctionne (mesuré sur Notepad, qui rend <code>WindowsApps\…\Notepad.exe</code> mais se lance en
+<code>C:\WINDOWS\system32\notepad.exe</code>). Et pour composer le script : le chemin s'injecte en
+littéral PowerShell entre <em>guillemets simples</em> avec doublage des quotes internes —
+<code>JSON.stringify()</code> échappe les antislashs à la mode JSON et PowerShell ne les déséchappe
+pas, chaque <code>\</code> serait cherché comme <code>\\</code>.</p>
 
 <h3>Points de veille — <span class="pill warn">⚠️ à revérifier après update Tabby</span></h3>
 

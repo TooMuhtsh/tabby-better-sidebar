@@ -40,7 +40,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
@@ -625,6 +625,33 @@ par double-clic.</li>
 utilisé côté renderer dans <code>tabby-electron/src/services/electron.service.ts</code>
 (<code>remote.dialog</code>, entre autres) — le sélecteur de fichier natif est donc accessible
 depuis le plugin sans plomberie IPC supplémentaire.</p>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-30</span>
+<p>Commit <code>8faf86b</code>, détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>, trois pièges
+consignés (<a href="AI-CONTEXT.html#piege-44">#44</a>, <a href="AI-CONTEXT.html#piege-45">#45</a>,
+<a href="AI-CONTEXT.html#piege-46">#46</a>). Livré conforme au plan ci-dessus sur l'essentiel —
+plus de <code>openPath()</code>, <code>spawn</code> explicite, « Ouvrir avec... » en échappatoire de
+clic droit jamais atteignable au double-clic — avec <strong>trois écarts assumés</strong>, tous
+issus du test :</p>
+<ul>
+<li><strong>Sans éditeur configuré, c'est la fenêtre « Ouvrir avec » de Windows qui s'ouvre</strong>,
+  pas le sélecteur de fichiers : demande explicite de l'utilisateur, qui ne veut pas chercher un
+  <code>.exe</code> dans <code>Program Files</code>. L'application choisie est retrouvée après coup
+  dans la liste des processus (piège #46) et mémorisée. Le sélecteur de fichiers reste le chemin des
+  réglages, et le repli sur les plateformes sans « Ouvrir avec ».</li>
+<li><strong>Un onglet de réglages complet</strong> plutôt qu'un champ isolé : <code>Better
+  Sidebar</code>, <code>weight = 2</code> comme <code>tabby-better-vault</code>, donc juste avant
+  lui. C'est désormais la surface où poser les options transverses du plugin.</li>
+<li><strong>Une option de plus, non prévue</strong> : le bouton activé par <kbd>Entrée</kbd> dans la
+  confirmation de suppression SFTP (<code>sftpDeleteDefaultButton</code>). Par défaut
+  <em>Annuler</em> — la réponse non destructrice, décision de l'utilisateur après avoir demandé
+  l'inverse puis rejugé ; <em>Supprimer</em> reste disponible pour enchaîner <kbd>Suppr</kbd> puis
+  <kbd>Entrée</kbd>. S'applique aux deux déclencheurs, pas seulement à la touche.</li>
+</ul>
+<p><strong>Bug corrigé au passage</strong>, sans rapport avec ce chantier mais trouvé par lui : un
+lien symbolique vers un dossier partait au téléchargement au lieu d'être parcouru
+(<em>« Impossible de télécharger infra »</em>) — <code>SFTPFile.isDirectory</code> vient d'un champ
+que le protocole SFTP v3 ne transporte pas (piège #45).</p></div>
 
 <h3 id="editeur-par-type">Éditeur par type de fichier (notamment les images)</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30, en constatant à l'usage que l'éditeur

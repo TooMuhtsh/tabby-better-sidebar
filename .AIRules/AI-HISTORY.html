@@ -25,15 +25,59 @@ entrées les plus récentes en tête.</p>
 </div>
 
 <h2>Campagne UX/sécurité du 2026-07-30 — suppression SFTP et sessions actives</h2>
-<p>Trois des cinq axes demandés le 2026-07-30 (<a href="ROADMAP.html#suppr-sftp">suppression SFTP par
-Suppr</a>, <a href="ROADMAP.html#confirmations-html">audit des confirmations</a>,
-<a href="ROADMAP.html#sessions-sftp-visibles">sessions actives en vue SFTP</a>), menés directement sur
-<code>master</code>. Les deux premiers commits ont été poussés <em>non testés</em> ; la passe de test
-de l'utilisateur les a validés et a fait apparaître, sur le troisième, un défaut de mise en page que
-la correction d'origine ne pouvait pas résoudre seule.</p>
+<p>Trois des quatre chantiers demandés le 2026-07-30 (<a href="ROADMAP.html#suppr-sftp">suppression
+SFTP par Suppr</a>, <a href="ROADMAP.html#sessions-sftp-visibles">sessions actives en vue SFTP</a>,
+<a href="ROADMAP.html#editeur-force">éditeur forcé au double-clic</a>), plus l'écart d'
+<a href="ROADMAP.html#confirmations-html">audit des confirmations</a> refermé au passage — l'audit
+n'est pas un livrable mais un invariant à tenir. Menés directement sur <code>master</code>. Les deux
+premiers commits ont été poussés <em>non testés</em> ; la passe de test de l'utilisateur les a
+validés et a fait apparaître, sur les sessions actives, un défaut de mise en page que la correction
+d'origine ne pouvait pas résoudre seule. Reste de la campagne :
+<a href="ROADMAP.html#drag-out">glisser-déposer sortant</a>.</p>
 
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-07-30</td><td><code>8faf86b</code></td>
+<td><strong>Le double-clic force un éditeur, jamais l'association du système</strong>
+(<a href="ROADMAP.html#editeur-force">#editeur-force</a>). <code>platform.openPath()</code>
+disparaît : ouvrir par association <em>exécute</em> un binaire, ou un script dont l'extension est
+liée à un interpréteur, au lieu de l'éditer. L'éditeur est lancé par <code>spawn</code>
+(<code>detached</code> + <code>stdio: 'ignore'</code> + <code>unref()</code>, sans quoi il meurt
+avec Tabby ; l'ENOENT d'un éditeur déplacé arrive de façon asynchrone, d'où le listener
+<code>error</code>), et un échec ne retombe jamais sur l'association — ce serait annuler tout le
+chantier. <strong>L'ouverture est résolue avant le <code>mkdir</code> et le téléchargement</strong> :
+sortir plus tard laissait une copie temporaire, un <code>fs.watch</code> vivant et une session
+enregistrée pour un fichier que personne n'avait ouvert.</td></tr>
+
+<tr><td>2026-07-30</td><td><code>8faf86b</code></td>
+<td><strong>Trois décisions prises pendant le test, dont deux hors du plan initial.</strong>
+(1) Sans éditeur configuré, c'est la <strong>fenêtre « Ouvrir avec » de Windows</strong> qui
+s'ouvre — l'utilisateur ne veut pas chercher un <code>.exe</code> dans <code>Program Files</code>.
+Elle ne rend rien, et sa trace registre est indexée par extension, donc inutilisable pour les
+fichiers de conf sans extension qui sont le cas d'usage réel : l'application choisie est retrouvée
+dans la <em>liste des processus</em>, qui porte notre chemin temporaire sur sa ligne de commande
+(piège #46). (2) Un <strong>onglet de réglages</strong> plutôt qu'un champ isolé, calqué sur celui
+de <code>tabby-better-vault</code> (<code>weight = 2</code>, donc juste avant lui) — c'est la
+surface où poseront les futures options transverses. (3) Une option non prévue : le bouton activé
+par <kbd>Entrée</kbd> dans la confirmation de suppression SFTP. L'utilisateur a d'abord demandé
+<em>Supprimer</em> pour enchaîner <kbd>Suppr</kbd>+<kbd>Entrée</kbd>, puis rejugé — le défaut est
+<em>Annuler</em>, la réponse non destructrice, et l'autre est un opt-in. Appliqué aux deux
+déclencheurs : la même modale répondant différemment selon la façon dont elle a été ouverte serait
+un piège, pas une fonctionnalité.</td></tr>
+
+<tr><td>2026-07-30</td><td><code>8faf86b</code></td>
+<td><strong>Bug trouvé par le chantier sans lui appartenir : un lien symbolique vers un dossier
+partait au téléchargement.</strong> Signalé en test par <em>« Impossible de télécharger infra »</em>,
+avec un <code>Status Failure</code> — ce qu'OpenSSH renvoie pour EISDIR. En cause,
+<code>SFTPFile.isDirectory</code>, que <code>SFTPSession</code> remplit depuis
+<code>metadata.type</code> : le format SFTP v3 ne transporte pas ce champ, un serveur ne répond à
+<code>SSH_FXP_STAT</code> qu'avec un mot de permissions, donc le <code>stat()</code> de la cible
+rendait <code>false</code> pour un dossier. Le type est lu dans le mode
+(<code>(mode &amp; 0o170000) === 0o040000</code>), comme le fait le template natif de Tabby
+(piège #45). Deux leçons pour la suite : un booléen dérivé d'un champ absent du protocole ment
+silencieusement, et un <code>Status Failure</code> générique côté russh mérite qu'on remonte au code
+POSIX qu'il traduit avant de suspecter son propre code.</td></tr>
 
 <tr><td>2026-07-30</td><td><code>0e87258</code></td>
 <td><strong>Trois correctifs sur la section « Sessions actives », issus du test.</strong>
