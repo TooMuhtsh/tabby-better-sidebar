@@ -888,13 +888,11 @@ liste des projets et le lien vers leur `.AIRules/README.html` respectif :
 |---|---|
 | `{{nom-du-dossier}}` | [`{{nom-du-dossier}}/.AIRules/README.html`](./{{nom-du-dossier}}/.AIRules/README.html) |
 
-Index de **ce** workspace (`Développement/`) — à ne pas recopier dans un autre workspace, qui tient
-le sien :
-
-| Projet | Dépôt distant | Gouvernance |
-|---|---|---|
-| `tabby-ssh-sidebar` (paquet `tabby-better-sidebar`) | [TooMuhtsh/tabby-better-sidebar](https://github.com/TooMuhtsh/tabby-better-sidebar) — public | [`.AIRules/README.html`](./tabby-ssh-sidebar/.AIRules/README.html) |
-| `tabby-better-vault` | [TooMuhtsh/tabby-better-vault](https://github.com/TooMuhtsh/tabby-better-vault) — public | [`.AIRules/README.html`](./tabby-better-vault/.AIRules/README.html) |
+**Ce gabarit reste vide ici** : cette charte est un document canonique partagé, poussé tel quel
+dans n'importe quel projet ou workspace — elle ne doit citer aucun projet actif, aucun nom de
+dépôt, aucune URL réelle. L'instanciation concrète (la vraie liste de projets d'*un* workspace
+donné) vit dans le `CLAUDE.md` de ce workspace (Règle 3), jamais dans la copie locale de
+`GOUVERNANCE-IA.md`.
 
 ---
 *Dernière mise à jour de cette charte : **2026-07-30** (préambule : la charte est la référence à tout
@@ -905,7 +903,9 @@ propagation sur branche et validation humaine, clarification de l'épuisement d'
 des pages de sous-dossier, liens internes toujours relatifs, discipline d'édition ciblée + validation
 de syntaxe sur les pages volumineuses ; Règle 5 : script de statusline intégré verbatim comme copie
 de référence, `refreshInterval` corrigé de `1` à `5` et sa justification réécrite après vérification
-de la documentation officielle (ce n'est pas un réglage de debounce).*
+de la documentation officielle (ce n'est pas un réglage de debounce) ; Index des projets d'un
+workspace : retrait de l'instanciation concrète — ce document canonique ne doit citer aucun projet
+actif, seul le gabarit vide reste, l'index réel vivant dans le `CLAUDE.md` de chaque workspace.*
 
 *Révision précédente : **2026-07-29** (Règle 1 : ajout des trois questions à poser au SETUP d'un
 nouveau projet — nom du dépôt distant, privé ou public, authentification `gh` en place).*
