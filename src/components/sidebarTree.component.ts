@@ -70,7 +70,7 @@ interface ActiveTunnel {
 /** One row of the "Sessions actives" section — a live SSH tab, flattened out of its split if it is in one. */
 interface ActiveSession {
     tab: SSHTabComponent
-    /** The launching profile's name, falling back to the tab's own title for a tab opened outside any saved profile (quick connect). */
+    /** The tab's manual rename if it has one, else the launching profile's name, else the tab's own title (quick connect, opened outside any saved profile). */
     name: string
     icon: string
     color: string|null
@@ -1109,7 +1109,21 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 continue
             }
             const profile = (tab as unknown as ProfileBackedTab).profile
-            const sessionName = profile?.name || tab.title || 'Session SSH'
+            // A manually renamed tab wins over the profile name: with several
+            // sessions open on the same machine the profile name repeats on
+            // every row, and the rename is the user's own way of telling them
+            // apart. Same precedence as Tabby's own tab header, which renders
+            // `customTitle || title`.
+            //
+            // The rename modal only ever targets the *top-level* tab (both
+            // entry points — `tabHeader`'s dblclick and the tab context menu —
+            // pass `this.tab`), so for a pane inside a split the custom title
+            // lives on the SplitTabComponent and never on the pane itself:
+            // hence the `topmostParent` fallback. Consequence to keep in mind:
+            // two SSH panes sharing a renamed split show the same label, which
+            // is exactly what their tab header shows.
+            const renamedTitle = tab.customTitle || tab.topmostParent?.customTitle
+            const sessionName = renamedTitle || profile?.name || tab.title || 'Session SSH'
             sessions.push({
                 tab,
                 name: sessionName,

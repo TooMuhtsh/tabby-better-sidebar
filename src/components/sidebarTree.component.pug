@@ -19,23 +19,17 @@
             .fa.fa-fw.fas.fa-folder-open.me-1
             span SFTP
 
-    //- Deliberately [hidden] and not *ngIf: destroying this component would
-    //- destroy its cached SFTP panels too, and rebuilding one opens a fresh
-    //- SFTP channel that nothing closes (SFTPSession has no close(); the
-    //- channel only dies with the SSH session). [active] is what keeps it
-    //- idle while the tree is showing — see the component's `active` input.
-    sidebar-plus-sftp.flex-grow-1(
-        [hidden]='!sftpMode',
-        [active]='sftpMode',
-        (closed)='setSftpMode(false)'
-    )
-
     //- Hidden outright when nothing is connected rather than shown empty: a
     //- permanently visible "aucune session" header would cost a line of the
     //- tree for no information. Stays visible in SFTP mode too — an open
     //- session is a fact of the app, not something the current sidebar tab
     //- should hide (same reasoning as its own SFTP-mode independence, see
     //- ROADMAP #sessions-actives).
+    //-
+    //- Placed *before* <sidebar-plus-sftp>, not after: the panel is
+    //- `flex-grow-1` in this flex column, so anything following it gets pushed
+    //- to the very bottom of the sidebar in SFTP mode. The section is meant to
+    //- sit at the top in both tabs.
     .active-sessions(*ngIf='activeSessions.length')
         a.active-sessions-header((click)='toggleActiveSessions()', href='#')
             .fa.fa-fw.fas.me-1(
@@ -44,7 +38,9 @@
             )
             span.me-auto Sessions actives
             span.active-sessions-count {{ activeSessions.length }}
-        div(*ngIf='!activeSessionsCollapsed')
+        //- The list scrolls past four rows (see the SCSS): the header has to
+        //- stay put, so the cap goes on this inner wrapper, not on the section.
+        .active-sessions-list(*ngIf='!activeSessionsCollapsed')
             //- The SFTP shortcut is a div inside .actions, not a nested <a>:
             //- the row itself is an <a>, and an anchor inside an anchor is
             //- invalid HTML that the parser silently un-nests. Same shape as
@@ -71,9 +67,11 @@
     //- this chantier as a "surcouche visuelle" over the native engine. Sits
     //- under the sessions it belongs to rather than at the very bottom of the
     //- sidebar as first sketched — the tree below is height-constrained, and a
-    //- second live-state block reads better next to the first. Stays visible
-    //- in SFTP mode too, for the same reason as the sessions block above it.
-    .active-tunnels(*ngIf='activeTunnels.length')
+    //- second live-state block reads better next to the first. Unlike the
+    //- sessions block above, this one is hidden in SFTP mode: the user asked
+    //- for it explicitly (2026-07-30), the SFTP tab having no use for the
+    //- forwarding state.
+    .active-tunnels(*ngIf='!sftpMode && activeTunnels.length')
         a.active-sessions-header((click)='toggleActiveTunnels()', href='#')
             .fa.fa-fw.fas.me-1(
                 [class.fa-chevron-down]='!activeTunnelsCollapsed',
@@ -111,6 +109,17 @@
                 //- only adds what the row cannot show: the technical form.
                 .tunnel-details(*ngIf='expandedTunnelIndex === i')
                     .no-wrap {{ tunnel.detail }}
+
+    //- Deliberately [hidden] and not *ngIf: destroying this component would
+    //- destroy its cached SFTP panels too, and rebuilding one opens a fresh
+    //- SFTP channel that nothing closes (SFTPSession has no close(); the
+    //- channel only dies with the SSH session). [active] is what keeps it
+    //- idle while the tree is showing — see the component's `active` input.
+    sidebar-plus-sftp.flex-grow-1(
+        [hidden]='!sftpMode',
+        [active]='sftpMode',
+        (closed)='setSftpMode(false)'
+    )
 
     .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='!sftpMode')
         a.workspace-tab(

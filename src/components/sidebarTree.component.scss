@@ -65,6 +65,11 @@ sidebar-plus-tree .view-mode-bar {
 // `.tree-item`: that block is nested inside `.sidebar-plus-tree`, and this
 // section sits *above* it as a sibling, so none of it would apply.
 sidebar-plus-tree .active-sessions {
+    // Like .active-tunnels below: an item of the sidebar's flex column would
+    // otherwise default to `flex-shrink: 1` and be squeezed by the SFTP panel
+    // (`flex-grow-1`) sitting right under it — the box shrinks, its rows don't,
+    // and the overflow lands on top of the panel.
+    flex: 0 0 auto;
     margin-bottom: .35rem;
 
     .active-sessions-header {
@@ -96,12 +101,29 @@ sidebar-plus-tree .active-sessions {
         background-color: var(--theme-secondary);
     }
 
+    // Four rows visible, the rest on scroll. The block sits above the SFTP
+    // panel and is not compressible (`flex: 0 0 auto` above), so without a cap
+    // a dozen open sessions would squeeze the panel down to nothing in SFTP
+    // view. The cap is on this wrapper, not on .active-sessions, so the header
+    // and its counter stay visible while the list scrolls under them.
+    //
+    // 7rem = 4 × 1.75rem, the row height fixed just below. Both values move
+    // together — a row is .25rem of padding twice plus its 1.25rem line.
+    .active-sessions-list {
+        max-height: 7rem;
+        overflow-y: auto;
+    }
+
     .active-session {
         display: flex;
         align-items: center;
         position: relative;
         overflow: hidden;
         padding: .25rem;
+        // Pinned rather than inherited from Tabby's body line-height: the
+        // max-height above is derived from it, and an inherited value would
+        // make the cap land on 3.5 or 4.5 rows depending on the theme.
+        line-height: 1.25rem;
         border-radius: .3rem;
         color: inherit;
         text-decoration: none;
@@ -658,8 +680,10 @@ sidebar-plus-tree .active-sessions {
 // <sidebar-plus-tree> tag, which is already position: relative for .grabber.
 // `right` clears the resize grabber so it stays grabbable.
 // Reuses .active-sessions-header/-count from the sessions block above, so the
-// two live-state sections read as one family.
-.active-tunnels {
+// two live-state sections read as one family. Scoped to the plugin's tag like
+// every other rule in this file — left unscoped it was global CSS matching any
+// `.active-tunnels` elsewhere in Tabby.
+sidebar-plus-tree .active-tunnels {
     flex: 0 0 auto;
     margin-bottom: .35rem;
 
