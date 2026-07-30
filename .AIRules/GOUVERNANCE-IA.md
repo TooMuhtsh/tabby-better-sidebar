@@ -98,6 +98,14 @@ dont le mandat reste strictement borné :
 Cette automatisation est un confort, pas une obligation : un projet peut tout aussi bien rester sur
 la détection manuelle en début de session.
 
+Sur un poste avec interface graphique, le sondage doit rester invisible : une tâche qui fait
+apparaître une fenêtre de terminal en plein travail va à l'encontre du « sans y penser » évoqué
+plus haut. Attention en particulier à ne pas confondre la visibilité de la *tâche* dans l'outil de
+planification (souvent une simple option « masquée » qui ne concerne que sa liste de gestion) et
+la visibilité de la *fenêtre du processus* qu'elle lance : quand le script est lui-même un
+exécutable à console (interpréteur Node, Python...), l'invoquer directement l'ouvre quand même —
+passer par un lanceur qui masque explicitement la fenêtre du processus exécuté.
+
 - **Copie conforme, jamais adaptée au projet.** Aucune personnalisation, aucun en-tête ajouté : les
   copies doivent rester comparables à l'original par un simple `diff`. Ce qui est spécifique à un
   projet vit dans ses quatre pages, jamais dans sa copie de la charte.
@@ -905,7 +913,10 @@ de syntaxe sur les pages volumineuses ; Règle 5 : script de statusline intégr�
 de référence, `refreshInterval` corrigé de `1` à `5` et sa justification réécrite après vérification
 de la documentation officielle (ce n'est pas un réglage de debounce) ; Index des projets d'un
 workspace : retrait de l'instanciation concrète — ce document canonique ne doit citer aucun projet
-actif, seul le gabarit vide reste, l'index réel vivant dans le `CLAUDE.md` de chaque workspace.*
+actif, seul le gabarit vide reste, l'index réel vivant dans le `CLAUDE.md` de chaque workspace ;
+mécanisme de vérification par cron : précision sur l'exécution silencieuse (fenêtre de tâche
+planifiée masquée ≠ fenêtre du processus lancé, distinction à garder quand le script cron est
+lui-même un exécutable à console).*
 
 *Révision précédente : **2026-07-29** (Règle 1 : ajout des trois questions à poser au SETUP d'un
 nouveau projet — nom du dépôt distant, privé ou public, authentification `gh` en place).*
