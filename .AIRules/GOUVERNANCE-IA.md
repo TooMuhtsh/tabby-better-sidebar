@@ -57,11 +57,43 @@ Chaque dépôt de projet contient à sa racine un dossier `.AIRules/` qui porte 
 
 #### La charte voyage avec le projet
 
-`GOUVERNANCE-IA.md` est **copié à l'identique dans le `.AIRules/` de chaque projet**, en plus de
-l'original conservé à la racine du workspace. Motif : l'original vit généralement dans un dossier
-qui n'est lui-même pas un dépôt Git — il n'est donc ni sauvegardé, ni récupérable ailleurs, alors
-que les projets, eux, sont versionnés et poussés. Un `git clone` d'un projet doit ramener les règles
-qui le régissent, pas seulement les documents qu'elles produisent.
+`GOUVERNANCE-IA.md` est **copié à l'identique dans le `.AIRules/` de chaque projet**. L'original
+canonique vit dans un dépôt public dédié, indépendant de tout workspace ou machine — local comme
+distant (poste perso, projet pro, VPS...) :
+
+```
+https://github.com/TooMuhtsh/Claude-Governance.git
+```
+
+Motif de la copie locale malgré tout : un `git clone` d'un projet doit ramener les règles qui le
+régissent en même temps que le code, pas seulement les documents qu'elles produisent — sans
+dépendre d'un accès réseau à ce dépôt tiers, ni d'un submodule (qui romprait cette garantie : un
+clone sans `--recurse-submodules` laisserait `.AIRules/` incomplet). Un workspace peut, par
+commodité, garder une copie de travail à sa racine hors dépôt Git (comme c'est le cas pour
+`Développement/`) ; cette copie n'est pas une seconde source de vérité, seulement un miroir local
+du dépôt canonique — voir son `README.md` pour le protocole de synchronisation (comparaison des
+dates de pied de page, propagation verbatim, vérifiée par `diff`).
+
+#### Vérifier la conformité à la charte, périodiquement et sans y penser
+
+Au-delà de la vérification en début de session (Règle 7 § « Suivre les révisions de la charte »),
+une tâche planifiée (cron) peut interroger périodiquement le dépôt canonique et comparer sa date de
+pied de page à celle de chaque projet suivi. En cas d'écart, elle peut déclencher une session Claude
+dont le mandat reste strictement borné :
+
+- récupérer la révision à jour du dépôt canonique ;
+- créer une **branche dédiée** dans chaque projet concerné — jamais une écriture directe sur la
+  branche principale, conformément à la règle « `.AIRules/` reflète toujours l'état de la branche
+  principale » ci-dessous ;
+- y propager la charte verbatim et, si pertinent, une proposition de remise à niveau du projet
+  (Règle 7, Cas B) ;
+- s'arrêter là. La fusion vers la branche principale reste un acte de **validation humaine
+  explicite** (Règle 2) : la tâche planifiée ne merge jamais d'elle-même, et n'écrit jamais
+  directement dans les quatre pages `.AIRules/` (leur écriture attend toujours un feu vert, y
+  compris quand l'écart vient d'une détection automatisée plutôt que d'une session ordinaire).
+
+Cette automatisation est un confort, pas une obligation : un projet peut tout aussi bien rester sur
+la détection manuelle en début de session.
 
 - **Copie conforme, jamais adaptée au projet.** Aucune personnalisation, aucun en-tête ajouté : les
   copies doivent rester comparables à l'original par un simple `diff`. Ce qui est spécifique à un
@@ -74,10 +106,17 @@ qui le régissent, pas seulement les documents qu'elles produisent.
 
 - Le projet peut aussi porter un dossier `.tempfiles/` (**ignoré par Git**, contrairement à
   `.AIRules/`) pour les notes de brief, brouillons et fichiers d'échange ponctuels. Ces fichiers
-  sont **jetables par construction** : dès que leur contenu a été exploité ailleurs (code,
+  sont **jetables par construction** : une fois **entièrement** exploités ailleurs (code,
   `.AIRules/`, mémoire persistante), ils se suppriment directement, sans demander confirmation et
-  sans les laisser traîner. La règle ne s'étend à aucun fichier de code ou de configuration — dans
-  le doute sur l'utilité résiduelle d'un fichier, demander.
+  sans les laisser traîner.
+  - **« Exploité » signifie que plus rien d'actionnable n'y reste.** Une extraction partielle —
+    quelques lignes reprises d'un brouillon qui en contient plusieurs — ne l'épuise pas. Un fichier
+    de notes en vrac dont une seule idée a servi n'est pas jetable tant que le reste n'a pas été
+    traité ou explicitement abandonné par l'utilisateur.
+  - Dans le doute sur l'épuisement réel d'un fichier — pas seulement sur son type — redemander
+    plutôt que supprimer. Cette réserve s'ajoute à, sans la remplacer, l'exclusion de tout fichier
+    de code ou de configuration : ces derniers ne sont jamais couverts par cette règle, quel que
+    soit leur état.
 
 #### Fichiers annexes — dossier `annexes/`
 
@@ -217,6 +256,22 @@ générateur — HTML/CSS écrits à la main, aucun JavaScript.
   - des pastilles de statut `.pill.done` / `.pill.progress` / `.pill.planned` / `.pill.out` /
     `.pill.warn` pour les tableaux de roadmap et les points à revérifier ;
   - police système, largeur de lecture max ~900px centrée, tableaux avec lignes zébrées.
+
+#### Discipline d'édition, à mesure que les pages grossissent
+
+Une page comme `AI-HISTORY.html` ou `ROADMAP.html` s'allonge avec le temps, et le risque d'y casser
+une balise (`</td>`, `</tr>`, `</div>` oublié) augmente avec sa taille — un copier-coller ou une
+réécriture large suffit à faire sauter tout le rendu, souvent sans qu'aucune erreur ne le signale
+avant l'ouverture dans un navigateur.
+
+- **Modification ciblée, jamais réécriture complète d'une page existante** pour un ajout localisé
+  (une ligne de tableau, une entrée de chantier) — patcher le bloc concerné, pas régénérer le
+  fichier entier.
+- **Valider le bon parenthésage des balises après toute modification d'une page qui dépasse une
+  taille triviale**, avant de considérer la modification terminée. L'outil précis (linter HTML,
+  validateur XML strict, ou autre) n'est pas fixé ici : il se choisit par projet selon ce qui y est
+  disponible, et se documente comme une commande de plus dans le `CLAUDE.md` du projet (Règle 3),
+  pas dans la charte elle-même.
 
 #### Pages placées dans un sous-dossier (`annexes/`, `archive/`)
 
@@ -542,15 +597,18 @@ recopiables tels quels sur une machine neuve.
 "statusLine": {
   "type": "command",
   "command": "bash ~/.claude/statusline-command.sh",
-  "refreshInterval": 1
+  "refreshInterval": 5
 }
 ```
 
-Le `refreshInterval: 1` (en secondes) est nécessaire pour un affichage dès le démarrage de session :
-sans lui, Claude Code applique un debouncing d'environ 300 ms sur les événements qui déclenchent le
-script (démarrage/reprise de session, nouveau message assistant, `/compact`, changement de
-permission mode, bascule vim mode...), et la statusline peut rester invisible tant qu'aucun échange
-n'a eu lieu.
+`refreshInterval` (en secondes) ajoute un rafraîchissement périodique **en plus** des mises à jour
+événementielles déjà déclenchées par Claude Code (démarrage/reprise de session, nouveau message
+assistant, `/compact`, changement de permission mode, bascule vim mode...) — ce n'est pas un réglage
+de debounce sur ces événements, il n'en existe pas de documenté. Concrètement, tant que la session
+est inactive, le script est relancé toutes les N secondes. Comme le script spawn un process Node qui
+exécute lui-même un `execSync("git branch...")`, une valeur trop basse (`1`) fait tourner ce
+processus en continu en arrière-plan, pour un gain d'affichage nul — une variation de quota à la
+seconde près n'a aucune valeur pratique. `5` reste réactif sans ce coût.
 
 ### Script — `~/.claude/statusline-command.sh`
 
@@ -837,10 +895,14 @@ le sien :
 
 ---
 *Dernière mise à jour de cette charte : **2026-07-30** (préambule : la charte est la référence à tout
-moment et est susceptible d'évoluer ; Règle 1 : dossiers optionnels `annexes/` et `archive/` ;
-Règle 2 : navbar réservée aux quatre pages principales, squelette des pages de sous-dossier, liens
-internes toujours relatifs ; Règle 5 : script de statusline intégré verbatim comme copie de
-référence).*
+moment et est susceptible d'évoluer ; Règle 1 : dossiers optionnels `annexes/` et `archive/`, dépôt
+canonique public `Claude-Governance` et mécanisme de vérification périodique par cron avec
+propagation sur branche et validation humaine, clarification de l'épuisement d'un fichier
+`.tempfiles/` avant suppression ; Règle 2 : navbar réservée aux quatre pages principales, squelette
+des pages de sous-dossier, liens internes toujours relatifs, discipline d'édition ciblée + validation
+de syntaxe sur les pages volumineuses ; Règle 5 : script de statusline intégré verbatim comme copie
+de référence, `refreshInterval` corrigé de `1` à `5` et sa justification réécrite après vérification
+de la documentation officielle (ce n'est pas un réglage de debounce).*
 
 *Révision précédente : **2026-07-29** (Règle 1 : ajout des trois questions à poser au SETUP d'un
 nouveau projet — nom du dépôt distant, privé ou public, authentification `gh` en place).*
