@@ -78,7 +78,10 @@ dates de pied de page, propagation verbatim, vérifiée par `diff`).
 
 Au-delà de la vérification en début de session (Règle 7 § « Suivre les révisions de la charte »),
 une tâche planifiée (cron) peut interroger périodiquement le dépôt canonique et comparer sa date de
-pied de page à celle de chaque projet suivi. En cas d'écart, elle peut déclencher une session Claude
+pied de page à celle de chaque projet suivi. Cette tâche se génère **localement, par le Claude Code
+de l'environnement concerné** — pas une tâche centrale unique qui devrait connaître à l'avance tous
+les environnements et tous les projets : chacun découvre et couvre les projets réellement présents
+chez lui (poste perso, projet pro, VPS...). En cas d'écart, elle peut déclencher une session Claude
 dont le mandat reste strictement borné :
 
 - récupérer la révision à jour du dépôt canonique ;
