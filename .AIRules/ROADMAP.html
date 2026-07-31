@@ -54,7 +54,8 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#notes-profil">Notes de profil (Mémento contextuel)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#ping-live">Indicateur de latence / Ping live</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
-    <td><span class="pill done">✅ Revue faite (2026-07-29)</span></td><td>Entretien récurrent</td></tr>
+    <td><span class="pill progress">🚧 Remise à niveau en cours</span></td>
+    <td>Entretien récurrent</td></tr>
 </table>
 
 <h2>Phase 1 — priorité absolue</h2>
@@ -986,11 +987,46 @@ dans un bloc try/catch verbeux, pour qu'un futur changement de DOM dans <code>ta
 affiche un message clair ("Impossible d'ouvrir automatiquement la modale d'édition, redirection
 vers Paramètres → Profils") plutôt que d'échouer silencieusement.</p>
 
-<h3 id="gouvernance">Conformité de la gouvernance à la charte</h3>
+<h3 id="gouvernance">Conformité de la gouvernance à la charte
+<span class="pill progress">🚧 Remise à niveau en cours</span></h3>
 <p>Revue faite le 2026-07-29 (<code>A-15</code>, Cas B) — écarts constatés et corrigés détaillés dans
 <a href="AI-HISTORY.html">AI-HISTORY</a>, commit <code>db45754</code>. Ce n'est pas un état acquis :
-la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre. Ce qui reste à faire de
-façon récurrente :</p>
+la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre.</p>
+
+<h4>Remise à niveau vers la charte <code>20260731-150737</code></h4>
+<p>Révision <em>touchant le noyau</em> : elle ne s'applique jamais d'office (<code>A-7</code>).
+Arbitrée et engagée le 2026-07-31 — la branche de veille a été fusionnée. Deux items restent
+ouverts, <strong>dans cet ordre</strong> :</p>
+<table>
+<tr><th>Item</th><th>Statut</th></tr>
+<tr><td>Copies verbatim de <code>GOUVERNANCE-IA.md</code> et <code>GABARITS.md</code></td>
+    <td><span class="pill done">✅ Fait (2026-07-31)</span></td></tr>
+<tr><td>Créer <a href="PROFIL.md">PROFIL.md</a> — cadrage complet, profil <code>complet</code>,
+    22 options tranchées</td>
+    <td><span class="pill done">✅ Fait (2026-07-31)</span></td></tr>
+<tr><td>Migrer les références « Règle N » vers les identifiants <code>A-x</code></td>
+    <td><span class="pill done">✅ Fait (2026-07-31)</span></td></tr>
+<tr><td><strong>Audit complet <code>A-15</code>, Cas B</strong> — contexte confronté au code réel,
+    statuts de roadmap confrontés à l'état réel du dépôt, entrée de journal actant la revue, index ;
+    se termine par la mise à jour effective des dates de dernière revue</td>
+    <td><span class="pill planned">📋 À faire</span></td></tr>
+<tr><td><strong>Mention de conformité du pied de page</strong> de
+    <a href="README.html">README.html</a> : « du 2026-07-30 » devient
+    « version <code>20260731-150737</code> »</td>
+    <td><span class="pill planned">📋 À faire — en dernier</span></td></tr>
+</table>
+<div class="callout important"><span class="callout-title">Le pied de page se met à jour en dernier</span>
+<p>Il atteste que <em>le projet</em> suit la charte, pas que sa copie est à jour. Tant que l'audit
+n'a pas eu lieu, l'écart entre lui et l'identifiant de <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a>
+est l'état normal et lisible que décrit <code>A-7</code> : « une copie à jour posée à côté d'un
+projet non remis à niveau … l'écart entre les deux identifiants <em>est</em> le signal ». Le bouger
+plus tôt afficherait une conformité que personne n'a vérifiée.</p></div>
+<p>Les migrations « Règle N » d'<a href="AI-HISTORY.html">AI-HISTORY.html</a> n'ont
+<strong>pas</strong> été faites, et ne le seront pas : <code>A-4</code> impose un journal en ajout
+seul, et ces mentions nommaient la règle telle qu'elle existait à la date de l'entrée.</p>
+
+<h4>Entretien récurrent</h4>
+<p>Ce qui reste à faire de façon récurrente, indépendamment de toute remise à niveau :</p>
 <ul>
 <li><strong>Comparer les deux identifiants en début de session</strong> : celui du pied de page de
   <a href="README.html">README.html</a> (« Conforme à la charte de gouvernance, version … ») et celui
