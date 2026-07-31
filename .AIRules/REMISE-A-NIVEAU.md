@@ -1,4 +1,4 @@
-# Remise à niveau proposée — charte `20260731-135838`
+# Remise à niveau proposée — charte `20260731-150737`
 
 **Ce fichier est une proposition, pas un travail appliqué.** Il a été produit par la veille de
 conformité automatisée en même temps que la copie verbatim de `GOUVERNANCE-IA.md` et de
@@ -7,20 +7,29 @@ projet : ce fichier peut être suivi, amendé, ou supprimé avec la branche.
 
 ## Pourquoi une proposition et non une application
 
-La révision `20260731-135838` se déclare elle-même *touche le noyau*. Selon A-7, une révision de ce
+La révision `20260731-150737` se déclare elle-même *touche le noyau*. Selon A-7, une révision de ce
 régime **ne s'applique jamais d'office** : l'écart se signale, la remise à niveau se propose. Un
 projet peut légitimement rester sur une convention antérieure. Ce qui se propage d'office, ce sont
 les deux fichiers canoniques — une copie périmée n'est pas une convention assumée, c'est une copie
 qu'on ne peut plus comparer par `diff`.
 
-L'écart entre l'identifiant de la copie (`20260731-135838`) et la mention de conformité du pied de
+L'écart entre l'identifiant de la copie (`20260731-150737`) et la mention de conformité du pied de
 page du `README` (encore « du 2026-07-30 ») **est** le signal, et c'est un état normal tant que la
 remise à niveau n'a pas été arbitrée.
+
+
+> **Cette proposition couvre deux révisions.** Ouverte pour `20260731-135838`, elle a été
+> mise à jour vers `20260731-150737` avant toute fusion — les branches de propagation sont des
+> propositions, pas de l'historique, et A-4 ne les couvre pas. La seconde révision ajoute :
+> l'option `fichier-instructions` (le fichier d'instructions n'est plus nommé en dur, et sa
+> vérification devient un point de passage de toute écriture de gouvernance), les options
+> `mot-cloture` et `mot-cadrage`, et un cinquième déclencheur d'entretien « sur demande
+> explicite ». Trois questions de plus au cadrage, dont deux sans défaut.
 
 ## Ce qui a changé dans la charte
 
 Refonte structurelle. Le document se scinde en trois parties : un **noyau** de quinze invariants
-prescriptifs (`A-1` à `A-15`), dix-neuf **options** décidées par projet portant chacune son défaut
+prescriptifs (`A-1` à `A-15`), vingt-deux **options** décidées par projet portant chacune son défaut
 *et le motif de ce défaut*, et un **entretien de cadrage** qui les pose au lieu de les supposer.
 L'ancienne numérotation « Règle 1 à 7 » disparaît.
 
@@ -86,7 +95,7 @@ confortablement.
 ### 3. Mettre à jour la mention de conformité
 
 `README.html`, pied de page : « Conforme à la charte de gouvernance du 2026-07-30 » devient une
-mention par identifiant, `Conforme à la charte de gouvernance, version 20260731-135838`. À ne faire
+mention par identifiant, `Conforme à la charte de gouvernance, version 20260731-150737`. À ne faire
 qu'**au terme** de la remise à niveau : cette ligne atteste que le projet suit la charte, pas que sa
 copie est à jour.
 

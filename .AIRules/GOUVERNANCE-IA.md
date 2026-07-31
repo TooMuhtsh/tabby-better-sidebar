@@ -9,8 +9,8 @@ Elle s'utilise dans quatre situations :
 
 - un **nouveau projet**, dès sa création ;
 - un **projet existant sans gouvernance formalisée** ;
-- un projet dont la gouvernance **existe sous une autre forme** (`CLAUDE.md` devenu
-  fourre-tout, notes Markdown, wiki, tickets) et qu'il s'agit de transposer ;
+- un projet dont la gouvernance **existe sous une autre forme** (fichier d’instructions
+  devenu fourre-tout, notes Markdown, wiki, tickets) et qu'il s'agit de transposer ;
 - un projet **déjà au format `.AIRules/` mais dont le contenu a dérivé**, ou resté conforme
   à une révision antérieure de cette charte.
 
@@ -52,7 +52,7 @@ Conséquences pour une révision future :
 La charte ne se lit pas seulement au moment d'un SETUP ou d'une mise en conformité :
 **elle est la référence pendant toute session, sur tout projet**, y compris quand la
 session démarre directement dans un projet. En cas de contradiction entre elle et un
-`CLAUDE.md`, un document de gouvernance ou une habitude prise en cours de route, c'est
+le fichier d’instructions, un document de gouvernance ou une habitude prise en route, c'est
 elle qui tranche — et la contradiction elle-même est à signaler plutôt qu'à contourner
 (A-5, détection de dérive).
 
@@ -63,7 +63,7 @@ révision porte un **identifiant horodaté** au format `AAAAMMJJ-HHMMSS`, en UTC
 moment où la révision est figée :
 
 ```
-20260731-135838
+20260731-150737
 ```
 
 C'est le numéro de version, et le seul. Il est **monotone** (une version postérieure est
@@ -128,7 +128,7 @@ conséquence — quels que soient le format retenu et le nombre de fichiers :
 
 Trois natures qui n'y sont pas, et qu'il ne faut pas y faire entrer :
 
-- **commandes de build, de test, d'installation** → `CLAUDE.md` (A-11) ;
+- **commandes de build, de test, d'installation** → **fichier d’instructions** (A-11) ;
 - **préférence de collaboration, retour d'expérience sur la façon de travailler ensemble**
   → mémoire persistante (A-11) ;
 - **information dérivable du code en le lisant, ou périmée** → nulle part. Elle se
@@ -211,9 +211,9 @@ identifiants sont **attribués une fois et ne bougent plus** — jamais renumér
 réattribués, même si l'ordre d'affichage change, même si l'entrée est vidée de sa
 substance, même si un archivage libère un numéro.
 
-Motif : ils sont référencés ailleurs — depuis `CLAUDE.md`, depuis la roadmap, depuis un
-message de commit — et une référence qui pointe silencieusement ailleurs est pire qu'une
-référence cassée.
+Motif : ils sont référencés ailleurs — depuis le fichier d’instructions, depuis la roadmap,
+depuis un message de commit — et une référence qui pointe silencieusement ailleurs est pire
+qu'une référence cassée.
 
 Corollaire : une numérotation stable suppose de connaître le dernier numéro attribué,
 information qu'aucune lecture partielle ne donne puisque l'ordre d'affichage ne suit pas la
@@ -321,7 +321,8 @@ perdre**. Dès qu'il existe :
 - **Un archivage attend le feu vert** (A-3) : sortir un chantier du journal *est* une
   écriture dans le journal. La proposition dit quels chantiers partiraient et ce que le
   document principal garderait.
-- **Le contexte ne s'archive pas.** Ses ancres sont référencées depuis `CLAUDE.md` et
+- **Le contexte ne s'archive pas.** Ses ancres sont référencées depuis le fichier
+  d’instructions et
   depuis la roadmap : déplacer un piège dans un sous-dossier casse silencieusement chacune
   de ces références. S'y ajoute qu'un piège résolu se conserve en place parce qu'il
   documente pourquoi le code est écrit ainsi. Une catégorie entière peut à la rigueur
@@ -343,19 +344,42 @@ faire confiance sans vérifier.
   Une gouvernance à jour qui dort en local n'est ni sauvegardée, ni récupérable depuis une
   autre machine, ni exploitable par un outil externe qui lit le dépôt.
 
-## A-11 — `CLAUDE.md` et mémoire persistante
+## A-11 — Fichier d'instructions et mémoire persistante
 
-- Chaque projet garde un `CLAUDE.md` à sa racine, **référence rapide** : commandes de
-  build et de test, particularités d'installation, et une consigne explicite de lire la
-  gouvernance en début de session avant tout le reste. Il ne duplique pas le contenu
-  détaillé de `.AIRules/` — seulement des pointeurs.
-- Il se met à jour **dès qu'une convention de code, une commande de build ou un piège
-  d'environnement change** — au moment du changement, pas en fin de session.
-- Si plusieurs projets cohabitent dans un workspace, un `CLAUDE.md` à sa racine référence
-  chacun d'eux et pointe vers sa gouvernance.
+Chaque projet garde à sa racine un **fichier d'instructions auto-chargé par l'assistant**,
+qui sert de **référence rapide** : commandes de build et de test, particularités
+d'installation, et une consigne explicite de lire la gouvernance en début de session avant
+tout le reste. Il ne duplique pas le contenu détaillé de `.AIRules/` — seulement des
+pointeurs.
+
+Son nom dépend de l'outil qui le consomme et se déclare au cadrage (option
+`fichier-instructions`) : `CLAUDE.md`, `AGENTS.md`, ou les deux. La charte ne le nomme nulle
+part ailleurs, parce qu'elle ne dépend d'aucun outil.
+
+### Sa mise à jour est un point de passage, pas une réaction
+
+**Toute écriture dans la gouvernance vérifie d'abord le fichier d'instructions**, et le
+corrige si nécessaire, avant d'être considérée comme terminée. « Si nécessaire » reste du
+jugement ; la **vérification**, elle, ne l'est plus.
+
+C'est la différence entre une règle tenue et une règle oubliée : « mettre à jour dès qu'une
+commande change » suppose de remarquer le changement, ce qui n'arrive pas. Un point de
+passage arrive à chaque fois.
+
+Ce qui se vérifie, au minimum : commandes de build, de test et d'installation ; particularité
+d'installation ou d'environnement ; renvois vers la gouvernance et vers les identifiants
+qu'elle porte ; mot de clôture et mot de cadrage (options `mot-cloture`, `mot-cadrage`) ;
+décision d'attribution (option `attribution`).
+
+Si plusieurs projets cohabitent dans un workspace, un fichier d'instructions à sa racine
+référence chacun d'eux et pointe vers sa gouvernance.
+
+### Mémoire persistante
+
 - La **mémoire persistante inter-conversations** est complémentaire, pas redondante :
-  `.AIRules/` et `CLAUDE.md` portent ce qui est **spécifique au projet et versionné avec le
-  code** ; la mémoire porte ce qui est **transverse et propre à la collaboration**
+  `.AIRules/` et le fichier d'instructions portent ce qui est **spécifique au projet et
+  versionné avec le code** ; la mémoire porte ce qui est **transverse et propre à la
+  collaboration**
   (préférences, retours d'expérience sur la façon de travailler, état d'avancement à
   connaître avant même d'ouvrir un projet, pointeurs vers des systèmes externes).
 - Une information dérivable du code ou déjà documentée dans `.AIRules/` n'a pas sa place en
@@ -442,7 +466,7 @@ n'a de valeur que là où la décision en a une.
   tout un rendu sans qu'aucune erreur ne le signale.
 - **Valider la syntaxe après toute modification d'un document qui dépasse une taille
   triviale**, avant de considérer la modification terminée. L'outil se choisit au cadrage
-  (option `validateur`) et sa commande exacte vit dans `CLAUDE.md`.
+  (option `validateur`) et sa commande exacte vit dans le fichier d’instructions.
 - **Tous les liens internes sont relatifs**, avec autant de `../` que la profondeur réelle
   l'exige. Jamais de chemin absolu, jamais de chemin de machine, jamais de `/` initial :
   `.AIRules/` doit s'ouvrir tel quel après un `git clone` sur n'importe quelle machine, et
@@ -468,7 +492,8 @@ Deux situations, à ne pas traiter de la même façon.
 
 ### Cas A — transposer un existant vers le format `.AIRules/`
 
-Un projet en cours a rarement une page blanche : `CLAUDE.md` qui a gonflé, `README`
+Un projet en cours a rarement une page blanche : un fichier d’instructions qui a gonflé, un
+`README`
 fourre-tout, notes Markdown, `docs/`, wiki, tickets, `TODO` en commentaire, historique Git.
 La migration **redistribue** cet existant, elle ne le réécrit pas de zéro et ne le recopie
 pas tel quel.
@@ -545,6 +570,7 @@ Chaque défaut porte son motif : un défaut sans motif ne se conteste pas, il se
 |---|---|---|---|
 | `format` | Format des documents | `html` · `markdown` · autre | `html` |
 | `documents` | Nombre de documents | `4` · `3` (journal et roadmap fusionnés) | `4` |
+| `fichier-instructions` | Nom du fichier d'instructions auto-chargé | `CLAUDE.md` · `AGENTS.md` · les deux · autre | `CLAUDE.md` |
 | `statuts` | Vocabulaire de statuts | `complet` · `réduit` | `complet` |
 | `outillage` | Le projet produit-il de l'outillage pour vous-même ? | `oui` · `non` | déduit au cadrage |
 | `tempfiles` | Espace de brouillons hors Git | `oui` · `non` | `oui` |
@@ -555,6 +581,8 @@ Chaque défaut porte son motif : un défaut sans motif ne se conteste pas, il se
 | `branches` | Où vit un chantier non abouti | `branche` · `direct` | `branche` |
 | `seuil` | Ce que recouvre le feu vert d'A-3 | `strict` · `roadmap-libre` · `tout-libre` | `strict` |
 | `roadmap-avant-code` | Une idée passe-t-elle par la roadmap avant le code ? | `oui` · `non` | `oui` |
+| `mot-cloture` | Mot qui déclenche la chaîne de clôture complète | texte libre · `aucun` | **sans défaut** |
+| `mot-cadrage` | Mot qui relance l'entretien de cadrage | texte libre · `aucun` | **sans défaut** |
 | `validation` | Ce que « conditions réelles » veut dire ici | texte libre | **sans défaut** |
 | `jetables` | Convention de nommage des données de test | texte libre · `sans objet` | **sans défaut** |
 | `test-manuel` | Test manuel d'abord, automatisation en dernier recours | `oui` · `non` | `oui` |
@@ -589,6 +617,57 @@ réfléchir, et c'est la lecture qui coûte, pas le nombre de fichiers.
 **Critère de scission, obligatoire si `3` est retenu** : dès que le document fusionné
 dépasse ce qu'on relit d'un bout à l'autre, il se sépare. Sans ce critère écrit, la fusion
 devient définitive par inertie.
+
+## `fichier-instructions` — nom du fichier d'instructions
+
+**`CLAUDE.md`** (défaut) · **`AGENTS.md`** · **les deux** · **autre**.
+
+*Pourquoi `CLAUDE.md` par défaut* : c'est le fichier de l'outil qui consomme cette charte
+aujourd'hui. Le défaut nomme un usage, il ne prescrit pas un produit — A-11 ne mentionne
+aucun nom.
+
+Si **les deux** sont retenus, l'un est la **source** et l'autre un **renvoi d'une ligne**
+vers lui. Jamais deux contenus à tenir en parallèle : ce serait exactement la double source
+de vérité qu'A-2 interdit, à l'endroit le plus lu du dépôt.
+
+## `mot-cloture` — le mot qui ferme un chantier
+
+**Sans défaut**, texte libre, ou `aucun` si le projet n'en veut pas.
+
+Un mot — ou une phrase courte — dont l'énoncé vaut, **en un seul geste** :
+
+1. le **feu vert explicite** qu'A-3 exige avant toute écriture dans le journal et la
+   roadmap ;
+2. la mise à jour des documents de gouvernance concernés ;
+3. la vérification du fichier d'instructions (A-11) ;
+4. le commit ;
+5. le push, si le projet a un dépôt distant (option `distant`).
+
+**Ce n'est pas un contournement de la validation, c'en est la forme la plus courte.**
+Prononcer le mot *est* le feu vert : la charte n'a jamais exigé une cérémonie, seulement une
+décision explicite de l'utilisateur. Un raccourci qui porte cette décision la respecte
+pleinement.
+
+*Pourquoi sans défaut* : un mot imposé n'est pas le vôtre, et un mot qu'on n'a pas choisi ne
+se retient pas. Deux contraintes seulement — qu'il soit **distinctif** (il ne doit pas se
+déclencher au fil d'une phrase ordinaire) et qu'il soit **rappelé dans le fichier
+d'instructions**, sans quoi il n'est connu que de celui qui l'a écrit.
+
+La chaîne s'arrête à la première étape qui échoue, et dit où elle s'est arrêtée. Un mot de
+clôture qui laisse croire à un push qui n'a pas eu lieu est pire que pas de mot du tout.
+
+## `mot-cadrage` — le mot qui relance l'entretien
+
+**Sans défaut**, texte libre, ou `aucun`.
+
+Son énoncé rouvre l'entretien de cadrage (partie C) sur un projet déjà cadré : soit en
+entier, soit sur quelques clés nommées. Chaque changement retenu suit A-13 — proposition,
+validation, ligne au journal.
+
+*Pourquoi sans défaut, et pourquoi un mot distinct de `mot-cloture`* : ce sont deux gestes de
+fréquence très différente. Clôturer arrive à chaque chantier ; recadrer arrive quand le
+projet change de nature. Les fondre dans un seul mot ferait payer au geste fréquent une
+question intermédiaire à chaque fois.
 
 ## `statuts` — vocabulaire de statuts
 
@@ -682,7 +761,8 @@ Co-auteur, lien de session, mention de l'outil. **Sans défaut** : sur un dépô
 métadonnées exposent un historique de collaboration qui n'était pas forcément destiné à
 être publié. C'est une décision d'auteur, pas un réglage d'outil — elle se pose toujours.
 
-La réponse s'écrit dans `PROFIL.md`, et `CLAUDE.md` porte un renvoi d'une ligne pour
+La réponse s'écrit dans `PROFIL.md`, et le fichier d’instructions porte un renvoi d'une
+ligne pour
 qu'elle n'ait pas à être rediscutée à chaque commit.
 
 ## `authentification` — accès à la forge
@@ -799,8 +879,8 @@ La réponse se rappelle en une ou deux phrases dans l'index de la gouvernance.
 ## `validateur` — outil de validation de syntaxe
 
 **Sans défaut**, texte libre. A-14 impose de valider ; **quel outil** dépend de
-l'écosystème du projet et de ce qui y est disponible. La commande exacte vit dans
-`CLAUDE.md`.
+l'écosystème du projet et de ce qui y est disponible. La commande exacte vit dans le
+fichier d’instructions.
 
 *Pourquoi sans défaut* : nommer un outil dans la charte la ferait dépendre de logiciels qui
 vieillissent, sur des écosystèmes qu'elle ne connaît pas d'avance. Mais une obligation sans
@@ -856,10 +936,16 @@ Quatre déclencheurs :
    celles dont la réponse ne correspond plus au projet.
 4. **Révision additive de la charte** : on ne repose **que les nouvelles questions**, avec
    leur défaut déjà appliqué. C'est une notification à arbitrer, pas un entretien complet.
+5. **Sur demande explicite, à tout moment** — c'est ce que déclenche l'option `mot-cadrage`.
+   Un projet change de nature sans prévenir : un prototype devient un produit, un dépôt privé
+   devient public, un outillage trouve son usage. Aucun des quatre autres déclencheurs ne se
+   produit alors, et le profil vieillit en silence. La relance peut être **complète ou
+   ciblée sur quelques clés** — rouvrir tout l'entretien pour changer une valeur serait la
+   meilleure façon de ne jamais le rouvrir.
 
 ## Profils de départ
 
-Poser dix-neuf questions à chaque SETUP garantit qu'il ne sera jamais mené jusqu'au bout.
+Poser vingt-deux questions à chaque SETUP garantit qu'il ne sera jamais mené jusqu'au bout.
 L'entretien commence donc par **un mot**, puis se poursuit en écrasant les points qu'on veut.
 
 | Profil | Pour quel projet |
@@ -872,9 +958,10 @@ L'entretien commence donc par **un mot**, puis se poursuit en écrasant les poin
 seule table, un seul endroit. La redire ici en produirait une seconde qui divergerait, ce
 qu'A-2 interdit précisément.
 
-Les questions **sans défaut** (`visibilité`, `attribution`, `authentification`,
-`validation`, `jetables`, `discipline-test`, `validateur`) ne figurent dans aucun profil et
-se posent **quel qu'il soit** : aucun profil ne peut y répondre à votre place.
+Les neuf questions **sans défaut** (`visibilité`, `attribution`, `authentification`,
+`validation`, `jetables`, `discipline-test`, `validateur`, `mot-cloture`, `mot-cadrage`) ne
+figurent dans aucun profil et se posent **quel qu'il soit** : aucun profil ne peut y répondre
+à votre place.
 
 ## Comment mener l'entretien
 
@@ -945,7 +1032,8 @@ tenir ici la liste des projets et le lien vers leur gouvernance respective :
 
 **Ce gabarit reste vide ici** : cette charte est un document canonique partagé, poussé tel
 quel dans n'importe quel projet ou workspace — elle ne cite aucun projet actif, aucun nom
-de dépôt, aucune URL réelle. L'instanciation concrète vit dans le `CLAUDE.md` du workspace
+de dépôt, aucune URL réelle. L'instanciation concrète vit dans le fichier d’instructions du
+workspace
 (A-11).
 
 ---
@@ -993,6 +1081,27 @@ migrées. Une table de compatibilité sans date de péremption reste éternellem
 
 # Historique des révisions
 
+## Version **`20260731-150737`** — 2026-07-31 · *touche le noyau*
+
+Le fichier d'instructions cesse d'être nommé en dur, et sa mise à jour cesse d'être
+réactive. Deux mots configurables entrent dans le cadrage.
+
+- **A-11 devient agnostique de l'outil** : la charte parle du « fichier d'instructions
+  auto-chargé par l'assistant », et la nouvelle option `fichier-instructions` dit lequel
+  c'est — `CLAUDE.md` par défaut, `AGENTS.md`, ou les deux. Un document qui se prétend
+  indépendant de l'outil ne pouvait pas nommer un produit quinze fois.
+- **Sa vérification devient un point de passage** de toute écriture de gouvernance, avec la
+  liste de ce qui se contrôle. « Mettre à jour dès qu'une commande change » supposait de
+  remarquer le changement, ce qui n'arrive pas.
+- **`mot-cloture`** : un mot dont l'énoncé vaut, en un seul geste, feu vert d'A-3, mise à
+  jour des documents, vérification du fichier d'instructions, commit et push. Ce n'est pas
+  un contournement de la validation mais sa forme la plus courte — le prononcer *est* la
+  décision explicite que la charte exige.
+- **`mot-cadrage`** et un **cinquième déclencheur** d'entretien, « sur demande explicite, à
+  tout moment », complet ou ciblé sur quelques clés. Un projet change de nature sans
+  qu'aucun des quatre autres déclencheurs ne se produise, et son profil vieillissait en
+  silence.
+
 ## Version **`20260731-135838`** — 2026-07-31 · *touche le noyau*
 
 Refonte structurelle. Le document se scinde en trois parties : un **noyau** de quinze
@@ -1034,6 +1143,6 @@ lieu de les supposer.
 | 2026-07-28 | Ajout des Règles 6 et 7 ; révision des cadences d'écriture et de la discipline de vérification. |
 
 ---
-*Version de cette charte : **`20260731-135838`**. C'est cet identifiant que reprend la
+*Version de cette charte : **`20260731-150737`**. C'est cet identifiant que reprend la
 mention « Conforme à la charte de gouvernance, version {{id}} » dans le pied de page de
 l'index de gouvernance de chaque projet.*

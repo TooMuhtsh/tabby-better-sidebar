@@ -173,8 +173,8 @@ Ordre après le `<h1>Contexte &amp; invariants</h1>` et la ligne de dernière re
 1. **Paragraphe d'intro** : rappeler l'objectif — éviter de retomber deux fois dans le même
    piège, donc organisation **par catégorie thématique**, pas chronologique. Préciser
    explicitement que la numérotation `#N` est **stable et ne se renumérote jamais** (A-6),
-   et que les commandes de build ne sont pas dupliquées ici (elles restent dans
-   `CLAUDE.md`).
+   et que les commandes de build ne sont pas dupliquées ici (elles restent dans le fichier
+   d'instructions).
 2. **Encadré `note` « Légende »** expliquant la convention du statut « À revérifier ».
 3. **`Sommaire`** : liste d'ancres vers chaque catégorie, chaque entrée listant les numéros
    `#N` qu'elle contient. Immédiatement dessous, une ligne secondaire donnant le **prochain
@@ -419,7 +419,7 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 [`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md), partie B.
 
 - **Profil de départ** : `standard`
-- **Charte au moment du cadrage** : `20260731-135838`
+- **Charte au moment du cadrage** : `20260731-150737`
 - **Dernière revue de ce profil** : {{date}}
 
 ## Choix
@@ -428,6 +428,7 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 |---|---|---|
 | `format` | `html` | défaut appliqué, non tranché |
 | `documents` | `4` | défaut appliqué, non tranché |
+| `fichier-instructions` | `CLAUDE.md` | défaut appliqué, non tranché |
 | `statuts` | `complet` | défaut appliqué, non tranché |
 | `outillage` | `oui` | le projet produit ses propres scripts de build et de publication |
 | `tempfiles` | `oui` | défaut appliqué, non tranché |
@@ -438,12 +439,14 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 | `branches` | `branche` | défaut appliqué, non tranché |
 | `seuil` | `strict` | défaut appliqué, non tranché |
 | `roadmap-avant-code` | `oui` | défaut appliqué, non tranché |
+| `mot-cloture` | {{mot}} | ferme un chantier : documents, fichier d'instructions, commit, push |
+| `mot-cadrage` | {{mot}} | rouvre l'entretien, complet ou ciblé |
 | `validation` | {{ce que « conditions réelles » veut dire ici}} | — |
 | `jetables` | {{convention de nommage}} | — |
 | `test-manuel` | `oui` | défaut appliqué, non tranché |
 | `dépendances` | `ordinaire` | défaut appliqué, non tranché |
 | `discipline-test` | {{comment on teste, ce qui ne doit jamais être touché}} | — |
-| `validateur` | {{outil et commande}} | commande exacte dans `CLAUDE.md` |
+| `validateur` | {{outil et commande}} | commande exacte dans le fichier d'instructions |
 | `veille-conformité` | `non` | défaut appliqué, non tranché |
 
 ## Questions non tranchées
@@ -466,6 +469,7 @@ Point de départ seulement — chaque ligne reste écrasable.
 |---|---|---|---|
 | `format` | `markdown` | `html` | `html` |
 | `documents` | `3` | `4` | `4` |
+| `fichier-instructions` | `CLAUDE.md` | `CLAUDE.md` | `CLAUDE.md` |
 | `statuts` | `réduit` | `complet` | `complet` |
 | `outillage` | `non` | à demander | `oui` |
 | `tempfiles` | `oui` | `oui` | `oui` |
@@ -477,10 +481,13 @@ Point de départ seulement — chaque ligne reste écrasable.
 | `dépendances` | `ordinaire` | `ordinaire` | `ordinaire` |
 | `veille-conformité` | `non` | `non` | `oui` |
 
-Les sept questions **sans défaut** — `visibilité`, `attribution`, `authentification`,
-`validation`, `jetables`, `discipline-test`, `validateur` — ne figurent dans aucun profil.
-Elles se posent toujours, quel que soit le point de départ.
+Les neuf questions **sans défaut** — `visibilité`, `attribution`, `authentification`,
+`validation`, `jetables`, `discipline-test`, `validateur`, `mot-cloture`, `mot-cadrage` — ne
+figurent dans aucun profil. Elles se posent toujours, quel que soit le point de départ.
+
+Les deux mots, en particulier, ne peuvent pas avoir de défaut : un mot qu'on n'a pas choisi
+ne se retient pas, et un mot imposé finirait par se déclencher au fil d'une phrase.
 
 ---
-*Version de ce fichier : **`20260731-135838`**. Il suit l'identifiant de
+*Version de ce fichier : **`20260731-150737`**. Il suit l'identifiant de
 [`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md) et se propage avec elle.*
