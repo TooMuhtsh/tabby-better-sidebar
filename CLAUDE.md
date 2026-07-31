@@ -18,10 +18,12 @@ ce qui reste à faire. Ouvrir ces fichiers directement dans un navigateur
 évidents y sont documentés pour ne pas les redécouvrir à chaque fois.
 
 La charte qui régit ce projet est `.AIRules/GOUVERNANCE-IA.md`, version
-`20260731-150737` ; **les réponses de cadrage propres à ce projet sont dans
+`20260731-204511` ; **les réponses de cadrage propres à ce projet sont dans
 `.AIRules/PROFIL.md`** — s'y reporter plutôt que de redécider une convention au
 coup par coup. `.AIRules/GABARITS.md` ne s'ouvre qu'au moment de créer ou de
-restructurer un document.
+restructurer un document. Le pied de page de `.AIRules/README.html` porte encore
+une mention datée : c'est voulu, la remise à niveau n'est pas terminée (voir le
+chantier « Conformité de la gouvernance » de la roadmap).
 
 ## Mots déclencheurs
 

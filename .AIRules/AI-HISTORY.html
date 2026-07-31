@@ -24,6 +24,98 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Cadrage de gouvernance du 2026-07-31 — <code>PROFIL.md</code>, validateur et charte
+<code>20260731-204511</code></h2>
+<p>Session ouverte à la racine du workspace pour <strong>relancer l'entretien de cadrage</strong>
+(<code>A-15</code> Cas B, déclencheur « révision de la charte touchant le noyau »). Périmètre
+restreint à ce projet par l'utilisateur : <code>tabby-better-vault</code> n'est pas touché et sa
+branche de propagation reste non fusionnée. Le chantier
+<a href="ROADMAP.html#gouvernance">Conformité de la gouvernance</a> porte les deux items encore
+ouverts — audit <code>A-15</code> Cas B, puis mention de conformité du pied de page, dans cet
+ordre.</p>
+<p>Deux réponses de cadrage <strong>changent une pratique</strong> au lieu d'enregistrer
+l'existant : <code>branches</code> passe à <code>branche</code> (le projet travaillait en direct sur
+<code>master</code>) et <code>outillage</code> vaut <code>oui</code>, ce qui rend l'état « Adopté »
+utilisable — la classe <code>.adopted</code> existait dans <code>style.css</code> sans qu'aucun
+chantier ne puisse la porter. Trois dérives ont été constatées et corrigées en séance
+(<code>A-5</code>) ; elles sont décrites dans les entrées ci-dessous.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-07-31</td><td><code>854ea9e</code></td>
+<td><strong>Le mot de clôture passe de <code>CLOTURE</code> à <code>MAJ</code></strong>
+(<code>A-13</code>, changement d'option du <a href="PROFIL.md">PROFIL.md</a> sur demande explicite).
+Le mot vit à trois endroits — <code>PROFIL.md</code>, le <code>CLAUDE.md</code> du projet et celui du
+workspace — mis à jour dans le même geste. <code>MAJ</code> est <strong>nettement moins
+distinctif</strong> que le précédent, étant l'abréviation usuelle de « mise à jour » : la règle de
+désambiguïsation gagne un paragraphe dédié dans les deux <code>CLAUDE.md</code>, et la réserve est
+écrite à côté de la valeur dans le profil pour qu'une relecture du cadrage la retrouve.</td></tr>
+
+<tr><td>2026-07-31</td><td><code>2f97b3f</code></td>
+<td><strong>Charte <code>20260731-204511</code> propagée, <code>REMISE-A-NIVEAU.md</code> supprimé
+dans le même commit que la fusion.</strong> Trois révisions traversées depuis la dernière
+conformité. Vérifié plutôt que supposé, la branche l'affirmant sans le prouver : <strong>24 options
+de part et d'autre, aucune ajoutée ni retirée, quinze invariants inchangés</strong> — donc aucune
+question de cadrage nouvelle et un <code>PROFIL.md</code> qui reste valide. Copies contrôlées par
+empreinte Git (<code>6e52454</code>, <code>10ddd25</code>), pas par <code>diff</code>. La règle qui
+fixe la fin de vie de ce fichier est arrivée par le dépôt canonique (révision
+<code>20260731-203812</code>) après avoir été constatée ici : voir <code>811264b</code>. La ligne
+« Charte au moment du cadrage » du profil <strong>reste à <code>20260731-150737</code></strong> :
+elle date le cadrage, pas la copie.</td></tr>
+
+<tr><td>2026-07-31</td><td><code>811264b</code></td>
+<td><strong>Dérive — la roadmap affichait « ✅ Revue faite (2026-07-29) » pendant qu'une remise à
+niveau était engagée avec deux items ouverts.</strong> Le corps du chantier avait été rafraîchi au
+commit précédent, la pastille non, et <code>REMISE-A-NIVEAU.md</code> disait l'inverse : deux
+documents décrivaient le même fait et se contredisaient (<code>A-2</code>). C'est précisément ce que
+l'audit <code>A-15</code> Cas B est censé attraper — « un chantier marqué livré dont on ne trouve pas
+trace de mise en service redescend » —, le mécanisme n'avait simplement pas été appliqué à lui-même.
+Pastille passée en <code>progress</code>, classe jusqu'ici définie mais employée nulle part ; items
+rapatriés dans le chantier de roadmap, qui <em>existait déjà</em> ; fichier supprimé après
+vérification qu'aucun document ne le référençait et que son seul contenu non repris dupliquait
+l'historique des révisions de la charte.</td></tr>
+
+<tr><td>2026-07-31</td><td><code>0ebd354</code></td>
+<td><strong>Références « Règle N » migrées vers les identifiants <code>A-x</code></strong> dans
+<code>README.html</code> et <code>ROADMAP.html</code>. Les trois occurrences
+d'<code>AI-HISTORY.html</code> <strong>restent en place</strong> : <code>A-4</code> impose un journal
+en ajout seul, et elles nommaient la règle telle qu'elle existait à la date de l'entrée. Deux
+dérives corrigées au passage — les deux documents situaient l'original de la charte « à la racine du
+workspace », alors que c'est un miroir de commodité et non la source, et décrivaient la vérification
+de conformité comme une comparaison de <em>dates</em> là où la charte est versionnée par identifiant
+horodaté depuis <code>20260731-135838</code>.</td></tr>
+
+<tr><td>2026-07-31</td><td><code>648a620</code></td>
+<td><strong>Piège <a href="AI-CONTEXT.html#piege-47">#47</a> et compteur de numérotation.</strong>
+<code>core.autocrlf=true</code> sur ce poste contre le <code>eol=lf</code> du dépôt canonique : un
+<code>diff</code> nu de la charte rapporte toutes les lignes comme différentes alors que les blobs
+Git sont identiques — indiscernable d'une copie périmée ou adaptée au projet. Rencontré en
+vérifiant la propagation, écrit sans feu vert (<code>A-3</code>, le contexte s'écrit au fil de
+l'eau). <code>AI-CONTEXT.html</code> n'indiquait pas son prochain numéro libre, ce qu'<code>A-6</code>
+impose : l'information ne vivait que dans <code>CLAUDE.md</code>, au mauvais endroit et déjà fausse
+d'un cran. Compteur posé en tête à #48.</td></tr>
+
+<tr><td>2026-07-31</td><td><code>6c8d5e2</code></td>
+<td><strong>Création de <a href="PROFIL.md">PROFIL.md</a> et du validateur de documents.</strong>
+Entretien de cadrage complet, profil de départ <code>complet</code> : les vingt-deux options
+reçoivent une réponse explicite, aucune ne reste « défaut appliqué, non tranché ».
+<code>validateur</code> était sans réponse alors qu'<code>A-14</code> impose de valider —
+<code>html-validate</code> entre en <code>devDependency</code> avec
+<code>npm run lint:airules</code>. Deux règles neutralisées (<code>doctype-style</code>,
+<code>prefer-tbody</code>) : cosmétiques, aucune ne détecte une structure cassée, et les satisfaire
+imposerait de réécrire en masse des documents dont ce journal. Contrôlé sur un fichier
+volontairement cassé, <code>close-order</code> est bien remonté.</td></tr>
+
+<tr><td>2026-07-31</td><td><code>31ff5d9</code></td>
+<td><strong>Fusion de la branche de veille</strong> (<code>d48fe01..31ff5d9</code>, fast-forward) :
+charte <code>20260731-150737</code> et <code>GABARITS.md</code> arrivent verbatim sur
+<code>master</code>. La fusion est un acte de validation humaine explicite (option
+<code>veille-conformité</code>) — la tâche planifiée pousse la branche, elle ne fusionne jamais
+d'elle-même. Le hash cité est le sommet de branche : aucun commit ne représente le fast-forward
+lui-même.</td></tr>
+</table>
+
 <h2>Campagne UX/sécurité du 2026-07-30 — suppression SFTP et sessions actives</h2>
 <p>Trois des quatre chantiers demandés le 2026-07-30 (<a href="ROADMAP.html#suppr-sftp">suppression
 SFTP par Suppr</a>, <a href="ROADMAP.html#sessions-sftp-visibles">sessions actives en vue SFTP</a>,
