@@ -17,7 +17,6 @@ L'écart entre l'identifiant de la copie (`20260731-150737`) et la mention de co
 page du `README` (encore « du 2026-07-30 ») **est** le signal, et c'est un état normal tant que la
 remise à niveau n'a pas été arbitrée.
 
-
 > **Cette proposition couvre deux révisions.** Ouverte pour `20260731-135838`, elle a été
 > mise à jour vers `20260731-150737` avant toute fusion — les branches de propagation sont des
 > propositions, pas de l'historique, et A-4 ne les couvre pas. La seconde révision ajoute :
@@ -59,11 +58,19 @@ Constaté par inventaire de `.AIRules/` sur cette branche. Rien n'est appliqué.
 
 ### 1. Créer `PROFIL.md`
 
-Le projet n'en a pas. Gabarit au § 7 de `GABARITS.md`. Sept options sont **sans défaut** et doivent
+Le projet n'en a pas. Gabarit au § 7 de `GABARITS.md`. Neuf options sont **sans défaut** et doivent
 donc recevoir une réponse explicite plutôt qu'être héritées : `visibilité`, `attribution`,
-`authentification`, `validation`, `jetables`, `discipline-test`, `validateur`. Plusieurs ont déjà
-une réponse *de fait* dans ce projet (dépôt public, attribution IA en trailer de commit, convention
-de données de test) : le travail consiste à l'écrire, pas à la décider.
+`authentification`, `validation`, `jetables`, `discipline-test`, `validateur`, `mot-cloture`,
+`mot-cadrage`. Plusieurs ont déjà une réponse *de fait* dans ce projet (dépôt public, attribution
+IA en trailer de commit, convention de données de test) : le travail consiste à l'écrire, pas à la
+décider.
+
+**`mot-cloture` et `mot-cadrage` n'ont, eux, aucune réponse de fait** : ce sont des mots que
+l'utilisateur choisit, et le mécanisme reste inutilisable tant qu'ils ne sont pas écrits ici. Le
+premier déclenche en un geste la chaîne complète — feu vert d'`A-3`, mise à jour des documents,
+vérification du fichier d'instructions, commit, push. Le second rouvre l'entretien de cadrage, en
+entier ou sur quelques clés. Une fois choisis, ils se rappellent dans le fichier d'instructions du
+projet, sans quoi ils ne sont connus que de celui qui les a écrits.
 
 Deux options méritent une attention particulière :
 
