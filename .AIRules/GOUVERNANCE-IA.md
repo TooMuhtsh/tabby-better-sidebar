@@ -1,1024 +1,1039 @@
-# Gouvernance IA — charte générique pour projets de développement
+# Gouvernance IA — charte pour projets de développement
 
-Ce fichier décrit un ensemble de règles de gouvernance IA réutilisables **telles quelles sur
-n'importe quel projet ou workspace de développement**, indépendamment du langage, du framework
-ou de la nature du logiciel (application, bibliothèque, plugin...). Il ne présuppose l'existence
-d'aucun projet en particulier. C'est un modèle à appliquer dans quatre situations :
+Cette charte décrit comment se gouverne un projet de développement assisté par IA :
+où vit la connaissance du projet, qui a le droit de l'écrire, et à quel moment. Elle
+s'applique **indépendamment du langage, du framework ou de la nature du logiciel**
+(application, bibliothèque, plugin, service).
+
+Elle s'utilise dans quatre situations :
 
 - un **nouveau projet**, dès sa création ;
 - un **projet existant sans gouvernance formalisée** ;
-- un projet dont la gouvernance **existe sous une autre forme** (`CLAUDE.md` devenu fourre-tout,
-  notes Markdown, wiki, tickets) et qu'il s'agit de transposer — **Règle 7, Cas A** ;
-- un projet **déjà au format `.AIRules/` mais dont le contenu a dérivé**, ou qui est resté conforme
-  à une révision antérieure de cette charte — **Règle 7, Cas B**.
+- un projet dont la gouvernance **existe sous une autre forme** (`CLAUDE.md` devenu
+  fourre-tout, notes Markdown, wiki, tickets) et qu'il s'agit de transposer ;
+- un projet **déjà au format `.AIRules/` mais dont le contenu a dérivé**, ou resté conforme
+  à une révision antérieure de cette charte.
+
+## Comment lire cette charte
+
+Elle est en trois parties, et la distinction entre elles est le cœur du document :
+
+| Partie | Ce qu'elle contient | Autorité |
+|---|---|---|
+| **A — Noyau** | Ce qui s'impose à tout projet gouverné par cette charte. | Prescriptif. Un projet qui n'applique pas le noyau n'applique pas cette charte. |
+| **B — Options** | Ce qui se décide projet par projet. Chaque option porte ses valeurs possibles, son défaut, et **le pourquoi de ce défaut**. | Chaque projet arbitre. Le défaut s'applique s'il ne le fait pas. |
+| **C — Entretien de cadrage** | Quand poser les questions de la partie B, dans quel ordre, et où s'écrivent les réponses. | Procédural. |
+
+Une quatrième pièce vit à côté, dans un fichier séparé : **`GABARITS.md`** porte les
+squelettes de documents (HTML et Markdown), la table de conversion entre les deux, et le
+modèle de `PROFIL.md`. Il est volontairement **hors de ce fichier** : on ne le lit qu'au
+moment de créer ou de restructurer un document, jamais en début de session. Il voyage
+avec la charte, dans le même `.AIRules/`.
+
+### Les identifiants de cette charte sont stables
+
+Les identifiants d'invariant (`A-1`…`A-15`) et les clés d'option (`format`, `seuil`…) sont
+**attribués une fois et ne bougent plus** — c'est exactement ce qu'A-6 impose aux projets,
+et la charte n'en est pas dispensée. Ils sont cités des dizaines de fois ici même, dans les
+gabarits, et depuis les documents de chaque projet ; une renumérotation les casserait tous
+en silence.
+
+Conséquences pour une révision future :
+
+- un invariant ajouté prend le **numéro suivant**, quelle que soit sa place logique dans le
+  document — l'ordre de lecture peut donc diverger de l'ordre numérique, et c'est le prix à
+  payer ;
+- un invariant retiré **laisse son numéro consommé** ; il ne se réattribue jamais ;
+- une option renommée est une **option nouvelle**, l'ancienne clé restant documentée comme
+  abandonnée le temps que les `PROFIL.md` migrent.
 
 ### Ce fichier reste la référence, à tout moment
 
-La charte ne se lit pas seulement au moment d'un SETUP ou d'une mise en conformité : **elle est la
-référence pendant toute session, sur tout projet du workspace**, y compris quand la session démarre
-directement dans un projet. En cas de contradiction entre elle et un `CLAUDE.md`, une page
-`.AIRules/` ou une habitude prise en cours de route, c'est elle qui tranche — et la contradiction
-elle-même est à signaler plutôt qu'à contourner (règle de détection de dérive, Règle 4).
+La charte ne se lit pas seulement au moment d'un SETUP ou d'une mise en conformité :
+**elle est la référence pendant toute session, sur tout projet**, y compris quand la
+session démarre directement dans un projet. En cas de contradiction entre elle et un
+`CLAUDE.md`, un document de gouvernance ou une habitude prise en cours de route, c'est
+elle qui tranche — et la contradiction elle-même est à signaler plutôt qu'à contourner
+(A-5, détection de dérive).
 
-Elle est aussi **susceptible d'évoluer à tout moment** : une révision peut ajouter, réécrire ou
-retirer une règle. Deux conséquences pratiques, détaillées Règle 7 § « Suivre les révisions de la
-charte » :
+### Identifiant de version
 
-- la date du pied de page est le seul numéro de version — celle de l'original comme celle des copies
-  `.AIRules/` et des mentions « Conforme à la charte de gouvernance du {{date}} » ;
-- une révision **ne s'applique jamais d'office** à un projet déjà conforme à une révision
-  antérieure : l'écart se signale, la remise à niveau se propose.
+La charte **évolue** : une révision peut ajouter, réécrire ou retirer un élément. Chaque
+révision porte un **identifiant horodaté** au format `AAAAMMJJ-HHMMSS`, en UTC, généré au
+moment où la révision est figée :
 
-## Règle 1 — Un dossier `.AIRules/` par projet, versionné avec le code
+```
+20260731-135838
+```
 
-Chaque dépôt de projet contient à sa racine un dossier `.AIRules/` qui porte sa gouvernance IA.
+C'est le numéro de version, et le seul. Il est **monotone** (une version postérieure est
+toujours supérieure), **sans collision possible** — y compris pour deux révisions le même
+jour, ce qu'une simple date ne savait pas exprimer —, se compare par une **comparaison de
+chaînes** sans rien parser, et reste lisible comme une date.
 
-- **Versionné dans le dépôt Git du projet lui-même** (pas à part, pas dans un dépôt séparé) : un
-  `git clone` sur une autre machine récupère donc l'intégralité de l'historique, des pièges et
-  de la roadmap en même temps que le code.
-- Si plusieurs projets cohabitent dans un même workspace, l'un peut référencer le `.AIRules/`
-  d'un autre par lien relatif (ex. `../autre-projet/.AIRules/README.html`) tant que les deux
-  dossiers restent côte à côte — utile quand un chantier est extrait vers un nouveau projet
-  séparé.
-- Contenu attendu, quatre fichiers (voir Règle 2) + une feuille de style partagée + une copie de
-  la présente charte :
+Il figure :
 
-  ```
-  .AIRules/
-    README.html         (index + protocole)
-    AI-CONTEXT.html     (invariants, pièges numérotés, points fragiles)
-    AI-HISTORY.html     (journal chronologique par chantier)
-    ROADMAP.html        (statut / priorité / design des chantiers restants)
-    style.css           (partagé par toutes les pages, y compris annexes et archive)
-    GOUVERNANCE-IA.md   (copie conforme de la charte appliquée — voir ci-dessous)
-    annexes/            (optionnel — pièces jointes volumineuses, voir ci-dessous)
-    archive/            (optionnel — délestage des pages principales, voir ci-dessous)
-    {{page}}/           (optionnel — pages de détail d'une page éclatée, voir ci-dessous)
-  ```
+- au pied de page de ce fichier et de `GABARITS.md` ;
+- au pied de page de l'index de gouvernance de chaque projet, sous la forme
+  **« Conforme à la charte de gouvernance, version {{id}} »** ;
+- dans le `PROFIL.md` de chaque projet, comme version sous laquelle le cadrage a été fait.
 
-#### La charte voyage avec le projet
+Une copie dont l'identifiant est inférieur à celui de l'original est une copie périmée, ce
+qui se détecte sans lire le contenu.
 
-`GOUVERNANCE-IA.md` est **copié à l'identique dans le `.AIRules/` de chaque projet**. L'original
-canonique vit dans un dépôt public dédié, indépendant de tout workspace ou machine — local comme
-distant (poste perso, projet pro, VPS...) :
+---
+
+# Partie A — Noyau
+
+Ce qui suit s'applique à tout projet, sans arbitrage. Chaque élément dit ce qu'il impose
+et, quand ce n'est pas évident, pourquoi.
+
+## A-1 — Un dossier de gouvernance, versionné avec le code
+
+Chaque dépôt de projet contient à sa racine un dossier **`.AIRules/`** qui porte sa
+gouvernance IA, **versionné dans le dépôt du projet lui-même** — pas à part, pas dans un
+dépôt séparé. Un `git clone` sur une autre machine récupère ainsi l'intégralité des
+pièges, de l'historique et de la roadmap en même temps que le code.
+
+Le nom et l'emplacement ne se négocient pas : c'est ce qui rend une gouvernance
+reconnaissable d'un dépôt à l'autre sans avoir à la chercher.
+
+Contenu minimal :
+
+```
+.AIRules/
+  {{documents de gouvernance}}   (voir A-2 et l'option « documents »)
+  PROFIL.md                      (réponses de cadrage — partie C)
+  GOUVERNANCE-IA.md              (copie conforme de cette charte — A-7)
+  GABARITS.md                    (copie conforme des gabarits — A-7)
+  style.css                      (si le projet est au format HTML)
+  annexes/                       (à la demande — A-8)
+  archive/                       (à la demande — A-9)
+```
+
+Si plusieurs projets cohabitent dans un même workspace, l'un peut référencer la
+gouvernance d'un autre par lien relatif (`../autre-projet/.AIRules/README.html`) tant que
+les deux dossiers restent côte à côte.
+
+## A-2 — Une information a une destination et une seule
+
+Toute connaissance de projet relève de **l'une de trois natures**, et se range en
+conséquence — quels que soient le format retenu et le nombre de fichiers :
+
+| Nature | Destination |
+|---|---|
+| Fait technique stable, invariant, contrainte d'environnement, piège déjà rencontré | **Contexte** |
+| Événement daté : commit notable, diagnostic mené, décision actée à une date | **Journal** |
+| Ce qui reste à faire, idée non tranchée, décision de périmètre | **Roadmap** |
+
+Trois natures qui n'y sont pas, et qu'il ne faut pas y faire entrer :
+
+- **commandes de build, de test, d'installation** → `CLAUDE.md` (A-11) ;
+- **préférence de collaboration, retour d'expérience sur la façon de travailler ensemble**
+  → mémoire persistante (A-11) ;
+- **information dérivable du code en le lisant, ou périmée** → nulle part. Elle se
+  supprime, elle ne se migre pas.
+
+C'est la substance de cette charte. Deux emplacements qui décrivent le même fait
+divergeront, et celui qu'on oublie de corriger est celui qu'on relira.
+
+## A-3 — Deux cadences d'écriture opposées
+
+- Le **contexte s'écrit au fil de l'eau, sans rien demander**. Dès qu'un piège technique
+  notable est rencontré ou qu'un invariant apparaît, il est consigné immédiatement, avant
+  même que le chantier en cours soit terminé. Quand une décision de design change, la
+  section périmée se remplace plutôt que de s'empiler.
+- Le **journal et la roadmap attendent un feu vert explicite**. Aucun changement de
+  statut, aucune décision actée, aucune description de correctif n'y est écrite avant
+  confirmation — y compris une mention intermédiaire du type « implémenté, en attente de
+  test ». Un build qui passe ou un déploiement réussi ne déclenchent rien.
+
+Le découplage est délibéré : la connaissance la plus périssable — le piège qu'on vient de
+rencontrer — est celle qu'on perd en attendant une validation ; le statut d'un chantier,
+lui, engage et ne s'écrit pas sans arbitrage.
+
+**Ce que recouvre exactement le feu vert est réglable par projet** (option `seuil`), mais
+l'existence des deux cadences ne l'est pas.
+
+**Deux exceptions nommées, et deux seulement :**
+
+1. **La trace de dérive** (A-5) s'écrit sans feu vert. Elle constate un fait — la doc
+   disait X, le code fait Y — sans engager aucun statut de chantier.
+2. **La session qui s'éternise** : quand une session s'allonge au point que le contexte
+   risque d'être perdu (compactage, effacement, interruption), ne pas attendre passivement
+   le feu vert. Proposer un point de gouvernance — ce qui a été fait, ce qui reste — et
+   n'écrire que ce qui est validé à ce moment-là. L'objectif est de ne pas perdre le
+   travail en cours, pas de contourner la validation.
+
+## A-4 — Le journal est en ajout seul
+
+Une entrée de journal écrite **ne se réécrit jamais**, même fausse. Une correction s'ajoute
+en tête du chantier concerné, ou sous forme de table de correspondance ; elle ne se
+substitue pas.
+
+**Une seule modification est autorisée** : remplacer le marqueur `(commit en cours)` par le
+hash réel. Elle ne réécrit rien, elle complète.
+
+Corollaire — une entrée se rédige au moment du commit qu'elle décrit, donc avant que
+celui-ci existe. Quand le journal trace des commits, la colonne `Hash` a **trois valeurs, et
+trois seulement** :
+
+- le **hash réel**, quand l'entrée décrit un commit déjà fait ;
+- **`(commit en cours)`**, pour l'entrée qui part dans le commit qu'elle décrit. Un
+  `(commit en cours)` qui survit à plusieurs commits est une anomalie, repérable par un
+  simple `grep` ;
+- **`n/a` suivi de la raison entre parenthèses**, réservé au travail qui *restera* hors de
+  Git : opération système, action sur une autre machine, ressource hors dépôt.
+
+Ne jamais employer une formule comme « non commité » : elle recouvre les deux derniers cas
+à la fois, si bien qu'un oubli devient indiscernable d'une valeur légitime.
+
+Un projet dont le journal ne trace pas de commits (voir option `distant`) n'a pas de
+colonne `Hash` ; le reste de A-4 s'applique quand même.
+
+## A-5 — Détection de dérive, et sa trace
+
+Si l'état réel du code contredit un invariant documenté — méthode renommée, comportement
+différent, statut de chantier faux — **ne pas coder par-dessus l'hypothèse périmée** :
+corriger la documentation d'abord, puis continuer. Immédiatement, dans la session où la
+dérive est constatée, sans attendre une revue générale.
+
+Toute dérive constatée **laisse une trace** : ce que la doc disait, ce que le code fait,
+et ce qui a été corrigé. L'écart entre ce qu'on croyait et ce qui était est lui-même une
+information — et une doc qui dérive souvent devient visible.
+
+Cette trace est la première exception nommée d'A-3 : elle s'écrit sans feu vert.
+
+## A-6 — Identifiants stables
+
+Dès qu'un projet numérote ou nomme des ancres (pièges, chantiers, catégories), ces
+identifiants sont **attribués une fois et ne bougent plus** — jamais renumérotés, jamais
+réattribués, même si l'ordre d'affichage change, même si l'entrée est vidée de sa
+substance, même si un archivage libère un numéro.
+
+Motif : ils sont référencés ailleurs — depuis `CLAUDE.md`, depuis la roadmap, depuis un
+message de commit — et une référence qui pointe silencieusement ailleurs est pire qu'une
+référence cassée.
+
+Corollaire : une numérotation stable suppose de connaître le dernier numéro attribué,
+information qu'aucune lecture partielle ne donne puisque l'ordre d'affichage ne suit pas la
+numérotation. **Chaque document à numérotation stable indique en tête le prochain numéro
+libre**, et celui qui ajoute une entrée l'incrémente dans le même geste.
+
+Un projet qui choisit de ne pas numéroter n'est pas concerné par A-6.
+
+## A-7 — La charte voyage avec le projet
+
+`GOUVERNANCE-IA.md` et `GABARITS.md` sont **copiés à l'identique** dans le `.AIRules/` de
+chaque projet. L'original canonique vit dans un dépôt public dédié, indépendant de tout
+workspace et de toute machine :
 
 ```
 https://github.com/TooMuhtsh/Claude-Governance.git
 ```
 
-Motif de la copie locale malgré tout : un `git clone` d'un projet doit ramener les règles qui le
-régissent en même temps que le code, pas seulement les documents qu'elles produisent — sans
-dépendre d'un accès réseau à ce dépôt tiers, ni d'un submodule (qui romprait cette garantie : un
-clone sans `--recurse-submodules` laisserait `.AIRules/` incomplet). Un workspace peut, par
-commodité, garder une copie de travail à sa racine hors dépôt Git (comme c'est le cas pour
-`Développement/`) ; cette copie n'est pas une seconde source de vérité, seulement un miroir local
-du dépôt canonique — voir son `README.md` pour le protocole de synchronisation (comparaison des
-dates de pied de page, propagation verbatim, vérifiée par `diff`).
+Motif de la copie locale : un `git clone` doit ramener les règles qui régissent le projet
+en même temps que le code, sans dépendre d'un accès réseau ni d'un submodule — qui
+romprait cette garantie, un clone sans `--recurse-submodules` laissant `.AIRules/`
+incomplet.
 
-#### Vérifier la conformité à la charte, périodiquement et sans y penser
+- **Copie conforme, jamais adaptée au projet.** Aucune personnalisation, aucun en-tête
+  ajouté : les copies doivent rester comparables à l'original par un simple `diff`. Ce qui
+  est spécifique à un projet vit dans ses documents et dans son `PROFIL.md`, jamais dans
+  sa copie de la charte.
+- **À chaque révision, propager les copies dans la foulée**, dans le même mouvement que la
+  mise à jour de l'identifiant de version — et les pousser.
+- L'identifiant de version suffit à détecter une copie périmée, sans lire le contenu.
 
-Au-delà de la vérification en début de session (Règle 7 § « Suivre les révisions de la charte »),
-une tâche planifiée (cron) peut interroger périodiquement le dépôt canonique et comparer sa date de
-pied de page à celle de chaque projet suivi. Cette tâche se génère **localement, par le Claude Code
-de l'environnement concerné** — pas une tâche centrale unique qui devrait connaître à l'avance tous
-les environnements et tous les projets : chacun découvre et couvre les projets réellement présents
-chez lui (poste perso, projet pro, VPS...). En cas d'écart, elle peut déclencher une session Claude
-dont le mandat reste strictement borné :
+### Comment une révision s'applique — deux régimes
 
-- récupérer la révision à jour du dépôt canonique ;
-- créer une **branche dédiée** dans chaque projet concerné — jamais une écriture directe sur la
-  branche principale, conformément à la règle « `.AIRules/` reflète toujours l'état de la branche
-  principale » ci-dessous ;
-- y propager la charte verbatim et, si pertinent, une proposition de remise à niveau du projet
-  (Règle 7, Cas B) ;
-- s'arrêter là. La fusion vers la branche principale reste un acte de **validation humaine
-  explicite** (Règle 2) : la tâche planifiée ne merge jamais d'elle-même, et n'écrit jamais
-  directement dans les quatre pages `.AIRules/` (leur écriture attend toujours un feu vert, y
-  compris quand l'écart vient d'une détection automatisée plutôt que d'une session ordinaire).
+- **Révision purement additive** (elle ajoute des options sans toucher au noyau ni changer
+  un défaut existant) : elle **se propage d'office**. Rien ne change pour le projet, dont
+  le profil hérite des nouveaux défauts ; on signale simplement les questions nouvellement
+  ouvertes.
+- **Révision qui touche le noyau ou modifie un défaut** : elle **ne s'applique jamais
+  d'office**. L'écart se signale, la remise à niveau se propose, en listant ce qui a changé.
+  Un projet peut légitimement rester sur une convention antérieure — projet en fin de vie,
+  convention volontairement figée, révision non pertinente pour lui.
 
-Cette automatisation est un confort, pas une obligation : un projet peut tout aussi bien rester sur
-la détection manuelle en début de session.
+**Ce qui se propose, c'est la remise à niveau du projet, jamais la copie.** Les deux
+fichiers canoniques se propagent d'office dans tous les cas : une copie périmée n'est pas
+une convention antérieure assumée, c'est une copie qu'on ne peut plus comparer. Ce qui
+attend l'arbitrage, c'est ce que le projet change **de lui-même** — ses documents, son
+`PROFIL.md`, la mention de conformité de son pied de page. Une copie à jour posée à côté
+d'un projet non remis à niveau est un état normal et lisible : l'écart entre les deux
+identifiants *est* le signal.
 
-Sur un poste avec interface graphique, le sondage doit rester invisible : une tâche qui fait
-apparaître une fenêtre de terminal en plein travail va à l'encontre du « sans y penser » évoqué
-plus haut. Attention en particulier à ne pas confondre la visibilité de la *tâche* dans l'outil de
-planification (souvent une simple option « masquée » qui ne concerne que sa liste de gestion) et
-la visibilité de la *fenêtre du processus* qu'elle lance : quand le script est lui-même un
-exécutable à console (interpréteur Node, Python...), l'invoquer directement l'ouvre quand même —
-passer par un lanceur qui masque explicitement la fenêtre du processus exécuté.
+Le paragraphe de révision, en pied de page, dit **de quel régime relève chaque révision** :
+sans cette mention, le régime se devine, et il se devine mal.
 
-- **Copie conforme, jamais adaptée au projet.** Aucune personnalisation, aucun en-tête ajouté : les
-  copies doivent rester comparables à l'original par un simple `diff`. Ce qui est spécifique à un
-  projet vit dans ses quatre pages, jamais dans sa copie de la charte.
-- **À chaque révision de la charte, propager les copies dans la foulée**, dans le même mouvement que
-  la mise à jour de la date de pied de page — et les pousser, comme toute modification de
-  `.AIRules/` (section suivante).
-- La date de pied de page reste le seul numéro de version : une copie dont elle est antérieure à
-  celle de l'original est une copie périmée, ce qui se détecte sans lire le contenu.
+## A-8 — Annexes
 
-- Le projet peut aussi porter un dossier `.tempfiles/` (**ignoré par Git**, contrairement à
-  `.AIRules/`) pour les notes de brief, brouillons et fichiers d'échange ponctuels. Ces fichiers
-  sont **jetables par construction** : une fois **entièrement** exploités ailleurs (code,
-  `.AIRules/`, mémoire persistante), ils se suppriment directement, sans demander confirmation et
-  sans les laisser traîner.
-  - **« Exploité » signifie que plus rien d'actionnable n'y reste.** Une extraction partielle —
-    quelques lignes reprises d'un brouillon qui en contient plusieurs — ne l'épuise pas. Un fichier
-    de notes en vrac dont une seule idée a servi n'est pas jetable tant que le reste n'a pas été
-    traité ou explicitement abandonné par l'utilisateur.
-  - Dans le doute sur l'épuisement réel d'un fichier — pas seulement sur son type — redemander
-    plutôt que supprimer. Cette réserve s'ajoute à, sans la remplacer, l'exclusion de tout fichier
-    de code ou de configuration : ces derniers ne sont jamais couverts par cette règle, quel que
-    soit leur état.
+Certains contenus ne tiennent pas dans un document principal sans le rendre illisible :
+relevé de mesures, tableau de correspondance long, capture d'une configuration de
+référence, note de conception détaillée sur un seul chantier. Ils vont dans un
+sous-dossier **`annexes/`**, versionné comme le reste. À ne pas confondre avec l'espace de
+brouillons, ignoré par Git et jetable (option `tempfiles`).
 
-#### Fichiers annexes — dossier `annexes/`
+`annexes/` ne se crée qu'au moment où un premier fichier annexe existe — pas de dossier
+vide « au cas où ». Dès qu'il existe :
 
-Les quatre pages sont volontairement peu nombreuses ; certains contenus n'y tiennent pourtant pas
-sans les rendre illisibles (relevé de mesures, tableau de correspondance long, capture d'une
-configuration de référence, note de conception détaillée sur un seul chantier). Ces contenus vont
-dans un sous-dossier `annexes/`, **versionné comme le reste de `.AIRules/`** — à ne pas confondre
-avec `.tempfiles/`, qui est ignoré par Git et jetable par construction.
-
-- **Optionnel** : `annexes/` ne se crée qu'au moment où un premier fichier annexe existe. Pas de
-  dossier vide « au cas où ».
-- **Aucune annexe orpheline** : tout fichier d'`annexes/` est atteignable depuis l'une des quatre
-  pages par une **chaîne de liens continue**, à l'endroit où sa lecture devient pertinente, chaque
-  page intermédiaire portant le lien de retour vers celle qui la cite. Le nombre de sauts est
-  indifférent ; ce qui est interdit, c'est la **rupture** — une page qu'on ne peut atteindre qu'en
-  connaissant son chemin. Une annexe qu'aucune page ne cite n'est pas une annexe, c'est un fichier
-  oublié.
-- **Une annexe complète, elle ne remplace pas.** Le fait, l'invariant ou la décision reste énoncé
-  dans la page principale ; l'annexe ne porte que le détail volumineux qui l'étaye. Déporter la
-  conclusion elle-même en annexe recrée exactement le problème que ce format évite.
-- Un format non-HTML est acceptable quand il est plus adapté (`.md`, `.json`, `.csv`, capture
-  d'écran) : une annexe est une pièce jointe, pas une cinquième page de gouvernance.
-- **Note d'annexe.** Quand le format ou le poids d'une pièce l'empêche de porter son propre lien de
-  retour (binaire, tableur, image, jeu de données volumineux), ou quand la pièce vit délibérément
-  **hors du dépôt** (volume qui alourdirait chaque clone et chaque sauvegarde, ressource sur une
-  autre machine), l'annexe versionnée est une **note Markdown** qui tient ce rôle à sa place. Elle
-  porte le lien de retour vers la page qui la cite et dit : où la pièce se trouve, pourquoi elle est
-  là plutôt que dans le dépôt, comment la régénérer, et **ce qu'on en a appris**. C'est ce dernier
-  point qui la justifie : la pièce peut disparaître, la connaissance qu'elle a produite doit lui
+- **Aucune annexe orpheline.** Tout fichier d'`annexes/` est atteignable depuis un document
+  principal par une **chaîne de liens continue**, à l'endroit où sa lecture devient
+  pertinente, chaque page intermédiaire portant le lien de retour vers celle qui la cite.
+  Le nombre de sauts est indifférent ; ce qui est interdit, c'est la **rupture** — une page
+  qu'on ne peut atteindre qu'en connaissant son chemin. Une annexe qu'aucune page ne cite
+  n'est pas une annexe, c'est un fichier oublié.
+- **Une annexe complète, elle ne remplace pas.** Le fait, l'invariant ou la décision reste
+  énoncé dans le document principal ; l'annexe ne porte que le détail volumineux qui
+  l'étaye. Déporter la conclusion elle-même recrée exactement le problème que ce format
+  évite.
+- Un format libre est acceptable quand il est plus adapté (`.md`, `.json`, `.csv`, capture
+  d'écran) : une annexe est une pièce jointe, pas un document de gouvernance de plus.
+- **Note d'annexe.** Quand le format ou le poids d'une pièce l'empêche de porter son propre
+  lien de retour (binaire, tableur, image, jeu de données volumineux), ou quand la pièce
+  vit délibérément **hors du dépôt** (volume qui alourdirait chaque clone, ressource sur
+  une autre machine), l'annexe versionnée est une **note Markdown** qui tient ce rôle. Elle
+  porte le lien de retour et dit : où la pièce se trouve, pourquoi elle est là plutôt que
+  dans le dépôt, comment la régénérer, et **ce qu'on en a appris**. C'est ce dernier point
+  qui la justifie : la pièce peut disparaître, la connaissance qu'elle a produite doit lui
   survivre. La note *est* l'annexe ; la pièce n'en est que le support.
 
-#### Archive — dossier `archive/`
+## A-9 — Archive
 
-Un document principal qui a beaucoup servi devient long, et sa longueur finit par nuire à ce pour
-quoi il existe : `AI-HISTORY.html` accumule les chantiers clos depuis des mois, `ROADMAP.html`
-traîne des sections « Hors périmètre » que plus personne ne relit. Un sous-dossier `archive/` permet
-de **délester une page principale sans rien perdre**.
+Un document principal qui a beaucoup servi devient long, et sa longueur finit par nuire à
+ce pour quoi il existe. Un sous-dossier **`archive/`** permet de le délester **sans rien
+perdre**. Dès qu'il existe :
 
-- **Le contenu est intouchable, la navigation ne l'est pas.** Aucun texte archivé ne se réécrit, ne
-  s'élague ni ne se résume ; mais un **lien de navigation** dont la cible a bougé se répare — garder
-  une archive accessible n'est pas réécrire l'histoire. Trois cas, dans cet ordre : la cible existe
-  ailleurs → le lien pointe sa nouvelle position, en chemin relatif ; la cible a disparu → le lien
-  devient du texte brut disant ce qu'il désignait et qu'il n'existe plus ; **jamais de suppression
-  silencieuse** du renvoi. Un commit qui répare des liens d'archive ne touche qu'aux liens, et le
-  dit dans son message.
-- **Déplacement intégral, jamais réécriture.** Un chantier s'archive en entier — son `<h2>`, son
-  paragraphe de contexte, son tableau complet — recopié tel quel. Le contenu archivé reste, comme sur
-  la page d'origine, en **ajout seul** : il ne se corrige pas, ne se résume pas, ne se condense pas.
-  Un archivage n'est pas l'occasion de réécrire l'histoire.
-- **Une ligne de renvoi reste en place** dans la page principale, à la position chronologique du
-  contenu déplacé : titre du chantier, sa période, et le lien vers la page d'archive. Sans elle, le
-  lecteur de la page principale ne peut pas savoir que quelque chose a existé — c'est précisément ce
-  qui distingue un archivage d'une suppression.
-- **Un archivage attend le feu vert explicite de l'utilisateur**, comme toute écriture dans
-  `AI-HISTORY.html`/`ROADMAP.html` (Règle 2) : sortir un chantier du journal *est* une écriture dans
-  le journal. La proposition dit quels chantiers partiraient et ce que la page principale garderait.
-- **`AI-CONTEXT.html` ne s'archive pas.** Ses ancres `#piege-N` sont référencées depuis `CLAUDE.md`
-  et depuis `ROADMAP.html` : déplacer un piège dans un sous-dossier casse silencieusement chacune de
-  ces références, sans message d'erreur ni moyen de s'en apercevoir. S'y ajoute qu'un piège résolu se
-  conserve en place parce qu'il documente pourquoi le code est écrit ainsi (Règle 7, Cas B). Une
-  catégorie entière peut à la rigueur partir si le composant qu'elle décrit a disparu du projet — à
-  condition de vérifier d'abord qu'aucun `#piege-N` qu'elle contient n'est cité ailleurs.
-- Les numéros `#N` d'un contenu archivé **restent consommés** : un numéro libéré par un archivage ne
-  se réattribue jamais.
-- Une archive ne s'élague pas et ne se supprime pas. Un contenu dont on accepte la perte n'avait pas
-  à être archivé — il avait à être supprimé, par une décision explicite, pas comme effet de bord d'un
-  rangement.
+- **Déplacement intégral, jamais réécriture.** Un chantier s'archive en entier — son titre,
+  son contexte, son tableau complet — recopié tel quel. Le contenu archivé reste en ajout
+  seul : il ne se corrige pas, ne se résume pas, ne se condense pas.
+- **Une ligne de renvoi reste en place** dans le document principal, à la position
+  chronologique du contenu déplacé : titre du chantier, sa période, et le lien vers
+  l'archive. Sans elle, le lecteur ne peut pas savoir que quelque chose a existé — c'est
+  précisément ce qui distingue un archivage d'une suppression.
+- **Le contenu est intouchable, la navigation ne l'est pas.** Aucun texte archivé ne se
+  réécrit ; mais un **lien de navigation** dont la cible a bougé se répare. Trois cas, dans
+  cet ordre : la cible existe ailleurs → le lien pointe sa nouvelle position, en chemin
+  relatif ; la cible a disparu → le lien devient du texte brut disant ce qu'il désignait et
+  qu'il n'existe plus ; **jamais de suppression silencieuse** du renvoi. Un commit qui
+  répare des liens d'archive ne touche qu'aux liens, et le dit dans son message.
+- **Un archivage attend le feu vert** (A-3) : sortir un chantier du journal *est* une
+  écriture dans le journal. La proposition dit quels chantiers partiraient et ce que le
+  document principal garderait.
+- **Le contexte ne s'archive pas.** Ses ancres sont référencées depuis `CLAUDE.md` et
+  depuis la roadmap : déplacer un piège dans un sous-dossier casse silencieusement chacune
+  de ces références. S'y ajoute qu'un piège résolu se conserve en place parce qu'il
+  documente pourquoi le code est écrit ainsi. Une catégorie entière peut à la rigueur
+  partir si le composant qu'elle décrit a disparu du projet — à condition de vérifier
+  d'abord qu'aucune de ses ancres n'est citée ailleurs.
+- Une archive ne s'élague pas et ne se supprime pas. Un contenu dont on accepte la perte
+  n'avait pas à être archivé — il avait à être supprimé, par une décision explicite, pas
+  comme effet de bord d'un rangement.
 
-#### Éclatement d'une page principale — sous-dossier dédié
+## A-10 — Ce que la gouvernance publiée doit refléter
 
-Quand un dépôt porte plusieurs applications ou composants livrables distincts, une page principale —
-en pratique `ROADMAP.html`, parfois `AI-HISTORY.html` — cesse d'être lisible en un seul fichier. Elle
-peut alors être **éclatée** en pages de détail, une par périmètre, dans un sous-dossier portant son
-nom (`roadmap/ROADMAP_{{app}}.html`).
+**Sur la branche principale, la gouvernance décrit ce qui est sur la branche
+principale — jamais un état futur, jamais un travail en cours.** C'est ce qui permet de lui
+faire confiance sans vérifier.
 
-- **Les quatre pages restent quatre.** La page éclatée demeure à la racine de `.AIRules/`, garde sa
-  place dans la navbar, et devient un **index de renvois** vers ses pages de détail. Une page de
-  détail n'est pas une cinquième page de gouvernance : elle suit le squelette des pages de
-  sous-dossier (Règle 2), sans navbar, avec sa ligne `<p class="muted">` de retour vers l'index.
-- **Périmètres disjoints.** Un chantier appartient à une page de détail et une seule. Un chantier
-  transverse à plusieurs périmètres reste sur l'index.
-- **Un index de renvois ne porte aucun statut.** Quand le détail d'un chantier vit dans une autre
-  page, l'index n'en donne que le nom et le lien — jamais le statut, la priorité ni l'avancement,
-  portés **exclusivement** par la page de détail. Deux pages qui décrivent le même fait divergent, et
-  l'index est celle qu'on oublie. Le tableau « Vue d'ensemble » décrit en Règle 2 garde ses colonnes
-  `Statut`/`Priorité` **tant que le détail est sur la même page** ; il les perd à l'éclatement. Les y
-  maintenir suppose qu'elles soient **générées** depuis les pages de détail, jamais saisies à la main.
-- **Dernier recours, pas réflexe d'organisation.** L'éclatement se déclenche quand la page dépasse ce
-  qu'on relit d'un bout à l'autre, et se décide avec l'utilisateur comme tout changement structurant
-  (Règle 6).
+- **Committer à chaque mise à jour**, dans la foulée du travail qu'elle décrit. Éviter
+  d'accumuler plusieurs chantiers documentés avant de valider.
+- Quand un dépôt distant existe (option `distant`), **pousser dans le même mouvement**.
+  Une gouvernance à jour qui dort en local n'est ni sauvegardée, ni récupérable depuis une
+  autre machine, ni exploitable par un outil externe qui lit le dépôt.
 
-### Trois questions à poser au SETUP, avant de créer quoi que ce soit
+## A-11 — `CLAUDE.md` et mémoire persistante
 
-La Règle 1 suppose un dépôt Git : `.AIRules/` y est versionné, et la section suivante impose de
-pousser à chaque mise à jour. Sur un **nouveau projet**, ces trois points se demandent donc à
-l'utilisateur **avant** de créer le dossier, jamais en les devinant ni en les repoussant au premier
-push :
-
-1. **Nom du dépôt distant.** Il ne se déduit pas du nom du dossier local : les deux divergent
-   fréquemment (dossier historique jamais renommé, nom de paquet différent du nom de projet). Poser
-   la question évite qu'un `.AIRules/README.html` pointe vers une URL inventée.
-2. **Dépôt privé ou public.** À trancher avant le premier commit, pas après : cette réponse
-   conditionne ce qui peut légitimement être écrit dans le dépôt (chemins de machine, noms d'hôtes,
-   captures de configuration) et tranche du même coup la question des **métadonnées d'attribution IA
-   dans les messages de commit** (Règle 3) — dont la décision s'écrit dans le `CLAUDE.md` du projet
-   à ce moment-là. Rendre public plus tard un dépôt écrit comme privé oblige à réécrire
-   l'historique ; l'inverse ne coûte rien.
-3. **Quel compte / quelle authentification GitHub CLI (`gh`) pour ce dépôt ?** Toute la
-   synchronisation ultérieure (création du dépôt, push, PR) passe par `gh`, qui détient son propre
-   jeton — et plusieurs comptes peuvent cohabiter sur une machine. Poser la question au SETUP, pas
-   au premier push, quand un échec d'authentification tombe au milieu d'autre chose. Mise en œuvre :
-   vérifier l'état par `gh auth status` ; si une connexion est nécessaire, **c'est l'utilisateur qui
-   exécute `gh auth login`** — session interactive avec saisie de secret, à lancer dans Claude Code
-   en préfixant la commande par `!` pour que sa sortie revienne dans la conversation. Ne jamais
-   demander un jeton en clair ni l'écrire dans un fichier du dépôt.
-
-### `.AIRules/` reflète toujours l'état de la branche principale
-
-**Sur `main`, `.AIRules/` décrit ce qui est sur `main` — jamais un état futur, jamais un travail en
-cours.** C'est ce qui permet de lui faire confiance sans vérifier : quiconque lit la roadmap ou
-l'historique depuis la branche principale y voit l'état réel du projet publié, pas une intention.
-
-- **Committer et pousser à chaque mise à jour**, dans la foulée du travail qu'elle décrit. Une
-  gouvernance à jour qui dort en local n'a aucune valeur : elle n'est ni sauvegardée, ni
-  récupérable depuis une autre machine, ni exploitable par un outil externe qui lit le dépôt.
-  Éviter d'accumuler plusieurs chantiers documentés avant de pousser.
-- **Un état transitoire vit sur une branche, `.AIRules/` compris.** Tant qu'un chantier n'est pas
-  abouti, sa documentation l'accompagne sur sa branche et arrive sur `main` avec lui, dans le même
-  merge. Ne pas décrire sur `main` un code qui n'y est pas encore.
-- Corollaire pratique : une entrée de journal se rédige au moment du commit qu'elle décrit — mais
-  elle ne peut pas porter le hash de son propre commit, puisqu'elle est écrite avant que celui-ci
-  existe. La colonne `Hash` a donc trois valeurs, et trois seulement :
-  - le **hash réel**, quand l'entrée décrit un commit déjà fait ;
-  - **`(commit en cours)`**, marqueur d'attente d'une entrée qui part dans le commit qu'elle décrit.
-    Le remplacer par le hash réel dès le commit suivant est la **seule modification autorisée d'une
-    entrée existante** : elle ne réécrit rien, elle complète. Un `(commit en cours)` qui survit à
-    plusieurs commits est une anomalie, repérable par un simple `grep` ;
-  - **`n/a` suivi de la raison entre parenthèses**, réservé au travail qui **restera** hors de Git :
-    opération système, action sur une autre machine, ressource hors dépôt.
-
-  Ne jamais employer une formule comme « non commité » : elle recouvre les deux derniers cas à la
-  fois, si bien qu'un oubli devient indiscernable d'une valeur légitime et n'est plus rattrapable que
-  par un rapprochement manuel, commit par commit. Si l'ordre s'inverse malgré tout et qu'une entrée
-  passée se révèle fausse, ne pas la réécrire : ajouter une table de correspondance en tête du
-  chantier.
-
-## Règle 2 — Pages de gouvernance en HTML pur (HTML/CSS uniquement, pas de JS), navbar et rendu partagés
-
-Les quatre pages sont des fichiers HTML statiques ouverts directement dans un navigateur
-(pas de serveur, pas de build). Elles ne prennent pas leur contenu depuis Markdown ni depuis un
-générateur — HTML/CSS écrits à la main, aucun JavaScript.
-
-### Squelette commun à chaque page
-
-```html
-<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>{{nom du projet}} — {{titre de la page}}</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-<nav class="tabbar">
-<a href="README.html">Accueil</a>
-<a href="AI-CONTEXT.html">Contexte</a>
-<a href="AI-HISTORY.html">Historique</a>
-<a href="ROADMAP.html">Roadmap</a>
-</nav>
-
-<h1>{{titre}}</h1>
-<p class="muted">Dernière revue : {{date}}</p>
-
-<!-- contenu -->
-
-<footer>{{nom du projet}} · {{note de bas de page}}</footer>
-</body>
-</html>
-```
-
-- La navbar (`nav.tabbar`) est **identique sur les 4 pages**, seul le lien de la page courante
-  porte la classe `class="current"`.
-- `style.css` est partagé par les 4 pages d'un même projet (un seul fichier, pas dupliqué par
-  page). Il définit :
-  - des variables CSS pour le thème clair/sombre via `@media (prefers-color-scheme: dark)`
-    (pas de bascule JS — le thème suit celui de l'OS/navigateur) ;
-  - des styles de callout : `.callout.note`, `.callout.warning`, `.callout.important` (bordure
-    et fond colorés, `.callout-title` en gras) ;
-  - des pastilles de statut `.pill.done` / `.pill.adopted` / `.pill.progress` / `.pill.planned` /
-    `.pill.out` / `.pill.warn` pour les tableaux de roadmap et les points à revérifier ;
-  - police système, largeur de lecture max ~900px centrée, tableaux avec lignes zébrées.
-
-#### Discipline d'édition, à mesure que les pages grossissent
-
-Une page comme `AI-HISTORY.html` ou `ROADMAP.html` s'allonge avec le temps, et le risque d'y casser
-une balise (`</td>`, `</tr>`, `</div>` oublié) augmente avec sa taille — un copier-coller ou une
-réécriture large suffit à faire sauter tout le rendu, souvent sans qu'aucune erreur ne le signale
-avant l'ouverture dans un navigateur.
-
-- **Modification ciblée, jamais réécriture complète d'une page existante** pour un ajout localisé
-  (une ligne de tableau, une entrée de chantier) — patcher le bloc concerné, pas régénérer le
-  fichier entier.
-- **Valider le bon parenthésage des balises après toute modification d'une page qui dépasse une
-  taille triviale**, avant de considérer la modification terminée. L'outil précis (linter HTML,
-  validateur XML strict, ou autre) n'est pas fixé ici : il se choisit par projet selon ce qui y est
-  disponible, et se documente comme une commande de plus dans le `CLAUDE.md` du projet (Règle 3),
-  pas dans la charte elle-même.
-
-#### Pages placées dans un sous-dossier (`annexes/`, `archive/`)
-
-**La navbar `nav.tabbar` est réservée aux quatre pages principales.** Elle sert à identifier la
-gouvernance elle-même : une page qui la porte est l'une des quatre, point. Une page annexe ou
-d'archive n'en a donc pas — elle se rattache à la gouvernance par des hyperliens, pas par une barre
-de navigation.
-
-Le squelette d'une telle page est celui ci-dessus **sans le bloc `<nav class="tabbar">`**, avec :
-
-- une ligne `<p class="muted">` juste sous le `<h1>`, qui dit de quelle page elle dépend et porte le
-  lien de retour vers l'endroit exact qui la cite — ex. « Annexe de
-  <a href="../ROADMAP.html#slug">Roadmap → {{chantier}}</a> ». C'est le seul chemin de retour, donc
-  il est obligatoire : sans lui, une page atteinte par un signet ou une recherche est un cul-de-sac ;
-- la feuille de style partagée atteinte par le même mécanisme (`../style.css`), jamais recopiée dans
-  le sous-dossier ;
-- un `<footer>` identique à celui des pages principales.
-
-#### Tous les liens internes sont relatifs, jamais en dur
-
-Cette règle vaut pour les quatre pages comme pour les annexes et les archives : un lien vers un autre
-fichier de gouvernance, vers `style.css`, vers un fichier du dépôt ou vers le `.AIRules/` d'un projet
-voisin s'écrit **en chemin relatif**, avec autant de `../` que la profondeur réelle du fichier
-l'exige (`../` depuis `annexes/`, `../../` depuis un sous-dossier d'`annexes/`, et ainsi de suite).
-
-Jamais de chemin absolu, jamais de chemin de machine (`file:///C:/Users/...`, `/home/...`), jamais de
-`/` initial. Motif : `.AIRules/` est versionné et doit s'ouvrir tel quel après un `git clone` sur
-n'importe quelle machine, sous n'importe quel chemin — un lien en dur y casse silencieusement.
-Corollaire : déplacer une page dans un sous-dossier impose de recalculer ses liens ; ce n'est pas un
-copier-coller.
-
-### Contenu détaillé et agencement, page par page
-
-Chaque page suit un plan fixe, dans cet ordre. Ne pas réordonner les sections d'une page à
-l'autre : la valeur du format vient de sa prévisibilité — on sait toujours où chercher une
-information sans relire toute la page.
-
-#### `README.html` — index + protocole
-
-Ordre des sections après le `<h1>{{Nom du projet}} — Gouvernance IA</h1>` :
-
-1. **Paragraphe de description** du projet (2-4 phrases : ce que c'est, la fonctionnalité ou le
-   problème central qu'il adresse).
-2. **Liste** (`<ul>`) : emplacement du dépôt de code (chemin local), lien vers le dépôt distant
-   s'il existe (GitHub/GitLab...), rappel que ce dossier `.AIRules/` vit dans le même dépôt.
-3. **Note `.muted`** rappelant explicitement que ce dossier est versionné avec le code — donc
-   qu'un `git clone` sur une autre machine récupère tout l'historique et la roadmap avec.
-4. **`<h2>Structure</h2>`** : un tableau à deux colonnes (`Fichier` / `Contenu`) qui liste les
-   trois autres fichiers avec une description d'une phrase chacun — sert de point d'entrée
-   cliquable vers les trois autres pages.
-5. **`<h2>Protocole</h2>`**, avec trois sous-sections :
-   - **`<h3>En début de session sur ce projet</h3>`** : liste ordonnée (`<ol>`) des étapes à
-     suivre avant de commencer à coder — typiquement : lire `AI-CONTEXT.html` (invariants et
-     pièges déjà résolus), lire le haut d'`AI-HISTORY.html` (où en est le dernier chantier actif),
-     vérifier l'état réel du projet avant de faire confiance à la doc (build à jour, dernier
-     commit, état d'un service externe si pertinent), et comparer la date de conformité du pied de
-     page à la dernière révision de la charte de gouvernance — si elle est antérieure, signaler
-     l'écart et proposer une remise à niveau (Règle 7, Cas B) plutôt que de l'appliquer d'office.
-   - Deux **callouts `.important`** juste après cette liste, toujours les deux mêmes règles
-     (texte adaptable au projet, principe identique — voir Règle 4 pour le détail) :
-     « Règle de détection de dérive » et « Validation utilisateur avant toute écriture dans
-     `AI-HISTORY.html`/`ROADMAP.html` » — cette seconde règle ne se limite pas au passage en
-     « fait » : elle couvre aussi les lignes d'état intermédiaires et les descriptions de design.
-   - **`<h3>Quand mettre à jour</h3>`** : liste à puces donnant la cadence de mise à jour de
-     chacun des trois autres fichiers. **Deux cadences opposées, à ne pas confondre :**
-     - `AI-CONTEXT.html` **s'écrit au fil de l'eau, sans rien demander** : dès qu'un piège
-       technique notable est rencontré ou qu'un nouvel invariant apparaît, il est consigné
-       immédiatement, avant même que le chantier en cours soit terminé. C'est le seul document
-       alimenté proactivement. Quand une décision de design change, remplacer la section périmée
-       plutôt que l'empiler.
-     - `AI-HISTORY.html` et `ROADMAP.html` **attendent le feu vert explicite de l'utilisateur** :
-       aucun changement de statut, aucune décision de design actée, aucune description de
-       correctif n'y est écrite avant qu'il ait confirmé — y compris une mention intermédiaire du
-       type « implémenté, en attente de test ». Un build qui passe ou un déploiement réussi ne
-       déclenchent rien ici. En cas de doute sur la nature d'une modification de doc (piège ou
-       statut), demander.
-     - **Exception — session qui s'éternise** : quand une session s'allonge au point que le
-       contexte risque d'être perdu (compactage, effacement, interruption), ne pas attendre
-       passivement le feu vert. Proposer un point de gouvernance — résumé de ce qui a été fait et
-       de ce qui reste — et n'écrire dans `AI-HISTORY.html`/`ROADMAP.html` que ce que
-       l'utilisateur valide à ce moment-là. L'objectif est de ne pas perdre le travail en cours,
-       pas de contourner la validation.
-
-     Terminer la sous-section par un rappel explicite que les entrées déjà écrites
-     d'`AI-HISTORY.html` ne se modifient jamais.
-   - Si le projet a une discipline de test spécifique à respecter (voir Règle 4), une dernière
-     **`<h3>Discipline de test</h3>`** qui la rappelle en une ou deux phrases.
-6. **`<footer>`** : nom du projet + date de la dernière restructuration de la gouvernance
-   elle-même (pas la date du dernier chantier — celle-là vit dans `AI-HISTORY.html`), suivie de la
-   mention **« Conforme à la charte de gouvernance du {{date}} »** qui reprend la date de révision
-   de la charte appliquée. C'est ce marqueur qui permet, plus tard, de détecter qu'un projet est
-   resté sur une version antérieure des conventions (voir Règle 7, Cas B).
-
-#### `AI-CONTEXT.html` — invariants et pièges, groupés par catégorie
-
-Ordre des sections après le `<h1>Contexte &amp; invariants</h1>` et la ligne
-`<p class="muted">Dernière revue : {{date}}</p>` :
-
-1. **Paragraphe d'intro** rappelant l'objectif du fichier : éviter de retomber deux fois dans le
-   même piège, donc organisation **par catégorie thématique** (pas chronologique — ça, c'est le
-   rôle d'`AI-HISTORY.html`). Préciser explicitement que la numérotation `#N` des pièges est
-   **stable et ne se renumérote jamais**, même si l'ordre d'affichage change — elle est
-   référencée ailleurs (`CLAUDE.md`, `ROADMAP.html`). Préciser aussi que les commandes de
-   build/dev ne sont pas dupliquées ici (elles restent dans `CLAUDE.md`).
-2. **Callout `.note`** "Légende" expliquant la convention de pastille utilisée pour les pièges
-   qui dépendent d'un comportement non contractuel d'une dépendance externe (voir tableau des
-   pastilles ci-dessous) — cette pastille signale qu'il faut rejouer ce point après une mise à
-   jour de cette dépendance.
-3. **`<h2>Sommaire</h2>`** : une liste à puces d'ancres vers chaque catégorie (`<h2 id="cat-...">`
-   plus bas), chaque entrée listant aussi les numéros `#N` des pièges qu'elle contient — permet de
-   sauter directement à la bonne section sans tout parcourir. Immédiatement sous le sommaire, une
-   ligne `.muted` donne le **prochain numéro de piège libre** (voir « Compteur de numérotation »
-   dans les conventions transverses) : sans elle, l'ajout d'un piège produit tôt ou tard une
-   collision avec un numéro déjà attribué plus haut dans le fichier.
-4. **Une `<h2 id="cat-...">` par catégorie**, dans un ordre stable. Catégories typiques à adapter
-   au projet (toutes ne s'appliquent pas partout) : identité du projet (nom, emplacements,
-   identité Git si spécifique) ; environnement & build ; architecture/composants du framework
-   utilisé ; comment vérifier qu'une classe/API/dépendance externe est réellement utilisable avant
-   de s'y fier ; intégrité et persistance des données ; VCS/Git ; debug et workflow de dev ;
-   publication et distribution.
-5. **À l'intérieur d'une catégorie**, deux formats possibles :
-   - un fait stable simple : une puce de liste, sans numéro (ex. une convention de nommage, un
-     choix de version verrouillée) ;
-   - un **piège documenté** : `<h3 id="piege-N">#N — {{titre court}}</h3>` suivi d'un paragraphe
-     qui décrit **le symptôme, la cause, et la solution retenue** (dans cet ordre — un futur
-     lecteur doit pouvoir reconnaître le symptôme avant de lire la solution), avec un bloc
-     `<pre><code>` si une commande/config est nécessaire pour reproduire le contournement, et un
-     **callout `.warning`** séparé si le piège a un effet de bord opérationnel à connaître
-     au-delà de la cause immédiate (ex. "telle action UI supprime tel fichier de config sans le
-     dire").
-
-#### `AI-HISTORY.html` — journal chronologique par chantier
-
-Ordre après le `<h1>Journal de bord</h1>` :
-
-1. **Note `.muted`** rappelant l'ordre de tri : chantiers classés du plus récent au plus ancien ;
-   à l'intérieur d'un chantier, entrées les plus récentes en tête.
-2. **Callout `.important`** répétant la règle "ne jamais modifier une entrée existante,
-   uniquement en ajouter en tête du chantier concerné" et le format de ligne attendu :
-   `Date | Hash | Résumé`.
-3. **Une `<h2>` par chantier**, titre au format `{{Nom du chantier}} ({{date de la dernière
-   entrée}})`, suivie **optionnellement** d'un paragraphe de contexte quand le chantier a besoin
-   d'être resitué (ex. signalé par qui, pourquoi il a démarré) — pas nécessaire pour un chantier
-   qui s'explique déjà par son titre.
-4. **Un tableau par chantier**, colonnes `Date` / `Hash` / `Résumé`, une ligne par
-   commit/événement notable (une publication, un diagnostic mené sans commit associé peuvent
-   aussi avoir une ligne avec `n/a` en hash et une précision entre parenthèses). Lignes triées de
-   la plus récente à la plus ancienne. Le résumé peut utiliser `<strong>` pour marquer une
-   décision actée au milieu d'une entrée plus longue (ex. plusieurs échanges de conception
-   successifs sur un même chantier, chacun sur sa ligne, la ligne la plus récente contenant la
-   synthèse des décisions finales).
-5. Un chantier peut être un **diagnostic ponctuel** (bug signalé → cause trouvée → correctif) et
-   pas seulement une fonctionnalité — même format `<h2>` + tableau.
-
-#### `ROADMAP.html` — statut et design des chantiers restants
-
-Ordre après le `<h1>Roadmap</h1>` et `<p class="muted">Dernière revue : {{date}}</p>` :
-
-1. **Paragraphe de renvoi** : ce qui est déjà livré est dans `AI-HISTORY.html`, les pièges/
-   invariants du code déjà en place sont dans `AI-CONTEXT.html` — cette page ne répète ni l'un ni
-   l'autre, uniquement ce qui reste à faire ou à décider.
-2. **`<h2>Vue d'ensemble</h2>`** : un tableau `Chantier` / `Statut` / `Priorité`, une ligne par
-   chantier, où la colonne `Chantier` est un lien d'ancre (`#id-du-chantier`) vers son détail plus
-   bas, et `Statut` utilise les pastilles (voir tableau ci-dessous). Ces colonnes ne tiennent que
-   **tant que le détail vit sur la même page** : si la roadmap est éclatée en pages de détail
-   (Règle 1), le tableau devient un index de renvois et perd `Statut`/`Priorité`.
-3. **Sections de détail par groupe**, dans cet ordre stable : `<h2>Phase 1 — {{priorité}}</h2>`,
-   `<h2>Phase 2 — {{priorité}}</h2>`, `<h2>Non daté — à faire quand utile</h2>`,
-   `<h2>Hors périmètre</h2>` — n'inclure que les phases pertinentes pour le projet, mais garder
-   "Hors périmètre" en dernier quand des idées ont été explicitement écartées (utile pour ne pas
-   les reproposer plus tard sans savoir qu'elles ont déjà été tranchées).
-4. **Un `<h3 id="...">` par chantier** à l'intérieur d'une phase, avec :
-   - un paragraphe de design aussi détaillé que possible (les choix d'architecture/UX déjà
-     tranchés, pas seulement une intention vague) ;
-   - une liste à puces des sous-décisions ou contraintes identifiées, une puce par point ;
-   - une **note `.muted`** finale si un point précis reste à vérifier au moment de
-     l'implémentation (ex. "mécanique exacte du bouton à confirmer") — distingue ce qui est
-     tranché de ce qui reste ouvert ;
-   - un **callout `.important`** quand le chantier a été explicitement sorti du périmètre
-     (section "Hors périmètre") ou quand une décision de scope a été actée après hésitation —
-     le callout porte le "pourquoi" de la décision, pas seulement le "quoi".
-
-### Conventions transverses (ancres, callouts, pastilles)
-
-Ces conventions s'appliquent aux 4 pages et doivent rester identiques d'un projet à l'autre pour
-que la lecture soit immédiate même en changeant de projet.
-
-**Identifiants stables (jamais réutilisés, jamais renumérotés)**
-
-| Convention | Usage |
-|---|---|
-| `id="piege-N"` | Ancre d'un piège dans `AI-CONTEXT.html`. `N` est attribué une fois et ne bouge plus, même si l'ordre d'affichage change — référencé depuis `CLAUDE.md` et `ROADMAP.html` par son numéro. |
-| `id="cat-{{slug}}"` | Ancre d'une catégorie dans `AI-CONTEXT.html`, ciblée depuis le sommaire de la même page. |
-| `id="{{slug-du-chantier}}"` | Ancre d'un chantier dans `ROADMAP.html`, ciblée depuis le tableau "Vue d'ensemble" de la même page et, ponctuellement, depuis `AI-CONTEXT.html` pour renvoyer vers le design prévu d'un point fragile. |
-
-**Compteur de numérotation.** Une numérotation stable suppose de connaître le dernier numéro
-attribué — information qu'aucune lecture partielle ne donne, puisque l'ordre d'affichage ne suit pas
-la numérotation. Chaque document concerné indique donc **en tête, sous le sommaire, le prochain
-numéro libre** (`Prochain piège : #22`), et celui qui ajoute une entrée l'incrémente dans le même
-geste. Sans ce compteur, le réflexe par défaut — reprendre le dernier numéro visible en fin de
-fichier — produit des collisions silencieuses avec des numéros déjà attribués plus haut. Rappel : un
-numéro libéré par un archivage reste consommé, le compteur ne redescend jamais.
-
-**Callouts (`.callout.{{type}}`)**
-
-| Classe | Sens | Exemple d'usage |
-|---|---|---|
-| `.note` | Information neutre, légende, précision qui aide à lire la suite. | Expliquer une convention de pastille en haut d'`AI-CONTEXT.html`. |
-| `.warning` | Piège opérationnel actif à surveiller — quelque chose qui *peut se reproduire* si on n'y prend pas garde. | "Telle action dans l'UI supprime silencieusement tel fichier de config." |
-| `.important` | Décision actée, règle non négociable, ou risque élevé (perte de données, sécurité). | Règle de détection de dérive, décision de sortir un chantier du périmètre, garde-fou sur une donnée sensible. |
-
-**Pastilles de statut (`.pill.{{type}}`)**
-
-| Classe | Sens |
-|---|---|
-| `.done` (✅ Livré) | Chantier **validé par l'utilisateur en conditions réelles** (pas seulement codé — voir Règle 4) **et effectivement en service** : déployé en production, publié et installé, ou fusionné sur la branche principale selon la nature du projet. Un code validé qui dort sur une branche n'est pas livré. Rappel : tant que cette validation n'est pas venue, le chantier ne reçoit aucune écriture dans `ROADMAP.html`/`AI-HISTORY.html`, pas même une ligne d'état intermédiaire. |
-| `.adopted` (🎯 Adopté) | **Réservé aux chantiers d'outillage et de convention** (script, commande, workflow, tracker, convention d'écriture) : l'outil est livré *et* son usage est **constaté dans le flux de travail réel**. Une démonstration réussie ne suffit pas, il faut une trace d'emploi. Pour une fonctionnalité livrée à des utilisateurs, `.done` reste l'état terminal — ne pas attendre un second feu vert qui ne viendra jamais. |
-| `.progress` (🚧) | Chantier en cours de développement actif. |
-| `.planned` (📋) | Design discuté et au moins partiellement tranché, pas encore codé. Nuancer le libellé selon l'avancement de la réflexion ("Proposé" / "Mécanisme tranché" / "Design validé"). |
-| `.out` (⛔) | Explicitement écarté ou sorti du périmètre du projet — toujours accompagné d'un callout `.important` expliquant pourquoi. |
-| `.warn` (⚠️) | Marque, dans `AI-CONTEXT.html`, un piège qui dépend d'un comportement non contractuel d'une dépendance externe — à revérifier après une mise à jour de cette dépendance. |
-
-## Règle 3 — Garder `CLAUDE.md` à jour, en cohérence avec la mémoire persistante
-
-- Chaque projet garde un `CLAUDE.md` à sa racine (auto-chargé par Claude Code) qui reste la
-  **référence rapide** : commandes de build/dev, particularités d'installation, et surtout une
-  consigne explicite de lire `.AIRules/README.html` en début de session avant tout le reste.
-  Il ne duplique pas le contenu détaillé déjà présent dans `.AIRules/` (pièges, roadmap,
-  historique) — seulement des pointeurs vers ces fichiers.
-- Si plusieurs projets cohabitent dans un même workspace, un `CLAUDE.md` à la racine du
-  workspace référence chacun d'eux et pointe vers son `.AIRules/README.html`, pour qu'une
-  session ouverte à ce niveau (plutôt que dans un projet précis) sache où aller chercher le
-  contexte.
-- `CLAUDE.md` doit être mis à jour **dès qu'une convention de code, une commande de build ou un
-  piège d'environnement change** — pas en fin de session, au moment où le changement est fait.
-- La mémoire persistante inter-conversations (`~/.claude/projects/.../memory/`) est
-  **complémentaire, pas redondante** avec `CLAUDE.md`/`.AIRules` :
-  - `CLAUDE.md` et `.AIRules/` portent tout ce qui est **spécifique au projet et versionné avec
-    le code** (pièges techniques, roadmap, historique de commits) — dérivable et vérifiable
-    depuis le dépôt lui-même.
-  - La mémoire porte ce qui est **transverse aux projets et propre à la collaboration** :
-    préférences de l'utilisateur, retours d'expérience sur la façon de travailler ensemble,
-    état d'avancement à connaître avant même d'ouvrir un projet, pointeurs vers des systèmes
-    externes.
-  - Si une information censée vivre dans la mémoire s'avère en fait dérivable du code ou déjà
-    documentée dans `.AIRules/`/`CLAUDE.md`, elle n'a pas sa place en mémoire — et
-    inversement, un retour d'expérience utilisateur sur la manière de collaborer ne doit pas
-    finir enterré dans un `AI-CONTEXT.html` où il ne sera relu que pour ce projet précis.
+- Chaque projet garde un `CLAUDE.md` à sa racine, **référence rapide** : commandes de
+  build et de test, particularités d'installation, et une consigne explicite de lire la
+  gouvernance en début de session avant tout le reste. Il ne duplique pas le contenu
+  détaillé de `.AIRules/` — seulement des pointeurs.
+- Il se met à jour **dès qu'une convention de code, une commande de build ou un piège
+  d'environnement change** — au moment du changement, pas en fin de session.
+- Si plusieurs projets cohabitent dans un workspace, un `CLAUDE.md` à sa racine référence
+  chacun d'eux et pointe vers sa gouvernance.
+- La **mémoire persistante inter-conversations** est complémentaire, pas redondante :
+  `.AIRules/` et `CLAUDE.md` portent ce qui est **spécifique au projet et versionné avec le
+  code** ; la mémoire porte ce qui est **transverse et propre à la collaboration**
+  (préférences, retours d'expérience sur la façon de travailler, état d'avancement à
+  connaître avant même d'ouvrir un projet, pointeurs vers des systèmes externes).
+- Une information dérivable du code ou déjà documentée dans `.AIRules/` n'a pas sa place en
+  mémoire ; inversement, un retour d'expérience sur la manière de collaborer ne doit pas
+  finir enterré dans un document de projet où il ne sera relu que pour ce projet.
 - **Point mémoire de fin de session** : avant tout effacement de contexte, faire un bilan
-  explicite de la mémoire persistante — ce qui a été appris sur la façon de collaborer, ce qui a
-  changé dans l'état d'avancement, ce qui s'est révélé faux dans une mémoire existante. Une
-  mémoire contredite par un retour plus récent **se réécrit ou se supprime** ; elle ne cohabite
-  pas avec la version périmée, sous peine de rendre l'ensemble non fiable.
-- **Métadonnées d'attribution IA dans les messages de commit** : trancher **une fois par dépôt**,
-  avant le premier push, si les commits peuvent porter des métadonnées d'attribution IA
-  (co-auteur, lien de session, mention de l'outil) — et écrire la décision dans le `CLAUDE.md` du
-  projet, pour qu'elle n'ait pas à être rediscutée à chaque commit. Sur un dépôt public, ces
-  métadonnées exposent un historique de collaboration qui n'était pas forcément destiné à être
-  publié : c'est une décision de l'auteur du dépôt, pas un réglage d'outil.
+  explicite — ce qui a été appris sur la façon de collaborer, ce qui a changé dans l'état
+  d'avancement, ce qui s'est révélé faux dans une mémoire existante. Une mémoire contredite
+  par un retour plus récent **se réécrit ou se supprime** ; elle ne cohabite pas avec la
+  version périmée.
 
-## Règle 4 (transversale) — Discipline de vérification, valable pour tout projet
+## A-12 — Discipline de vérification
 
-Ces règles ne sont spécifiques à aucune techno en particulier ; elles s'appliquent à toute
-session de travail sur tout projet et sont donc documentées ici plutôt que répétées dans chaque
-`AI-CONTEXT.html` projet.
+Ces règles ne sont spécifiques à aucune technologie et s'appliquent à toute session de
+travail.
 
-- **Détection de dérive** : si l'état réel du code contredit un invariant documenté (méthode
-  renommée, comportement différent, statut de chantier faux), ne pas coder par-dessus
-  l'hypothèse périmée — corriger la documentation d'abord, puis continuer.
-- **Validation utilisateur avant "fait"** : ne jamais marquer une fonctionnalité comme terminée
-  dans un journal ou une roadmap avant que l'utilisateur ait explicitement confirmé qu'elle
-  fonctionne en conditions réelles (test réel, pas seulement une relecture de code). Cette règle
-  ne porte pas seulement sur la pastille `.done` : tant que la validation n'est pas venue, le
-  chantier ne reçoit **aucune écriture** dans le journal ou la roadmap, pas même une ligne d'état
-  intermédiaire. Un build qui passe, un déploiement réussi ou une relecture de code ne valent pas
-  validation. Cas particulier des chantiers d'**outillage et de convention** : ils disposent d'un
-  état terminal supplémentaire, `.adopted` (Règle 2), qui demande un **usage constaté** et non une
-  démonstration réussie. Un outillage resté `.done` sans usage constaté est un signal en soi : soit
-  il est adopté, soit on acte qu'il ne sert pas — en le sortant du périmètre avec le callout
-  `.important` qui dit pourquoi, plutôt qu'en le laissant afficher un statut littéralement vrai et
-  pratiquement faux.
-- **Données jetables pour tout test destructif** : toute manipulation touchant des données réelles
-  de l'utilisateur ou de production se teste d'abord sur des entrées jetables clairement
-  identifiables (ex. préfixe `test-*`/`sandbox-*`), jamais directement sur les vraies données —
-  même quand le risque semble faible.
-- **Vérifier un export d'API à deux niveaux** : pour savoir si une classe/un composant d'une
-  dépendance externe est réellement utilisable depuis le code du projet, un tag `@hidden`/`@internal`
-  ou l'état des typings ne suffit pas — vérifier à la fois la documentation/les typings **et** le
-  comportement réel à l'exécution (bundle compilé, réponse d'API réelle...). Un champ ou une
-  signature peut différer entre les deux.
-- **Sauvegarder puis `diff` avant de conclure** : toute modification scriptée d'un fichier de
-  l'utilisateur (config, données) se fait après copie de sauvegarde, et se termine par un `diff`
-  contre cette sauvegarde — pas par une simple relecture de la partie qu'on croit avoir touchée.
-  Certains dégâts sont totalement silencieux et hors de la zone éditée. Vécu le 2026-07-28 : des
-  éditions PowerShell ont corrompu un chemin accentué situé 400 lignes plus loin que la section
-  visée, sans la moindre erreur.
-- **Windows : ne pas réécrire un fichier accentué avec PowerShell 5.1.** `Get-Content` +
-  `Set-Content -Encoding utf8` ne fait pas un aller-retour UTF-8 propre — chaque cycle ré-encode les
-  caractères non-ASCII (l'effet se cumule) et ajoute un BOM. Passer par Node
-  (`readFileSync`/`writeFileSync` en `'utf8'`) ou un outil équivalent. PowerShell reste approprié
-  pour piloter des process (`Start-Process`, `Stop-Process`), pas pour réécrire du contenu.
-- **Test manuel d'abord, automatisation de la mesure en dernier recours.** Quand une vérification
-  tient en quelques clics ou saisies dans une interface que l'utilisateur a sous la main, lui
-  fournir une **checklist de test manuel précise** (quoi faire, quel résultat attendre, comment
-  vérifier la persistance) et rester en **écoute passive** sur les traces (logs, fichiers de
-  configuration, sorties de process). Écrire un script d'automatisation d'interface pour un geste
-  ponctuel coûte largement plus cher que le geste lui-même, et l'utilisateur préfère généralement
-  le faire — une fois qu'il a demandé à piloter l'application lui-même, ne plus simuler ses
-  actions. N'escalader vers un **banc de mesure automatisé** (pilotage du navigateur ou de
-  l'application, instrumentation temporaire, capture de géométrie) que dans trois cas : (a) deux
-  ou trois hypothèses successives ont déjà été invalidées manuellement sans que la cause
-  n'apparaisse — arrêter alors de proposer des correctifs à l'aveugle ; (b) le volume de
-  vérifications dépasse ce qu'un humain fera raisonnablement ; (c) l'utilisateur le demande
-  explicitement. Dans ces cas l'investissement est décisif : il révèle les bugs à causes
-  multiples, qu'une série de correctifs partiels ne peut par construction jamais valider.
-- **Ne pas trancher un compromis à la place de l'utilisateur.** Quand deux options s'opposent sur
-  l'axe sûreté/complétude (une variante partielle mais sans risque contre une variante complète
-  mais susceptible d'endommager des données ou un état existant), ne pas supposer que
-  l'implémentation la plus complète est attendue : exposer les deux, dire laquelle est
-  recommandée et pourquoi, et laisser le choix.
-- **Chercher une bibliothèque établie avant d'écrire un utilitaire maison.** Pour tout besoin
-  d'outillage qui paraît simple (assainissement d'entrées, échappement, parsing, formats de date,
-  jeux de données de référence, icônes), vérifier d'abord s'il existe une bibliothèque ou un jeu
-  de données reconnu et maintenu, et le proposer — le code maison sur ces sujets est un nid de
-  failles et de cas limites oubliés. Ne partir sur une implémentation propre qu'après avoir
-  constaté qu'aucune option établie ne couvre le besoin, et le dire explicitement.
+- **Ne jamais conclure sur une seule source quand une seconde est accessible.** Pour savoir
+  si un composant d'une dépendance externe est réellement utilisable, la documentation ou
+  les typings ne suffisent pas : confronter la source déclarative **et** le comportement
+  réel à l'exécution. Un champ ou une signature peut différer entre les deux. Le principe
+  dépasse les API : schéma contre données réelles, configuration déclarée contre
+  configuration effective, documentation d'un outil contre sortie observée.
 
-## Règle 5 — Statusline Claude Code systématique (config globale de session)
+- **Validation en conditions réelles avant « fait ».** Ne jamais marquer une fonctionnalité
+  comme terminée avant confirmation explicite qu'elle fonctionne. Cette règle ne porte pas
+  seulement sur le statut final : tant que la validation n'est pas venue, le chantier ne
+  reçoit **aucune écriture** dans le journal ou la roadmap, pas même une ligne d'état
+  intermédiaire. Un build qui passe, un déploiement réussi ou une relecture de code ne
+  valent pas validation. **Ce que « conditions réelles » veut dire sur un projet donné se
+  définit au cadrage** (option `validation`) : sans définition écrite, la question se
+  rediscute à chaque chantier.
 
-Chaque environnement de travail (une seule fois par machine, pas par projet — cette config vit
-dans `~/.claude/settings.json`, hors de tout dépôt Git) doit avoir une statusLine configurée pour
-garder en permanence sous les yeux le niveau de consommation de contexte et de quota, sans avoir à
-le demander explicitement.
+- **Données jetables pour tout test destructif.** Toute manipulation touchant des données
+  réelles ou de production se teste d'abord sur des entrées jetables clairement
+  identifiables, jamais directement sur les vraies données — même quand le risque semble
+  faible. **La convention de nommage jetable se définit au cadrage** (option `jetables`) :
+  une convention générique n'est jamais reprise telle quelle.
 
-Ni `~/.claude/settings.json` ni le script ne sont versionnés où que ce soit : **les deux blocs
-ci-dessous sont leur seule sauvegarde**, et c'est à ce titre qu'ils figurent intégralement ici,
-recopiables tels quels sur une machine neuve.
+- **Sauvegarder puis `diff` avant de conclure.** Toute modification scriptée d'un fichier
+  que l'utilisateur possède (configuration, données) se fait après copie de sauvegarde et
+  se termine par un **`diff` intégral** contre cette sauvegarde — pas par une relecture de
+  la partie qu'on croit avoir touchée. Certains dégâts sont totalement silencieux et hors
+  de la zone éditée.
 
-### Config — `~/.claude/settings.json`
+- **Un outil qui réécrit un fichier peut en altérer silencieusement l'encodage.** Certaines
+  chaînes lecture-écriture ne font pas un aller-retour propre sur les caractères non-ASCII,
+  ré-encodent à chaque cycle et ajoutent des marqueurs invisibles. Préférer un outil dont
+  l'aller-retour est garanti pour le contenu, réserver les autres au pilotage de processus,
+  et vérifier par `diff` intégral. Le cas précis rencontré sur une plateforme donnée est un
+  piège de projet : il se documente dans le contexte du projet, pas ici.
 
-```json
-"statusLine": {
-  "type": "command",
-  "command": "bash ~/.claude/statusline-command.sh",
-  "refreshInterval": 5
-}
-```
+- **Ne pas trancher un compromis sûreté/complétude à la place de l'utilisateur.** Quand une
+  variante partielle mais sans risque s'oppose à une variante complète mais susceptible
+  d'endommager des données ou un état existant, ne pas supposer que la plus complète est
+  attendue : exposer les deux, dire laquelle est recommandée et pourquoi, laisser le choix.
 
-`refreshInterval` (en secondes) ajoute un rafraîchissement périodique **en plus** des mises à jour
-événementielles déjà déclenchées par Claude Code (démarrage/reprise de session, nouveau message
-assistant, `/compact`, changement de permission mode, bascule vim mode...) — ce n'est pas un réglage
-de debounce sur ces événements, il n'en existe pas de documenté. Concrètement, tant que la session
-est inactive, le script est relancé toutes les N secondes. Comme le script spawn un process Node qui
-exécute lui-même un `execSync("git branch...")`, une valeur trop basse (`1`) fait tourner ce
-processus en continu en arrière-plan, pour un gain d'affichage nul — une variation de quota à la
-seconde près n'a aucune valeur pratique. `5` reste réactif sans ce coût.
+- **Chercher une bibliothèque établie avant d'écrire un utilitaire maison.** Pour tout
+  besoin d'outillage qui paraît simple (assainissement d'entrées, échappement, parsing,
+  formats de date, jeux de données de référence, icônes), vérifier d'abord s'il existe une
+  bibliothèque ou un jeu de données reconnu et maintenu, et le proposer — le code maison
+  sur ces sujets est un nid de failles et de cas limites oubliés. Ne partir sur une
+  implémentation propre qu'après avoir constaté, **et dit explicitement**, qu'aucune option
+  établie ne couvre le besoin. La règle impose la recherche, pas la dépendance : un projet
+  peut déclarer une politique de dépendances minimales (option `dépendances`), qui fait
+  pencher l'arbitrage sans dispenser de chercher.
 
-### Script — `~/.claude/statusline-command.sh`
+## A-13 — Un changement structurant se propose, il ne s'applique pas
 
-Le script lit sur stdin le JSON fourni par Claude Code (`model`, `workspace.current_dir`,
-`context_window.used_percentage`, `rate_limits.five_hour` / `seven_day`). Il doit être exécutable
-(`chmod +x`). Le wrapper bash n'existe que pour déléguer à Node : les caractères de barre (`█`,
-`░`) et les séquences ANSI passent mal par un shell Windows, pas par Node.
+Tout changement structurant — refonte d'un document de gouvernance, choix d'architecture,
+changement de convention, modification du `PROFIL.md` — se présente sous forme de
+**propositions numérotées et individuellement validables**, avec pour chacune le texte ou
+le comportement exact qui en résulterait. Pas sous forme de modification déjà appliquée
+qu'il faudrait relire pour la contester. L'utilisateur valide par numéros ; seules les
+propositions retenues sont écrites.
 
-```bash
-#!/usr/bin/env bash
-# Claude Code statusLine:
-# [barre] pct% Tkn | Branche (ou Modele si pas de repo git)
-# [barre] pct% 5H  | temps avant reset
-# [barre] pct% 7D  | temps avant reset (jours seuls si > 24h)
-# Texte en blanc, barres en vert/orange/rouge selon le niveau.
+En dessous de ce seuil, une modification ordinaire s'applique directement — la cérémonie
+n'a de valeur que là où la décision en a une.
 
-node -e '
-const { execSync } = require("child_process");
+## A-14 — Écrire dans un document de gouvernance
 
-let input = "";
-process.stdin.on("data", d => input += d);
-process.stdin.on("end", () => {
-  let data;
-  try { data = JSON.parse(input); } catch { data = {}; }
+- **Modification ciblée, jamais réécriture complète** d'un document existant pour un ajout
+  localisé : patcher le bloc concerné, pas régénérer le fichier. Le risque de casser une
+  structure augmente avec la taille du document, et un copier-coller suffit à faire sauter
+  tout un rendu sans qu'aucune erreur ne le signale.
+- **Valider la syntaxe après toute modification d'un document qui dépasse une taille
+  triviale**, avant de considérer la modification terminée. L'outil se choisit au cadrage
+  (option `validateur`) et sa commande exacte vit dans `CLAUDE.md`.
+- **Tous les liens internes sont relatifs**, avec autant de `../` que la profondeur réelle
+  l'exige. Jamais de chemin absolu, jamais de chemin de machine, jamais de `/` initial :
+  `.AIRules/` doit s'ouvrir tel quel après un `git clone` sur n'importe quelle machine, et
+  un lien en dur y casse silencieusement. Corollaire : déplacer une page dans un
+  sous-dossier impose de recalculer ses liens.
+- **Trois niveaux d'encadré, et trois seulement** — leur sémantique est identique d'un
+  projet à l'autre :
 
-  const RESET = "\x1b[0m";
-  const DIM = "\x1b[2m";
-  const WHITE = "\x1b[97m";
-  const GREEN = "\x1b[32m";
-  const YELLOW = "\x1b[33m";
-  const RED = "\x1b[31m";
+  | Niveau | Sens | Exemple |
+  |---|---|---|
+  | `note` | Information neutre, légende, précision qui aide à lire la suite. | Expliquer une convention en tête de document. |
+  | `warning` | Piège opérationnel actif — quelque chose qui *peut se reproduire*. | « Telle action supprime silencieusement tel fichier. » |
+  | `important` | Décision actée, règle non négociable, ou risque élevé. | Décision de sortir un chantier du périmètre, garde-fou sur une donnée sensible. |
 
-  const now = Math.floor(Date.now() / 1000);
+- **L'ossature d'un document est imposée, sa rédaction ne l'est pas.** `GABARITS.md`
+  distingue explicitement les deux : ce qui porte la structure (sommaire, catégories,
+  tableau de vue d'ensemble, protocole d'entrée, ordre des sections) est obligatoire ; le
+  détail de rédaction et les catégories proposées sont indicatifs.
 
-  function pctColor(pct) {
-    if (pct >= 80) return RED;
-    if (pct >= 50) return YELLOW;
-    return GREEN;
-  }
+## A-15 — Transposer ou remettre à niveau une gouvernance existante
 
-  function bar(pct, width = 10) {
-    const filled = Math.max(0, Math.min(width, Math.round((pct / 100) * width)));
-    const empty = width - filled;
-    return `${pctColor(pct)}${"█".repeat(filled)}${DIM}${"░".repeat(empty)}${RESET}`;
-  }
-
-  function fmtTime(resetsAt, allowDaysOnly) {
-    let diff = resetsAt - now;
-    if (diff < 0) diff = 0;
-    if (allowDaysOnly && diff > 86400) {
-      const days = Math.floor(diff / 86400);
-      return `${days}j`;
-    }
-    const hours = Math.floor(diff / 3600);
-    const minutes = Math.floor((diff % 3600) / 60);
-    return `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
-  }
-
-  function gitBranch(cwd) {
-    if (!cwd) return null;
-    try {
-      return execSync("git branch --show-current", { cwd, stdio: ["ignore", "pipe", "ignore"] })
-        .toString()
-        .trim() || null;
-    } catch {
-      return null;
-    }
-  }
-
-  const model = (data.model && data.model.display_name) || "?";
-  const cwd = data.workspace && data.workspace.current_dir;
-  const branch = gitBranch(cwd);
-  const rightLabel = branch ? `${model} ${DIM}·${RESET}${WHITE} ${branch}` : model;
-
-  const ctx = data.context_window || {};
-  const ctxPct = typeof ctx.used_percentage === "number" ? Math.round(ctx.used_percentage) : null;
-
-  function row(pct, label, rightText) {
-    const pctStr = String(Math.round(pct)).padStart(3);
-    return `${WHITE}[${bar(pct)}]${RESET} ${WHITE}${pctStr}% ${label}${RESET} ${WHITE}|${RESET} ${WHITE}${rightText}${RESET}`;
-  }
-
-  const line1 = ctxPct === null
-    ? `${WHITE}${rightLabel}${RESET}`
-    : row(ctxPct, "Tkn", rightLabel);
-
-  const rl = data.rate_limits || {};
-
-  function usageRow(label, entry, allowDaysOnly) {
-    if (!entry || typeof entry.used_percentage !== "number") return null;
-    const pct = Math.round(entry.used_percentage);
-    const time = typeof entry.resets_at === "number" ? fmtTime(entry.resets_at, allowDaysOnly) : "--";
-    return row(pct, label, time);
-  }
-
-  const lines = [
-    line1,
-    usageRow("5H ", rl.five_hour, false),
-    usageRow("7D ", rl.seven_day, true),
-  ].filter(Boolean);
-
-  process.stdout.write(lines.join("\n"));
-});
-'
-```
-
-- Si l'entrée `statusLine` ou le script disparaît de `~/.claude/` (réinstallation, nouvelle machine,
-  settings écrasés), **le recréer depuis les deux blocs ci-dessus** plutôt que d'improviser un format
-  différent — la valeur vient de la cohérence d'affichage d'un environnement à l'autre, pas du détail
-  exact du rendu.
-- Corollaire : toute évolution volontaire du script se reporte **ici en même temps**, sinon la copie
-  de référence devient fausse sans que rien ne le signale.
-
-## Règle 6 — Une idée passe par la roadmap avant de passer par le code
-
-Quand l'utilisateur exprime une idée en vrac (a fortiori plusieurs d'un coup), le réflexe par
-défaut n'est **pas** de coder : c'est de la consigner dans `ROADMAP.html` avec la pastille
-`.planned`, d'y étudier la faisabilité et d'y écrire le design proposé — puis d'attendre son
-arbitrage. Ne démarrer l'implémentation que sur une consigne explicite (« implémente », « vas-y »).
-
-Corollaire sur la forme : tout changement structurant (refonte d'un document de gouvernance, choix
-d'architecture, changement de convention) se présente sous forme de **propositions numérotées et
-individuellement validables**, avec pour chacune le texte ou le comportement exact qui en
-résulterait — pas sous forme de modification déjà appliquée qu'il faudrait relire pour la
-contester. L'utilisateur valide par numéros ; seules les propositions retenues sont écrites.
-
-## Règle 7 — Transposer ou remettre à niveau une gouvernance existante
-
-Deux situations distinctes, à ne pas traiter de la même façon :
-
-- **Cas A — la connaissance projet existe, mais sous un autre format** (`CLAUDE.md` devenu
-  fourre-tout, notes Markdown, wiki, tickets, rien du tout de structuré) : il s'agit de la
-  transposer vers `.AIRules/`. Voir les étapes 1 à 7 ci-dessous.
-- **Cas B — le projet a déjà un `.AIRules/` au format, mais il a dérivé** (invariants devenus
-  faux, chantiers marqués faits sans validation réelle, roadmap qui décrit un design abandonné,
-  charte de gouvernance revue depuis) : il s'agit de le remettre à niveau, pas de le refaire.
-  Voir la section « Cas B » en fin de règle.
+Deux situations, à ne pas traiter de la même façon.
 
 ### Cas A — transposer un existant vers le format `.AIRules/`
 
-Un projet déjà en cours a rarement une page blanche : il a un `CLAUDE.md` qui a gonflé, un
-`README` fourre-tout, des notes en Markdown, un `docs/`, un wiki, des tickets, des `TODO` en
-commentaire, un historique Git. La migration consiste à **redistribuer** cet existant, pas à le
-réécrire de zéro ni à le recopier tel quel.
+Un projet en cours a rarement une page blanche : `CLAUDE.md` qui a gonflé, `README`
+fourre-tout, notes Markdown, `docs/`, wiki, tickets, `TODO` en commentaire, historique Git.
+La migration **redistribue** cet existant, elle ne le réécrit pas de zéro et ne le recopie
+pas tel quel.
 
-#### Étape 1 — Inventorier les sources avant de créer quoi que ce soit
+1. **Inventorier les sources avant de créer quoi que ce soit.** On ne migre bien que ce
+   qu'on a vu.
+2. **Trier par nature d'information, pas par fichier d'origine** — la table d'A-2 est le
+   critère. La ligne la plus importante est la dernière : ce qui est dérivable du code ou
+   périmé se supprime. Une migration réussie *réduit* le volume de doc.
+3. **Vérifier avant d'inscrire, ne jamais recopier de confiance.** Une doc existante est
+   souvent périmée sans que personne ne l'ait remarqué. Ce qui n'a pas pu être vérifié
+   n'est pas jeté pour autant : il est inscrit avec une marque explicite « repris de
+   l'ancienne doc, non revérifié » — visible, donc corrigeable.
+4. **Reconstruire l'historique sans y passer la semaine** : depuis `git log`, mais **par
+   chantier, pas commit par commit**. Tout ce qui précède la gouvernance peut tenir en un
+   seul chantier `Avant la gouvernance ({{période}})`. L'exhaustivité rétroactive n'a
+   aucune valeur ; la reprise du fil en a une.
+5. **Geler la numérotation à la migration**, dans l'ordre où on rencontre les pièges (A-6).
+   Ne pas chercher à la faire correspondre à un ordre chronologique.
+6. **Ordre recommandé** : contexte d'abord (valeur immédiate), puis roadmap, puis index, et
+   journal en dernier — le plus coûteux et le moins urgent. Une gouvernance partielle mais
+   juste vaut mieux qu'une migration complète repoussée.
+7. **Élaguer les sources d'origine**, en y laissant un pointeur d'une ligne. Puis faire
+   valider : une transposition est une proposition (A-13).
 
-Lister tout ce qui porte aujourd'hui de la connaissance projet (fichiers de doc, sections de
-`README`, tickets ouverts, `git log`, conversations passées si elles sont accessibles). Cet
-inventaire est court mais il conditionne le reste : on ne migre bien que ce qu'on a vu.
+### Cas B — remettre à niveau un `.AIRules/` qui a dérivé
 
-#### Étape 2 — Trier par nature d'information, pas par fichier d'origine
+Une gouvernance au bon format n'est pas pour autant juste. C'est un **audit document par
+document**, pas une réécriture.
 
-Chaque élément trouvé a une destination et une seule. Le critère est la nature de l'information :
+**Quand la déclencher** — plutôt qu'une périodicité qu'on ne tient jamais, des déclencheurs :
 
-| Nature de l'information trouvée | Destination |
-|---|---|
-| Fait technique stable, contrainte d'environnement, piège déjà rencontré | `AI-CONTEXT.html` (piège numéroté ou puce de catégorie) |
-| Événement daté, commit notable, diagnostic mené | `AI-HISTORY.html` |
-| Ce qui reste à faire, idée non tranchée, décision de périmètre | `ROADMAP.html` |
-| Commande de build/test/install, particularité d'installation | reste dans `CLAUDE.md` (référence rapide) |
-| Préférence de collaboration, retour d'expérience sur la façon de travailler | mémoire persistante (Règle 3) |
-| Information dérivable du code en le lisant, ou périmée | **supprimée, pas migrée** |
-
-La dernière ligne est la plus importante : une migration réussie *réduit* le volume de doc. Tout
-ce qui est recopié « au cas où » devient une source de vérité concurrente qui dérivera.
-
-#### Étape 3 — Vérifier avant d'inscrire, ne jamais recopier de confiance
-
-Une doc existante est souvent périmée sans que personne ne l'ait remarqué. Toute affirmation
-reprise d'une source ancienne se **re-vérifie contre le code réel** avant d'être inscrite comme
-invariant (la règle de détection de dérive s'applique pendant la migration elle-même). Ce qui n'a
-pas pu être vérifié n'est pas jeté pour autant : il est inscrit avec la pastille `.warn` et une
-mention explicite « repris de l'ancienne doc, non revérifié » — visible, donc corrigeable.
-
-#### Étape 4 — Reconstruire l'historique sans y passer la semaine
-
-Quand il n'existe aucun journal, `AI-HISTORY.html` se reconstruit depuis `git log` — mais **par
-chantier, pas commit par commit** : regrouper les commits en chantiers cohérents, une `<h2>` par
-chantier, et n'y détailler que les lignes qui portent une décision ou un piège. Tout ce qui
-précède la mise en place de la gouvernance peut tenir en un seul chantier
-`Avant la gouvernance ({{période}})` avec quelques lignes de jalons. L'exhaustivité rétroactive
-n'a aucune valeur ; la reprise du fil en a une.
-
-#### Étape 5 — Geler la numérotation à la migration
-
-Les numéros `#N` des pièges sont attribués **au moment de la migration**, dans l'ordre où on les
-rencontre, puis gelés définitivement (voir « Conventions transverses » → « Identifiants stables »
-dans la Règle 2). Ne pas chercher à les faire
-correspondre à un ordre chronologique ou à une numérotation qui existait ailleurs.
-
-#### Étape 6 — Ordre de migration recommandé
-
-`AI-CONTEXT.html` d'abord (valeur immédiate : c'est ce qui évite de retomber dans un piège dès la
-session suivante), puis `ROADMAP.html` (ce qui reste à faire est généralement encore frais), puis
-`README.html`, et `AI-HISTORY.html` en dernier — le plus coûteux à reconstituer et le moins urgent.
-Une gouvernance partielle mais juste vaut mieux qu'une migration complète repoussée.
-
-#### Étape 7 — Élaguer les sources d'origine, puis faire valider
-
-Une fois le contenu déplacé, **retirer** les sections migrées de leur emplacement d'origine et y
-laisser un pointeur d'une ligne vers `.AIRules/` : deux emplacements qui décrivent la même chose
-divergeront. Enfin, la migration est une **proposition** — `AI-HISTORY.html` et `ROADMAP.html` ne
-sont pas écrits sans le feu vert de l'utilisateur (Règle 2), et une transposition est typiquement
-le moment où lui présenter le mapping envisagé avant d'écrire.
-
-### Cas B — remettre à niveau un `.AIRules/` existant qui a dérivé
-
-Une gouvernance au bon format n'est pas pour autant une gouvernance juste. Elle vieillit :
-le code bouge, les chantiers avancent, la charte elle-même est révisée. Une remise à niveau est
-un **audit page par page**, pas une réécriture — le format ne change pas, seul le contenu faux
-est corrigé.
-
-#### Quand la déclencher
-
-Plutôt qu'une périodicité fixe (qu'on ne tient jamais), une liste de déclencheurs :
-
-- **reprise du projet après une longue interruption** — c'est le cas le plus courant, et le plus
-  dangereux : la doc paraît fiable justement parce qu'elle n'a pas bougé ;
-- **montée de version majeure d'une dépendance centrale** (framework, runtime, plateforme hôte) —
-  rejouer en priorité les pièges marqués `.warn`, qui existent précisément parce qu'ils dépendent
-  d'un comportement non contractuel de cette dépendance ;
-- **arrivée d'un nouveau contributeur, humain ou assistant, sur le projet** — la première lecture
+- **reprise après une longue interruption** — le cas le plus courant et le plus dangereux :
+  la doc paraît fiable justement parce qu'elle n'a pas bougé ;
+- **montée de version majeure d'une dépendance centrale** — rejouer en priorité les pièges
+  marqués comme dépendant d'un comportement non contractuel ;
+- **arrivée d'un nouveau contributeur, humain ou assistant** — la première lecture
   extérieure est le meilleur détecteur de contenu périmé ;
-- **révision de la charte de gouvernance elle-même** (voir « Suivre les révisions de la charte »
-  ci-dessous) ;
-- **dérive constatée en cours de session ordinaire** — dans ce cas, ne pas repousser à une revue
-  générale future : corriger immédiatement le point constaté (c'est la règle de détection de
-  dérive de la Règle 4), quitte à planifier la revue complète séparément.
+- **révision de la charte** touchant le noyau ou un défaut (A-7) ;
+- **dérive constatée en session ordinaire** — dans ce cas, corriger immédiatement le point
+  constaté (A-5), quitte à planifier la revue complète séparément.
 
-#### Que vérifier, page par page
+**Que vérifier :**
 
-- **`AI-CONTEXT.html`** — confronter chaque invariant au code réel. Un piège **résolu depuis
-  longtemps se conserve quand même** : il documente pourquoi le code est écrit ainsi, et le
-  supprimer invite à refaire l'erreur. Un piège devenu **faux** (l'API a changé, le contournement
-  n'est plus nécessaire) se corrige en place, en disant ce qui a changé et depuis quand — jamais
-  de suppression silencieuse. Les numéros `#N` ne bougent pas, même si une entrée est vidée de sa
-  substance.
-- **`ROADMAP.html`** — confronter chaque pastille à l'état réel du dépôt. Un `.done` dont on ne
-  trouve **ni trace de validation utilisateur, ni trace de mise en service** redescend en
-  `.progress` : « le code est là » n'a jamais valu « c'est livré » (Règle 4). Un `.adopted` dont
-  l'usage n'est plus constaté redescend en `.done`, et un outillage qui y stagne appelle une
-  décision — adopté, ou sorti du périmètre — pas un statut laissé en l'état. Un chantier `.planned`
-  dont le design ne convainc plus
-  rejoint « Hors périmètre » **avec le callout `.important` qui dit pourquoi** — sans quoi il sera
-  reproposé six mois plus tard.
-- **`AI-HISTORY.html`** — ne rien corriger rétroactivement : les entrées existantes ne se
-  modifient jamais, même fausses. Ajouter une entrée datée qui **acte la revue et les écarts
-  constatés** ; l'écart entre ce qu'on croyait et ce qui était est lui-même une information utile.
-- **`README.html`** — vérifier que le protocole de démarrage décrit toujours la réalité du projet
-  (commandes, dépendances, discipline de test) et que sa date de conformité à la charte est à jour.
+- **Contexte** — confronter chaque invariant au code réel. Un piège **résolu depuis
+  longtemps se conserve** : il documente pourquoi le code est écrit ainsi, et le supprimer
+  invite à refaire l'erreur. Un piège devenu **faux** se corrige en place, en disant ce qui
+  a changé et depuis quand — jamais de suppression silencieuse. Les identifiants ne bougent
+  pas (A-6).
+- **Roadmap** — confronter chaque statut à l'état réel du dépôt. Un chantier marqué livré
+  dont on ne trouve **ni trace de validation, ni trace de mise en service** redescend : « le
+  code est là » n'a jamais valu « c'est livré ». Un chantier planifié dont le design ne
+  convainc plus rejoint « hors périmètre » **avec l'encadré qui dit pourquoi** — sans quoi
+  il sera reproposé six mois plus tard.
+- **Journal** — ne rien corriger rétroactivement (A-4). Ajouter une entrée datée qui
+  **acte la revue et les écarts constatés**.
+- **Index** — vérifier que le protocole de démarrage décrit toujours la réalité du projet,
+  et que sa version de conformité à la charte est à jour.
+- **`PROFIL.md`** — reposer les questions marquées « non tranché », et celles dont la
+  réponse ne correspond plus à ce qu'est devenu le projet.
 
-Une remise à niveau se termine par la **mise à jour effective des lignes « Dernière revue »** des
-pages concernées. Une date qui ne bouge pas signifie que la revue n'a pas eu lieu — c'est le seul
-signal dont dispose le lecteur suivant.
+Une remise à niveau se termine par la **mise à jour effective des dates de dernière revue**.
+Une date qui ne bouge pas signifie que la revue n'a pas eu lieu — c'est le seul signal dont
+dispose le lecteur suivant.
 
-#### Suivre les révisions de la charte
+---
 
-La présente charte évolue, et les projets qui l'ont adoptée ne se mettent pas à niveau tout seuls.
+# Partie B — Options
 
-- Le `<footer>` de chaque `README.html` projet porte, à côté de la date de restructuration de sa
-  gouvernance, la mention **« Conforme à la charte de gouvernance du {{date}} »** — la date du
-  pied de page de ce fichier au moment de l'adoption ou de la dernière remise à niveau.
-- En début de session sur un projet dont cette date est **antérieure à la dernière révision de la
-  charte**, signaler l'écart et proposer la remise à niveau (Cas B) — en listant ce qui a changé
-  dans la charte entre-temps.
-- **Ne pas l'appliquer d'office** : un projet peut légitimement rester sur une convention
-  antérieure (projet en fin de vie, convention volontairement figée, révision non pertinente pour
-  lui). La mise à niveau est une proposition, comme tout changement structurant (Règle 6).
+Chaque option se décide par projet et sa réponse s'écrit dans `PROFIL.md` (partie C).
+Chaque défaut porte son motif : un défaut sans motif ne se conteste pas, il se subit.
 
-## Index des projets d'un workspace
+| Clé | Question | Valeurs | Défaut |
+|---|---|---|---|
+| `format` | Format des documents | `html` · `markdown` · autre | `html` |
+| `documents` | Nombre de documents | `4` · `3` (journal et roadmap fusionnés) | `4` |
+| `statuts` | Vocabulaire de statuts | `complet` · `réduit` | `complet` |
+| `outillage` | Le projet produit-il de l'outillage pour vous-même ? | `oui` · `non` | déduit au cadrage |
+| `tempfiles` | Espace de brouillons hors Git | `oui` · `non` | `oui` |
+| `distant` | Dépôt distant | `oui` · `local-seul` | `oui` |
+| `visibilité` | Dépôt public ou privé | `public` · `privé` | **sans défaut** |
+| `attribution` | Métadonnées d'attribution IA dans les commits | `oui` · `non` | **sans défaut** |
+| `authentification` | Compte et méthode d'authentification pour la forge | texte libre | **sans défaut** |
+| `branches` | Où vit un chantier non abouti | `branche` · `direct` | `branche` |
+| `seuil` | Ce que recouvre le feu vert d'A-3 | `strict` · `roadmap-libre` · `tout-libre` | `strict` |
+| `roadmap-avant-code` | Une idée passe-t-elle par la roadmap avant le code ? | `oui` · `non` | `oui` |
+| `validation` | Ce que « conditions réelles » veut dire ici | texte libre | **sans défaut** |
+| `jetables` | Convention de nommage des données de test | texte libre · `sans objet` | **sans défaut** |
+| `test-manuel` | Test manuel d'abord, automatisation en dernier recours | `oui` · `non` | `oui` |
+| `dépendances` | Politique de dépendances | `ordinaire` · `minimales` | `ordinaire` |
+| `discipline-test` | Comment teste-t-on, et qu'est-ce qui ne doit jamais être touché en test | texte libre | **sans défaut** |
+| `validateur` | Outil de validation de syntaxe des documents | texte libre | **sans défaut** |
+| `veille-conformité` | Vérification périodique automatisée de la conformité | `oui` · `non` | `non` |
 
-Quand ce fichier est placé à la racine d'un workspace regroupant plusieurs projets, tenir ici la
-liste des projets et le lien vers leur `.AIRules/README.html` respectif :
+## `format` — format des documents
+
+**`html`** (défaut) : fichiers HTML statiques ouverts directement dans un navigateur, pas de
+serveur, pas de build, pas de JavaScript, feuille de style partagée. **`markdown`** : même
+structure, rendu par la forge ou par un éditeur. Un **autre format** peut être ajouté à la
+demande, à condition de fournir son gabarit équivalent dans `GABARITS.md` : une seule
+structure, plusieurs rendus.
+
+*Pourquoi `html` par défaut* : les statuts et les encadrés portent une part réelle de
+l'information, et le HTML les rend sans dépendre d'un moteur de rendu tiers — un document
+ouvert depuis le disque, hors ligne, après un clone, est lu exactement comme prévu.
+
+Quel que soit le format, la structure est la même et se convertit sans perte
+(`GABARITS.md`, table de conversion).
+
+## `documents` — nombre de documents
+
+**`4`** (défaut) : index, contexte, journal, roadmap. **`3`** : journal et roadmap
+fusionnés en un document unique.
+
+*Pourquoi `4`* : quatre documents rendent la destination d'une information évidente sans
+réfléchir, et c'est la lecture qui coûte, pas le nombre de fichiers.
+
+**Critère de scission, obligatoire si `3` est retenu** : dès que le document fusionné
+dépasse ce qu'on relit d'un bout à l'autre, il se sépare. Sans ce critère écrit, la fusion
+devient définitive par inertie.
+
+## `statuts` — vocabulaire de statuts
+
+**`complet`** (défaut), six états :
+
+| État | Sens |
+|---|---|
+| **Livré** | Chantier **validé en conditions réelles** *et* **effectivement en service** : déployé, publié et installé, ou fusionné sur la branche principale selon la nature du projet. Un code validé qui dort sur une branche n'est pas livré. |
+| **Adopté** | Réservé aux chantiers d'**outillage et de convention** : l'outil est livré *et* son **usage est constaté dans le flux de travail réel**. Une démonstration réussie ne suffit pas. Pour une fonctionnalité livrée à des utilisateurs, « Livré » reste l'état terminal — ne pas attendre un second feu vert qui ne viendra jamais. Présent seulement si `outillage = oui`. |
+| **En cours** | Développement actif. |
+| **Prévu** | Design discuté et au moins partiellement tranché, pas encore codé. Nuancer le libellé selon l'avancement (« Proposé », « Mécanisme tranché », « Design validé »). |
+| **Écarté** | Explicitement sorti du périmètre — toujours accompagné d'un encadré `important` expliquant pourquoi. |
+| **À revérifier** | Marque un piège qui dépend d'un comportement non contractuel d'une dépendance externe — à rejouer après une mise à jour de celle-ci. |
+
+**`réduit`** : les quatre premiers hors « Adopté » — Livré, En cours, Prévu, Écarté. C'est
+un **sous-ensemble strict**, jamais un vocabulaire différent : un projet qui grandit ajoute
+les manquants sans rien renommer.
+
+*Pourquoi `complet`* : « Adopté » et « À revérifier » portent deux distinctions qu'un audit
+a coûté cher à établir — l'outil qui marche contre l'outil qu'on utilise, et le piège
+stable contre le piège suspendu à une dépendance. Un projet qui ne les utilise pas ne les
+écrit simplement jamais.
+
+**Corollaire de « Adopté »** : un outillage resté « Livré » sans usage constaté est un
+signal. Soit il est adopté, soit on acte qu'il ne sert pas — en le sortant du périmètre
+avec l'encadré qui dit pourquoi, plutôt qu'en le laissant afficher un statut littéralement
+vrai et pratiquement faux.
+
+## `outillage` — le projet produit-il de l'outillage pour vous-même ?
+
+Script, commande, workflow, tracker, convention d'écriture. Détermine si l'état « Adopté »
+existe sur ce projet.
+
+*Pourquoi pas de défaut fixe* : la question se pose factuellement au cadrage plutôt que
+d'imposer un état inatteignable ou d'exclure une distinction utile.
+
+## `tempfiles` — espace de brouillons hors Git
+
+**`oui`** (défaut) : un dossier `.tempfiles/`, **ignoré par Git**, pour les notes de brief,
+brouillons et fichiers d'échange ponctuels.
+
+*Pourquoi `oui`* : le besoin existe sur tout projet, et le nommer d'avance évite que des
+brouillons finissent versionnés par accident ou éparpillés dans le système de fichiers.
+
+Dès qu'il existe, ses règles sont invariantes :
+
+- Ces fichiers sont **jetables par construction** : une fois **entièrement** exploités
+  ailleurs (code, gouvernance, mémoire), ils se suppriment directement, sans demander
+  confirmation et sans les laisser traîner.
+- **« Exploité » signifie que plus rien d'actionnable n'y reste.** Une extraction
+  partielle — quelques lignes reprises d'un brouillon qui en contient plusieurs — ne
+  l'épuise pas. Un fichier de notes en vrac dont une seule idée a servi n'est pas jetable
+  tant que le reste n'a pas été traité ou explicitement abandonné.
+- Dans le doute sur l'épuisement réel d'un fichier, **redemander plutôt que supprimer**.
+- **Jamais un fichier de code ou de configuration**, quel que soit son état.
+
+## `distant` — dépôt distant
+
+**`oui`** (défaut) : la gouvernance se pousse à chaque mise à jour (A-10). **`local-seul`** :
+elle se commite seulement.
+
+*Pourquoi `oui`* : une gouvernance qui ne survit pas à la machine n'est pas une garantie,
+c'est un fichier.
+
+Si `local-seul` est retenu, ce qui est perdu doit être écrit dans le `PROFIL.md` : pas de
+sauvegarde, pas de récupération depuis une autre machine, pas d'exploitation par un outil
+externe. L'absence de distant devient un **état déclaré**, pas un oubli.
+
+## `visibilité` — dépôt public ou privé
+
+**Sans défaut** : à trancher avant le premier commit, jamais après. Rendre public plus tard
+un dépôt écrit comme privé oblige à réécrire l'historique ; l'inverse ne coûte rien.
+
+**Sur un dépôt public, ce qui reste dehors :**
+
+- chemins de machine et arborescences locales ;
+- noms d'hôtes, adresses IP, noms de serveurs, identifiants de comptes ;
+- jetons, mots de passe, clés — sous toute forme, y compris dans un exemple ;
+- captures de configuration personnelle et scripts de poste de travail ;
+- récits d'incident nominatifs ou datés qui exposent une session de travail ;
+- tout ce qui décrit la façon de travailler d'une personne plutôt que la façon de
+  fonctionner du projet.
+
+La règle vaut pour la documentation comme pour le code et les messages de commit. Le
+jugement au cas par cas s'applique bien au premier commit et beaucoup moins au
+deux-centième : la liste existe pour ça.
+
+## `attribution` — métadonnées d'attribution IA dans les commits
+
+Co-auteur, lien de session, mention de l'outil. **Sans défaut** : sur un dépôt public, ces
+métadonnées exposent un historique de collaboration qui n'était pas forcément destiné à
+être publié. C'est une décision d'auteur, pas un réglage d'outil — elle se pose toujours.
+
+La réponse s'écrit dans `PROFIL.md`, et `CLAUDE.md` porte un renvoi d'une ligne pour
+qu'elle n'ait pas à être rediscutée à chaque commit.
+
+## `authentification` — accès à la forge
+
+Quel compte, quelle méthode. **Sans défaut** : plusieurs comptes peuvent cohabiter sur une
+machine, et toute la synchronisation ultérieure (création du dépôt, push, demandes de
+fusion) en dépend. Se pose au cadrage, pas au premier push quand un échec
+d'authentification tombe au milieu d'autre chose.
+
+Mise en œuvre : vérifier l'état existant ; si une connexion est nécessaire, **c'est
+l'utilisateur qui l'exécute** — session interactive avec saisie de secret. Ne jamais
+demander un jeton en clair ni l'écrire dans un fichier du dépôt.
+
+## `branches` — où vit un chantier non abouti
+
+**`branche`** (défaut) : tant qu'un chantier n'est pas abouti, sa documentation
+l'accompagne sur sa branche et arrive sur la principale avec lui, dans le même merge.
+**`direct`** : le projet travaille sur la branche principale et n'écrit qu'après coup.
+
+*Pourquoi `branche`* : c'est le seul moyen mécanique de garantir A-10 — la principale ne
+décrit jamais du code absent. `direct` respecte le même invariant autrement, par
+discipline d'écriture, sans imposer un modèle de branches à un projet qui n'en veut pas.
+
+## `seuil` — ce que recouvre le feu vert
+
+| Valeur | Effet |
+|---|---|
+| **`strict`** (défaut) | Seul le contexte s'écrit librement. Journal et roadmap attendent le feu vert. |
+| `roadmap-libre` | La roadmap s'écrit aussi librement — consigner une idée n'engage rien. Le journal reste sous validation. |
+| `tout-libre` | Tout s'écrit librement. Réservé aux prototypes et aux projets solo sans enjeu de statut. |
+
+*Pourquoi `strict`* : c'est la règle qui empêche une roadmap de mentir, et un statut écrit
+sans arbitrage est un statut que personne n'a décidé.
+
+## `roadmap-avant-code` — une idée passe-t-elle par la roadmap avant le code ?
+
+**`oui`** (défaut) : quand une idée est exprimée en vrac — a fortiori plusieurs d'un coup —
+le réflexe par défaut n'est pas de coder, mais de la consigner dans la roadmap avec son
+design étudié, puis d'attendre l'arbitrage. L'implémentation ne démarre que sur consigne
+explicite.
+
+**Seuil de déclenchement** : une idée passe par la roadmap dès qu'elle touche
+l'architecture, une convention, ou plus d'un fichier. En deçà, on peut coder directement —
+ouvrir une entrée de roadmap pour renommer une variable ne protège personne.
+
+*Pourquoi `oui`* : c'est ce qui empêche une remarque en passant de devenir trois heures
+d'implémentation non demandée.
+
+## `validation` — ce que « conditions réelles » veut dire ici
+
+**Sans défaut**, texte libre : test manuel dans l'application hôte, scénario de recette,
+retour d'un utilisateur tiers, suite d'intégration verte sur un environnement représentatif.
+
+*Pourquoi sans défaut* : A-12 impose la validation mais ne peut pas savoir ce qu'elle
+signifie ici. Sans définition écrite, elle se rediscute à chaque chantier — et finit par
+s'éroder.
+
+## `jetables` — convention de nommage des données de test
+
+**Sans défaut**, texte libre (`grp-zzz-test-*`, `sandbox-*`, base dédiée…), ou `sans objet`
+si le projet ne touche aucune donnée réelle.
+
+*Pourquoi sans défaut* : une convention générique n'est jamais reprise telle quelle, parce
+qu'elle ignore les contraintes de nommage du système hôte. Une convention écrite est une
+convention qu'on peut vérifier d'un coup d'œil.
+
+Si `sans objet` est retenu, la réponse se repose à chaque remise à niveau : « ce projet ne
+touche pas de données réelles » est une affirmation qui vieillit mal.
+
+## `test-manuel` — test manuel d'abord
+
+**`oui`** (défaut) : quand une vérification tient en quelques clics ou saisies dans une
+interface que l'utilisateur a sous la main, lui fournir une **checklist de test manuel
+précise** (quoi faire, quel résultat attendre, comment vérifier la persistance) et rester
+en **écoute passive** sur les traces (logs, fichiers de configuration, sorties de
+processus). Une fois qu'il a demandé à piloter l'application lui-même, ne plus simuler ses
+actions.
+
+*Pourquoi `oui`* : écrire un script d'automatisation d'interface pour un geste ponctuel
+coûte largement plus cher que le geste, et l'utilisateur préfère généralement le faire.
+
+**Trois cas d'escalade vers un banc de mesure automatisé** — pilotage de l'application,
+instrumentation temporaire, capture d'état :
+
+1. deux ou trois hypothèses successives ont déjà été invalidées manuellement sans que la
+   cause n'apparaisse — arrêter alors de proposer des correctifs à l'aveugle ;
+2. le volume de vérifications dépasse ce qu'un humain fera raisonnablement ;
+3. l'utilisateur le demande explicitement.
+
+Dans ces cas l'investissement est décisif : il révèle les bugs à causes multiples, qu'une
+série de correctifs partiels ne peut par construction jamais valider.
+
+## `dépendances` — politique de dépendances
+
+**`ordinaire`** (défaut) : A-12 s'applique tel quel. **`minimales`** : plugin distribué, code
+embarqué, contrainte de taille de livrable — la recherche d'une bibliothèque établie reste
+obligatoire, mais l'arbitrage penche explicitement vers l'implémentation maison, et le
+principe ne se rediscute pas à chaque fois.
+
+*Pourquoi `ordinaire`* : le code maison sur les sujets réputés simples est un nid de cas
+limites oubliés, et il faut une contrainte réelle — pas une préférence — pour y renoncer.
+
+## `discipline-test` — comment teste-t-on sur ce projet
+
+**Sans défaut**, texte libre. Deux questions : comment vérifie-t-on qu'une modification
+fonctionne, et **qu'est-ce qui ne doit jamais être touché en test** ?
+
+*Pourquoi sans défaut* : c'est la seule question du cadrage qui ne peut pas avoir de menu
+fermé — les vraies disciplines de test sont spécifiques à un environnement hôte et ne
+rentrent dans aucune case.
+
+La réponse se rappelle en une ou deux phrases dans l'index de la gouvernance.
+
+## `validateur` — outil de validation de syntaxe
+
+**Sans défaut**, texte libre. A-14 impose de valider ; **quel outil** dépend de
+l'écosystème du projet et de ce qui y est disponible. La commande exacte vit dans
+`CLAUDE.md`.
+
+*Pourquoi sans défaut* : nommer un outil dans la charte la ferait dépendre de logiciels qui
+vieillissent, sur des écosystèmes qu'elle ne connaît pas d'avance. Mais une obligation sans
+moyen d'exécution nommé est une obligation qu'on croit respecter — d'où la question.
+
+## `veille-conformité` — vérification périodique automatisée
+
+**`non`** (défaut) : la conformité se vérifie en début de session (A-7). **`oui`** : une
+tâche planifiée interroge périodiquement le dépôt canonique et compare son identifiant de
+version à celui du projet.
+
+*Pourquoi `non` par défaut* : la mise en place dépend de la machine, pas du projet, et une
+automatisation non entretenue donne une fausse assurance. La question se pose quand même au
+cadrage, parce que la vérification manuelle en début de session est exactement le genre de
+geste qu'on ne fait jamais.
+
+Si `oui`, le mandat de la tâche est **strictement borné** :
+
+- récupérer la révision à jour du dépôt canonique ;
+- créer une **branche dédiée** dans chaque projet concerné — jamais d'écriture directe sur
+  la branche principale ;
+- y propager la charte verbatim et, si pertinent, une proposition de remise à niveau ;
+- **s'arrêter là**. La fusion reste un acte de validation humaine explicite : la tâche ne
+  merge jamais d'elle-même et n'écrit jamais directement dans les documents de gouvernance,
+  y compris quand l'écart vient d'une détection automatisée.
+
+Elle se génère **localement, par l'assistant de l'environnement concerné** — pas une tâche
+centrale unique qui devrait connaître à l'avance tous les environnements et tous les
+projets : chacun découvre et couvre les projets réellement présents chez lui.
+
+Sur un poste avec interface graphique, le sondage doit rester invisible. Attention à ne pas
+confondre la visibilité de la *tâche* dans l'outil de planification et la visibilité de la
+*fenêtre du processus* qu'elle lance : quand le script est lui-même un exécutable à
+console, l'invoquer directement ouvre une fenêtre — passer par un lanceur qui la masque
+explicitement.
+
+---
+
+# Partie C — Entretien de cadrage
+
+Les options de la partie B ne se devinent pas et ne s'imposent pas : elles se demandent.
+L'entretien de cadrage est le moment où on les pose.
+
+## Quand il se déroule
+
+Quatre déclencheurs :
+
+1. **SETUP d'un nouveau projet**, avant de créer quoi que ce soit — les options
+   `visibilité`, `attribution` et `authentification` conditionnent ce qui peut être écrit
+   dès le premier commit.
+2. **Transposition d'un existant** (A-15, cas A).
+3. **Remise à niveau** (A-15, cas B) : on repose les questions marquées « non tranché » et
+   celles dont la réponse ne correspond plus au projet.
+4. **Révision additive de la charte** : on ne repose **que les nouvelles questions**, avec
+   leur défaut déjà appliqué. C'est une notification à arbitrer, pas un entretien complet.
+
+## Profils de départ
+
+Poser dix-neuf questions à chaque SETUP garantit qu'il ne sera jamais mené jusqu'au bout.
+L'entretien commence donc par **un mot**, puis se poursuit en écrasant les points qu'on veut.
+
+| Profil | Pour quel projet |
+|---|---|
+| **`minimal`** | Prototype, expérimentation, projet dont on ne sait pas encore s'il vivra. Allège tout ce qui coûte plus qu'il ne protège à ce stade. |
+| **`standard`** | Le cas ordinaire : tous les défauts de la partie B. |
+| **`complet`** | Projet installé, suivi dans la durée. Active ce que les autres profils laissent de côté. |
+
+**Ce que chaque profil pose exactement est dans [`GABARITS.md`](./GABARITS.md), § 7** — une
+seule table, un seul endroit. La redire ici en produirait une seconde qui divergerait, ce
+qu'A-2 interdit précisément.
+
+Les questions **sans défaut** (`visibilité`, `attribution`, `authentification`,
+`validation`, `jetables`, `discipline-test`, `validateur`) ne figurent dans aucun profil et
+se posent **quel qu'il soit** : aucun profil ne peut y répondre à votre place.
+
+## Comment mener l'entretien
+
+- **Par blocs**, dans l'ordre de la partie B, chaque bloc pouvant être expédié d'un
+  « défauts partout ».
+- **Chaque question expose ses valeurs, son défaut et le pourquoi du défaut.** Une question
+  posée sans son motif appelle une réponse au hasard.
+- **Jamais de blocage sur une question à défaut.** Une question laissée sans réponse prend
+  son défaut et s'inscrit dans `PROFIL.md` comme `défaut appliqué, non tranché` — la
+  différence entre « on a choisi ça » et « on n'a rien choisi » reste visible, donc
+  rattrapable, et ce sont ces questions-là qu'on repose à la remise à niveau.
+- **Les questions sans défaut, elles, bloquent la création** tant qu'elles n'ont pas de
+  réponse : leurs conséquences sont irréversibles ou coûteuses à inverser.
+
+## Où vivent les réponses — `PROFIL.md`
+
+Un fichier **`PROFIL.md`** à la racine de `.AIRules/`, **toujours en Markdown** quel que
+soit le format retenu par le projet.
+
+*Pourquoi Markdown, même sur un projet HTML* : ce n'est pas un document de lecture, c'est
+un **état de configuration**. Il doit rester `diff`-able, comparable d'un projet à l'autre,
+et lisible par un outil.
+
+Il porte : le profil de départ, l'identifiant de version de la charte sous laquelle le
+cadrage a été fait, une ligne par option (clé, choix, pourquoi), et sa propre date de
+dernière revue. Le gabarit complet et un exemple rempli par profil sont dans `GABARITS.md`.
+
+`PROFIL.md` **n'est pas une copie conforme** : c'est le seul fichier de `.AIRules/` prescrit
+par cette charte qui soit propre au projet.
+
+## Changer une réponse
+
+Une réponse peut changer — un prototype devient un produit, un dépôt privé devient public,
+un outillage trouve son usage. Mais un changement de `PROFIL.md` est un **changement
+structurant** (A-13) : proposition, validation explicite, puis une ligne au journal qui
+acte la décision et son motif.
+
+`PROFIL.md` porte la valeur courante, le journal porte l'histoire. C'est ce qui distingue
+une décision d'un contournement — typiquement passer `seuil` à `tout-libre` un jour de
+fatigue.
+
+---
+
+# Environnement de travail
+
+Hors gouvernance de projet, mais utile à toute session : **garder en permanence sous les
+yeux le niveau de consommation de contexte et de quota**, sans avoir à le demander.
+
+Une statusline utile affiche : le pourcentage de fenêtre de contexte consommé, les quotas
+d'usage avec le temps restant avant remise à zéro, le modèle actif, et la branche Git
+courante. Une ligne par indicateur, avec un code couleur par palier.
+
+Une implémentation prête à l'emploi, indépendante de toute machine, est fournie dans le
+dépôt canonique : **`outils/`** (script, fragment de configuration, notice d'installation).
+Elle vit là plutôt qu'ici parce qu'elle relève du poste de travail et non du projet — et
+elle ne voyage pas dans les `.AIRules/`.
+
+---
+
+# Index des projets d'un workspace
+
+Quand cette charte est placée à la racine d'un workspace regroupant plusieurs projets,
+tenir ici la liste des projets et le lien vers leur gouvernance respective :
 
 | Projet | Gouvernance |
 |---|---|
 | `{{nom-du-dossier}}` | [`{{nom-du-dossier}}/.AIRules/README.html`](./{{nom-du-dossier}}/.AIRules/README.html) |
 
-**Ce gabarit reste vide ici** : cette charte est un document canonique partagé, poussé tel quel
-dans n'importe quel projet ou workspace — elle ne doit citer aucun projet actif, aucun nom de
-dépôt, aucune URL réelle. L'instanciation concrète (la vraie liste de projets d'*un* workspace
-donné) vit dans le `CLAUDE.md` de ce workspace (Règle 3), jamais dans la copie locale de
-`GOUVERNANCE-IA.md`.
+**Ce gabarit reste vide ici** : cette charte est un document canonique partagé, poussé tel
+quel dans n'importe quel projet ou workspace — elle ne cite aucun projet actif, aucun nom
+de dépôt, aucune URL réelle. L'instanciation concrète vit dans le `CLAUDE.md` du workspace
+(A-11).
 
 ---
-*Dernière mise à jour de cette charte : **2026-07-31** (révision issue d'un audit de gouvernance
-grandeur nature, où chacun des points ci-dessous avait produit du faux, de l'ambigu ou du
-non-décidable. Règle 1 : **éclatement d'une page principale** en pages de détail dans un sous-dossier
-dédié, la page éclatée devenant un index de renvois qui ne porte aucun statut ; critère de **chaîne
-de liens continue** pour les annexes, en remplacement du « lien depuis l'une des quatre pages » que
-tout éclatement rendait faux ; **note d'annexe** pour les pièces que leur format ou leur poids empêche
-de porter un lien de retour, et pour les ressources délibérément hors dépôt ; archives — le contenu
-reste intouchable mais les **liens de navigation se réparent**, en trois cas explicites dont celui de
-la cible disparue ; colonne `Hash` d'`AI-HISTORY.html` ramenée à **trois valeurs** dont le marqueur
-`(commit en cours)`, dont le remplacement par le hash réel devient la seule modification autorisée
-d'une entrée existante. Règle 2 : pastille **`.adopted`** pour les chantiers d'outillage et de
-convention, distinguant l'outil qui fonctionne de l'outil dont l'usage est constaté, et `.done`
-resserrée sur « validé en conditions réelles **et** effectivement en service » ; **compteur de
-numérotation** en tête des documents à numérotation stable, sans lequel la règle demande de connaître
-un état qui n'est écrit nulle part. Règle 4 : pour l'outillage, usage constaté plutôt que
-démonstration réussie. Règle 7 : audit de `ROADMAP.html` aligné sur les deux nouveaux états — un
-`.done` se vérifie désormais sur la validation *et* la mise en service, un `.adopted` sur l'usage
-réellement constaté.).*
 
-*Révision précédente : **2026-07-30** (préambule : la charte est la référence à tout
-moment et est susceptible d'évoluer ; Règle 1 : dossiers optionnels `annexes/` et `archive/`, dépôt
-canonique public `Claude-Governance` et mécanisme de vérification périodique par cron avec
-propagation sur branche et validation humaine, clarification de l'épuisement d'un fichier
-`.tempfiles/` avant suppression ; Règle 2 : navbar réservée aux quatre pages principales, squelette
-des pages de sous-dossier, liens internes toujours relatifs, discipline d'édition ciblée + validation
-de syntaxe sur les pages volumineuses ; Règle 5 : script de statusline intégré verbatim comme copie
-de référence, `refreshInterval` corrigé de `1` à `5` et sa justification réécrite après vérification
-de la documentation officielle (ce n'est pas un réglage de debounce) ; Index des projets d'un
-workspace : retrait de l'instanciation concrète — ce document canonique ne doit citer aucun projet
-actif, seul le gabarit vide reste, l'index réel vivant dans le `CLAUDE.md` de chaque workspace ;
-mécanisme de vérification par cron : précision sur l'exécution silencieuse (fenêtre de tâche
-planifiée masquée ≠ fenêtre du processus lancé, distinction à garder quand le script cron est
-lui-même un exécutable à console).*
+# Correspondance avec la numérotation antérieure
 
-*Révision antérieure : **2026-07-29** (Règle 1 : ajout des trois questions à poser au SETUP d'un
-nouveau projet — nom du dépôt distant, privé ou public, authentification `gh` en place).*
+**Table temporaire**, à retirer à la révision suivante une fois les références des projets
+migrées. Une table de compatibilité sans date de péremption reste éternellement.
 
-*Révision antérieure : **2026-07-28** (ajout des Règles 6 et 7 — cette dernière couvrant à la fois
-la transposition d'un existant et la remise à niveau d'un `.AIRules/` qui a dérivé —, révision des
-cadences d'écriture de la Règle 2 et de la discipline de vérification de la Règle 4).*
+| Ancienne référence | Nouvelle |
+|---|---|
+| Règle 1 — dossier `.AIRules/` versionné | A-1, A-7, A-10 |
+| Règle 1 — `.tempfiles/` | option `tempfiles` |
+| Règle 1 — annexes | A-8 |
+| Règle 1 — archive | A-9 |
+| Règle 1 — éclatement d'une page | `GABARITS.md` § éclatement |
+| Règle 1 — trois questions au SETUP | options `visibilité`, `attribution`, `authentification` |
+| Règle 1 — vérification périodique par cron | option `veille-conformité` |
+| Règle 1 — colonne `Hash` | A-4 |
+| Règle 2 — format HTML, squelettes, navbar | option `format` + `GABARITS.md` |
+| Règle 2 — plan de chaque page | `GABARITS.md` |
+| Règle 2 — discipline d'édition, liens relatifs | A-14 |
+| Règle 2 — identifiants stables, compteur | A-6 |
+| Règle 2 — callouts | A-14 |
+| Règle 2 — pastilles de statut | option `statuts` |
+| Règle 2 — cadences d'écriture | A-3 |
+| Règle 3 — `CLAUDE.md` et mémoire | A-11 |
+| Règle 3 — attribution IA en commit | option `attribution` |
+| Règle 4 — détection de dérive | A-5 |
+| Règle 4 — validation avant « fait » | A-12 + option `validation` |
+| Règle 4 — données jetables | A-12 + option `jetables` |
+| Règle 4 — export d'API à deux niveaux | A-12 (généralisé) |
+| Règle 4 — sauvegarde puis `diff` | A-12 |
+| Règle 4 — encodage / PowerShell | A-12 (généralisé) |
+| Règle 4 — test manuel d'abord | option `test-manuel` |
+| Règle 4 — compromis sûreté/complétude | A-12 |
+| Règle 4 — bibliothèque avant maison | A-12 + option `dépendances` |
+| Règle 5 — statusline | § Environnement de travail + `outils/` du dépôt canonique |
+| Règle 6 — idée avant code | option `roadmap-avant-code` |
+| Règle 6 — propositions numérotées | A-13 |
+| Règle 7 — cas A et cas B | A-15 |
+| Règle 7 — suivre les révisions | A-7 |
 
-*C'est cette date que reprend la mention « Conforme à la charte de gouvernance du {{date}} » dans
-le pied de page des `README.html` projet.*
+---
+
+# Historique des révisions
+
+## Version **`20260731-135838`** — 2026-07-31 · *touche le noyau*
+
+Refonte structurelle. Le document se scinde en trois parties : un **noyau** de quinze
+invariants prescriptifs, dix-neuf **options** qui se décident par projet et portent chacune
+son défaut **et le pourquoi de ce défaut**, et un **entretien de cadrage** qui les pose au
+lieu de les supposer.
+
+- **Identifiant de version horodaté** `AAAAMMJJ-HHMMSS` en remplacement de la date de pied
+  de page, qui ne savait pas distinguer deux révisions du même jour.
+- **Les identifiants `A-x` et les clés d'option sont déclarés stables**, au même titre que
+  ceux qu'A-6 impose aux projets : ils sont devenus des références porteuses, et rien ne
+  protégeait la charte de se casser elle-même à la révision suivante.
+- Le **format des documents devient une option**, `html` par défaut, avec un gabarit
+  Markdown équivalent et la possibilité d'en ajouter d'autres.
+- Les squelettes de documents et le modèle de profil sortent dans **`GABARITS.md`**, lu
+  seulement au moment d'écrire — la charte reste ce qu'on charge en début de session.
+- Les réponses de cadrage vivent dans un nouveau **`PROFIL.md`** par projet.
+- Une **trace de dérive** devient obligatoire (A-5) et constitue la deuxième exception
+  nommée au feu vert.
+- Une révision de charte suit désormais **deux régimes** selon qu'elle est additive ou
+  qu'elle touche le noyau (A-7).
+- La vérification d'un export d'API se généralise en **« ne jamais conclure sur une seule
+  source »** (A-12).
+- Le dépôt public reçoit une **liste explicite de ce qui reste dehors** (option
+  `visibilité`).
+- Le script de statusline quitte la charte pour `outils/` ; le piège d'encodage propre à une
+  plateforme est généralisé et son cas concret renvoyé au contexte des projets ; le récit
+  d'incident daté est retiré.
+- Une **table de correspondance temporaire** relie l'ancienne numérotation Règle 1-7 aux
+  nouvelles sections.
+
+## Versions antérieures — avant l'introduction des identifiants
+
+| Date | Contenu |
+|---|---|
+| 2026-07-31 | Éclatement d'une page principale en pages de détail ; chaîne de liens continue pour les annexes ; note d'annexe ; réparation des liens de navigation d'archive ; colonne `Hash` ramenée à trois valeurs ; pastille `.adopted` ; compteur de numérotation ; audit de roadmap aligné sur les deux nouveaux états. |
+| 2026-07-30 | La charte est la référence à tout moment ; dossiers optionnels `annexes/` et `archive/` ; dépôt canonique public ; vérification périodique par cron ; navbar réservée aux pages principales ; liens internes toujours relatifs ; discipline d'édition ciblée ; script de statusline intégré verbatim ; index des projets ramené à un gabarit vide. |
+| 2026-07-29 | Trois questions à poser au SETUP d'un nouveau projet. |
+| 2026-07-28 | Ajout des Règles 6 et 7 ; révision des cadences d'écriture et de la discipline de vérification. |
+
+---
+*Version de cette charte : **`20260731-135838`**. C'est cet identifiant que reprend la
+mention « Conforme à la charte de gouvernance, version {{id}} » dans le pied de page de
+l'index de gouvernance de chaque projet.*

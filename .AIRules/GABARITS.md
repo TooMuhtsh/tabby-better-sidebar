@@ -1,0 +1,486 @@
+# Gabarits de gouvernance
+
+Pièce compagnon de [`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md). Elle porte les squelettes de
+documents, la table de conversion entre formats, et le modèle de `PROFIL.md`.
+
+**Ce fichier ne se lit pas en début de session.** Il s'ouvre au moment de créer un document,
+d'en restructurer un, ou de remplir un profil — et se referme après. La charte est ce qu'on
+garde en tête ; ceci est ce qu'on consulte.
+
+## Deux niveaux d'autorité, à ne pas confondre
+
+| Niveau | Ce que ça recouvre | Peut-on y déroger ? |
+|---|---|---|
+| **Ossature** | L'ordre des sections, la présence des sections structurantes (sommaire, compteur, vue d'ensemble, protocole), la sémantique des encadrés et des statuts, les règles de lien. | **Non.** C'est ce qui rend un document prévisible : on sait où chercher sans relire. |
+| **Rédaction** | Le contenu des paragraphes, les catégories proposées, le nombre de lignes, le ton, les exemples. | **Oui.** Ce qui suit est un point de départ, pas un moule. |
+
+Sauf mention contraire, ce qui est présenté comme une **liste ordonnée de sections** relève
+de l'ossature, et ce qui est présenté en prose relève de la rédaction.
+
+---
+
+# 1. Squelette d'un document principal
+
+## Variante `html` (défaut)
+
+```html
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>{{nom du projet}} — {{titre de la page}}</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="tabbar">
+<a href="README.html">Accueil</a>
+<a href="AI-CONTEXT.html">Contexte</a>
+<a href="AI-HISTORY.html">Historique</a>
+<a href="ROADMAP.html">Roadmap</a>
+</nav>
+
+<h1>{{titre}}</h1>
+<p class="muted">Dernière revue : {{date}}</p>
+
+<!-- contenu -->
+
+<footer>{{nom du projet}} · {{note de bas de page}}</footer>
+</body>
+</html>
+```
+
+- La navbar est **identique sur tous les documents principaux** ; seul le lien de la page
+  courante porte `class="current"`.
+- Elle est **réservée aux documents principaux** : une page d'annexe ou d'archive n'en a
+  pas (§ 5).
+- `style.css` est partagé par toutes les pages du projet — un seul fichier, jamais dupliqué
+  (§ 4).
+
+## Variante `markdown`
+
+```markdown
+[Accueil](README.md) · [Contexte](AI-CONTEXT.md) · [Historique](AI-HISTORY.md) · [Roadmap](ROADMAP.md)
+
+# {{titre}}
+
+*Dernière revue : {{date}}*
+
+<!-- contenu -->
+
+---
+*{{nom du projet}} · {{note de bas de page}}*
+```
+
+- La ligne de navigation remplace la navbar, avec la même règle : identique partout, la page
+  courante en texte brut au lieu d'un lien.
+- Pas de feuille de style : le rendu est celui de la forge ou de l'éditeur.
+
+## Ajouter un troisième format
+
+Un format non prévu ici est acceptable, à condition de fournir dans ce fichier **son
+squelette et sa ligne dans la table de conversion** — une seule structure, plusieurs rendus.
+Un format ajouté sans son gabarit est un projet qui diverge.
+
+---
+
+# 2. Table de conversion entre formats
+
+Ce qui doit se dire dans les deux formats, et comment.
+
+## Statuts
+
+| État | `html` | `markdown` |
+|---|---|---|
+| Livré | `<span class="pill done">✅ Livré</span>` | `✅ **Livré**` |
+| Adopté | `<span class="pill adopted">🎯 Adopté</span>` | `🎯 **Adopté**` |
+| En cours | `<span class="pill progress">🚧 En cours</span>` | `🚧 **En cours**` |
+| Prévu | `<span class="pill planned">📋 Prévu</span>` | `📋 **Prévu**` |
+| Écarté | `<span class="pill out">⛔ Écarté</span>` | `⛔ **Écarté**` |
+| À revérifier | `<span class="pill warn">⚠️ À revérifier</span>` | `⚠️ **À revérifier**` |
+
+L'emoji fait partie du statut, pas de la décoration : c'est ce qui le rend repérable en
+survol dans les deux formats.
+
+## Encadrés
+
+| Niveau | `html` | `markdown` |
+|---|---|---|
+| `note` | `<div class="callout note"><p class="callout-title">Titre</p>…</div>` | `> **ℹ️ Titre**`<br>`> …` |
+| `warning` | `<div class="callout warning">…</div>` | `> **⚠️ Titre**`<br>`> …` |
+| `important` | `<div class="callout important">…</div>` | `> **❗ Titre**`<br>`> …` |
+
+## Ancres et liens
+
+| Usage | `html` | `markdown` |
+|---|---|---|
+| Ancre de piège | `<h3 id="piege-N">#N — Titre</h3>` | `### <a id="piege-N"></a>#N — Titre` |
+| Ancre de catégorie | `<h2 id="cat-slug">` | `## <a id="cat-slug"></a>` |
+| Ancre de chantier | `<h3 id="slug-chantier">` | `### <a id="slug-chantier"></a>` |
+| Lien interne | `href="AI-CONTEXT.html#piege-4"` | `](AI-CONTEXT.md#piege-4)` |
+
+**Toujours en chemin relatif** (A-14). Jamais de chemin absolu, jamais de chemin de machine,
+jamais de `/` initial.
+
+## Ligne de texte secondaire
+
+`<p class="muted">…</p>` en HTML, `*…*` (italique) en Markdown.
+
+---
+
+# 3. Plan de chaque document
+
+## `README` — index et protocole
+
+Ordre des sections après le `<h1>{{Nom du projet}} — Gouvernance IA</h1>` :
+
+1. **Paragraphe de description** du projet — 2 à 4 phrases : ce que c'est, le problème
+   central qu'il adresse.
+2. **Liste** : emplacement du dépôt de code, lien vers le dépôt distant s'il existe, rappel
+   que `.AIRules/` vit dans le même dépôt.
+3. **Ligne secondaire** rappelant que ce dossier est versionné avec le code — donc qu'un
+   `git clone` récupère tout.
+4. **`Structure`** : tableau à deux colonnes (`Fichier` / `Contenu`) listant les autres
+   documents, `PROFIL.md` compris, avec une phrase de description chacun. Sert de point
+   d'entrée cliquable. C'est **le seul endroit de l'index qui mentionne le cadrage** : une
+   ligne et un lien vers `PROFIL.md`, jamais un résumé de ses choix. Un résumé ferait de
+   l'index une seconde source de vérité, et c'est celle qu'on oublie de corriger.
+5. **`Protocole`**, trois sous-sections :
+   - **`En début de session sur ce projet`** : liste ordonnée des étapes avant de coder —
+     typiquement lire le contexte (invariants et pièges), lire le haut du journal (où en est
+     le dernier chantier actif), vérifier l'état réel du projet avant de faire confiance à
+     la doc (build à jour, dernier commit, état d'un service externe si pertinent), et
+     comparer l'identifiant de version du pied de page à celui de la charte — s'il est
+     inférieur, signaler l'écart et proposer la remise à niveau plutôt que de l'appliquer
+     d'office.
+   - **Deux encadrés `important`** juste après, toujours les deux mêmes règles, texte
+     adaptable au projet : « détection de dérive » (A-5) et « validation avant écriture dans
+     le journal et la roadmap » (A-3), cette seconde règle couvrant aussi les lignes d'état
+     intermédiaires et les descriptions de design.
+   - **`Quand mettre à jour`** : la cadence de chacun des autres documents — les deux
+     cadences opposées d'A-3, avec l'exception « session qui s'éternise ». Terminer par un
+     rappel explicite que les entrées déjà écrites du journal ne se modifient jamais.
+   - Si le projet a une **discipline de test** (option `discipline-test`), une dernière
+     sous-section qui la rappelle en une ou deux phrases.
+6. **Pied de page** : nom du projet + date de la dernière restructuration de la gouvernance
+   elle-même (pas la date du dernier chantier), suivie de **« Conforme à la charte de
+   gouvernance, version {{id}} »**.
+
+## `AI-CONTEXT` — invariants et pièges
+
+Ordre après le `<h1>Contexte &amp; invariants</h1>` et la ligne de dernière revue :
+
+1. **Paragraphe d'intro** : rappeler l'objectif — éviter de retomber deux fois dans le même
+   piège, donc organisation **par catégorie thématique**, pas chronologique. Préciser
+   explicitement que la numérotation `#N` est **stable et ne se renumérote jamais** (A-6),
+   et que les commandes de build ne sont pas dupliquées ici (elles restent dans
+   `CLAUDE.md`).
+2. **Encadré `note` « Légende »** expliquant la convention du statut « À revérifier ».
+3. **`Sommaire`** : liste d'ancres vers chaque catégorie, chaque entrée listant les numéros
+   `#N` qu'elle contient. Immédiatement dessous, une ligne secondaire donnant le **prochain
+   numéro de piège libre** — sans elle, l'ajout d'un piège produit tôt ou tard une collision
+   avec un numéro déjà attribué plus haut dans le fichier.
+4. **Une section par catégorie**, dans un ordre stable. Catégories couramment utiles, toutes
+   ne s'appliquant pas partout : identité du projet (nom, emplacements, identité Git) ;
+   environnement et build ; architecture et composants du framework ; comment vérifier
+   qu'une dépendance externe est réellement utilisable ; intégrité et persistance des
+   données ; VCS ; debug et workflow de dev ; publication et distribution.
+5. **Deux formats à l'intérieur d'une catégorie** :
+   - **fait stable simple** : une puce, sans numéro (convention de nommage, version
+     verrouillée) ;
+   - **piège documenté** : un titre `#N — {{titre court}}` suivi d'un paragraphe décrivant
+     **le symptôme, la cause, puis la solution** — dans cet ordre, un futur lecteur devant
+     pouvoir reconnaître le symptôme avant de lire la solution. Bloc de code si une commande
+     est nécessaire pour reproduire ou contourner, et **encadré `warning` séparé** si le
+     piège a un effet de bord opérationnel au-delà de la cause immédiate.
+
+## `AI-HISTORY` — journal chronologique par chantier
+
+Ordre après le `<h1>Journal de bord</h1>` :
+
+1. **Ligne secondaire** rappelant l'ordre de tri : chantiers du plus récent au plus ancien ;
+   à l'intérieur d'un chantier, entrées les plus récentes en tête.
+2. **Encadré `important`** répétant A-4 — ne jamais modifier une entrée existante, seulement
+   en ajouter en tête du chantier concerné — et le format de ligne : `Date | Hash | Résumé`.
+3. **Une section par chantier**, titre au format `{{Nom du chantier}} ({{date de la dernière
+   entrée}})`, suivie **optionnellement** d'un paragraphe de contexte quand le chantier a
+   besoin d'être resitué (signalé par qui, pourquoi il a démarré).
+4. **Un tableau par chantier**, colonnes `Date` / `Hash` / `Résumé`, une ligne par commit ou
+   événement notable, triées de la plus récente à la plus ancienne. `Hash` suit strictement
+   les trois valeurs d'A-4. Le résumé peut mettre en gras une décision actée au milieu d'une
+   entrée plus longue.
+5. Un chantier peut être un **diagnostic ponctuel** (bug signalé → cause trouvée →
+   correctif), pas seulement une fonctionnalité — même format.
+
+Si `documents = 3`, le journal et la roadmap partagent un fichier : le journal occupe la
+première moitié, la roadmap la seconde, chacune gardant son plan ci-dessus et son propre
+titre de niveau 1.
+
+## `ROADMAP` — statut et design des chantiers restants
+
+Ordre après le `<h1>Roadmap</h1>` et la ligne de dernière revue :
+
+1. **Paragraphe de renvoi** : ce qui est livré est dans le journal, les pièges et invariants
+   du code en place sont dans le contexte — cette page ne répète ni l'un ni l'autre,
+   uniquement ce qui reste à faire ou à décider.
+2. **`Vue d'ensemble`** : tableau `Chantier` / `Statut` / `Priorité`, la colonne `Chantier`
+   étant un lien d'ancre vers le détail plus bas. **Ces colonnes ne tiennent que tant que le
+   détail vit sur la même page** : à l'éclatement (§ 6), le tableau devient un index de
+   renvois et les perd.
+3. **Sections de détail par groupe**, dans cet ordre stable : `Phase 1 — {{priorité}}`,
+   `Phase 2 — {{priorité}}`, `Non daté — à faire quand utile`, `Hors périmètre`. N'inclure
+   que les phases pertinentes, mais garder « Hors périmètre » en dernier dès que des idées
+   ont été explicitement écartées — c'est ce qui évite qu'elles soient reproposées sans
+   qu'on sache qu'elles ont déjà été tranchées.
+4. **Un titre ancré par chantier** dans une phase, avec :
+   - un paragraphe de design aussi détaillé que possible — les choix d'architecture et d'UX
+     déjà tranchés, pas seulement une intention vague ;
+   - une liste à puces des sous-décisions ou contraintes identifiées ;
+   - une **ligne secondaire finale** si un point reste à vérifier au moment de
+     l'implémentation — ce qui distingue le tranché de l'ouvert ;
+   - un **encadré `important`** quand le chantier a été sorti du périmètre, ou quand une
+     décision de scope a été actée après hésitation. L'encadré porte le *pourquoi*, pas
+     seulement le *quoi*.
+
+---
+
+# 4. Feuille de style (`format = html`)
+
+Un seul `style.css` par projet, à la racine de `.AIRules/`, atteint depuis les
+sous-dossiers par `../style.css` — jamais recopié.
+
+```css
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6a6a6a;
+  --border: #dcdcdc;
+  --zebra: #f7f7f7;
+  --accent: #2f6feb;
+  --note-bg: #eef4ff;    --note-br: #2f6feb;
+  --warn-bg: #fff6e5;    --warn-br: #d98324;
+  --imp-bg:  #ffeeee;    --imp-br:  #d13b3b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181c;
+    --fg: #e6e6e6;
+    --muted: #9aa0a6;
+    --border: #33373d;
+    --zebra: #1c1f24;
+    --accent: #7aa7ff;
+    --note-bg: #16233a;  --note-br: #4f86ff;
+    --warn-bg: #33270f;  --warn-br: #e0a044;
+    --imp-bg:  #35191a;  --imp-br:  #e05c5c;
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+}
+
+a { color: var(--accent); }
+
+.tabbar {
+  display: flex;
+  gap: .25rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  padding-bottom: .5rem;
+}
+.tabbar a {
+  padding: .35rem .75rem;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.tabbar a:hover { background: var(--zebra); }
+.tabbar a.current { background: var(--accent); color: #fff; }
+
+h1 { margin-bottom: .25rem; }
+h2 { margin-top: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: .25rem; }
+h3 { margin-top: 1.75rem; }
+
+.muted { color: var(--muted); font-size: .9rem; }
+
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid var(--border); padding: .45rem .6rem; text-align: left; vertical-align: top; }
+tbody tr:nth-child(odd) { background: var(--zebra); }
+
+pre {
+  background: var(--zebra);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  overflow-x: auto;
+}
+code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .9em; }
+pre code { font-size: .85em; }
+
+.callout {
+  border-left: 4px solid var(--border);
+  border-radius: 0 6px 6px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+}
+.callout-title { font-weight: 700; margin: 0 0 .35rem; }
+.callout p:last-child { margin-bottom: 0; }
+.callout.note      { background: var(--note-bg); border-left-color: var(--note-br); }
+.callout.warning   { background: var(--warn-bg); border-left-color: var(--warn-br); }
+.callout.important { background: var(--imp-bg);  border-left-color: var(--imp-br); }
+
+.pill {
+  display: inline-block;
+  padding: .1rem .5rem;
+  border-radius: 999px;
+  font-size: .85em;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+}
+.pill.done     { background: #d6f5d6; color: #14571b; }
+.pill.adopted  { background: #d8ecff; color: #0d3f6b; }
+.pill.progress { background: #ffe9c7; color: #6b3f0d; }
+.pill.planned  { background: #ececec; color: #3a3a3a; }
+.pill.out      { background: #f0d5d5; color: #6b1414; }
+.pill.warn     { background: #fff2b8; color: #6b5410; }
+
+footer {
+  margin-top: 4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: .85rem;
+}
+```
+
+Le thème suit celui du système via `prefers-color-scheme` — **pas de bascule JavaScript**,
+le format n'en admet aucun.
+
+---
+
+# 5. Pages placées dans un sous-dossier (`annexes/`, `archive/`)
+
+La navbar est **réservée aux documents principaux** : elle sert à identifier la gouvernance
+elle-même. Une page d'annexe ou d'archive n'en a pas — elle se rattache par des hyperliens,
+pas par une barre de navigation.
+
+Squelette : celui du § 1 **sans le bloc de navigation**, avec :
+
+- une **ligne secondaire juste sous le titre**, qui dit de quel document la page dépend et
+  porte le lien de retour vers l'endroit exact qui la cite — par exemple « Annexe de
+  [Roadmap → {{chantier}}](../ROADMAP.html#slug) ». C'est le seul chemin de retour, donc il
+  est **obligatoire** : sans lui, une page atteinte par un signet ou une recherche est un
+  cul-de-sac ;
+- la feuille de style atteinte par le même mécanisme (`../style.css`), jamais recopiée dans
+  le sous-dossier ;
+- un pied de page identique à celui des documents principaux.
+
+---
+
+# 6. Éclatement d'un document principal
+
+Quand un dépôt porte plusieurs applications ou composants livrables distincts, un document
+principal — en pratique la roadmap, parfois le journal — cesse d'être lisible en un seul
+fichier. Il peut être **éclaté** en pages de détail, une par périmètre, dans un sous-dossier
+portant son nom (`roadmap/ROADMAP_{{app}}.html`).
+
+- **Les documents principaux restent au même nombre.** Le document éclaté demeure à la
+  racine de `.AIRules/`, garde sa place dans la navbar, et devient un **index de renvois**.
+  Une page de détail suit le squelette du § 5 : pas de navbar, ligne de retour vers l'index.
+- **Périmètres disjoints.** Un chantier appartient à une page de détail et une seule. Un
+  chantier transverse reste sur l'index.
+- **Un index de renvois ne porte aucun statut.** Quand le détail vit ailleurs, l'index n'en
+  donne que le nom et le lien — jamais le statut, la priorité ni l'avancement, portés
+  **exclusivement** par la page de détail. Deux pages qui décrivent le même fait divergent,
+  et l'index est celle qu'on oublie. Maintenir ces colonnes suppose qu'elles soient
+  **générées** depuis les pages de détail, jamais saisies à la main.
+- **Dernier recours, pas réflexe d'organisation.** L'éclatement se déclenche quand le
+  document dépasse ce qu'on relit d'un bout à l'autre, et se décide comme tout changement
+  structurant (A-13).
+
+---
+
+# 7. `PROFIL.md` — gabarit
+
+Toujours en Markdown, quel que soit le format du projet. Un fichier à la racine de
+`.AIRules/`.
+
+```markdown
+# {{Nom du projet}} — Profil de gouvernance
+
+Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
+[`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md), partie B.
+
+- **Profil de départ** : `standard`
+- **Charte au moment du cadrage** : `20260731-135838`
+- **Dernière revue de ce profil** : {{date}}
+
+## Choix
+
+| Clé | Choix | Pourquoi |
+|---|---|---|
+| `format` | `html` | défaut appliqué, non tranché |
+| `documents` | `4` | défaut appliqué, non tranché |
+| `statuts` | `complet` | défaut appliqué, non tranché |
+| `outillage` | `oui` | le projet produit ses propres scripts de build et de publication |
+| `tempfiles` | `oui` | défaut appliqué, non tranché |
+| `distant` | `oui` | défaut appliqué, non tranché |
+| `visibilité` | `public` | destiné à être publié dès le départ |
+| `attribution` | {{oui ou non}} | {{motif — décision d'auteur, à trancher explicitement}} |
+| `authentification` | {{compte}} via {{méthode}} | — |
+| `branches` | `branche` | défaut appliqué, non tranché |
+| `seuil` | `strict` | défaut appliqué, non tranché |
+| `roadmap-avant-code` | `oui` | défaut appliqué, non tranché |
+| `validation` | {{ce que « conditions réelles » veut dire ici}} | — |
+| `jetables` | {{convention de nommage}} | — |
+| `test-manuel` | `oui` | défaut appliqué, non tranché |
+| `dépendances` | `ordinaire` | défaut appliqué, non tranché |
+| `discipline-test` | {{comment on teste, ce qui ne doit jamais être touché}} | — |
+| `validateur` | {{outil et commande}} | commande exacte dans `CLAUDE.md` |
+| `veille-conformité` | `non` | défaut appliqué, non tranché |
+
+## Questions non tranchées
+
+Les lignes portant « défaut appliqué, non tranché » se reposent à la prochaine remise à
+niveau. Elles ne sont pas des choix : elles sont l'absence de choix, rendue visible.
+
+## Historique des changements
+
+Un changement de ce fichier est un changement structurant : il se propose, se valide, et
+laisse une ligne au journal. Le tableau ci-dessus porte la valeur courante ; le journal
+porte l'histoire.
+```
+
+## Ce que posent les trois profils
+
+Point de départ seulement — chaque ligne reste écrasable.
+
+| Clé | `minimal` | `standard` | `complet` |
+|---|---|---|---|
+| `format` | `markdown` | `html` | `html` |
+| `documents` | `3` | `4` | `4` |
+| `statuts` | `réduit` | `complet` | `complet` |
+| `outillage` | `non` | à demander | `oui` |
+| `tempfiles` | `oui` | `oui` | `oui` |
+| `distant` | `oui` | `oui` | `oui` |
+| `branches` | `direct` | `branche` | `branche` |
+| `seuil` | `tout-libre` | `strict` | `strict` |
+| `roadmap-avant-code` | `non` | `oui` | `oui` |
+| `test-manuel` | `oui` | `oui` | `oui` |
+| `dépendances` | `ordinaire` | `ordinaire` | `ordinaire` |
+| `veille-conformité` | `non` | `non` | `oui` |
+
+Les sept questions **sans défaut** — `visibilité`, `attribution`, `authentification`,
+`validation`, `jetables`, `discipline-test`, `validateur` — ne figurent dans aucun profil.
+Elles se posent toujours, quel que soit le point de départ.
+
+---
+*Version de ce fichier : **`20260731-135838`**. Il suit l'identifiant de
+[`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md) et se propage avec elle.*
