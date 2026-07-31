@@ -932,8 +932,11 @@ Plutôt qu'une périodicité fixe (qu'on ne tient jamais), une liste de déclenc
   de suppression silencieuse. Les numéros `#N` ne bougent pas, même si une entrée est vidée de sa
   substance.
 - **`ROADMAP.html`** — confronter chaque pastille à l'état réel du dépôt. Un `.done` dont on ne
-  trouve **aucune trace de validation utilisateur** redescend en `.progress` : « le code est là »
-  n'a jamais valu « c'est fait » (Règle 4). Un chantier `.planned` dont le design ne convainc plus
+  trouve **ni trace de validation utilisateur, ni trace de mise en service** redescend en
+  `.progress` : « le code est là » n'a jamais valu « c'est livré » (Règle 4). Un `.adopted` dont
+  l'usage n'est plus constaté redescend en `.done`, et un outillage qui y stagne appelle une
+  décision — adopté, ou sorti du périmètre — pas un statut laissé en l'état. Un chantier `.planned`
+  dont le design ne convainc plus
   rejoint « Hors périmètre » **avec le callout `.important` qui dit pourquoi** — sans quoi il sera
   reproposé six mois plus tard.
 - **`AI-HISTORY.html`** — ne rien corriger rétroactivement : les entrées existantes ne se
@@ -991,7 +994,9 @@ convention, distinguant l'outil qui fonctionne de l'outil dont l'usage est const
 resserrée sur « validé en conditions réelles **et** effectivement en service » ; **compteur de
 numérotation** en tête des documents à numérotation stable, sans lequel la règle demande de connaître
 un état qui n'est écrit nulle part. Règle 4 : pour l'outillage, usage constaté plutôt que
-démonstration réussie.).*
+démonstration réussie. Règle 7 : audit de `ROADMAP.html` aligné sur les deux nouveaux états — un
+`.done` se vérifie désormais sur la validation *et* la mise en service, un `.adopted` sur l'usage
+réellement constaté.).*
 
 *Révision précédente : **2026-07-30** (préambule : la charte est la référence à tout
 moment et est susceptible d'évoluer ; Règle 1 : dossiers optionnels `annexes/` et `archive/`, dépôt
