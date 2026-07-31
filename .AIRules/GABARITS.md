@@ -419,7 +419,7 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 [`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md), partie B.
 
 - **Profil de départ** : `standard`
-- **Charte au moment du cadrage** : `20260731-150737`
+- **Charte au moment du cadrage** : `{{id}}`
 - **Dernière revue de ce profil** : {{date}}
 
 ## Choix
@@ -489,5 +489,5 @@ Les deux mots, en particulier, ne peuvent pas avoir de défaut : un mot qu'on n'
 ne se retient pas, et un mot imposé finirait par se déclencher au fil d'une phrase.
 
 ---
-*Version de ce fichier : **`20260731-150737`**. Il suit l'identifiant de
+*Version de ce fichier : **`20260731-204511`**. Il suit l'identifiant de
 [`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md) et se propage avec elle.*

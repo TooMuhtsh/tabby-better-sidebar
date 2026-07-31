@@ -264,8 +264,33 @@ attend l'arbitrage, c'est ce que le projet change **de lui-même** — ses docum
 d'un projet non remis à niveau est un état normal et lisible : l'écart entre les deux
 identifiants *est* le signal.
 
-Le paragraphe de révision, en pied de page, dit **de quel régime relève chaque révision** :
+La table des révisions, en pied de page, dit **de quel régime relève chaque révision** :
 sans cette mention, le régime se devine, et il se devine mal.
+
+### `REMISE-A-NIVEAU.md` — un fichier qui meurt à la fusion
+
+Une remise à niveau qui arrive sur une branche — qu'elle vienne d'une veille automatisée
+(option `veille-conformité`) ou d'une propagation menée à la main — **n'a pas le droit
+d'écrire dans les documents de gouvernance du projet** : ce serait appliquer d'office ce qui
+doit se proposer. Sa branche porte donc deux choses de nature opposée : les **copies
+conformes**, mises à jour d'office, et **aucune ligne** dans ce qui appartient au projet — ni
+son index, ni son contexte, ni son journal, ni sa roadmap, ni son `PROFIL.md`.
+
+Ce qu'impliquent ces copies s'écrit dans un **`REMISE-A-NIVEAU.md`** posé à côté d'elles,
+dans `.AIRules/` : révisions traversées, ce que le projet aurait à changer de lui-même,
+pièges rencontrés pendant la propagation. Tout se relit donc au moment de la fusion, en un
+seul endroit.
+
+**Sa vie s'arrête à la fusion.** Tant que la branche n'est pas fusionnée, il est le seul
+endroit où cette information existe, et il est pleinement légitime. Une fois la branche
+fusionnée, son seul contenu propre au projet est du **suivi de chantier** : il décrit dès
+lors le même fait que le chantier de roadmap qui porte la mise en conformité, et deux
+emplacements qui décrivent le même fait divergent (A-2) — typiquement une roadmap qui affiche
+la revue comme faite pendant que le fichier liste encore des items ouverts.
+
+Le geste de fusion se termine donc par : **rapatrier son contenu dans le chantier de roadmap,
+puis supprimer le fichier**. Un `REMISE-A-NIVEAU.md` présent sur la branche principale est une
+anomalie, repérable d'un coup d'œil.
 
 ## A-8 — Annexes
 
@@ -902,7 +927,8 @@ Si `oui`, le mandat de la tâche est **strictement borné** :
 - récupérer la révision à jour du dépôt canonique ;
 - créer une **branche dédiée** dans chaque projet concerné — jamais d'écriture directe sur
   la branche principale ;
-- y propager la charte verbatim et, si pertinent, une proposition de remise à niveau ;
+- y propager la charte verbatim et, si pertinent, une proposition de remise à niveau — le
+  `REMISE-A-NIVEAU.md` d'A-7, avec la fin de vie qu'A-7 lui fixe ;
 - **s'arrêter là**. La fusion reste un acte de validation humaine explicite : la tâche ne
   merge jamais d'elle-même et n'écrit jamais directement dans les documents de gouvernance,
   y compris quand l'écart vient d'une détection automatisée.
@@ -1081,68 +1107,24 @@ migrées. Une table de compatibilité sans date de péremption reste éternellem
 
 # Historique des révisions
 
-## Version **`20260731-150737`** — 2026-07-31 · *touche le noyau*
-
-Le fichier d'instructions cesse d'être nommé en dur, et sa mise à jour cesse d'être
-réactive. Deux mots configurables entrent dans le cadrage.
-
-- **A-11 devient agnostique de l'outil** : la charte parle du « fichier d'instructions
-  auto-chargé par l'assistant », et la nouvelle option `fichier-instructions` dit lequel
-  c'est — `CLAUDE.md` par défaut, `AGENTS.md`, ou les deux. Un document qui se prétend
-  indépendant de l'outil ne pouvait pas nommer un produit quinze fois.
-- **Sa vérification devient un point de passage** de toute écriture de gouvernance, avec la
-  liste de ce qui se contrôle. « Mettre à jour dès qu'une commande change » supposait de
-  remarquer le changement, ce qui n'arrive pas.
-- **`mot-cloture`** : un mot dont l'énoncé vaut, en un seul geste, feu vert d'A-3, mise à
-  jour des documents, vérification du fichier d'instructions, commit et push. Ce n'est pas
-  un contournement de la validation mais sa forme la plus courte — le prononcer *est* la
-  décision explicite que la charte exige.
-- **`mot-cadrage`** et un **cinquième déclencheur** d'entretien, « sur demande explicite, à
-  tout moment », complet ou ciblé sur quelques clés. Un projet change de nature sans
-  qu'aucun des quatre autres déclencheurs ne se produise, et son profil vieillissait en
-  silence.
-
-## Version **`20260731-135838`** — 2026-07-31 · *touche le noyau*
-
-Refonte structurelle. Le document se scinde en trois parties : un **noyau** de quinze
-invariants prescriptifs, dix-neuf **options** qui se décident par projet et portent chacune
-son défaut **et le pourquoi de ce défaut**, et un **entretien de cadrage** qui les pose au
-lieu de les supposer.
-
-- **Identifiant de version horodaté** `AAAAMMJJ-HHMMSS` en remplacement de la date de pied
-  de page, qui ne savait pas distinguer deux révisions du même jour.
-- **Les identifiants `A-x` et les clés d'option sont déclarés stables**, au même titre que
-  ceux qu'A-6 impose aux projets : ils sont devenus des références porteuses, et rien ne
-  protégeait la charte de se casser elle-même à la révision suivante.
-- Le **format des documents devient une option**, `html` par défaut, avec un gabarit
-  Markdown équivalent et la possibilité d'en ajouter d'autres.
-- Les squelettes de documents et le modèle de profil sortent dans **`GABARITS.md`**, lu
-  seulement au moment d'écrire — la charte reste ce qu'on charge en début de session.
-- Les réponses de cadrage vivent dans un nouveau **`PROFIL.md`** par projet.
-- Une **trace de dérive** devient obligatoire (A-5) et constitue la deuxième exception
-  nommée au feu vert.
-- Une révision de charte suit désormais **deux régimes** selon qu'elle est additive ou
-  qu'elle touche le noyau (A-7).
-- La vérification d'un export d'API se généralise en **« ne jamais conclure sur une seule
-  source »** (A-12).
-- Le dépôt public reçoit une **liste explicite de ce qui reste dehors** (option
-  `visibilité`).
-- Le script de statusline quitte la charte pour `outils/` ; le piège d'encodage propre à une
-  plateforme est généralisé et son cas concret renvoyé au contexte des projets ; le récit
-  d'incident daté est retiré.
-- Une **table de correspondance temporaire** relie l'ancienne numérotation Règle 1-7 aux
-  nouvelles sections.
-
-## Versions antérieures — avant l'introduction des identifiants
-
-| Date | Contenu |
+| Version | Régime |
 |---|---|
-| 2026-07-31 | Éclatement d'une page principale en pages de détail ; chaîne de liens continue pour les annexes ; note d'annexe ; réparation des liens de navigation d'archive ; colonne `Hash` ramenée à trois valeurs ; pastille `.adopted` ; compteur de numérotation ; audit de roadmap aligné sur les deux nouveaux états. |
-| 2026-07-30 | La charte est la référence à tout moment ; dossiers optionnels `annexes/` et `archive/` ; dépôt canonique public ; vérification périodique par cron ; navbar réservée aux pages principales ; liens internes toujours relatifs ; discipline d'édition ciblée ; script de statusline intégré verbatim ; index des projets ramené à un gabarit vide. |
-| 2026-07-29 | Trois questions à poser au SETUP d'un nouveau projet. |
-| 2026-07-28 | Ajout des Règles 6 et 7 ; révision des cadences d'écriture et de la discipline de vérification. |
+| `20260731-204511` | purement additive |
+| `20260731-203812` | touche le noyau |
+| `20260731-150737` | touche le noyau |
+| `20260731-135838` | touche le noyau |
+
+Les révisions antérieures à ces identifiants ne sont pas listées ici : elles précèdent
+l'introduction du régime d'application.
+
+**Ce que chaque révision a changé** vit dans le changelog du dépôt canonique :
+<https://github.com/TooMuhtsh/Claude-Governance/blob/master/CHANGELOG.md>. Cette table-ci ne
+porte que le **régime**, parce que c'est la seule information dont un projet cloné sans accès
+à ce dépôt ait besoin — c'est elle qui décide si une remise à niveau se propage d'office ou
+se propose (A-7). Le récit détaillé, lui, ne se lit qu'au moment de réviser, donc là où l'on
+révise.
 
 ---
-*Version de cette charte : **`20260731-150737`**. C'est cet identifiant que reprend la
+*Version de cette charte : **`20260731-204511`**. C'est cet identifiant que reprend la
 mention « Conforme à la charte de gouvernance, version {{id}} » dans le pied de page de
 l'index de gouvernance de chaque projet.*
