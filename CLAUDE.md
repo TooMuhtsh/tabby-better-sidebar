@@ -27,13 +27,19 @@ restructurer un document.
 
 | Mot | Ce qu'il déclenche |
 |---|---|
-| **`CLOTURE`** | La chaîne complète en un geste : feu vert d'`A-3`, mise à jour des documents `.AIRules/` concernés, vérification de ce fichier (`A-11`), commit, push. S'arrête à la première étape qui échoue **et dit où** — ne jamais laisser croire à un push qui n'a pas eu lieu. |
+| **`MAJ`** | La chaîne complète en un geste : feu vert d'`A-3`, mise à jour des documents `.AIRules/` concernés, vérification de ce fichier (`A-11`), commit, push. S'arrête à la première étape qui échoue **et dit où** — ne jamais laisser croire à un push qui n'a pas eu lieu. |
 | **`GOUVERNANCE`** | Relance l'entretien de cadrage. Seul, il rouvre l'entretien complet ; suivi de clés (`GOUVERNANCE format seuil`), il ne rouvre que celles-là. |
 
 Ils ne déclenchent que lorsqu'ils **constituent l'instruction** — message qui s'y
 réduit, ou mot en tête suivi de ses clés. « Il faut revoir la gouvernance de ce
 projet » est une phrase, pas un déclencheur. Dans le doute, demander plutôt
 qu'exécuter : un déclenchement non voulu écrit et pousse.
+
+`MAJ` demande une vigilance particulière : c'est l'abréviation usuelle de « mise
+à jour », donc un mot qui apparaît naturellement dans une phrase ordinaire — « il
+faut faire la MAJ du README », « MAJ des dépendances ». Ce sont des demandes de
+travail, pas le mot de clôture. Seul un message qui **se réduit** à `MAJ`
+déclenche la chaîne.
 
 ## Contexte
 
