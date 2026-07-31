@@ -987,19 +987,24 @@ affiche un message clair ("Impossible d'ouvrir automatiquement la modale d'édit
 vers Paramètres → Profils") plutôt que d'échouer silencieusement.</p>
 
 <h3 id="gouvernance">Conformité de la gouvernance à la charte</h3>
-<p>Revue faite le 2026-07-29 (Règle 7, Cas B) — écarts constatés et corrigés détaillés dans
+<p>Revue faite le 2026-07-29 (<code>A-15</code>, Cas B) — écarts constatés et corrigés détaillés dans
 <a href="AI-HISTORY.html">AI-HISTORY</a>, commit <code>db45754</code>. Ce n'est pas un état acquis :
 la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre. Ce qui reste à faire de
 façon récurrente :</p>
 <ul>
-<li><strong>Comparer les deux dates en début de session</strong> : celle du pied de page de
-  <a href="README.html">README.html</a> (« Conforme à la charte du … ») et celle du pied de page de
-  <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a>. Si la première est antérieure,
-  <strong>signaler l'écart et proposer</strong> une remise à niveau — jamais l'appliquer d'office,
-  un projet pouvant légitimement rester sur une convention antérieure.</li>
-<li><strong>Repropager la copie de la charte à chaque révision de l'original</strong> (qui vit à la
-  racine du workspace, hors dépôt Git). La copie de ce dossier doit rester <em>conforme</em> : jamais
-  adaptée au projet, comparable à l'original par un simple <code>diff</code>.</li>
+<li><strong>Comparer les deux identifiants en début de session</strong> : celui du pied de page de
+  <a href="README.html">README.html</a> (« Conforme à la charte de gouvernance, version … ») et celui
+  du pied de page de <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a>. Format
+  <code>AAAAMMJJ-HHMMSS</code>, monotone : une comparaison de chaînes suffit. Si le premier est
+  inférieur, <strong>signaler l'écart et proposer</strong> une remise à niveau — jamais l'appliquer
+  d'office, un projet pouvant légitimement rester sur une convention antérieure.</li>
+<li><strong>Repropager les copies de <code>GOUVERNANCE-IA.md</code> et <code>GABARITS.md</code> à
+  chaque révision de l'original.</strong> L'original canonique vit dans un dépôt public dédié,
+  indépendant de ce workspace et de toute machine ; les fichiers posés à la racine de
+  <code>Développement/</code> n'en sont qu'un miroir de commodité, jamais la source. Les copies de
+  ce dossier doivent rester <em>conformes</em> : jamais adaptées au projet, comparables à l'original
+  par un <code>diff</code> — en tenant compte du piège
+  <a href="AI-CONTEXT.html#piege-47">#47</a> sur les fins de ligne.</li>
 <li><strong>Corriger la dérive dès qu'elle est constatée</strong>, sans attendre une revue générale :
   c'est ce qui a manqué ici — les deux affirmations fausses du README dataient de plusieurs jours et
   se contredisaient à l'intérieur d'une même page.</li>

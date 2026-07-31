@@ -70,10 +70,13 @@ toute session ouverte depuis ce niveau le lise aussi.</p>
 <li>Vérifier l'état réel avant de faire confiance à la doc : jonction NTFS présente
   (<code>%APPDATA%\tabby\plugins\node_modules\tabby-better-sidebar</code>), build à jour
   (<code>dist/index.js</code>), <code>git log</code> pour les derniers commits.</li>
-<li>Comparer la date de conformité du pied de page à celle du pied de page de
-  <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a> : si elle est antérieure, <strong>signaler
-  l'écart et proposer</strong> une remise à niveau (charte, Règle 7, Cas B) — ne jamais l'appliquer
-  d'office.</li>
+<li>Comparer l'identifiant de conformité du pied de page à celui du pied de page de
+  <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a> (format <code>AAAAMMJJ-HHMMSS</code>, monotone :
+  une simple comparaison de chaînes suffit, sans rien parser). Si le premier est inférieur,
+  <strong>signaler l'écart et proposer</strong> une remise à niveau (charte, <code>A-15</code>,
+  Cas B) — ne jamais l'appliquer d'office.</li>
+<li>Ouvrir <a href="PROFIL.md">PROFIL.md</a> pour les conventions tranchées de ce projet plutôt que
+  d'en redécider une au coup par coup.</li>
 </ol>
 
 <div class="callout important">
@@ -107,8 +110,12 @@ pas seulement une relecture de code). C'est déjà la pratique suivie jusqu'ici 
   interruption), proposer un point de gouvernance et n'écrire que ce que l'utilisateur valide à ce
   moment-là.</li>
 <li><strong>Toute modification de ce dossier se commite et se pousse dans la foulée</strong> (charte,
-  Règle 1) : une gouvernance à jour qui dort en local n'est ni sauvegardée, ni récupérable depuis une
-  autre machine. Le feu vert porte sur l'écriture, pas sur le push.</li>
+  <code>A-10</code>) : une gouvernance à jour qui dort en local n'est ni sauvegardée, ni récupérable
+  depuis une autre machine. Le feu vert porte sur l'écriture, pas sur le push.</li>
+<li><strong>Un chantier non abouti vit sur une branche</strong> (option <code>branches</code>,
+  tranchée au cadrage du 2026-07-31) : sa documentation l'accompagne et arrive sur
+  <code>master</code> avec lui, dans le même merge. C'est ce qui garantit qu'une gouvernance publiée
+  sur <code>master</code> ne décrit jamais du code absent.</li>
 </ul>
 
 <p><strong>Ne jamais modifier les entrées déjà écrites d'AI-HISTORY.html</strong> — uniquement en
