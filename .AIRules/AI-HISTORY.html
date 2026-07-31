@@ -43,6 +43,27 @@ chantier ne puisse la porter. Trois dérives ont été constatées et corrigées
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
+<tr><td>2026-07-31</td><td><code>(commit en cours)</code></td>
+<td><strong>Audit <code>A-15</code> Cas B mené sur les quatre axes, et remise à niveau close.</strong>
+Trois agents en lecture seule ont couvert en parallèle le contexte, la roadmap et l'index ; le
+journal a été vérifié à part, ne se corrigeant jamais rétroactivement. <strong>Contexte</strong> :
+trois pièges corrigés en place, aucun supprimé — <a href="AI-CONTEXT.html#piege-19">#19</a> décrivait
+un <code>min-height: 8px</code> inconditionnel disparu du code au profit du correctif
+<code>:empty</code> de <a href="AI-CONTEXT.html#piege-26">#26</a> ;
+<a href="AI-CONTEXT.html#piege-33">#33</a> supposait qu'on montait <code>SFTPPanelComponent</code>
+lui-même, alors que le code monte depuis une sous-classe à template propre dont les
+<code>:host</code> hérités ne s'appliquent jamais ; <a href="AI-CONTEXT.html#piege-5">#5</a>
+justifiait <code>--ignore-scripts</code> par <code>tabby-ssh</code>, retiré des dépendances depuis
+le piège #34 — le flag reste nécessaire pour <code>@parcel/watcher</code>.
+<strong>Roadmap</strong> : aucun statut à faire redescendre, les seize « Fait » portant chacun une
+trace de code et de validation ou de mise en service. <strong>Journal</strong> : conforme
+<code>A-4</code>, treize hashes cités pointant tous vers des commits réels.
+<strong>Index</strong> : un écart, de moi — ce projet annonçait « 24 options » là où la charte en
+compte 22, un comptage qui incluait deux <em>valeurs</em> de l'option <code>seuil</code> ; l'erreur
+était symétrique donc la conclusion tenait, mais le chiffre contredisait <a href="PROFIL.md">PROFIL.md</a>.
+Dates de dernière revue mises à jour, et le pied de page de <a href="README.html">README.html</a>
+passe enfin à « version <code>20260731-204511</code> » — en dernier, comme sa règle l'impose.</td></tr>
+
 <tr><td>2026-07-31</td><td><code>854ea9e</code></td>
 <td><strong>Le mot de clôture passe de <code>CLOTURE</code> à <code>MAJ</code></strong>
 (<code>A-13</code>, changement d'option du <a href="PROFIL.md">PROFIL.md</a> sur demande explicite).

@@ -15,7 +15,7 @@
 </nav>
 
 <h1>Roadmap</h1>
-<p class="muted">Dernière revue : 2026-07-30</p>
+<p class="muted">Dernière revue : 2026-07-31</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
 techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
@@ -54,7 +54,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#notes-profil">Notes de profil (Mémento contextuel)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#ping-live">Indicateur de latence / Ping live</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
-    <td><span class="pill progress">🚧 Remise à niveau en cours</span></td>
+    <td><span class="pill done">✅ Revue faite (2026-07-31)</span></td>
     <td>Entretien récurrent</td></tr>
 </table>
 
@@ -988,7 +988,7 @@ affiche un message clair ("Impossible d'ouvrir automatiquement la modale d'édit
 vers Paramètres → Profils") plutôt que d'échouer silencieusement.</p>
 
 <h3 id="gouvernance">Conformité de la gouvernance à la charte
-<span class="pill progress">🚧 Remise à niveau en cours</span></h3>
+<span class="pill done">✅ Revue faite (2026-07-31)</span></h3>
 <p>Revue faite le 2026-07-29 (<code>A-15</code>, Cas B) — écarts constatés et corrigés détaillés dans
 <a href="AI-HISTORY.html">AI-HISTORY</a>, commit <code>db45754</code>. Ce n'est pas un état acquis :
 la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre.</p>
@@ -997,7 +997,7 @@ la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre.</p>
 <p>Engagée le 2026-07-31. Trois révisions traversées depuis la dernière conformité du projet :
 <code>20260731-150737</code> et <code>20260731-203812</code> <em>touchent le noyau</em> — elles ne
 s'appliquent jamais d'office (<code>A-7</code>) —, <code>20260731-204511</code> est <em>purement
-additive</em>. Vérifié à la fusion : <strong>aucune option ajoutée ou retirée</strong> (24 de part et
+additive</em>. Vérifié à la fusion : <strong>aucune option ajoutée ou retirée</strong> (22 de part et
 d'autre) et <strong>les quinze invariants sont inchangés</strong>, donc aucune question de cadrage
 nouvelle à arbitrer. Deux items restent ouverts, <strong>dans cet ordre</strong> :</p>
 <table>
@@ -1010,15 +1010,45 @@ nouvelle à arbitrer. Deux items restent ouverts, <strong>dans cet ordre</strong
     <td><span class="pill done">✅ Fait (2026-07-31)</span></td></tr>
 <tr><td>Migrer les références « Règle N » vers les identifiants <code>A-x</code></td>
     <td><span class="pill done">✅ Fait (2026-07-31)</span></td></tr>
-<tr><td><strong>Audit complet <code>A-15</code>, Cas B</strong> — contexte confronté au code réel,
-    statuts de roadmap confrontés à l'état réel du dépôt, entrée de journal actant la revue, index ;
-    se termine par la mise à jour effective des dates de dernière revue</td>
-    <td><span class="pill planned">📋 À faire</span></td></tr>
+<tr><td><strong>Audit complet <code>A-15</code>, Cas B</strong> — les quatre axes menés le
+    2026-07-31, dates de dernière revue mises à jour en conséquence</td>
+    <td><span class="pill done">✅ Fait (2026-07-31)</span></td></tr>
 <tr><td><strong>Mention de conformité du pied de page</strong> de
     <a href="README.html">README.html</a> : « du 2026-07-30 », forme datée antérieure aux
     identifiants, devient « version <code>20260731-204511</code> »</td>
-    <td><span class="pill planned">📋 À faire — en dernier</span></td></tr>
+    <td><span class="pill done">✅ Fait (2026-07-31)</span></td></tr>
 </table>
+
+<h5>Ce que l'audit du 2026-07-31 a trouvé</h5>
+<table>
+<tr><th>Axe</th><th>Résultat</th></tr>
+<tr><td><strong>Contexte</strong> — 46 pièges confrontés au code de <code>src/</code></td>
+    <td>Trois corrigés en place, aucun supprimé : <a href="AI-CONTEXT.html#piege-19">#19</a> décrivait un correctif
+    (<code>min-height: 8px</code> inconditionnel) qui n'existe plus, remplacé par celui de
+    <a href="AI-CONTEXT.html#piege-26">#26</a> ; <a href="AI-CONTEXT.html#piege-33">#33</a> supposait
+    qu'on montait <code>SFTPPanelComponent</code> lui-même, alors que le code monte une sous-classe
+    à template propre dont les <code>:host</code> hérités ne s'appliquent jamais ;
+    <a href="AI-CONTEXT.html#piege-5">#5</a> justifiait <code>--ignore-scripts</code> par une
+    dépendance retirée depuis, le flag restant nécessaire pour une autre.</td></tr>
+<tr><td><strong>Roadmap</strong> — 16 statuts « Fait » confrontés au dépôt</td>
+    <td>Aucun à faire redescendre : chacun porte une trace de code <em>et</em> de validation ou de
+    mise en service. Le <a href="#drag-out">glisser-déposer sortant</a> est le cas d'école tenu
+    correctement — code commité (<code>7510971</code>), statut maintenu à « Proposé » faute de test.</td></tr>
+<tr><td><strong>Journal</strong> — conformité <code>A-4</code></td>
+    <td>Conforme, rien à corriger : aucun <code>(commit en cours)</code> survivant, aucune formule
+    ambiguë, et les treize hashes cités pointent tous vers des commits réels.</td></tr>
+<tr><td><strong>Index et cohérence croisée</strong></td>
+    <td>Un écart : ce document annonçait « 24 options de part et d'autre » là où la charte en compte
+    <strong>22</strong> — un comptage qui incluait par erreur deux <em>valeurs</em> de l'option
+    <code>seuil</code>. L'erreur était symétrique, la conclusion tenait ; le chiffre contredisait
+    <a href="PROFIL.md">PROFIL.md</a>. Corrigé.</td></tr>
+</table>
+<div class="callout note"><span class="callout-title">Deux points laissés à l'appréciation</span>
+<p><strong>Socle</strong> et <strong>Publication npm</strong> n'ont pas de mention « testé et validé
+par l'utilisateur » : cette convention d'écriture n'existait pas encore quand ils ont été livrés.
+Leur statut repose donc sur la <em>mise en service</em> constatée — paquet publié puis réinstallé et
+vérifié, jonction NTFS de dev active — plutôt que sur une validation consignée. Les faire
+redescendre appliquerait rétroactivement une convention postérieure à des chantiers en service.</p></div>
 <div class="callout note"><span class="callout-title">La ligne « Charte au moment du cadrage » de
 <a href="PROFIL.md">PROFIL.md</a> reste à <code>20260731-150737</code></span>
 <p>Elle dit sous quelle version les options ont été tranchées, pas quelle version le projet possède.
@@ -1026,11 +1056,12 @@ Elle ne bougera qu'au moment où le cadrage sera effectivement relu — l'avance
 écrirait un fait faux dans le fichier qui sert précisément à savoir sous quelle version chaque
 option a été décidée.</p></div>
 <div class="callout important"><span class="callout-title">Le pied de page se met à jour en dernier</span>
-<p>Il atteste que <em>le projet</em> suit la charte, pas que sa copie est à jour. Tant que l'audit
-n'a pas eu lieu, l'écart entre lui et l'identifiant de <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a>
-est l'état normal et lisible que décrit <code>A-7</code> : « une copie à jour posée à côté d'un
-projet non remis à niveau … l'écart entre les deux identifiants <em>est</em> le signal ». Le bouger
-plus tôt afficherait une conformité que personne n'a vérifiée.</p></div>
+<p>Il atteste que <em>le projet</em> suit la charte, pas que sa copie est à jour — d'où son rang
+dans la liste ci-dessus, après l'audit et jamais avant. Tant que celui-ci n'a pas eu lieu, l'écart
+entre lui et l'identifiant de <a href="GOUVERNANCE-IA.md">GOUVERNANCE-IA.md</a> est l'état normal et
+lisible que décrit <code>A-7</code> : « une copie à jour posée à côté d'un projet non remis à niveau
+… l'écart entre les deux identifiants <em>est</em> le signal ». La règle vaut pour la prochaine
+révision : l'avancer plus tôt afficherait une conformité que personne n'a vérifiée.</p></div>
 <p>Les migrations « Règle N » d'<a href="AI-HISTORY.html">AI-HISTORY.html</a> n'ont
 <strong>pas</strong> été faites, et ne le seront pas : <code>A-4</code> impose un journal en ajout
 seul, et ces mentions nommaient la règle telle qu'elle existait à la date de l'entrée.</p>
