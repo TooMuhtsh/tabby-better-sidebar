@@ -24,6 +24,10 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
+<p><strong>Prochain numéro libre : #48.</strong> Qui ajoute un piège prend ce numéro et incrémente
+cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
+consommé ne se réattribue jamais, même si son entrée disparaît.</p>
+
 <div class="callout note">
 <span class="callout-title">Légende</span>
 <p>Un piège marqué <span class="pill warn">⚠️ à revérifier après update Tabby</span> fait aussi
@@ -39,7 +43,7 @@ Tabby.</p>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46 + 5 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
-<li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11</li>
+<li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
 <li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20</li>
 </ul>
@@ -808,6 +812,22 @@ perso : <code>{id}+{login}@users.noreply.github.com</code> (id via
 <p>Réécriture d'historique jugée sensible même sur un repo perso sans collaborateurs. L'utilisateur
 doit lancer la commande lui-même via le préfixe <code>!</code> (hors sandbox classifié). Nécessite
 <code>git push --force</code> après (les hash changent).</p>
+
+<h3 id="piege-47">#47 — Un <code>diff</code> nu contre la charte canonique signale une divergence
+totale alors que le contenu versionné est identique</h3>
+<p><code>core.autocrlf</code> vaut <code>true</code> sur le poste de dev, alors que le dépôt
+canonique de la charte force <code>eol=lf</code> par son <code>.gitattributes</code>. Le fichier
+<code>.AIRules/GOUVERNANCE-IA.md</code> est donc en CRLF sur disque et sa source en LF :
+<code>diff</code> rapporte <strong>toutes</strong> les lignes comme différentes, ce qui ressemble
+exactement à une copie périmée ou adaptée au projet — le cas que la charte interdit.</p>
+<div class="callout warning"><span class="callout-title">Piège</span>
+<p>Ne pas conclure à une copie divergente sur ce <code>diff</code>. Vérifier d'abord que les
+<em>blobs</em> Git sont identiques, ce qui est la seule comparaison indépendante du checkout :</p>
+<pre><code>git -C &lt;projet&gt; rev-parse HEAD:.AIRules/GOUVERNANCE-IA.md
+git -C &lt;clone-canonique&gt; rev-parse HEAD:GOUVERNANCE-IA.md</code></pre>
+<p>Sur le contenu de travail, <code>diff --strip-trailing-cr</code> donne la même réponse. La
+comparaison des identifiants de version en pied de page reste le contrôle le plus rapide, et il
+suffit dans la plupart des cas.</p></div>
 
 <h2 id="cat-debug">Debug &amp; workflow de dev</h2>
 

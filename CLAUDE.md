@@ -9,8 +9,9 @@ Dépôt distant : https://github.com/TooMuhtsh/tabby-better-sidebar (public).
 
 **Avant toute session de travail sur ce projet, lire `.AIRules/README.html`**
 (index + protocole), puis `.AIRules/AI-CONTEXT.html` (invariants, pièges déjà
-rencontrés — numérotés jusqu'à #46, le #7 est un trou hérité de la
-restructuration doc — et points fragiles à revérifier après mise à jour de Tabby) et
+rencontrés — numérotés jusqu'à #47, le #7 est un trou hérité de la
+restructuration doc ; le prochain numéro libre est indiqué en tête du fichier —
+et points fragiles à revérifier après mise à jour de Tabby) et
 `.AIRules/AI-HISTORY.html`/`.AIRules/ROADMAP.html` pour l'état d'avancement et
 ce qui reste à faire. Ouvrir ces fichiers directement dans un navigateur
 (navigation commune entre les 4 pages). Plusieurs bugs Windows/Tabby non
@@ -177,9 +178,7 @@ documentation l'accompagne et arrive sur `master` avec lui, dans le même merge.
 C'est ce qui garantit mécaniquement qu'une gouvernance publiée sur `master` ne
 décrit jamais du code absent.
 
-`core.autocrlf` vaut `true` sur ce poste, alors que le dépôt canonique de la
-charte force `eol=lf` : un `diff` nu entre `.AIRules/GOUVERNANCE-IA.md` et sa
-source signale donc une différence sur **toutes** les lignes alors que le
-contenu versionné est identique. Comparer les blobs
-(`git rev-parse HEAD:.AIRules/GOUVERNANCE-IA.md`) ou passer
-`diff --strip-trailing-cr` avant de conclure à une copie divergente.
+Vérifier la conformité de la copie de la charte par comparaison des blobs Git ou
+avec `diff --strip-trailing-cr`, jamais par un `diff` nu — `core.autocrlf` fait
+apparaître une divergence totale sur un contenu identique
+(.AIRules/AI-CONTEXT.html, piège #47).
