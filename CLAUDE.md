@@ -16,6 +16,24 @@ ce qui reste à faire. Ouvrir ces fichiers directement dans un navigateur
 (navigation commune entre les 4 pages). Plusieurs bugs Windows/Tabby non
 évidents y sont documentés pour ne pas les redécouvrir à chaque fois.
 
+La charte qui régit ce projet est `.AIRules/GOUVERNANCE-IA.md`, version
+`20260731-150737` ; **les réponses de cadrage propres à ce projet sont dans
+`.AIRules/PROFIL.md`** — s'y reporter plutôt que de redécider une convention au
+coup par coup. `.AIRules/GABARITS.md` ne s'ouvre qu'au moment de créer ou de
+restructurer un document.
+
+## Mots déclencheurs
+
+| Mot | Ce qu'il déclenche |
+|---|---|
+| **`CLOTURE`** | La chaîne complète en un geste : feu vert d'`A-3`, mise à jour des documents `.AIRules/` concernés, vérification de ce fichier (`A-11`), commit, push. S'arrête à la première étape qui échoue **et dit où** — ne jamais laisser croire à un push qui n'a pas eu lieu. |
+| **`GOUVERNANCE`** | Relance l'entretien de cadrage. Seul, il rouvre l'entretien complet ; suivi de clés (`GOUVERNANCE format seuil`), il ne rouvre que celles-là. |
+
+Ils ne déclenchent que lorsqu'ils **constituent l'instruction** — message qui s'y
+réduit, ou mot en tête suivi de ses clés. « Il faut revoir la gouvernance de ce
+projet » est une phrase, pas un déclencheur. Dans le doute, demander plutôt
+qu'exécuter : un déclenchement non voulu écrit et pousse.
+
 ## Contexte
 
 Tabby a une sidebar de profils native (`profile-tree`, activable dans
@@ -30,7 +48,17 @@ demandées.
 ```
 npm install --ignore-scripts   # --ignore-scripts : évite les postinstall natifs inutiles ici
 npm run build                  # ou npm run watch en dev
+npm run lint:airules           # valide la syntaxe des documents HTML de .AIRules/
 ```
+
+`lint:airules` est le validateur imposé par `A-14` (option `validateur` du
+`PROFIL.md`) : **à lancer après toute modification d'un document `.AIRules/` qui
+dépasse une taille triviale**, avant de la considérer terminée. Il couvre aussi
+les futurs `annexes/` et `archive/`. Deux règles sont désactivées dans
+`.htmlvalidate.json` — `doctype-style` (le `<!doctype html>` minuscule des
+documents est valide en HTML5) et `prefer-tbody` (préférence de balisage) : ni
+l'une ni l'autre ne détecte une structure cassée, et les satisfaire imposerait de
+réécrire en masse des documents dont le journal, qui est en ajout seul.
 
 **`tabby-ssh` ne doit jamais être réinstallé dans `devDependencies`.** Le chargeur de
 plugins de Tabby ne met en cache que `tabby-core`, `tabby-local`, `tabby-settings` et
@@ -134,12 +162,24 @@ adresse sans confirmation explicite.
 
 **Métadonnées d'attribution IA : admises** (`Co-Authored-By: Claude ...` et
 `Claude-Session: ...` en pied de message). Décision requise une fois par dépôt
-par la charte de gouvernance (Règle 3) ; celle-ci enregistre la pratique déjà
-en place — l'historique public en contient depuis plusieurs commits, revenir
-dessus imposerait de le réécrire. À rediscuter avec l'utilisateur si ce choix
-doit changer, pas à trancher au coup par coup.
+par la charte de gouvernance (option `attribution`) ; celle-ci enregistre la
+pratique déjà en place — l'historique public en contient depuis plusieurs
+commits, revenir dessus imposerait de le réécrire. À rediscuter avec
+l'utilisateur si ce choix doit changer, pas à trancher au coup par coup.
 
 Le dossier `.AIRules/` se commite et se pousse **à chaque modification**, dans
-la foulée du travail qu'il décrit (Règle 1 de la charte). Le feu vert de
-l'utilisateur porte sur le fait d'écrire dans `AI-HISTORY.html`/`ROADMAP.html`,
-pas sur le push.
+la foulée du travail qu'il décrit (`A-10`). Le feu vert de l'utilisateur porte
+sur le fait d'écrire dans `AI-HISTORY.html`/`ROADMAP.html`, pas sur le push.
+
+**Un chantier non abouti vit sur une branche** (option `branches`, tranchée au
+cadrage du 2026-07-31 en changement de la pratique antérieure) : sa
+documentation l'accompagne et arrive sur `master` avec lui, dans le même merge.
+C'est ce qui garantit mécaniquement qu'une gouvernance publiée sur `master` ne
+décrit jamais du code absent.
+
+`core.autocrlf` vaut `true` sur ce poste, alors que le dépôt canonique de la
+charte force `eol=lf` : un `diff` nu entre `.AIRules/GOUVERNANCE-IA.md` et sa
+source signale donc une différence sur **toutes** les lignes alors que le
+contenu versionné est identique. Comparer les blobs
+(`git rev-parse HEAD:.AIRules/GOUVERNANCE-IA.md`) ou passer
+`diff --strip-trailing-cr` avant de conclure à une copie divergente.
