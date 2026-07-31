@@ -72,6 +72,7 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   font-weight: 600;
 }
 .pill.done { color: #1a7f37; }
+.pill.adopted { color: #8250df; }
 .pill.progress { color: #9a6700; }
 .pill.planned { color: var(--muted); }
 .pill.out { color: #cf222e; }

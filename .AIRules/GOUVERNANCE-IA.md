@@ -53,6 +53,7 @@ Chaque dépôt de projet contient à sa racine un dossier `.AIRules/` qui porte 
     GOUVERNANCE-IA.md   (copie conforme de la charte appliquée — voir ci-dessous)
     annexes/            (optionnel — pièces jointes volumineuses, voir ci-dessous)
     archive/            (optionnel — délestage des pages principales, voir ci-dessous)
+    {{page}}/           (optionnel — pages de détail d'une page éclatée, voir ci-dessous)
   ```
 
 #### La charte voyage avec le projet
@@ -139,14 +140,25 @@ avec `.tempfiles/`, qui est ignoré par Git et jetable par construction.
 
 - **Optionnel** : `annexes/` ne se crée qu'au moment où un premier fichier annexe existe. Pas de
   dossier vide « au cas où ».
-- **Aucune annexe orpheline** : tout fichier d'`annexes/` est atteignable par un lien depuis l'une
-  des quatre pages, à l'endroit où sa lecture devient pertinente. Une annexe qu'aucune page ne cite
-  n'est pas une annexe, c'est un fichier oublié.
+- **Aucune annexe orpheline** : tout fichier d'`annexes/` est atteignable depuis l'une des quatre
+  pages par une **chaîne de liens continue**, à l'endroit où sa lecture devient pertinente, chaque
+  page intermédiaire portant le lien de retour vers celle qui la cite. Le nombre de sauts est
+  indifférent ; ce qui est interdit, c'est la **rupture** — une page qu'on ne peut atteindre qu'en
+  connaissant son chemin. Une annexe qu'aucune page ne cite n'est pas une annexe, c'est un fichier
+  oublié.
 - **Une annexe complète, elle ne remplace pas.** Le fait, l'invariant ou la décision reste énoncé
   dans la page principale ; l'annexe ne porte que le détail volumineux qui l'étaye. Déporter la
   conclusion elle-même en annexe recrée exactement le problème que ce format évite.
 - Un format non-HTML est acceptable quand il est plus adapté (`.md`, `.json`, `.csv`, capture
   d'écran) : une annexe est une pièce jointe, pas une cinquième page de gouvernance.
+- **Note d'annexe.** Quand le format ou le poids d'une pièce l'empêche de porter son propre lien de
+  retour (binaire, tableur, image, jeu de données volumineux), ou quand la pièce vit délibérément
+  **hors du dépôt** (volume qui alourdirait chaque clone et chaque sauvegarde, ressource sur une
+  autre machine), l'annexe versionnée est une **note Markdown** qui tient ce rôle à sa place. Elle
+  porte le lien de retour vers la page qui la cite et dit : où la pièce se trouve, pourquoi elle est
+  là plutôt que dans le dépôt, comment la régénérer, et **ce qu'on en a appris**. C'est ce dernier
+  point qui la justifie : la pièce peut disparaître, la connaissance qu'elle a produite doit lui
+  survivre. La note *est* l'annexe ; la pièce n'en est que le support.
 
 #### Archive — dossier `archive/`
 
@@ -155,6 +167,13 @@ quoi il existe : `AI-HISTORY.html` accumule les chantiers clos depuis des mois, 
 traîne des sections « Hors périmètre » que plus personne ne relit. Un sous-dossier `archive/` permet
 de **délester une page principale sans rien perdre**.
 
+- **Le contenu est intouchable, la navigation ne l'est pas.** Aucun texte archivé ne se réécrit, ne
+  s'élague ni ne se résume ; mais un **lien de navigation** dont la cible a bougé se répare — garder
+  une archive accessible n'est pas réécrire l'histoire. Trois cas, dans cet ordre : la cible existe
+  ailleurs → le lien pointe sa nouvelle position, en chemin relatif ; la cible a disparu → le lien
+  devient du texte brut disant ce qu'il désignait et qu'il n'existe plus ; **jamais de suppression
+  silencieuse** du renvoi. Un commit qui répare des liens d'archive ne touche qu'aux liens, et le
+  dit dans son message.
 - **Déplacement intégral, jamais réécriture.** Un chantier s'archive en entier — son `<h2>`, son
   paragraphe de contexte, son tableau complet — recopié tel quel. Le contenu archivé reste, comme sur
   la page d'origine, en **ajout seul** : il ne se corrige pas, ne se résume pas, ne se condense pas.
@@ -177,6 +196,29 @@ de **délester une page principale sans rien perdre**.
 - Une archive ne s'élague pas et ne se supprime pas. Un contenu dont on accepte la perte n'avait pas
   à être archivé — il avait à être supprimé, par une décision explicite, pas comme effet de bord d'un
   rangement.
+
+#### Éclatement d'une page principale — sous-dossier dédié
+
+Quand un dépôt porte plusieurs applications ou composants livrables distincts, une page principale —
+en pratique `ROADMAP.html`, parfois `AI-HISTORY.html` — cesse d'être lisible en un seul fichier. Elle
+peut alors être **éclatée** en pages de détail, une par périmètre, dans un sous-dossier portant son
+nom (`roadmap/ROADMAP_{{app}}.html`).
+
+- **Les quatre pages restent quatre.** La page éclatée demeure à la racine de `.AIRules/`, garde sa
+  place dans la navbar, et devient un **index de renvois** vers ses pages de détail. Une page de
+  détail n'est pas une cinquième page de gouvernance : elle suit le squelette des pages de
+  sous-dossier (Règle 2), sans navbar, avec sa ligne `<p class="muted">` de retour vers l'index.
+- **Périmètres disjoints.** Un chantier appartient à une page de détail et une seule. Un chantier
+  transverse à plusieurs périmètres reste sur l'index.
+- **Un index de renvois ne porte aucun statut.** Quand le détail d'un chantier vit dans une autre
+  page, l'index n'en donne que le nom et le lien — jamais le statut, la priorité ni l'avancement,
+  portés **exclusivement** par la page de détail. Deux pages qui décrivent le même fait divergent, et
+  l'index est celle qu'on oublie. Le tableau « Vue d'ensemble » décrit en Règle 2 garde ses colonnes
+  `Statut`/`Priorité` **tant que le détail est sur la même page** ; il les perd à l'éclatement. Les y
+  maintenir suppose qu'elles soient **générées** depuis les pages de détail, jamais saisies à la main.
+- **Dernier recours, pas réflexe d'organisation.** L'éclatement se déclenche quand la page dépasse ce
+  qu'on relit d'un bout à l'autre, et se décide avec l'utilisateur comme tout changement structurant
+  (Règle 6).
 
 ### Trois questions à poser au SETUP, avant de créer quoi que ce soit
 
@@ -216,10 +258,22 @@ l'historique depuis la branche principale y voit l'état réel du projet publié
 - **Un état transitoire vit sur une branche, `.AIRules/` compris.** Tant qu'un chantier n'est pas
   abouti, sa documentation l'accompagne sur sa branche et arrive sur `main` avec lui, dans le même
   merge. Ne pas décrire sur `main` un code qui n'y est pas encore.
-- Corollaire pratique : ne pas écrire dans `AI-HISTORY.html` d'entrée dont le hash serait
-  « à venir ». Une entrée de journal se rédige au moment du commit qu'elle décrit, avec son hash
-  réel. Si l'ordre s'inverse malgré tout, ne pas réécrire les entrées passées (le journal reste en
-  ajout seul) : ajouter une table de correspondance en tête du chantier.
+- Corollaire pratique : une entrée de journal se rédige au moment du commit qu'elle décrit — mais
+  elle ne peut pas porter le hash de son propre commit, puisqu'elle est écrite avant que celui-ci
+  existe. La colonne `Hash` a donc trois valeurs, et trois seulement :
+  - le **hash réel**, quand l'entrée décrit un commit déjà fait ;
+  - **`(commit en cours)`**, marqueur d'attente d'une entrée qui part dans le commit qu'elle décrit.
+    Le remplacer par le hash réel dès le commit suivant est la **seule modification autorisée d'une
+    entrée existante** : elle ne réécrit rien, elle complète. Un `(commit en cours)` qui survit à
+    plusieurs commits est une anomalie, repérable par un simple `grep` ;
+  - **`n/a` suivi de la raison entre parenthèses**, réservé au travail qui **restera** hors de Git :
+    opération système, action sur une autre machine, ressource hors dépôt.
+
+  Ne jamais employer une formule comme « non commité » : elle recouvre les deux derniers cas à la
+  fois, si bien qu'un oubli devient indiscernable d'une valeur légitime et n'est plus rattrapable que
+  par un rapprochement manuel, commit par commit. Si l'ordre s'inverse malgré tout et qu'une entrée
+  passée se révèle fausse, ne pas la réécrire : ajouter une table de correspondance en tête du
+  chantier.
 
 ## Règle 2 — Pages de gouvernance en HTML pur (HTML/CSS uniquement, pas de JS), navbar et rendu partagés
 
@@ -264,8 +318,8 @@ générateur — HTML/CSS écrits à la main, aucun JavaScript.
     (pas de bascule JS — le thème suit celui de l'OS/navigateur) ;
   - des styles de callout : `.callout.note`, `.callout.warning`, `.callout.important` (bordure
     et fond colorés, `.callout-title` en gras) ;
-  - des pastilles de statut `.pill.done` / `.pill.progress` / `.pill.planned` / `.pill.out` /
-    `.pill.warn` pour les tableaux de roadmap et les points à revérifier ;
+  - des pastilles de statut `.pill.done` / `.pill.adopted` / `.pill.progress` / `.pill.planned` /
+    `.pill.out` / `.pill.warn` pour les tableaux de roadmap et les points à revérifier ;
   - police système, largeur de lecture max ~900px centrée, tableaux avec lignes zébrées.
 
 #### Discipline d'édition, à mesure que les pages grossissent
@@ -393,7 +447,10 @@ Ordre des sections après le `<h1>Contexte &amp; invariants</h1>` et la ligne
    jour de cette dépendance.
 3. **`<h2>Sommaire</h2>`** : une liste à puces d'ancres vers chaque catégorie (`<h2 id="cat-...">`
    plus bas), chaque entrée listant aussi les numéros `#N` des pièges qu'elle contient — permet de
-   sauter directement à la bonne section sans tout parcourir.
+   sauter directement à la bonne section sans tout parcourir. Immédiatement sous le sommaire, une
+   ligne `.muted` donne le **prochain numéro de piège libre** (voir « Compteur de numérotation »
+   dans les conventions transverses) : sans elle, l'ajout d'un piège produit tôt ou tard une
+   collision avec un numéro déjà attribué plus haut dans le fichier.
 4. **Une `<h2 id="cat-...">` par catégorie**, dans un ordre stable. Catégories typiques à adapter
    au projet (toutes ne s'appliquent pas partout) : identité du projet (nom, emplacements,
    identité Git si spécifique) ; environnement & build ; architecture/composants du framework
@@ -443,7 +500,9 @@ Ordre après le `<h1>Roadmap</h1>` et `<p class="muted">Dernière revue : {{date
    l'autre, uniquement ce qui reste à faire ou à décider.
 2. **`<h2>Vue d'ensemble</h2>`** : un tableau `Chantier` / `Statut` / `Priorité`, une ligne par
    chantier, où la colonne `Chantier` est un lien d'ancre (`#id-du-chantier`) vers son détail plus
-   bas, et `Statut` utilise les pastilles (voir tableau ci-dessous).
+   bas, et `Statut` utilise les pastilles (voir tableau ci-dessous). Ces colonnes ne tiennent que
+   **tant que le détail vit sur la même page** : si la roadmap est éclatée en pages de détail
+   (Règle 1), le tableau devient un index de renvois et perd `Statut`/`Priorité`.
 3. **Sections de détail par groupe**, dans cet ordre stable : `<h2>Phase 1 — {{priorité}}</h2>`,
    `<h2>Phase 2 — {{priorité}}</h2>`, `<h2>Non daté — à faire quand utile</h2>`,
    `<h2>Hors périmètre</h2>` — n'inclure que les phases pertinentes pour le projet, mais garder
@@ -473,6 +532,14 @@ que la lecture soit immédiate même en changeant de projet.
 | `id="cat-{{slug}}"` | Ancre d'une catégorie dans `AI-CONTEXT.html`, ciblée depuis le sommaire de la même page. |
 | `id="{{slug-du-chantier}}"` | Ancre d'un chantier dans `ROADMAP.html`, ciblée depuis le tableau "Vue d'ensemble" de la même page et, ponctuellement, depuis `AI-CONTEXT.html` pour renvoyer vers le design prévu d'un point fragile. |
 
+**Compteur de numérotation.** Une numérotation stable suppose de connaître le dernier numéro
+attribué — information qu'aucune lecture partielle ne donne, puisque l'ordre d'affichage ne suit pas
+la numérotation. Chaque document concerné indique donc **en tête, sous le sommaire, le prochain
+numéro libre** (`Prochain piège : #22`), et celui qui ajoute une entrée l'incrémente dans le même
+geste. Sans ce compteur, le réflexe par défaut — reprendre le dernier numéro visible en fin de
+fichier — produit des collisions silencieuses avec des numéros déjà attribués plus haut. Rappel : un
+numéro libéré par un archivage reste consommé, le compteur ne redescend jamais.
+
 **Callouts (`.callout.{{type}}`)**
 
 | Classe | Sens | Exemple d'usage |
@@ -485,7 +552,8 @@ que la lecture soit immédiate même en changeant de projet.
 
 | Classe | Sens |
 |---|---|
-| `.done` (✅) | Chantier livré **et validé par l'utilisateur en conditions réelles** (pas seulement codé — voir Règle 4). Rappel : tant que cette validation n'est pas venue, le chantier ne reçoit aucune écriture dans `ROADMAP.html`/`AI-HISTORY.html`, pas même une ligne d'état intermédiaire. |
+| `.done` (✅ Livré) | Chantier **validé par l'utilisateur en conditions réelles** (pas seulement codé — voir Règle 4) **et effectivement en service** : déployé en production, publié et installé, ou fusionné sur la branche principale selon la nature du projet. Un code validé qui dort sur une branche n'est pas livré. Rappel : tant que cette validation n'est pas venue, le chantier ne reçoit aucune écriture dans `ROADMAP.html`/`AI-HISTORY.html`, pas même une ligne d'état intermédiaire. |
+| `.adopted` (🎯 Adopté) | **Réservé aux chantiers d'outillage et de convention** (script, commande, workflow, tracker, convention d'écriture) : l'outil est livré *et* son usage est **constaté dans le flux de travail réel**. Une démonstration réussie ne suffit pas, il faut une trace d'emploi. Pour une fonctionnalité livrée à des utilisateurs, `.done` reste l'état terminal — ne pas attendre un second feu vert qui ne viendra jamais. |
 | `.progress` (🚧) | Chantier en cours de développement actif. |
 | `.planned` (📋) | Design discuté et au moins partiellement tranché, pas encore codé. Nuancer le libellé selon l'avancement de la réflexion ("Proposé" / "Mécanisme tranché" / "Design validé"). |
 | `.out` (⛔) | Explicitement écarté ou sorti du périmètre du projet — toujours accompagné d'un callout `.important` expliquant pourquoi. |
@@ -544,7 +612,12 @@ session de travail sur tout projet et sont donc documentées ici plutôt que ré
   ne porte pas seulement sur la pastille `.done` : tant que la validation n'est pas venue, le
   chantier ne reçoit **aucune écriture** dans le journal ou la roadmap, pas même une ligne d'état
   intermédiaire. Un build qui passe, un déploiement réussi ou une relecture de code ne valent pas
-  validation.
+  validation. Cas particulier des chantiers d'**outillage et de convention** : ils disposent d'un
+  état terminal supplémentaire, `.adopted` (Règle 2), qui demande un **usage constaté** et non une
+  démonstration réussie. Un outillage resté `.done` sans usage constaté est un signal en soi : soit
+  il est adopté, soit on acte qu'il ne sert pas — en le sortant du périmètre avec le callout
+  `.important` qui dit pourquoi, plutôt qu'en le laissant afficher un statut littéralement vrai et
+  pratiquement faux.
 - **Données jetables pour tout test destructif** : toute manipulation touchant des données réelles
   de l'utilisateur ou de production se teste d'abord sur des entrées jetables clairement
   identifiables (ex. préfixe `test-*`/`sandbox-*`), jamais directement sur les vraies données —
@@ -903,7 +976,24 @@ donné) vit dans le `CLAUDE.md` de ce workspace (Règle 3), jamais dans la copie
 `GOUVERNANCE-IA.md`.
 
 ---
-*Dernière mise à jour de cette charte : **2026-07-30** (préambule : la charte est la référence à tout
+*Dernière mise à jour de cette charte : **2026-07-31** (révision issue d'un audit de gouvernance
+grandeur nature, où chacun des points ci-dessous avait produit du faux, de l'ambigu ou du
+non-décidable. Règle 1 : **éclatement d'une page principale** en pages de détail dans un sous-dossier
+dédié, la page éclatée devenant un index de renvois qui ne porte aucun statut ; critère de **chaîne
+de liens continue** pour les annexes, en remplacement du « lien depuis l'une des quatre pages » que
+tout éclatement rendait faux ; **note d'annexe** pour les pièces que leur format ou leur poids empêche
+de porter un lien de retour, et pour les ressources délibérément hors dépôt ; archives — le contenu
+reste intouchable mais les **liens de navigation se réparent**, en trois cas explicites dont celui de
+la cible disparue ; colonne `Hash` d'`AI-HISTORY.html` ramenée à **trois valeurs** dont le marqueur
+`(commit en cours)`, dont le remplacement par le hash réel devient la seule modification autorisée
+d'une entrée existante. Règle 2 : pastille **`.adopted`** pour les chantiers d'outillage et de
+convention, distinguant l'outil qui fonctionne de l'outil dont l'usage est constaté, et `.done`
+resserrée sur « validé en conditions réelles **et** effectivement en service » ; **compteur de
+numérotation** en tête des documents à numérotation stable, sans lequel la règle demande de connaître
+un état qui n'est écrit nulle part. Règle 4 : pour l'outillage, usage constaté plutôt que
+démonstration réussie.).*
+
+*Révision précédente : **2026-07-30** (préambule : la charte est la référence à tout
 moment et est susceptible d'évoluer ; Règle 1 : dossiers optionnels `annexes/` et `archive/`, dépôt
 canonique public `Claude-Governance` et mécanisme de vérification périodique par cron avec
 propagation sur branche et validation humaine, clarification de l'épuisement d'un fichier
@@ -918,7 +1008,7 @@ mécanisme de vérification par cron : précision sur l'exécution silencieuse (
 planifiée masquée ≠ fenêtre du processus lancé, distinction à garder quand le script cron est
 lui-même un exécutable à console).*
 
-*Révision précédente : **2026-07-29** (Règle 1 : ajout des trois questions à poser au SETUP d'un
+*Révision antérieure : **2026-07-29** (Règle 1 : ajout des trois questions à poser au SETUP d'un
 nouveau projet — nom du dépôt distant, privé ou public, authentification `gh` en place).*
 
 *Révision antérieure : **2026-07-28** (ajout des Règles 6 et 7 — cette dernière couvrant à la fois
