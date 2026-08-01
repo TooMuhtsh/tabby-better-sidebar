@@ -187,9 +187,52 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             || this.backgroundMenuOpen || this.displayMenuOpen) {
             return
         }
-        // `fallbackOnError: false` — a transient failure must not walk the user
-        // out of the directory they are looking at.
-        await this.navigate(this.path, false).catch(() => null)
+        // Deliberately *not* `navigate()`: it clears the list before refilling
+        // it, so every row is destroyed and rebuilt — the visible jump, and a
+        // full re-render of a directory that usually has not changed at all.
+        const entries = await this.sftp.readdir(this.path).catch(() => null)
+        if (entries) {
+            this.applyListing(entries)
+        }
+    }
+
+    /**
+     * Merges a fresh listing into the current one, touching only what differs.
+     *
+     * Nothing changed ⇒ nothing is reassigned, so `filteredFileList` keeps its
+     * identity, the sorted list and the row cache stay valid, and the refresh
+     * costs exactly one `readdir` and no rendering whatsoever. When something
+     * did change, unchanged entries keep their *existing object*, which is what
+     * lets `trackBy` hold on to the rows already on screen — the list updates
+     * in place instead of blinking, and the scroll position survives.
+     */
+    private applyListing (entries: SFTPFile[]): void {
+        const current = this.fileList ?? []
+        const byPath = new Map(current.map(file => [file.fullPath, file]))
+        let changed = current.length !== entries.length
+        const merged = entries.map(entry => {
+            const existing = byPath.get(entry.fullPath)
+            if (existing && this.sameEntry(existing, entry)) {
+                return existing
+            }
+            changed = true
+            return entry
+        })
+        if (!changed) {
+            return
+        }
+        this.fileList = merged
+        // The native filter pass, reached through its public trigger rather
+        // than through `updateFilteredList()`, which is private.
+        this.onFilterChange()
+    }
+
+    private sameEntry (a: SFTPFile, b: SFTPFile): boolean {
+        return a.size === b.size
+            && a.modified.getTime() === b.modified.getTime()
+            && a.mode === b.mode
+            && a.isDirectory === b.isDirectory
+            && a.isSymlink === b.isSymlink
     }
 
     ////// CONTEXT MENUS //////
@@ -730,13 +773,18 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         if (cached && cached.source === source && cached.columns === columns) {
             return cached.result
         }
-        const result = source.map(item => ({
+        // Rows whose entry object survived the merge are reused as they are:
+        // after a refresh where one file changed, only that file is formatted
+        // again. `applyListing()` is what makes this work — it keeps the
+        // existing object for every unchanged entry.
+        const previous = new Map((cached?.columns === columns ? cached.result : []).map(row => [row.item, row]))
+        const result = source.map(item => previous.get(item) ?? {
             item,
             icon: this.getIcon(item),
             tooltip: this.rowTooltip(item),
             hidden: this.isHidden(item),
             cells: columns.map(column => this.cellValue(column, item)),
-        }))
+        })
         this.rowCache = { source, columns, result }
         return result
     }
