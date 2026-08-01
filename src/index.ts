@@ -14,6 +14,7 @@ import { SidebarPlusConfigProvider } from './configProvider'
 import { SidebarPlusSettingsTabProvider } from './settings'
 import { SidebarPlusMountService } from './mount.service'
 import { SidebarPlusHotkeyProvider, SidebarPlusHotkeyService } from './hotkeys'
+import { SidebarPlusTempFilesService } from './tempFiles.service'
 
 @NgModule({
     imports: [
@@ -36,12 +37,21 @@ import { SidebarPlusHotkeyProvider, SidebarPlusHotkeyService } from './hotkeys'
     ],
 })
 export default class SidebarPlusModule {
-    // Both services are injected only to be instantiated: Angular never
+    // These services are injected only to be instantiated: Angular never
     // constructs a `providedIn: 'root'` service nobody asks for, and each one
-    // does its work from its constructor (mounting the sidebar, subscribing to
-    // the hotkey stream).
-    constructor (mount: SidebarPlusMountService, hotkeys: SidebarPlusHotkeyService) {
+    // does its work from its constructor — mounting the sidebar, subscribing to
+    // the hotkey stream, purging what earlier runs left in the temp directory.
+    //
+    // The last one is why this list matters: it was reached only through the
+    // SFTP panel at first, so its startup purge ran when the panel was opened,
+    // which is exactly never for a session that leaves stale copies behind.
+    constructor (
+        mount: SidebarPlusMountService,
+        hotkeys: SidebarPlusHotkeyService,
+        temp: SidebarPlusTempFilesService,
+    ) {
         void mount
         void hotkeys
+        void temp
     }
 }
