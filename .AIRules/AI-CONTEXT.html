@@ -870,10 +870,29 @@ authentifié détermine qui pousse. Email noreply officiel pour committer "en ta
 perso : <code>{id}+{login}@users.noreply.github.com</code> (id via
 <code>gh api user --jq '{id, login}'</code>).</p>
 
-<h3 id="piege-11">#11 — <code>git filter-branch</code> bloqué par le mode auto de Claude Code</h3>
-<p>Réécriture d'historique jugée sensible même sur un repo perso sans collaborateurs. L'utilisateur
-doit lancer la commande lui-même via le préfixe <code>!</code> (hors sandbox classifié). Nécessite
-<code>git push --force</code> après (les hash changent).</p>
+<h3 id="piege-11">#11 — Réécrire l'historique : ce qu'il faut vérifier avant, et la fausse sauvegarde</h3>
+<p>Fait le 2026-08-01 pour purger l'attribution IA des 74 commits
+(<code>git filter-branch --msg-filter</code>). Selon le mode de permission actif, la commande peut
+être refusée — elle se relance alors par le préfixe <code>!</code>, côté utilisateur. Le
+<code>git push --force</code> qui suit, lui, ne se lance <strong>jamais</strong> sans accord
+explicite : il écrase l'état publié.</p>
+<div class="callout warning"><span class="callout-title">Une branche de sauvegarde créée avant ne protège de rien</span>
+<p><code>filter-branch ... -- --all</code> réécrit <strong>toutes</strong> les références, y compris
+la branche de sauvegarde faite juste avant. Ce qui sauve réellement, c'est
+<code>refs/original/</code>, que filter-branch écrit tout seul et qui garde les sommets d'origine
+(<code>git reset --hard refs/original/refs/heads/master</code> annule tout tant qu'ils existent).</p></div>
+<ul>
+<li><strong>Avant</strong> : historique linéaire (aucune fusion), aucun tag, arbre propre. Sans quoi
+la correspondance ancien→nouveau ne se reconstitue pas par simple position dans
+<code>git rev-list --reverse</code>, et il faut un vrai outil de mapping.</li>
+<li><strong>Après</strong> : <code>git diff refs/original/refs/heads/master master</code> doit être
+<strong>vide</strong> — c'est le contrôle qui prouve qu'on n'a touché qu'aux messages.</li>
+<li><strong>Reporter les hashs cités dans la documentation</strong>, sinon tout le journal pointe
+dans le vide. Et ne pas remplacer aveuglément toute chaîne de 7 caractères hexadécimaux : les
+empreintes de <em>blob</em> (contrôle de conformité de la charte, cf. #47) leur ressemblent
+exactement et ne doivent pas bouger. Ne remplacer que ce qui résout comme
+<code>&lt;hash&gt;^{commit}</code>.</li>
+</ul>
 
 <h3 id="piege-47">#47 — Un <code>diff</code> nu contre la charte canonique signale une divergence
 totale alors que le contenu versionné est identique</h3>
