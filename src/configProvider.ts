@@ -23,6 +23,13 @@ export interface SidebarWorkspace {
 
 export class SidebarPlusConfigProvider extends ConfigProvider {
     defaults = {
+        // Outside `sidebarPlus` on purpose: Tabby merges every provider's
+        // defaults into one store, and hotkey bindings live in its own
+        // top-level namespace. A HotkeyProvider without a matching default
+        // here would show up in the settings with no binding at all.
+        hotkeys: {
+            'sidebar-plus-insert-newline': ['Ctrl-Enter'],
+        },
         sidebarPlus: {
             enabled: true,
             favorites: [] as string[],

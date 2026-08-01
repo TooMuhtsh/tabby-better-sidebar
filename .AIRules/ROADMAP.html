@@ -44,7 +44,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant #transferts</strong></td></tr>
-<tr><td><a href="#ctrl-entree">Régression clavier : <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> dans les terminaux</a></td><td><span class="pill planned">🔎 À diagnostiquer</span></td><td>Haute</td></tr>
+<tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill planned">🔧 Écrit, test en attente</span></td><td>Haute</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -825,17 +825,39 @@ renderer pendant le geste (<a href="AI-CONTEXT.html#piege-49">piège #49</a>). L
 glisser un dossier puis <strong>relâcher immédiatement</strong>, et chronométrer la fin de la
 préparation. Ne pas optimiser avant d'avoir la réponse.</p>
 
-<h3 id="ctrl-entree">Régression clavier : <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> dans les terminaux</h3>
-<p>Signalé par l'utilisateur le 2026-08-01 : <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> ne saute plus de ligne
-dans les terminaux, soupçon porté sur la sélection multiple. <strong>Rien dans le plugin ne
-l'explique à la lecture</strong> : aucun <code>HotkeyProvider</code> n'est déclaré, le seul écouteur
-clavier global (<code>sftpBrowser.component.ts</code>) sort immédiatement sur toute touche autre que
-<kbd>Suppr</kbd> et n'appelle jamais <code>preventDefault()</code>, et la sélection multiple ne lit
-<code>ctrlKey</code> que dans un gestionnaire de <em>clic</em>.</p>
-<p>À diagnostiquer avant toute correction, en commençant par écarter le plugin : relancer Tabby avec
-la jonction de dev renommée (et non en désactivant le plugin depuis l'UI, ce qui
-<em>supprime</em> la jonction). Si le symptôme persiste sans le plugin, chercher du côté des
-raccourcis de Tabby ou d'une mise à jour de l'app.</p>
+<h3 id="ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</h3>
+<div class="callout important"><span class="callout-title">Ce n'est pas une régression — diagnostic établi le 2026-08-01</span>
+<p>Signalé comme une régression du plugin (soupçon porté sur la sélection multiple), ce n'en est pas
+une. Mesuré au terminal avec le <em>literal next</em> de readline (<kbd>Ctrl</kbd>+<kbd>V</kbd> suivi
+de la touche) : <kbd>Entrée</kbd> <strong>et</strong> <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> émettent tous
+deux <code>^M</code> — un simple CR. <kbd>Ctrl</kbd>+<kbd>J</kbd>, lui, émet bien LF.</p>
+<p>Les deux frappes sont donc <strong>indistinguables une fois écrites sur le pty</strong> : aucune
+application distante ne peut les différencier, quel que soit son paramétrage. Symptôme identique en
+session locale et en SSH, sur des serveurs différents — ce qui exclut le transport autant que le
+plugin. Ne pas rouvrir ce point comme un bug de Tabby ou de l'application distante.</p></div>
+<p><strong>Ce qui rend la correction possible</strong> : la distinction existe encore dans le
+renderer, où l'événement clavier porte <code>ctrlKey</code>. La couche de raccourcis de Tabby y
+travaille, <em>avant</em> l'écriture sur le pty — c'est le seul endroit où un raccourci peut agir.
+L'action écrit alors le LF elle-même.</p>
+<ul>
+<li><strong>Mise en œuvre</strong> : un <code>HotkeyProvider</code> déclare l'action
+  <code>sidebar-plus-insert-newline</code>, liée par défaut à <code>Ctrl-Enter</code> dans les
+  <code>defaults</code> du <code>ConfigProvider</code> — un raccourci sans valeur par défaut
+  apparaîtrait dans les réglages sans aucune touche assignée. Un service abonné à
+  <code>hotkey$</code> appelle <code>sendInput('\n')</code> sur le terminal focalisé.</li>
+<li><strong><code>hotkey$</code> et non <code>unfilteredHotkey$</code></strong> : le flux filtré se
+  tait pendant qu'un champ de saisie a le focus, sans quoi la combinaison partirait aussi en
+  renommant un profil dans la sidebar.</li>
+<li><strong>Cible</strong> : <code>app.activeTab</code> rend le <em>split</em> et jamais le volet
+  pour un onglet divisé — le volet focalisé se demande explicitement, comme le fait déjà
+  <code>focusTab()</code> dans <code>tabs.ts</code>. Aucun terminal en façade ⇒ ne rien faire, plutôt
+  que de deviner une cible : ce raccourci écrit dans une session vivante.</li>
+<li><em>À confirmer au test, pas acquis</em> : que Tabby accepte d'enregistrer
+  <code>Ctrl-Enter</code>, son capteur de raccourcis filtrant certaines touches. Si la combinaison
+  est refusée, l'action reste utilisable en la liant à une autre touche depuis les réglages.</li>
+</ul>
+<p>Premier usage réel de l'item « Raccourcis globaux » des
+<a href="#ui-polish">options &amp; polissage UI</a>, jusqu'ici jamais instancié.</p>
 
 <h3 id="confirmations-html">Confirmations en modale HTML (audit de conformité)</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30 comme principe transversal. Audit fait sur
