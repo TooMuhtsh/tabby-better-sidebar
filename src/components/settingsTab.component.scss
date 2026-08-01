@@ -1,0 +1,95 @@
+// Carried by the template's root class, never by `:host`: the SCSS of a
+// third-party plugin is injected as plain global CSS, where `:host` has no
+// effect at all — no error, no warning, the style is simply ignored (piège #14).
+//
+// Every colour is an rgba of white or black so the page stays legible on
+// Tabby's light themes as well as its dark ones, without having to detect which
+// one is active. Same approach as the other plugin's settings page, which this
+// layout is modelled on.
+.sidebar-plus-settings {
+    .form-control {
+        background: rgba(0, 0, 0, 0.22);
+        border: 1px solid rgba(128, 128, 128, 0.45);
+        transition: border-color 0.15s ease, background 0.15s ease;
+
+        &:hover:not(:focus) {
+            border-color: rgba(128, 128, 128, 0.75);
+        }
+
+        &:focus {
+            background: rgba(0, 0, 0, 0.3);
+            border-color: rgba(120, 170, 255, 0.9);
+            box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.2);
+        }
+    }
+
+    // One settings row: its label and explanation on the left, the control on
+    // the right. Groups each setting visually and keeps the editable fields off
+    // the page background.
+    .form-line {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+        padding: 0.6rem 0;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        .header {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .title {
+            font-weight: 500;
+        }
+
+        .description {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-top: 0.15rem;
+        }
+
+        // The control side never collapses under a long description, and never
+        // stretches across the row either.
+        .control {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    }
+
+    // A section is a title plus its rows; the spacing separates sections
+    // without needing a rule between them.
+    .settings-section {
+        margin-bottom: 1.5rem;
+
+        > h3 {
+            margin-bottom: 0.25rem;
+        }
+
+        > .section-intro {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-bottom: 0.5rem;
+        }
+    }
+
+    // Kept narrow: a number of seconds needs three characters, not a full row.
+    input.form-control[type='number'] {
+        width: 6rem;
+    }
+
+    select.form-control {
+        display: inline-block;
+        width: auto;
+        min-width: 12rem;
+    }
+
+    .path-input {
+        min-width: 18rem;
+    }
+}

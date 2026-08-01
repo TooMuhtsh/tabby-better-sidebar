@@ -1,102 +1,111 @@
+//- Laid out like the other plugin's settings page, at the user's request: one
+//- `.form-line` per setting — label and explanation on the left, control on the
+//- right — grouped into sections. The wording stays in French here: unlike that
+//- plugin, this one ships no `src/i18n/`, so a `| translate` would resolve to
+//- the source string anyway.
 .sidebar-plus-settings
-  h3.mb-1 Éditeur des fichiers distants
-  p.text-muted.small.mb-3
-    | Le double-clic sur un fichier du panneau SFTP le télécharge puis l'ouvre
-    | toujours dans cet éditeur — jamais avec l'application associée par le
-    | système, qui <strong>exécuterait</strong> un programme ou un script au lieu
-    | de l'éditer.
+  .settings-section
+    h3 Éditeur des fichiers distants
+    .section-intro
+      | Le double-clic sur un fichier du panneau SFTP le télécharge puis l'ouvre
+      | toujours dans cet éditeur — jamais avec l'application associée par le
+      | système, qui <strong>exécuterait</strong> un programme ou un script au
+      | lieu de l'éditer.
 
-  .form-group.mb-2
-    label.form-label(for='sidebar-plus-editor-path') Chemin de l'éditeur
-    .d-flex.align-items-center.gap-2
-      input#sidebar-plus-editor-path.form-control(
-        type='text',
-        [(ngModel)]='editorPath',
-        (change)='save()',
-        placeholder='Aucun éditeur choisi'
-      )
-      button.btn.btn-primary.text-nowrap((click)='browse()')
-        i.fas.fa-folder-open.me-2
-        | Parcourir...
-      button.btn.btn-secondary.text-nowrap(*ngIf='editorPath', (click)='clear()')
-        i.fas.fa-times.me-2
-        | Effacer
+    .form-line
+      .header
+        .title Chemin de l'éditeur
+        .description
+          | Laissé vide, chaque double-clic ouvre la fenêtre « Ouvrir avec » de
+          | Windows. Elle ne peut pas être mémorisée — Windows ne dit pas quelle
+          | application a été retenue — donc elle reviendra à chaque fois.
+      .control
+        input#sidebar-plus-editor-path.form-control.path-input(
+          type='text',
+          [(ngModel)]='editorPath',
+          (change)='save()',
+          placeholder='Aucun éditeur choisi'
+        )
+        button.btn.btn-primary.text-nowrap((click)='browse()')
+          i.fas.fa-folder-open.me-2
+          | Parcourir...
+        button.btn.btn-secondary.text-nowrap(*ngIf='editorPath', (click)='clear()')
+          i.fas.fa-times.me-2
+          | Effacer
 
-  p.text-muted.small(*ngIf='!editorPath && canOpenWith')
-    | Tant qu'aucun éditeur n'est choisi ici, chaque double-clic sur un fichier
-    | ouvre la fenêtre « Ouvrir avec » de Windows. Elle ne peut pas être
-    | mémorisée — Windows ne dit pas quelle application a été retenue — donc
-    | elle reviendra à chaque fois tant que ce champ reste vide.
+    .form-line(*ngIf='!editorPath && !canOpenWith')
+      .header
+        .description
+          | Sur cette plateforme, tant qu'aucun éditeur n'est choisi, le premier
+          | double-clic ouvre un sélecteur de fichier ; l'annuler n'ouvre rien.
 
-  p.text-muted.small(*ngIf='!editorPath && !canOpenWith')
-    | Tant qu'aucun éditeur n'est choisi, le premier double-clic sur un fichier
-    | ouvre ce sélecteur ; annuler n'ouvre rien.
+  .settings-section
+    h3 Glisser-déposer sortant
+    .section-intro
+      | Glisser une entrée du panneau SFTP vers l'Explorateur la télécharge à
+      | cet endroit. Le fichier doit exister localement avant que le système ne
+      | puisse le prendre : le premier glisser d'une entrée sert à la préparer,
+      | le suivant l'emporte.
 
-  h3.mt-4.mb-1 Glisser-déposer sortant
-  p.text-muted.small.mb-2
-    | Glisser une entrée du panneau SFTP vers l'Explorateur la télécharge à cet
-    | endroit. Le fichier doit être copié localement avant que le système ne
-    | puisse le prendre : le premier glisser d'une entrée sert à la préparer, le
-    | suivant l'emporte.
+    .form-line
+      .header
+        .title Autoriser aussi les dossiers
+        .description
+          | Un dossier est aspiré en entier avant de pouvoir être déposé. Au-delà
+          | de 25 fichiers ou 20 Mo, une confirmation est demandée avec le volume
+          | constaté.
+      .control
+        input#sidebar-plus-dragout-folders.form-check-input(
+          type='checkbox',
+          [ngModel]='dragOutFolders',
+          (ngModelChange)='setDragOutFolders($event)'
+        )
 
-  .form-check.mb-2
-    input#sidebar-plus-dragout-folders.form-check-input(
-      type='checkbox',
-      [ngModel]='dragOutFolders',
-      (ngModelChange)='setDragOutFolders($event)'
-    )
-    label.form-check-label(for='sidebar-plus-dragout-folders') Autoriser aussi les dossiers
+  .settings-section
+    h3 Rafraîchissement automatique du panneau SFTP
+    .section-intro
+      | SFTP ne signale aucun changement : un fichier créé ou supprimé depuis un
+      | terminal n'apparaît qu'au prochain chargement du dossier.
 
-  .alert.alert-warning.small(*ngIf='dragOutFolders')
-    strong Un dossier est aspiré en entier avant de pouvoir être déposé.
-    .mt-1
-      | Toute l'arborescence est téléchargée d'abord — sans barre de progression
-      | et sans annulation possible. Sur un dossier distant très peuplé, le
-      | geste reste sans effet visible pendant tout ce temps. Au-delà de
-      | 25 fichiers ou 20 Mo, une confirmation est demandée avec le volume
-      | constaté.
-    .mt-1.text-muted
-      | Les liens symboliques ne sont pas suivis comme des dossiers : ils
-      | arrivent en copies vides. Un traitement correct viendra avec le
-      | gestionnaire de transferts.
+    .form-line
+      .header
+        .title Intervalle, en secondes
+        .description
+          | 0 désactive. Chaque rafraîchissement relit tout le dossier, ce qui
+          | n'est pas gratuit sur un dossier très peuplé — d'où le réglage
+          | désactivé par défaut. Seules les entrées qui ont changé sont
+          | redessinées, et le cycle est sauté tant qu'un menu est ouvert, qu'un
+          | chemin se saisit ou qu'une suppression est en cours.
+      .control
+        input#sidebar-plus-auto-refresh.form-control(
+          type='number',
+          min='0',
+          step='1',
+          [ngModel]='autoRefreshSeconds',
+          (ngModelChange)='setAutoRefreshSeconds($event)'
+        )
 
-  h3.mt-4.mb-1 Rafraîchissement automatique du panneau SFTP
-  p.text-muted.small.mb-2
-    | SFTP ne signale aucun changement : un fichier créé ou supprimé depuis un
-    | terminal n'apparaît qu'au prochain chargement du dossier. Ce réglage relit
-    | le dossier affiché à intervalle régulier.
+  .settings-section
+    h3 Suppression dans le panneau SFTP
 
-  .form-group.mb-2
-    label.form-label(for='sidebar-plus-auto-refresh') Intervalle, en secondes (0 pour désactiver)
-    input#sidebar-plus-auto-refresh.form-control(
-      type='number',
-      min='0',
-      step='1',
-      [ngModel]='autoRefreshSeconds',
-      (ngModelChange)='setAutoRefreshSeconds($event)'
-    )
-  p.text-muted.small
-    | Chaque rafraîchissement relit tout le dossier. Sur un dossier très peuplé
-    | c'est une opération coûteuse, d'où le réglage désactivé par défaut. Le
-    | rafraîchissement est sauté — jamais mis en attente — tant qu'un menu est
-    | ouvert, qu'un chemin est en cours de saisie ou qu'une suppression est en
-    | cours.
+    .form-line
+      .header
+        .title Bouton activé par Entrée dans la confirmation
+        .description
+          | S'applique aux deux façons de supprimer, la touche #[kbd Suppr]
+          | comme le clic droit. #[kbd Échap] annule dans tous les cas.
+      .control
+        select#sidebar-plus-delete-default.form-control(
+          [ngModel]='deleteDefaultButton',
+          (ngModelChange)='setDeleteDefaultButton($event)'
+        )
+          option(value='cancel') Annuler — la réponse sûre (défaut)
+          option(value='confirm') Supprimer — Suppr puis Entrée en un geste
 
-  h3.mt-4.mb-1 Suppression dans le panneau SFTP
-  .form-group.mb-2
-    label.form-label(for='sidebar-plus-delete-default') Bouton activé par Entrée dans la confirmation
-    select#sidebar-plus-delete-default.form-control(
-      [ngModel]='deleteDefaultButton',
-      (ngModelChange)='setDeleteDefaultButton($event)'
-    )
-      option(value='cancel') Annuler — la réponse sûre sous la touche (défaut)
-      option(value='confirm') Supprimer — Suppr puis Entrée en un geste
-  p.text-muted.small
-    | S'applique aux deux façons de supprimer, la touche
-    |  #[kbd Suppr] comme le clic droit. #[kbd Échap] annule dans tous les cas.
-
-  p.text-muted.small(*ngIf='canOpenWith')
-    | Pour ouvrir un fichier autrement — l'exécuter, le confier à une autre
-    | application — utilisez « Ouvrir avec... » dans le menu du clic droit. C'est
-    | le seul chemin qui passe par l'association du système, et il est toujours
-    | explicite.
+    .form-line(*ngIf='canOpenWith')
+      .header
+        .description
+          | Pour ouvrir un fichier autrement — l'exécuter, le confier à une autre
+          | application — utilisez « Ouvrir avec... » dans le menu du clic droit.
+          | C'est le seul chemin qui passe par l'association du système, et il
+          | est toujours explicite.

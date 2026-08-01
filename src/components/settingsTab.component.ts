@@ -1,3 +1,4 @@
+import './settingsTab.component.scss'
 import { Component, HostBinding, NgZone } from '@angular/core'
 import { ConfigService } from 'tabby-core'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
