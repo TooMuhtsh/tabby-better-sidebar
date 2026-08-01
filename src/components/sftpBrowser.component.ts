@@ -9,6 +9,7 @@ import { EmptyFileUpload } from '../sftpLocalTransfer'
 import { DirectoryWeight, SftpDragOut } from '../sftpDragOut'
 import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
 import { SidebarPlusNoticesService } from '../notices.service'
+import { readRemoteEntry } from '../remoteEntry'
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
 import { SftpTransfers } from '../transfers'
 import { clampInViewport } from '../viewport'
@@ -187,9 +188,17 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             || this.backgroundMenuOpen || this.displayMenuOpen) {
             return
         }
-        // Deliberately *not* `navigate()`: it clears the list before refilling
-        // it, so every row is destroyed and rebuilt — the visible jump, and a
-        // full re-render of a directory that usually has not changed at all.
+        await this.refreshListing()
+    }
+
+    /**
+     * Rereads the current directory and merges the result in.
+     *
+     * Deliberately *not* `navigate()`: that one clears the list before
+     * refilling it, so every row is destroyed and rebuilt — the visible jump,
+     * and a full re-render of a directory that usually has not changed at all.
+     */
+    private async refreshListing (): Promise<void> {
         const entries = await this.sftp.readdir(this.path).catch(() => null)
         if (entries) {
             this.applyListing(entries)
@@ -569,10 +578,66 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             })
         }
         items.push({
+            label: 'Renommer...',
+            click: () => { void this.renameEntry(item) },
+        })
+        items.push({
             label: 'Supprimer',
             click: () => { void this.confirmAndDelete(item) },
         })
         this.platform.popupContextMenu(items, event)
+    }
+
+    /**
+     * Renames a remote entry, extension included.
+     *
+     * The field is prefilled with the **whole** name rather than the stem: the
+     * user asked to be able to change the extension, so it has to be there to
+     * be edited. Nothing warns about changing it either — on a remote server
+     * that is a deliberate act, not a slip.
+     *
+     * Only a rename, never a move: a `/` is refused rather than quietly
+     * relocating the entry somewhere else. `rename()` would accept a path
+     * happily, which is exactly why it is worth blocking here.
+     */
+    private async renameEntry (item: SFTPFile): Promise<void> {
+        const modal = this.ngbModalService.open(PromptModalComponent)
+        modal.componentInstance.prompt = `Nouveau nom de « ${item.name} »`
+        modal.componentInstance.value = item.name
+        const result = await modal.result.catch(() => null)
+        const name = result?.value?.trim()
+        if (!name || name === item.name) {
+            return
+        }
+        if (name.includes('/')) {
+            this.notices.error('Le nom ne peut pas contenir de « / » — ceci renomme, cela ne déplace pas')
+            return
+        }
+
+        const target = this.path.endsWith('/') ? `${this.path}${name}` : `${this.path}/${name}`
+        // Checked rather than left to the server: SFTP v3 lets an
+        // implementation decide what a rename onto an existing name does, and
+        // some overwrite it. Refusing outright is the only answer that cannot
+        // destroy something.
+        if (await readRemoteEntry(this.sftp, target)) {
+            this.notices.error(`${name} existe déjà dans ce dossier`)
+            return
+        }
+
+        try {
+            await this.sftp.rename(item.fullPath, target)
+        } catch (e) {
+            this.notices.error(`Impossible de renommer ${item.name}`, String(e))
+            return
+        }
+
+        // The selection follows the entry rather than being dropped: the file
+        // the user was working on is still the one they are working on.
+        if (this.selectedPath === item.fullPath) {
+            this.selectedPath = target
+        }
+        await this.refreshListing()
+        this.notices.notice(`${item.name} renommé en ${name}`)
     }
 
     /** `Suppr` on the selected entry — same confirm-then-delete path as the context menu entry above. */
