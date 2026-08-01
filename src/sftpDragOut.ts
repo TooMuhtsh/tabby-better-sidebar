@@ -161,7 +161,7 @@ export class SftpDragOut {
      * straight away — worth attempting because a small file lands while the
      * button is often still held, which turns the whole thing into one gesture.
      */
-    async prepare (sftp: SftpSession, item: SFTPFile, isDirectory: boolean): Promise<void> {
+    async prepare (sftp: SftpSession, item: SFTPFile, isDirectory: boolean, isGestureHeld: () => boolean = () => true): Promise<void> {
         if (this.preparing.has(item.fullPath)) {
             return
         }
@@ -174,7 +174,7 @@ export class SftpDragOut {
             const fresh = await this.remoteFingerprint(sftp, item)
             const existing = this.ready.get(item.fullPath)
             if (existing && !this.isStale(existing, fresh)) {
-                this.startDrag(fresh)
+                this.handOver(fresh, isGestureHeld)
                 return
             }
             this.ready.delete(item.fullPath)
@@ -193,12 +193,29 @@ export class SftpDragOut {
                 mtime: fresh.modified.getTime(),
                 isDirectory,
             })
-            this.startDrag(fresh)
+            this.handOver(fresh, isGestureHeld)
         } catch (e) {
             this.notifications.error(`Impossible de préparer ${item.name} pour le glisser-déposer`, String(e))
         } finally {
             this.setPreparing(item.fullPath, false)
         }
+    }
+
+    /**
+     * Hands the copy over — as a drag if the gesture is still alive, as a
+     * message otherwise.
+     *
+     * Starting the native drag once the button is released produces something
+     * nobody asked for: a drag attached to a cursor that is not pressing
+     * anything. While transfers were slow this never happened — the download
+     * always outlasted the gesture by far — so the case only became reachable
+     * once they got fast.
+     */
+    private handOver (item: SFTPFile, isGestureHeld: () => boolean): void {
+        if (isGestureHeld() && this.startDrag(item)) {
+            return
+        }
+        this.notifications.notice(`${item.name} est prêt — glissez-le à nouveau pour le déposer`)
     }
 
     /**

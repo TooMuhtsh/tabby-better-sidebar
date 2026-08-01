@@ -60,6 +60,33 @@
             align-items: center;
             gap: 0.5rem;
         }
+
+        // A button sizes to its own label, always. Squeezed between a field and
+        // the edge of the row it would wrap its text onto a second line, which
+        // reads as a broken control rather than a narrow one.
+        .btn {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+    }
+
+    // Side by side does not fit every setting: a path field plus two buttons
+    // leaves the field a few characters wide, and the text becomes unreadable.
+    // This variant puts the control under its own label, across the full width.
+    .form-line.stacked {
+        display: block;
+
+        .control {
+            display: flex;
+            margin-top: 0.5rem;
+            width: 100%;
+        }
+
+        // The field takes what the buttons leave, rather than the reverse.
+        .form-control {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
     }
 
     // A section is a title plus its rows; the spacing separates sections
@@ -89,7 +116,10 @@
         min-width: 12rem;
     }
 
-    .path-input {
-        min-width: 18rem;
+    // The icon inside a button keeps its distance from the label even if a
+    // future Bootstrap drops the `me-*` utilities — the spacing is part of the
+    // button here, not of the markup.
+    .btn i.fas {
+        margin-right: 0.4rem;
     }
 }

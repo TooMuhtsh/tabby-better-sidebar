@@ -463,8 +463,19 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * the one that carries it out. Letting the HTML drag proceed would drag the
      * row's text into whatever accepts it.
      */
+    /**
+     * True while the mouse button that started a drag gesture is still down.
+     *
+     * `onDragStart` calls `preventDefault()`, so there is no HTML drag and
+     * therefore no `dragend` to listen for — the button state is the only
+     * remaining evidence that the user is still holding the gesture.
+     */
+    private gestureHeld = false
+
     onDragStart (item: SFTPFile, event: DragEvent): void {
         event.preventDefault()
+        this.gestureHeld = true
+        window.addEventListener('mouseup', () => { this.gestureHeld = false }, { once: true })
         const isDirectory = this.isDirectoryEntry(item)
         if (isDirectory && !this.config.store.sidebarPlus?.sftpDragOutFolders) {
             this.notices.notice('Le glisser-déposer des dossiers est désactivé — activez-le dans Paramètres → Better Sidebar')
@@ -486,7 +497,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         if (isDirectory && !await this.confirmHeavyDirectory(item)) {
             return
         }
-        await this.dragOut.prepare(this.sftp, item, isDirectory)
+        await this.dragOut.prepare(this.sftp, item, isDirectory, () => this.gestureHeld)
     }
 
     /**

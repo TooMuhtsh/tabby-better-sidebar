@@ -12,7 +12,10 @@
       | système, qui <strong>exécuterait</strong> un programme ou un script au
       | lieu de l'éditer.
 
-    .form-line
+    //- `stacked` : le chemin passe sous son intitulé et prend toute la largeur.
+        Sur la même ligne que les deux boutons, il ne restait au champ que
+        quelques caractères visibles — un chemin d'exécutable n'y tenait pas.
+    .form-line.stacked
       .header
         .title Chemin de l'éditeur
         .description
@@ -20,17 +23,18 @@
           | Windows. Elle ne peut pas être mémorisée — Windows ne dit pas quelle
           | application a été retenue — donc elle reviendra à chaque fois.
       .control
-        input#sidebar-plus-editor-path.form-control.path-input(
+        input#sidebar-plus-editor-path.form-control(
           type='text',
           [(ngModel)]='editorPath',
           (change)='save()',
+          [title]='editorPath',
           placeholder='Aucun éditeur choisi'
         )
-        button.btn.btn-primary.text-nowrap((click)='browse()')
-          i.fas.fa-folder-open.me-2
+        button.btn.btn-primary((click)='browse()')
+          i.fas.fa-folder-open
           | Parcourir...
-        button.btn.btn-secondary.text-nowrap(*ngIf='editorPath', (click)='clear()')
-          i.fas.fa-times.me-2
+        button.btn.btn-secondary(*ngIf='editorPath', (click)='clear()')
+          i.fas.fa-times
           | Effacer
 
     .form-line(*ngIf='!editorPath && !canOpenWith')
