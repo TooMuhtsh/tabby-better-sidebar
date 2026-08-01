@@ -42,7 +42,9 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
-<tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant #transferts</strong></td></tr>
+<tr><td><a href="#ctrl-entree">Régression clavier : <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> dans les terminaux</a></td><td><span class="pill planned">🔎 À diagnostiquer</span></td><td>Haute</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -720,6 +722,121 @@ elle-même) — s'assurer qu'aucun fichier temporaire ne reste orphelin indéfin
 <a href="#sftp">limites connues du renvoi de fichier édité</a>).</li>
 </ul>
 
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-01</span>
+<p>Écrit le 2026-07-30 (<code>7510971</code>), testé le 2026-08-01 seulement : le commit était
+resté sans passe de test et a été poussé entre-temps par la campagne de gouvernance, donc
+<strong>du code non exécuté a séjourné sur <code>master</code> public</strong>. C'est exactement ce
+que l'option <code>branches</code> du <code>PROFIL.md</code> évite depuis : un chantier non abouti
+vit sur une branche.</p>
+<p><strong>Livré</strong> : glisser un fichier ou un dossier distant vers l'OS. Conception en deux
+temps imposée par <a href="AI-CONTEXT.html#piege-49">piège #49</a> — le premier geste télécharge une
+copie temporaire et n'aboutit généralement nulle part, le second part instantanément. Dossiers
+derrière une option décochée par défaut, avec confirmation au-delà de 25 fichiers ou 20 Mo. Un lien
+symbolique vers un dossier est ignoré plutôt que téléchargé (<a href="AI-CONTEXT.html#piege-45">piège
+#45</a>), faute de quoi une seule entrée de ce type faisait échouer tout le dossier. Copies
+supprimées à la destruction du panneau, <strong>jamais</strong> sur <code>dragend</code> : Windows
+lit le fichier au moment du dépôt, parfois après la fin du geste.</p>
+<p><strong>Les deux points signalés comme non vérifiés se sont révélés sains</strong> : relâcher au
+dessus du panneau SFTP lui-même ne déclenche pas son <code>dropZone</code> (pas de ré-upload de la
+copie, pas d'écrasement), et <code>draggable='true'</code> sur la ligne n'a pas mangé le
+double-clic. Aucun garde-fou supplémentaire n'a donc été nécessaire.</p>
+<p><strong>Trois suites, portées par
+<a href="#transferts-officiels">le chantier ci-dessous</a></strong> : l'absence de tout retour de
+fin de préparation (sur un dossier lent, un geste qui ne produit rien est indiscernable d'une
+panne), la fraîcheur de la copie resservie, et la lenteur du téléchargement d'un dossier.</p></div>
+
+<h3 id="transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</h3>
+<p>Demandé par l'utilisateur le 2026-08-01, en réponse à la lenteur du drag-out sur un dossier et à
+une perte de fraîcheur rencontrée à l'usage. Principe posé à cette occasion, et valable au-delà de ce
+chantier : <strong>si un moyen officiel existe, on le réutilise et on l'améliore</strong> — une
+implémentation maison doit être justifiée par une limite réelle et constatée de l'officiel.</p>
+
+<h4>1. Repasser les transferts par <code>PlatformService</code></h4>
+<p><code>sftpLocalTransfer.ts</code> existe sur une prémisse fausse : son en-tête affirme que
+<code>startDownload()</code>/<code>startUpload()</code> ouvrent forcément un sélecteur de fichier.
+L'app installée accepte un chemin imposé et n'ouvre alors aucun dialogue
+(<a href="AI-CONTEXT.html#piege-48">piège #48</a>).</p>
+<ul>
+<li><strong>Gain immédiat</strong> : le transfert est publié sur <code>fileTransferStarted$</code>,
+  donc la progression, la file et l'annulation natives sont acquises sans écrire d'UI — ce qui
+  répond au manque de retour visuel du <a href="#drag-out">drag-out</a>.</li>
+<li><strong>Conséquence sur <a href="#transferts">Transferts SFTP</a></strong> : ce chantier prévoit
+  un gestionnaire maison en bas de sidebar. Son option (c) — s'abonner à la même source que la
+  tab-bar — devient la seule cohérente avec le principe ci-dessus. À rejuger avant de le démarrer,
+  en n'écrivant que ce que le natif ne donne pas (horodatage, chemin distant, session porteuse).</li>
+<li><strong>Compatibilité</strong> : ces paramètres sont absents des typings, donc à déclarer par
+  augmentation de type (jamais des <code>any</code> dispersés, cf. <code>#17</code>), et l'arité
+  réelle de la méthode se teste à l'exécution pour retomber sur l'implémentation maison face à une
+  version plus ancienne de Tabby.</li>
+<li><strong>Ce qui ne bouge pas</strong> : <code>SftpDragOut</code> (Tabby n'a aucune API de drag
+  sortant), <code>SftpRemoteEditor</code> (le <code>edit()</code> natif passe par
+  <code>openPath()</code>, donc <em>exécute</em> au lieu d'éditer — c'était tout l'objet du
+  <a href="#editeur-force">chantier éditeur</a>) et les confirmations HTML
+  (<a href="AI-CONTEXT.html#piege-42">piège #42</a>). Chacun garde une justification constatée ;
+  <code>EmptyFileUpload</code>, en revanche, est à réexaminer sous le même angle.</li>
+</ul>
+
+<h4>2. Fraîcheur des copies locales et détection de conflit</h4>
+<div class="callout warning"><span class="callout-title">Une copie périmée est resservie sans un mot</span>
+<p>Constaté à l'usage par l'utilisateur le 2026-08-01, sur un fichier édité localement, renvoyé au
+serveur, puis modifié <em>sur le serveur</em> : c'est l'ancienne copie locale qui lui a été rendue.
+Deux caches sans invalidation : la <code>Map</code> <code>ready</code> de <code>SftpDragOut</code>,
+et la réouverture d'une session existante dans <code>SftpRemoteEditor.edit()</code> — cette dernière
+délibérée (ne pas écraser du travail non sauvegardé), mais sans la vérification qui la rendrait
+sûre.</p>
+<p>Le risque symétrique est plus grave et jusqu'ici assumé : à l'enregistrement, <strong>aucune
+détection de conflit</strong>. Un fichier modifié à distance pendant qu'il est ouvert est écrasé
+sans avertissement.</p></div>
+<ul>
+<li><strong>Empreinte distante</strong> (<code>size</code> + <code>modified</code>, tous deux portés
+  par <code>SFTPFile</code>) mémorisée à chaque transfert, dans les deux sens.</li>
+<li><strong>Drag-out</strong> : empreinte changée ⇒ re-téléchargement silencieux. Aucune question à
+  poser, il n'y a pas de travail local à préserver.</li>
+<li><strong>Réouverture d'un fichier édité</strong> : distant changé <em>et</em> copie locale intacte
+  ⇒ re-télécharger ; les deux modifiés ⇒ demander, jamais trancher seul.</li>
+<li><strong>Enregistrement</strong> : <code>stat()</code> distant avant l'envoi, et confirmation si
+  l'empreinte a bougé depuis la dernière synchronisation. Rejoint le garde-fou de collision déjà
+  prévu au <a href="#transferts">dépôt sur un dossier distant</a> — même mécanisme, à mutualiser.</li>
+</ul>
+
+<h4>3. Purge des fichiers temporaires</h4>
+<p>Demandé par l'utilisateur le 2026-08-01. Aujourd'hui les copies de
+<code>tabby-better-sidebar-drag</code> et <code>tabby-better-sidebar-edit</code> ne disparaissent
+qu'au <code>dispose()</code> du panneau ; tout ce qui suit un crash, un <code>taskkill</code> ou une
+fermeture brutale reste sur disque indéfiniment.</p>
+<ul>
+<li><strong>Purge au démarrage du plugin</strong>, à traiter comme le mécanisme principal : c'est le
+  seul qui rattrape une fermeture qu'aucun hook n'a vue. Ne supprimer que nos propres racines, et
+  jamais un dossier de la session en cours.</li>
+<li><strong>Nettoyage à la fermeture</strong> en complément, via le hook de cycle de vie de Tabby
+  (à identifier dans le bundle installé plutôt que supposé) — il évite de laisser traîner des
+  fichiers entre deux lancements, sans jamais être la seule garantie.</li>
+<li><strong>Ne pas nettoyer sur <code>dragend</code></strong> : la copie doit survivre au geste, cf.
+  <a href="#drag-out">drag-out</a>.</li>
+</ul>
+
+<h4>4. Lenteur du téléchargement d'un dossier</h4>
+<p>Signalé le 2026-08-01 : 26 fichiers / 11 Mo, plus d'une minute, là où le téléchargement natif du
+même dossier est quasi instantané. <strong>Diagnostic partiel, à ne pas considérer comme établi</strong>
+— deux mesures faites : un fichier de 10 Mo par double-clic (donc par le transfert maison, mais hors
+geste de drag) est quasi instantané, ce qui <em>disculpe</em> le transfert lui-même. Restent en lice
+la boucle récursive strictement séquentielle de <code>downloadDirectory()</code> et le gel du
+renderer pendant le geste (<a href="AI-CONTEXT.html#piege-49">piège #49</a>). Le test qui tranche :
+glisser un dossier puis <strong>relâcher immédiatement</strong>, et chronométrer la fin de la
+préparation. Ne pas optimiser avant d'avoir la réponse.</p>
+
+<h3 id="ctrl-entree">Régression clavier : <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> dans les terminaux</h3>
+<p>Signalé par l'utilisateur le 2026-08-01 : <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> ne saute plus de ligne
+dans les terminaux, soupçon porté sur la sélection multiple. <strong>Rien dans le plugin ne
+l'explique à la lecture</strong> : aucun <code>HotkeyProvider</code> n'est déclaré, le seul écouteur
+clavier global (<code>sftpBrowser.component.ts</code>) sort immédiatement sur toute touche autre que
+<kbd>Suppr</kbd> et n'appelle jamais <code>preventDefault()</code>, et la sélection multiple ne lit
+<code>ctrlKey</code> que dans un gestionnaire de <em>clic</em>.</p>
+<p>À diagnostiquer avant toute correction, en commençant par écarter le plugin : relancer Tabby avec
+la jonction de dev renommée (et non en désactivant le plugin depuis l'UI, ce qui
+<em>supprime</em> la jonction). Si le symptôme persiste sans le plugin, chercher du côté des
+raccourcis de Tabby ou d'une mise à jour de l'app.</p>
+
 <h3 id="confirmations-html">Confirmations en modale HTML (audit de conformité)</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30 comme principe transversal. Audit fait sur
 notre propre code (<code>src/</code>) : conforme — aucune occurrence de
@@ -959,6 +1076,17 @@ portée de main même avant d'implémenter ce chantier des favoris.</p>
   <code>tabby-sftp-plus</code>.</li>
 <li><strong>Raccourcis globaux</strong> : <code>HotkeyProvider</code> pour mapper des raccourcis
   clavier (changer de workspace, basculer vers le SFTP actif, afficher le panneau des tunnels).</li>
+</ul>
+<h4>Retours de la passe de test du 2026-08-01</h4>
+<ul>
+<li><strong>Reprendre le visuel de l'onglet de réglages de <code>tabby-better-vault</code></strong>
+  pour celui de « Better Sidebar ». Demandé pendant la passe de test du
+  <a href="#drag-out">drag-out</a>. L'onglet est né le 2026-07-30 avec une seule option et n'a jamais
+  reçu de mise en forme propre ; l'autre plugin de l'utilisateur sert de référence, ce qui aligne les
+  deux au passage.</li>
+<li><strong>Cliquer dans le vide désélectionne</strong> ce qui est sélectionné, dans le panneau SFTP.
+  À vérifier avant de coder côté sidebar : un clic droit dans le vide y ouvre déjà le menu « créer à
+  la racine », le geste ne doit pas entrer en conflit.</li>
 </ul>
 
 <h3 id="sidebar-search">Barre de filtrage rapide (Sidebar Search)</h3>

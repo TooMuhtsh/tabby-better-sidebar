@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #48.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #50.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -41,7 +41,7 @@ Tabby.</p>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46 + 5 points de veille</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49 + 5 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
@@ -335,6 +335,40 @@ installée possède ; l'installée, elle, ne met <code>getMode()</code> que sur
 abstrait). → Écrire l'union : implémenter tout ce que les deux exigent et n'appeler aucune méthode
 absente de l'ancienne. Les aides de progression sont sans enjeu dans ce cas précis, ces transferts
 n'étant rattachés à aucune UI de Tabby.</p>
+
+<h3 id="piege-48">#48 — Les paramètres qui suppriment le sélecteur de fichier de
+<code>startDownload()</code>/<code>startUpload()</code> n'existent pas dans les typings npm</h3>
+<p>Cas particulier du #6, assez coûteux pour mériter son numéro. Les typings npm déclarent
+<code>startDownload(name, mode, size)</code> et <code>startUpload(options?)</code>
+(<code>tabby-core/typings/api/platform.d.ts</code>). L'app installée, elle, expose
+<code>startDownload(name, mode, size, <strong>filePath</strong>)</code> et
+<code>startUpload(options, <strong>paths</strong>)</code> : <strong>chemin fourni ⇒ aucun dialogue
+n'est ouvert</strong>. C'est ainsi que la commande « Edit locally » native de
+<code>tabby-electron</code> travaille sur un fichier temporaire.</p>
+<div class="callout warning"><span class="callout-title">Piège</span>
+<p>Lire ces signatures dans les typings mène à conclure que ces méthodes sont inutilisables sans
+interaction, donc à réimplémenter un transfert maison. Ce que ça coûte n'est pas le code écrit, mais
+ce qu'on perd : un transfert obtenu par <code>startDownload()</code> est publié sur
+<code>fileTransferStarted$</code>, auquel la tab-bar de Tabby est déjà abonnée — elle l'empile dans
+sa liste et <strong>ouvre son menu de transferts toute seule</strong>. Progression, file et annulation
+sont donc fournies. → Vérifier l'arité réelle dans le bundle installé (méthode du #13) avant de
+conclure qu'une API de Tabby impose un dialogue.</p></div>
+
+<h3 id="piege-49">#49 — <code>webContents.startDrag()</code> exige un fichier déjà présent sur le
+disque, et le geste natif fige le renderer</h3>
+<p>Deux contraintes distinctes, qui imposent ensemble la conception en deux temps du
+<a href="ROADMAP.html#drag-out">glisser-déposer sortant</a> :</p>
+<ul>
+<li><code>startDrag({ file, icon })</code> veut un <strong>chemin local existant</strong> au moment
+de l'appel, et une <code>NativeImage</code> non vide — <code>nativeImage.createEmpty()</code>
+<strong>lève une exception sur Windows</strong>, l'icône n'est donc pas optionnelle. Le handler
+<code>dragstart</code> étant synchrone, il est impossible d'y télécharger quoi que ce soit : le
+premier geste <em>prépare</em> une copie, le suivant la fait partir.</li>
+<li>Pendant un glisser natif, Windows fait tourner sa propre boucle de messages
+(<code>DoDragDrop</code>) : <strong>Tabby paraît figé tant que le bouton est maintenu</strong>. C'est
+le comportement de la plateforme, pas un défaut du plugin — mais c'est indiscernable d'un blocage,
+et il faut le savoir avant de diagnostiquer une lenteur observée pendant un drag.</li>
+</ul>
 
 <h3 id="piege-13">#13 — <code>@hidden</code> ne veut pas dire "non exporté"</h3>
 <p>Les deux sont indépendants. <code>EditProfileModalComponent</code> est <code>@hidden</code> ET

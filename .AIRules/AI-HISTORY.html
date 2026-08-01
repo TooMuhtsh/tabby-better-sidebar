@@ -24,6 +24,52 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Passe de test du glisser-déposer sortant (2026-08-01)</h2>
+<p>Le chantier <a href="ROADMAP.html#drag-out">glisser-déposer sortant</a>, écrit le 2026-07-30, est
+resté deux jours sans passe de test. Entre-temps, la campagne de gouvernance a poussé
+<code>master</code> avec seize commits derrière lui : <strong>du code jamais exécuté a séjourné sur
+un dépôt public</strong>, ce que l'option <code>branches</code> tranchée le 2026-07-31 empêche
+désormais par construction. La passe le valide sans correctif ; elle produit en revanche trois
+constats d'usage, rassemblés dans
+<a href="ROADMAP.html#transferts-officiels">un chantier dédié</a>.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-01</td><td><code>7510971</code></td>
+<td><strong>Drag-out validé, et les deux inconnues du chantier levées.</strong> Relâcher un glisser
+au-dessus du panneau SFTP lui-même ne réveille pas son <code>dropZone</code> : pas de ré-upload de la
+copie, donc pas d'écrasement silencieux — le garde-fou envisagé (drapeau posé au <code>dragstart</code>)
+est sans objet. Et <code>draggable='true'</code> posé sur la ligne n'a pas mangé le second clic : le
+double-clic d'ouverture est intact. Reste acquis et assumé : le <strong>premier geste ne dépose
+rien</strong>, il prépare la copie — <code>startDrag()</code> exige un fichier local et le
+<code>dragstart</code> est synchrone (<a href="AI-CONTEXT.html#piege-49">piège #49</a>).</td></tr>
+
+<tr><td>2026-08-01</td><td><code>7510971</code></td>
+<td><strong>Trois défauts trouvés à l'usage, dont un de perte de fraîcheur.</strong> (1) Une copie
+locale est resservie <em>quel que soit</em> l'âge du fichier distant : la <code>Map</code>
+<code>ready</code> de <code>SftpDragOut</code> et la réouverture d'une session dans
+<code>SftpRemoteEditor</code> n'ont aucune invalidation, alors que <code>SFTPFile</code> porte
+<code>size</code> et <code>modified</code>. Le symétrique — écrasement d'un distant modifié pendant
+l'édition — était déjà documenté comme limite assumée : les deux se referment par la même empreinte.
+(2) Les copies temporaires ne disparaissent qu'au <code>dispose()</code> du panneau, donc jamais
+après une fermeture brutale. (3) Le téléchargement d'un dossier est lent (26 fichiers / 11 Mo, plus
+d'une minute) là où le natif est quasi instantané ; un fichier de 10 Mo par double-clic l'étant tout
+autant, le transfert maison est hors de cause — le diagnostic reste ouvert entre la récursion
+séquentielle et le gel du renderer pendant le geste.</td></tr>
+
+<tr><td>2026-08-01</td><td><code>7510971</code></td>
+<td><strong>Principe de conception posé par l'utilisateur : si un moyen officiel existe, on le
+réutilise et on l'améliore.</strong> Vérification faite dans la foulée sur le bundle installé :
+<code>startDownload()</code> et <code>startUpload()</code> acceptent un chemin imposé et n'ouvrent
+alors aucun dialogue, contrairement à ce que déclarent les typings npm et à ce qu'affirmait l'en-tête
+de <code>sftpLocalTransfer.ts</code> (<a href="AI-CONTEXT.html#piege-48">piège #48</a>). Le transfert
+maison n'était donc pas nécessaire, et il coûtait la progression, la file et l'annulation que la
+tab-bar de Tabby affiche déjà pour tout transfert publié sur <code>fileTransferStarted$</code>. Porté
+en chantier, avec la conséquence à rejuger sur
+<a href="ROADMAP.html#transferts">Transferts SFTP</a> avant de le démarrer.</td></tr>
+</table>
+
 <h2>Cadrage de gouvernance du 2026-07-31 — <code>PROFIL.md</code>, validateur et charte
 <code>20260731-204511</code></h2>
 <p>Session ouverte à la racine du workspace pour <strong>relancer l'entretien de cadrage</strong>
