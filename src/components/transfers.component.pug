@@ -1,0 +1,40 @@
+//- Hidden whole when empty, like the sessions and tunnels blocks: an empty
+//- header would cost sidebar height for nothing.
+.sidebar-plus-transfers(*ngIf='transfers.entries.length')
+    a.active-sessions-header((click)='toggle($event)', href='#')
+        .fa.fa-fw.fas.me-1(
+            [class.fa-chevron-down]='!collapsed',
+            [class.fa-chevron-right]='collapsed'
+        )
+        span.me-auto Transferts
+        span.active-sessions-count {{ transfers.entries.length }}
+        //- A div, never a nested <a>: an anchor inside an anchor is silently
+        //- un-nested by the parser (piège #38).
+        .transfer-clear(
+            (click)='clear($event)',
+            title='Vider la liste — les transferts en cours seront annulés'
+        )
+            .fa.fa-fw.fas.fa-broom
+
+    .transfers-list(*ngIf='!collapsed')
+        .transfer-row(
+            *ngFor='let entry of transfers.entries; trackBy: trackById',
+            [class.transfer-done]='entry.state === "done"',
+            [class.transfer-cancelled]='entry.state === "cancelled"',
+            [title]='entry.name'
+        )
+            .fa.fa-fw.fas.transfer-arrow(
+                [class.fa-arrow-down]='entry.direction === "down"',
+                [class.fa-arrow-up]='entry.direction === "up"'
+            )
+            span.transfer-name.no-wrap.me-auto {{ entry.name }}
+            span.transfer-speed(*ngIf='entry.state === "active"') {{ speedLabel(entry) }}
+            span.transfer-figure(*ngIf='entry.state === "active"') {{ entry.percent }}%
+            span.transfer-figure(*ngIf='entry.state === "done"') {{ sizeLabel(entry) }}
+            span.transfer-figure(*ngIf='entry.state === "cancelled"') annulé
+            span.transfer-time {{ entry.startedAt }}
+            .transfer-remove(
+                (click)='remove(entry, $event)',
+                [title]='entry.state === "active" ? "Annuler ce transfert" : "Retirer de la liste"'
+            )
+                .fa.fa-fw.fas.fa-times

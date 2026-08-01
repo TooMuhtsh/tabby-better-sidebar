@@ -121,6 +121,16 @@
         (closed)='setSftpMode(false)'
     )
 
+    //- Placed *after* <sidebar-plus-sftp> precisely because the panel is
+    //- flex-grow-1: anything following it is pushed to the very bottom, which
+    //- is where this one belongs. It is the mirror image of the sessions block
+    //- above, whose comment explains the same mechanism the other way round.
+    //-
+    //- Shown in both views, not only in SFTP: a transfer started from the SFTP
+    //- panel keeps running after switching back to the profiles, and losing
+    //- sight of it there would be the one moment it matters.
+    sidebar-plus-transfers
+
     .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='!sftpMode')
         a.workspace-tab(
             [class.active]='activeWorkspaceId === "all"',

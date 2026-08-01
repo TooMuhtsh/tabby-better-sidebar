@@ -10,6 +10,7 @@ import { SidebarPlusSftpComponent } from './components/sftpPanel.component'
 import { SidebarPlusSftpBrowserComponent } from './components/sftpBrowser.component'
 import { ConfirmModalComponent } from './components/confirmModal.component'
 import { SidebarPlusSettingsTabComponent } from './components/settingsTab.component'
+import { SidebarPlusTransfersComponent } from './components/transfers.component'
 import { SidebarPlusConfigProvider } from './configProvider'
 import { SidebarPlusSettingsTabProvider } from './settings'
 import { SidebarPlusMountService } from './mount.service'
@@ -34,6 +35,7 @@ import { SidebarPlusTempFilesService } from './tempFiles.service'
         SidebarPlusSftpBrowserComponent,
         ConfirmModalComponent,
         SidebarPlusSettingsTabComponent,
+        SidebarPlusTransfersComponent,
     ],
 })
 export default class SidebarPlusModule {

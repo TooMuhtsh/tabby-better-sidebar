@@ -1,0 +1,101 @@
+// Scoped to the custom tag rather than :host — the SCSS of this plugin is
+// injected as plain global CSS, where :host is silently ignored (piège #14).
+//
+// The header reuses .active-sessions-header/.active-sessions-count from the
+// tree's stylesheet: same block, same look, and restating it here would let the
+// two drift apart.
+sidebar-plus-transfers {
+    // Not compressible: this block sits under the SFTP panel, which is
+    // flex-grow-1 and would otherwise squeeze it to nothing (same reason as
+    // .active-sessions).
+    flex: 0 0 auto;
+    display: block;
+    margin-top: .35rem;
+
+    .transfer-clear {
+        opacity: .6;
+        font-size: .65rem;
+        padding: 0 .2rem;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    // Compact by request: more entries in the same space. 8.4rem = 6 rows of
+    // 1.4rem — the row height set below. Both values move together.
+    .transfers-list {
+        max-height: 8.4rem;
+        overflow-y: auto;
+    }
+
+    .transfer-row {
+        display: flex;
+        align-items: center;
+        gap: .25rem;
+        height: 1.4rem;
+        padding: 0 .25rem;
+        border-radius: .2rem;
+        font-size: .7rem;
+        color: var(--theme-fg);
+
+        &:hover {
+            background-color: var(--theme-secondary);
+
+            .transfer-remove {
+                opacity: 1;
+            }
+        }
+    }
+
+    .transfer-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+
+    .transfer-arrow {
+        font-size: .6rem;
+        opacity: .7;
+    }
+
+    // Fixed width so the figures of successive rows line up instead of dancing
+    // as the percentage grows from one digit to three.
+    .transfer-figure {
+        min-width: 2.6rem;
+        text-align: right;
+        opacity: .85;
+    }
+
+    .transfer-speed {
+        min-width: 3.6rem;
+        text-align: right;
+        opacity: .6;
+    }
+
+    .transfer-time {
+        opacity: .5;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .transfer-remove {
+        opacity: 0;
+        font-size: .6rem;
+
+        &:hover {
+            color: var(--theme-danger, #dc3545);
+        }
+    }
+
+    // A finished transfer stays legible but stops competing with the running
+    // ones for attention; a cancelled one is struck through, which says
+    // "nothing arrived" without a word.
+    .transfer-done .transfer-name {
+        opacity: .7;
+    }
+
+    .transfer-cancelled .transfer-name {
+        opacity: .55;
+        text-decoration: line-through;
+    }
+}

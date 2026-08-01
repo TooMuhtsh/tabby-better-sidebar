@@ -57,7 +57,16 @@
 
 //- dropZone is tabby-core's DropZoneDirective, exported by TabbyCoreModule —
 //- keeps drag-and-drop upload working exactly as in the native panel.
-.sftp-body(dropZone, (transfer)='uploadOneFolder($event)', (contextmenu)='onBackgroundContextMenu($event)')
+//- The click handler sits on the body, not on a filler element: the empty area
+//- below the rows is the body's own padding, and a click there has to clear the
+//- selection. Row clicks reach here too — `clearSelectionFromBackground()`
+//- ignores anything originating inside a row.
+.sftp-body(
+    dropZone,
+    (transfer)='uploadOneFolder($event)',
+    (contextmenu)='onBackgroundContextMenu($event)',
+    (click)='clearSelectionFromBackground($event)'
+)
     .sftp-message(*ngIf='!sftp') Connexion...
     ng-container(*ngIf='sftp')
         .sftp-message(*ngIf='fileList === null') Chargement...

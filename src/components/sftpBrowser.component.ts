@@ -589,6 +589,25 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     /**
+     * Clicking the empty area below the rows clears the selection.
+     *
+     * The listing has no separate background element — the empty space is the
+     * body's own padding — so this fires for row clicks as well and has to
+     * ignore them. `closest('.sftp-row')` rather than a target equality test:
+     * a click lands on the icon or the label inside a row, never on the row
+     * element itself.
+     */
+    clearSelectionFromBackground (event: MouseEvent): void {
+        // `.sftp-row` covers the header row and the "go up" row too, both of
+        // which carry that class — clicking either must not clear a selection
+        // the user made on purpose.
+        if ((event.target as HTMLElement).closest('.sftp-row')) {
+            return
+        }
+        this.selectedPath = null
+    }
+
+    /**
      * Renames a remote entry, extension included.
      *
      * The field is prefilled with the **whole** name rather than the stem: the
