@@ -24,6 +24,30 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Cadrage rouvert sur <code>attribution</code> — purge de l'attribution IA (2026-08-01)</h2>
+<p>Entretien rouvert sur cette seule clé. <code>attribution</code> passe de <code>oui</code> à
+<strong><code>non</code></strong> : plus aucune métadonnée d'attribution IA dans les messages de
+commit, et l'historique existant est purgé plutôt que laissé en l'état. Le motif enregistré au
+cadrage du 2026-07-31 — « revenir dessus imposerait de réécrire l'historique » — n'a pas été retenu
+comme suffisant : la réécriture est assumée. La trace de la collaboration reste dans les documents de
+gouvernance, qui la portent avec leur contexte.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-01</td><td><code>—</code></td>
+<td><strong>Réécriture des 74 commits, dont 33 portaient <code>Co-Authored-By</code> et 30
+<code>Claude-Session</code>.</strong> Conditions vérifiées avant de commencer : historique linéaire
+(aucune fusion), aucun tag, aucune autre branche, arbre de travail propre — la correspondance
+ancien→nouveau est donc reconstituable par position, ce qu'un historique ramifié n'aurait pas permis.
+Contrôle après coup : <code>git diff</code> entre l'ancien et le nouveau sommet est
+<strong>vide</strong> — l'arbre est identique à l'octet près, seuls les messages ont changé. Les 73
+hashs courts cités dans <code>AI-HISTORY.html</code> et <code>ROADMAP.html</code> ont été reportés
+dans le même geste, sans quoi tout le journal aurait pointé dans le vide. Deux valeurs de 7
+caractères ont été <em>délibérément</em> laissées intactes : <code>6e52454</code> et
+<code>10ddd25</code> sont des empreintes de <em>blob</em> de la charte, pas des commits.</td></tr>
+</table>
+
 <h2>Passe de test du glisser-déposer sortant (2026-08-01)</h2>
 <p>Le chantier <a href="ROADMAP.html#drag-out">glisser-déposer sortant</a>, écrit le 2026-07-30, est
 resté deux jours sans passe de test. Entre-temps, la campagne de gouvernance a poussé
@@ -36,7 +60,7 @@ constats d'usage, rassemblés dans
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
-<tr><td>2026-08-01</td><td><code>7510971</code></td>
+<tr><td>2026-08-01</td><td><code>73f9b94</code></td>
 <td><strong>Drag-out validé, et les deux inconnues du chantier levées.</strong> Relâcher un glisser
 au-dessus du panneau SFTP lui-même ne réveille pas son <code>dropZone</code> : pas de ré-upload de la
 copie, donc pas d'écrasement silencieux — le garde-fou envisagé (drapeau posé au <code>dragstart</code>)
@@ -45,7 +69,7 @@ double-clic d'ouverture est intact. Reste acquis et assumé : le <strong>premier
 rien</strong>, il prépare la copie — <code>startDrag()</code> exige un fichier local et le
 <code>dragstart</code> est synchrone (<a href="AI-CONTEXT.html#piege-49">piège #49</a>).</td></tr>
 
-<tr><td>2026-08-01</td><td><code>7510971</code></td>
+<tr><td>2026-08-01</td><td><code>73f9b94</code></td>
 <td><strong>Trois défauts trouvés à l'usage, dont un de perte de fraîcheur.</strong> (1) Une copie
 locale est resservie <em>quel que soit</em> l'âge du fichier distant : la <code>Map</code>
 <code>ready</code> de <code>SftpDragOut</code> et la réouverture d'une session dans
@@ -58,7 +82,7 @@ d'une minute) là où le natif est quasi instantané ; un fichier de 10 Mo par d
 autant, le transfert maison est hors de cause — le diagnostic reste ouvert entre la récursion
 séquentielle et le gel du renderer pendant le geste.</td></tr>
 
-<tr><td>2026-08-01</td><td><code>7510971</code></td>
+<tr><td>2026-08-01</td><td><code>73f9b94</code></td>
 <td><strong>Principe de conception posé par l'utilisateur : si un moyen officiel existe, on le
 réutilise et on l'améliore.</strong> Vérification faite dans la foulée sur le bundle installé :
 <code>startDownload()</code> et <code>startUpload()</code> acceptent un chemin imposé et n'ouvrent
@@ -89,7 +113,7 @@ chantier ne puisse la porter. Trois dérives ont été constatées et corrigées
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
-<tr><td>2026-07-31</td><td><code>866e6cd</code></td>
+<tr><td>2026-07-31</td><td><code>3143cb6</code></td>
 <td><strong>Audit <code>A-15</code> Cas B mené sur les quatre axes, et remise à niveau close.</strong>
 Trois agents en lecture seule ont couvert en parallèle le contexte, la roadmap et l'index ; le
 journal a été vérifié à part, ne se corrigeant jamais rétroactivement. <strong>Contexte</strong> :
@@ -110,7 +134,7 @@ compte 22, un comptage qui incluait deux <em>valeurs</em> de l'option <code>seui
 Dates de dernière revue mises à jour, et le pied de page de <a href="README.html">README.html</a>
 passe enfin à « version <code>20260731-204511</code> » — en dernier, comme sa règle l'impose.</td></tr>
 
-<tr><td>2026-07-31</td><td><code>854ea9e</code></td>
+<tr><td>2026-07-31</td><td><code>38bb67d</code></td>
 <td><strong>Le mot de clôture passe de <code>CLOTURE</code> à <code>MAJ</code></strong>
 (<code>A-13</code>, changement d'option du <a href="PROFIL.md">PROFIL.md</a> sur demande explicite).
 Le mot vit à trois endroits — <code>PROFIL.md</code>, le <code>CLAUDE.md</code> du projet et celui du
@@ -119,7 +143,7 @@ distinctif</strong> que le précédent, étant l'abréviation usuelle de « mise
 désambiguïsation gagne un paragraphe dédié dans les deux <code>CLAUDE.md</code>, et la réserve est
 écrite à côté de la valeur dans le profil pour qu'une relecture du cadrage la retrouve.</td></tr>
 
-<tr><td>2026-07-31</td><td><code>2f97b3f</code></td>
+<tr><td>2026-07-31</td><td><code>3b2c69d</code></td>
 <td><strong>Charte <code>20260731-204511</code> propagée, <code>REMISE-A-NIVEAU.md</code> supprimé
 dans le même commit que la fusion.</strong> Trois révisions traversées depuis la dernière
 conformité. Vérifié plutôt que supposé, la branche l'affirmant sans le prouver : <strong>24 options
@@ -127,11 +151,11 @@ de part et d'autre, aucune ajoutée ni retirée, quinze invariants inchangés</s
 question de cadrage nouvelle et un <code>PROFIL.md</code> qui reste valide. Copies contrôlées par
 empreinte Git (<code>6e52454</code>, <code>10ddd25</code>), pas par <code>diff</code>. La règle qui
 fixe la fin de vie de ce fichier est arrivée par le dépôt canonique (révision
-<code>20260731-203812</code>) après avoir été constatée ici : voir <code>811264b</code>. La ligne
+<code>20260731-203812</code>) après avoir été constatée ici : voir <code>a235d56</code>. La ligne
 « Charte au moment du cadrage » du profil <strong>reste à <code>20260731-150737</code></strong> :
 elle date le cadrage, pas la copie.</td></tr>
 
-<tr><td>2026-07-31</td><td><code>811264b</code></td>
+<tr><td>2026-07-31</td><td><code>a235d56</code></td>
 <td><strong>Dérive — la roadmap affichait « ✅ Revue faite (2026-07-29) » pendant qu'une remise à
 niveau était engagée avec deux items ouverts.</strong> Le corps du chantier avait été rafraîchi au
 commit précédent, la pastille non, et <code>REMISE-A-NIVEAU.md</code> disait l'inverse : deux
@@ -143,7 +167,7 @@ rapatriés dans le chantier de roadmap, qui <em>existait déjà</em> ; fichier s
 vérification qu'aucun document ne le référençait et que son seul contenu non repris dupliquait
 l'historique des révisions de la charte.</td></tr>
 
-<tr><td>2026-07-31</td><td><code>0ebd354</code></td>
+<tr><td>2026-07-31</td><td><code>a3f04d7</code></td>
 <td><strong>Références « Règle N » migrées vers les identifiants <code>A-x</code></strong> dans
 <code>README.html</code> et <code>ROADMAP.html</code>. Les trois occurrences
 d'<code>AI-HISTORY.html</code> <strong>restent en place</strong> : <code>A-4</code> impose un journal
@@ -153,7 +177,7 @@ workspace », alors que c'est un miroir de commodité et non la source, et décr
 de conformité comme une comparaison de <em>dates</em> là où la charte est versionnée par identifiant
 horodaté depuis <code>20260731-135838</code>.</td></tr>
 
-<tr><td>2026-07-31</td><td><code>648a620</code></td>
+<tr><td>2026-07-31</td><td><code>6bcfa08</code></td>
 <td><strong>Piège <a href="AI-CONTEXT.html#piege-47">#47</a> et compteur de numérotation.</strong>
 <code>core.autocrlf=true</code> sur ce poste contre le <code>eol=lf</code> du dépôt canonique : un
 <code>diff</code> nu de la charte rapporte toutes les lignes comme différentes alors que les blobs
@@ -163,7 +187,7 @@ l'eau). <code>AI-CONTEXT.html</code> n'indiquait pas son prochain numéro libre,
 impose : l'information ne vivait que dans <code>CLAUDE.md</code>, au mauvais endroit et déjà fausse
 d'un cran. Compteur posé en tête à #48.</td></tr>
 
-<tr><td>2026-07-31</td><td><code>6c8d5e2</code></td>
+<tr><td>2026-07-31</td><td><code>fb07bc6</code></td>
 <td><strong>Création de <a href="PROFIL.md">PROFIL.md</a> et du validateur de documents.</strong>
 Entretien de cadrage complet, profil de départ <code>complet</code> : les vingt-deux options
 reçoivent une réponse explicite, aucune ne reste « défaut appliqué, non tranché ».
@@ -174,8 +198,8 @@ reçoivent une réponse explicite, aucune ne reste « défaut appliqué, non tra
 imposerait de réécrire en masse des documents dont ce journal. Contrôlé sur un fichier
 volontairement cassé, <code>close-order</code> est bien remonté.</td></tr>
 
-<tr><td>2026-07-31</td><td><code>31ff5d9</code></td>
-<td><strong>Fusion de la branche de veille</strong> (<code>d48fe01..31ff5d9</code>, fast-forward) :
+<tr><td>2026-07-31</td><td><code>c885942</code></td>
+<td><strong>Fusion de la branche de veille</strong> (<code>9a1ac1c..c885942</code>, fast-forward) :
 charte <code>20260731-150737</code> et <code>GABARITS.md</code> arrivent verbatim sur
 <code>master</code>. La fusion est un acte de validation humaine explicite (option
 <code>veille-conformité</code>) — la tâche planifiée pousse la branche, elle ne fusionne jamais
@@ -197,7 +221,7 @@ d'origine ne pouvait pas résoudre seule. Reste de la campagne :
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
-<tr><td>2026-07-30</td><td><code>8faf86b</code></td>
+<tr><td>2026-07-30</td><td><code>f08ae3b</code></td>
 <td><strong>Le double-clic force un éditeur, jamais l'association du système</strong>
 (<a href="ROADMAP.html#editeur-force">#editeur-force</a>). <code>platform.openPath()</code>
 disparaît : ouvrir par association <em>exécute</em> un binaire, ou un script dont l'extension est
@@ -209,7 +233,7 @@ chantier. <strong>L'ouverture est résolue avant le <code>mkdir</code> et le té
 sortir plus tard laissait une copie temporaire, un <code>fs.watch</code> vivant et une session
 enregistrée pour un fichier que personne n'avait ouvert.</td></tr>
 
-<tr><td>2026-07-30</td><td><code>8faf86b</code></td>
+<tr><td>2026-07-30</td><td><code>f08ae3b</code></td>
 <td><strong>Trois décisions prises pendant le test, dont deux hors du plan initial.</strong>
 (1) Sans éditeur configuré, c'est la <strong>fenêtre « Ouvrir avec » de Windows</strong> qui
 s'ouvre — l'utilisateur ne veut pas chercher un <code>.exe</code> dans <code>Program Files</code>.
@@ -225,7 +249,7 @@ par <kbd>Entrée</kbd> dans la confirmation de suppression SFTP. L'utilisateur a
 déclencheurs : la même modale répondant différemment selon la façon dont elle a été ouverte serait
 un piège, pas une fonctionnalité.</td></tr>
 
-<tr><td>2026-07-30</td><td><code>8faf86b</code></td>
+<tr><td>2026-07-30</td><td><code>f08ae3b</code></td>
 <td><strong>Bug trouvé par le chantier sans lui appartenir : un lien symbolique vers un dossier
 partait au téléchargement.</strong> Signalé en test par <em>« Impossible de télécharger infra »</em>,
 avec un <code>Status Failure</code> — ce qu'OpenSSH renvoie pour EISDIR. En cause,
@@ -238,7 +262,7 @@ rendait <code>false</code> pour un dossier. Le type est lu dans le mode
 silencieusement, et un <code>Status Failure</code> générique côté russh mérite qu'on remonte au code
 POSIX qu'il traduit avant de suspecter son propre code.</td></tr>
 
-<tr><td>2026-07-30</td><td><code>0e87258</code></td>
+<tr><td>2026-07-30</td><td><code>4a97972</code></td>
 <td><strong>Trois correctifs sur la section « Sessions actives », issus du test.</strong>
 (1) <em>Placement</em> : retirer le <code>!sftpMode</code> du <code>*ngIf</code> (commit précédent)
 rendait bien la section visible en vue SFTP, mais elle s'affichait <strong>sous</strong> le panneau,
@@ -263,7 +287,7 @@ pane le <code>customTitle</code> vit sur le <code>SplitTabComponent</code> et ja
 Au passage, <code>.active-tunnels</code> était la seule règle du SCSS non scopée à
 <code>sidebar-plus-tree</code> — elle fuyait en CSS globale dans le reste de Tabby.</td></tr>
 
-<tr><td>2026-07-30</td><td><code>293d9a4</code></td>
+<tr><td>2026-07-30</td><td><code>f1459da</code></td>
 <td><strong>Garde-fous sur la suppression SFTP.</strong> <code>event.repeat</code> et un drapeau
 <code>deleteInFlight</code> empêchent le <code>keydown</code> de <kbd>Suppr</kbd> de se
 re-déclencher en boucle pendant que la modale est ouverte — le focus y atterrit sur un bouton et non
@@ -273,7 +297,7 @@ provider, vérifié) plutôt qu'en testant un libellé traduit : l'app installé
 français pour cette clé, le test de texte était inopérant. Il reste comme simple
 <code>console.warn</code> de diagnostic si un futur Tabby réordonne le menu.</td></tr>
 
-<tr><td>2026-07-30</td><td><code>3b158c3</code></td>
+<tr><td>2026-07-30</td><td><code>fe8304f</code></td>
 <td><strong>Suppression SFTP par <kbd>Suppr</kbd> et sessions actives en vue SFTP.</strong> Nouveau
 <code>ConfirmModalComponent</code> (NgbModal) partagé par toutes les confirmations de suppression
 SFTP : la touche <kbd>Suppr</kbd> sur l'entrée sélectionnée de la liste distante, et l'entrée
@@ -281,7 +305,7 @@ SFTP : la touche <kbd>Suppr</kbd> sur l'entrée sélectionnée de la liste dista
 confirmait par <code>platform.showMessageBox()</code>, un vrai dialogue OS (piège #42), en
 contradiction avec l'invariant de confirmation en HTML. Suppression récursive pour un dossier.
 Retrait de la condition <code>!sftpMode</code> sur les sections « sessions actives » et « tunnels
-actifs » — correction incomplète, voir <code>0e87258</code> ci-dessus.</td></tr>
+actifs » — correction incomplète, voir <code>4a97972</code> ci-dessus.</td></tr>
 </table>
 
 <h2>Revue de gouvernance — mise en conformité à la charte (2026-07-29)</h2>
@@ -294,7 +318,7 @@ la charte (Règle 1) et resté lettre morte. Cette entrée acte la revue et les 
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
-<tr><td>2026-07-29</td><td><code>db45754</code></td>
+<tr><td>2026-07-29</td><td><code>0591ba8</code></td>
 <td><strong>Quatre écarts corrigés, tous antérieurs à la révision de charte du 2026-07-28.</strong>
 (1) L'intro de <code>README.html</code> annonçait ce dossier <strong>« hors du dépôt Git »</strong> —
 faux, et contredit par le paragraphe suivant de la même page ; le chemin cité
@@ -317,7 +341,7 @@ comparable à l'original par un <code>diff</code> ; à repropager à chaque rév
 enregistre la pratique déjà présente dans l'historique public plutôt que de choisir à neuf, revenir
 dessus imposant une réécriture d'historique.</td></tr>
 
-<tr><td>2026-07-29</td><td><code>ab1d2ac</code></td>
+<tr><td>2026-07-29</td><td><code>336f411</code></td>
 <td>Chantier <strong>« Transferts SFTP »</strong> ajouté à <a href="ROADMAP.html#transferts">la
 roadmap</a> à la demande de l'utilisateur, en priorité Haute, <strong>devant Auto-Enter</strong> :
 gestionnaire de transferts horodaté en bas de sidebar masqué quand vide, dépôt depuis l'OS
@@ -377,12 +401,12 @@ gestes d'interface et valide point par point.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
-<tr><td>2026-07-29</td><td>9459883</td>
+<tr><td>2026-07-29</td><td>ac0086d</td>
 <td><strong>Trois pièges consignés</strong> dans AI-CONTEXT : #39 (<code>attr.x</code> sans crochets
 en pug n'est pas un binding), #40 (masquer des lignes pendant un glisser CDK casse le pointage et le
 cache), #41 (la reprise après <code>await config.save()</code> sort de la zone Angular).</td></tr>
 
-<tr><td>2026-07-29</td><td>1725671</td>
+<tr><td>2026-07-29</td><td>b6bd7f0</td>
 <td><strong>Sélection multiple et déplacement en lot</strong> : clic simple/Ctrl/Shift, déplacement
 par glisser ou par le menu du dossier cible, barre de sélection en bas de sidebar faisant aussi
 office de confirmation. Le multi-drag, écarté en roadmap comme trop fragile, est devenu trivial une
@@ -405,7 +429,7 @@ l'utilisateur faisait les gestes d'interface et validait point par point.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
-<tr><td>2026-07-29</td><td>7adca38</td>
+<tr><td>2026-07-29</td><td>0ad778a</td>
 <td><strong>La section elle-même</strong>, en haut de la sidebar, repliable, masquée quand rien
 n'est connecté. Une ligne <strong>par pane</strong> et non par onglet : un split de trois sessions
 donne trois lignes, « aller à l'onglet » n'aurait pas eu de sens. Clic = focus, action de survol
@@ -420,7 +444,7 @@ superposition des actions — le bouton SFTP disparaissait sous le curseur. Éta
 machines, et le piège #16 est contourné plutôt que respecté). Les boutons d'action sont des
 <code>div</code>, jamais des <code>&lt;a&gt;</code> (piège #38).</td></tr>
 
-<tr><td>2026-07-29</td><td>3f61951</td>
+<tr><td>2026-07-29</td><td>95b8809</td>
 <td><strong>Socle partagé et correctif du suivi de focus.</strong>
 <code>getAllOpenTabs()</code> était dupliqué mot pour mot entre l'arbre et le panneau SFTP, et la
 liste des sessions en devenait le troisième consommateur → <code>src/tabs.ts</code>, avec
@@ -453,7 +477,7 @@ exactement le métier d'un navigateur de fichiers.</p></div>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
-<tr><td>2026-07-29</td><td>e05a761</td>
+<tr><td>2026-07-29</td><td>3271908</td>
 <td><strong>Colonnes et options d'affichage dans un menu d'en-tête, façon SFTP+.</strong> Clic droit
 sur les titres de colonnes → réglages directement, au lieu d'un menu générique menant à
 « Paramètres d'affichage » ; le sélecteur en ligne et son bouton de barre d'outils, devenus un
@@ -468,7 +492,7 @@ un getter au-dessus d'un champ privé hérité, donc évalué à chaque cycle de
 l'identité de <code>filteredFileList</code>, que le parent réaffecte toujours au lieu de la muter
 (vérifié dans le bundle avant de s'y fier).</td></tr>
 
-<tr><td>2026-07-29</td><td>09c41b2</td>
+<tr><td>2026-07-29</td><td>3e58325</td>
 <td><strong>Menu contextuel sur le vide de la liste</strong> : créer un dossier, créer un fichier,
 paramètres d'affichage. L'en-tête est volontairement inclus dans la zone déclenchante — ce n'est ni
 un fichier ni un dossier. Créer un fichier passe par <code>SFTPSession.upload()</code> avec un
@@ -480,7 +504,7 @@ tronqué silencieusement. <code>clampInViewport()</code> sort de
 <code>private static</code> et le navigateur SFTP en avait besoin aussi — une seconde copie est
 précisément ce que le point unique du piège #30 cherche à éviter.</td></tr>
 
-<tr><td>2026-07-29</td><td>90c9fab</td>
+<tr><td>2026-07-29</td><td>26557ee</td>
 <td><strong>Suppression de la friction à l'ouverture d'un fichier.</strong>
 <code>PlatformService.openExternal()</code> ne transmet une URL directement à l'OS que pour les
 schémas <code>http</code>/<code>https</code>/<code>ftp</code>/<code>mailto</code> ; tout le reste,
@@ -490,7 +514,7 @@ ni invite, et qui est déclarée sur le service abstrait dans les deux jeux de t
 sélecteur « Comment ouvrir ce fichier ? » de Windows pour une extension sans association : celui-là
 vient de l'OS, aucune API ne l'évite.</td></tr>
 
-<tr><td>2026-07-29</td><td>11768a3</td>
+<tr><td>2026-07-29</td><td>8af19c5</td>
 <td><strong>Clic = sélection, double-clic = ouverture, et édition distante en place.</strong> Un
 dossier navigue ; un fichier est copié dans un dossier temporaire privé, confié à l'application par
 défaut, puis surveillé — chaque enregistrement le renvoie au serveur, avec notification systématique
@@ -505,7 +529,7 @@ sélecteur de fichiers. L'upload passe par <code>SFTPSession.upload()</code> plu
 directement : il écrit dans <code>&lt;chemin&gt;.tabby-upload</code> puis renomme, donc un transfert
 interrompu ne tronque jamais la cible.</td></tr>
 
-<tr><td>2026-07-29</td><td>ad1c912</td>
+<tr><td>2026-07-29</td><td>c0e9e29</td>
 <td><strong>Refonte visuelle inspirée de <code>tabby-sftp-plus</code></strong>, dont le design a été
 lu directement dans la copie installée chez l'utilisateur. Repris : en-tête collant en couleur
 d'accent sous un filet de 2px (leur signature), survol en teinte d'accent via
@@ -518,7 +542,7 @@ affiche une sélection multiple absente ici). Bordure et arrondi déplacés sur
 <code>.sftp-body</code>, l'élément qui défile lui-même — un cadre l'enveloppant aurait eu besoin de
 son propre <code>overflow</code> et serait devenu l'ancêtre découpant de l'en-tête collant.</td></tr>
 
-<tr><td>2026-07-29</td><td>3b46d47</td>
+<tr><td>2026-07-29</td><td>1c33605</td>
 <td><strong>Deux bugs d'affichage de Tabby contournés</strong>, révélés en comparant les nouvelles
 colonnes entre elles. <code>getModeString()</code> est faux sous Windows (piège #35) : il masque
 <code>item.mode</code> contre des constantes Node que Windows ne définit pas, d'où
@@ -528,7 +552,7 @@ la locale JS par défaut d'Electron étant <code>en-US</code> quelles que soient
 de Tabby (piège #36) — au-delà du style, jour et mois s'inversent à la lecture. →
 <code>longMode()</code> maison et <code>LocaleService.getLocale()</code>.</td></tr>
 
-<tr><td>2026-07-29</td><td>efe9491</td>
+<tr><td>2026-07-29</td><td>2331bef</td>
 <td><strong>En-tête de colonnes collant et colonnes configurables</strong> (<code>size</code>,
 <code>date</code>, <code>mode</code> par défaut, plus <code>modeLong</code>, <code>type</code>,
 <code>ext</code>), persistées dans <code>sidebarPlus.sftpColumns</code>. Fichiers cachés grisés
@@ -538,7 +562,7 @@ ajouté. <strong>Pas de colonne propriétaire/groupe possible</strong> : <code>S
 que <code>name</code>, <code>fullPath</code>, <code>isDirectory</code>, <code>isSymlink</code>,
 <code>mode</code>, <code>size</code>, <code>modified</code>.</td></tr>
 
-<tr><td>2026-07-29</td><td>0e2e772</td>
+<tr><td>2026-07-29</td><td>73a7b25</td>
 <td><strong>Sous-classement de <code>SFTPPanelComponent</code> pour posséder le rendu des lignes.</strong>
 Les demandes de l'utilisateur (date sans horodatage, permissions octales, colonnes toujours alignées,
 infobulles, grille visible) sont hors d'atteinte d'une feuille de style : le template natif rend la
@@ -550,7 +574,7 @@ cellule de moins qu'un fichier et les colonnes ne peuvent pas s'aligner. Patcher
 contextuel, filtre restent hérités. Le glisser-déposer d'upload survit aussi,
 <code>DropZoneDirective</code> étant exportée par <code>TabbyCoreModule</code>.</td></tr>
 
-<tr><td>2026-07-29</td><td>2efc4da</td>
+<tr><td>2026-07-29</td><td>4166562</td>
 <td><strong>Dépendance <code>tabby-ssh</code> supprimée, typings vendorisés</strong> — correctif du
 piège #34, découvert en cherchant pourquoi le panneau restait sur « en attente d'une session SSH
 active » alors qu'une session était ouverte. Le chargeur de plugins de Tabby ne met en cache que
@@ -564,7 +588,7 @@ Angular. Typings recopiés depuis l'app installée dans <code>src/types/tabby-ss
 on compile contre ce qui tourne (ce qui règle aussi le piège #32). Bug propre au dev — un
 utilisateur installant depuis npm n'a pas les <code>devDependencies</code>.</td></tr>
 
-<tr><td>2026-07-29</td><td>db0a9bc</td>
+<tr><td>2026-07-29</td><td>ec6a16c</td>
 <td><strong>Correction du piège #33, que j'avais d'abord écrit à l'envers</strong>, et élagage des
 onglets fermés déplacé sur <code>tabClosed$</code>/<code>tabRemoved$</code> au lieu d'un tick d'une
 seconde perpétuel. Les composants de Tabby passent leur SCSS par <code>styles: [...]</code> avec
@@ -572,7 +596,7 @@ l'encapsulation Angular : leur CSS ne fuit donc <strong>pas</strong> sur une ins
 vrai piège est le miroir — le panneau garde sa mise en page interne mais arrive
 <strong>sans aucune taille</strong>, le dimensionnement étant le travail de son hôte d'origine.</td></tr>
 
-<tr><td>2026-07-29</td><td>0746449</td>
+<tr><td>2026-07-29</td><td>9d7f357</td>
 <td><strong>Première tranche : le panneau SFTP natif hébergé dans la sidebar</strong>, lié à l'onglet
 SSH qui a le focus. Monté par <code>createComponent()</code> : <code>SSHModule</code>
 <em>déclare</em> <code>SFTPPanelComponent</code> mais ne l'<em>exporte pas</em>, son sélecteur est
@@ -592,7 +616,7 @@ allers-retours avec l'utilisateur en test manuel, chacun ayant fait évoluer le 
 détail dans <a href="ROADMAP.html#icon-favorites">ROADMAP § Favoris d'icônes</a>.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-29</td><td>60e71ef</td>
+<tr><td>2026-07-29</td><td>37bb0ac</td>
 <td><strong>Clé <code>sidebarPlus.favoriteIcons</code></strong> (déclarée dans les <code>defaults</code>,
 piège #16), section « Favoris » dans le picker, épinglage par <strong>clic droit</strong> sur
 n'importe quelle tuile. Le design d'origine prévoyait un bouton étoile sur la tuile : implémenté
@@ -613,7 +637,7 @@ l'occasion, le coffre le rendant sinon illisible depuis l'extérieur de l'app). 
 deux ont révélé des bugs de fond ; validé par l'utilisateur en fin de passe.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-29</td><td>4f2fb59</td>
+<tr><td>2026-07-29</td><td>962207e</td>
 <td><strong>Popups jamais recadrées à l'écran quand elles s'ouvrent depuis un item de menu</strong>
 (piège #30). Une première explication — plausible, prédisant le bon symptôme, mais fausse — a coûté
 un cycle de correction : la séquence d'événements (<code>contextmenu</code> suivi d'un
@@ -624,13 +648,13 @@ Les deux branches <code>*ngIf</code> basculent dans le même cycle et le DOM lu 
 <code>ngAfterViewChecked()</code> contient encore l'élément sortant. Correctif : mesure différée d'un
 tour de boucle d'événements. Vérifié par mesure et non à l'œil — <code>top</code> passé de 1026 à
 991,25px pour une popup de 109px dans un viewport de 1104, soit exactement la marge de 4px.</td></tr>
-<tr><td>2026-07-29</td><td>4f2fb59</td>
+<tr><td>2026-07-29</td><td>962207e</td>
 <td><strong>Ordre des frères persisté avec l'id périmé après un re-parentage</strong> (piège #31),
 plus deux conséquences en cascade : le repli sur l'ordre de « Tous » était conditionné à la liste
 entière au lieu de l'être élément par élément, et l'ordre du conteneur d'origine n'était jamais
 réécrit quand un dossier le quittait. Diagnostiqué sur la vraie config de l'utilisateur, qui portait
 <code>526eac40: [a776a5b3]</code> — un id n'existant dans aucun groupe.</td></tr>
-<tr><td>2026-07-29</td><td>4f2fb59</td>
+<tr><td>2026-07-29</td><td>962207e</td>
 <td><strong>Élagage automatique des ids morts</strong> dans toutes les listes d'ordre, à chaque
 écriture d'ordre (option retenue par l'utilisateur parmi trois : nettoyage ponctuel, automatique, ou
 statu quo). Vérifié sur ses données réelles : les 5 ids morts présents ont disparu au premier
@@ -650,7 +674,7 @@ autre était impossible, et l'est resté à travers plusieurs correctifs success
 causes indépendantes, chacune suffisante à elle seule. Détail technique dans les pièges #22 à #29.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-28</td><td>4f2fb59</td>
+<tr><td>2026-07-28</td><td>962207e</td>
 <td><strong>Rangement de l'arborescence réelle de l'utilisateur</strong>, à sa demande et après
 validation de la structure voulue : <code>Maison</code> à la racine, <code>Travail</code> devenu
 parent de <code>DATACENTER</code>, <code>Sites</code>, <code>HOSTS</code> et <code>Services</code>.
@@ -658,7 +682,7 @@ Appliqué par glisser-déposer réel piloté via CDP (pas par édition de fichie
 recette grandeur nature du correctif. Intégrité vérifiée après coup : 22 profils avant / 22 après,
 aucun perdu, aucune référence de groupe orpheline, ids migrés correctement dans les deux workspaces
 existants.</td></tr>
-<tr><td>2026-07-28</td><td>4f2fb59</td>
+<tr><td>2026-07-28</td><td>962207e</td>
 <td><strong>Incident — <code>config.yaml</code> de l'utilisateur corrompu puis réparé.</strong> Des
 éditions scriptées via <code>Get-Content</code>/<code>Set-Content -Encoding utf8</code> (PowerShell
 5.1) ont ré-encodé un chemin de clé SSH accentué (<code>…\Développement\…</code> →
@@ -666,7 +690,7 @@ existants.</td></tr>
 par un <code>diff</code> contre la sauvegarde, réparé par restauration intégrale, vérifié
 (accents intacts, pas de BOM). Documenté en piège #27 et en mémoire longue durée — toute édition
 scriptée d'un fichier accentué passe désormais par Node.</td></tr>
-<tr><td>2026-07-28</td><td>4f2fb59</td>
+<tr><td>2026-07-28</td><td>962207e</td>
 <td><strong>3<sup>e</sup> et vraie cause racine — le placeholder de CDK</strong> (piège #28).
 Après les deux correctifs précédents, l'imbrication fonctionnait en glissant <em>vers le haut</em>
 mais jamais <em>vers le bas</em>, à n'importe quelle distance. Quand CDK entre dans la liste cible il
@@ -683,7 +707,7 @@ placeholder ; sans boîte, la séquence ne se termine jamais). Ajouté en compl�
 <code>rescueTargetGroupId()</code>, un test de collision maison sur la position réelle des lignes qui
 rattrape les dépôts résolus à tort sur la racine — dont la mise au point a exigé de découvrir que
 <code>cdkDragEnded</code> est émis <em>avant</em> <code>cdkDropListDropped</code> (piège #29).</td></tr>
-<tr><td>2026-07-28</td><td>4f2fb59</td>
+<tr><td>2026-07-28</td><td>962207e</td>
 <td><strong>Ergonomie du dépôt, sans ajouter d'espace</strong> (piège #26). Contrainte posée par
 l'utilisateur en cours de route : resserrer l'espacement entre dossiers, donc impossible de
 rembourrer les zones de dépôt. Retenu : la liste d'enfants, <em>quand elle est vide</em>, est
@@ -695,7 +719,7 @@ de la ligne. Pistes écartées et pourquoi : <code>::after</code> absolu (invisi
 <code>getBoundingClientRect</code>, donc rejeté par CDK), marge négative permanente sans
 <code>:empty</code> (écrase les lignes des dossiers non vides). Surbrillances de zone de dépôt
 retirées ensuite sur demande de l'utilisateur.</td></tr>
-<tr><td>2026-07-28</td><td>4f2fb59</td>
+<tr><td>2026-07-28</td><td>962207e</td>
 <td><strong>2 premières causes du blocage</strong> (pièges #24 et #25), trouvées après que le test
 manuel eut échoué à départager les hypothèses — d'où la mise en place d'un banc de test qui pilote
 le glisser-déposer via CDP (<code>Input.dispatchMouseEvent</code>) et mesure la géométrie en direct,
@@ -714,7 +738,7 @@ façon les rectangles en cache <em>avant</em> d'appliquer cette classe.</td></tr
 <h2>Suite — fond des popups, distinct du fond de la sidebar (2026-07-28)</h2>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-28</td><td>a2f6a58</td>
+<tr><td>2026-07-28</td><td>c50c0a9</td>
 <td>Retour utilisateur : les menus contextuels/popups (menu Groupe/Profil, picker d'icônes,
 create-popup) étaient difficiles à distinguer de la sidebar derrière eux. Cause : les deux utilisaient
 exactement la même variable <code>--theme-bg-more-2</code>. Changé pour <code>--theme-bg</code> (fond
@@ -727,7 +751,7 @@ dur.</td></tr>
 l'utilisateur. Trois actions ajoutées aux menus contextuels Profil/Groupe existants.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-28</td><td>1c04f1d</td>
+<tr><td>2026-07-28</td><td>dc1228f</td>
 <td>Trois retours utilisateur après le test manuel du menu contextuel enrichi, traités différemment
 selon leur nature. (1) Corrigé immédiatement, bug concret affectant tous les popups existants (pas
 seulement les nouveaux) : clic droit près du bord bas/droit de la sidebar → menu partiellement rendu
@@ -749,7 +773,7 @@ cible aucun élément précis.</td></tr>
 <td>Décision explicitement confirmée par l'utilisateur : un groupe favori garde uniquement son étoile
 dans l'arbre, il ne remonte pas dans le dossier virtuel "Épinglés" (qui reste une liste plate de
 profils) — perimètre assumé, pas un oubli, laissé tel quel pour l'instant.</td></tr>
-<tr><td>2026-07-28</td><td>333704e</td>
+<tr><td>2026-07-28</td><td>7aefc0f</td>
 <td>Bascule favoris étendue aux groupes (clé <code>sidebarPlus.favoriteGroups</code> séparée de
 <code>favorites</code>, pour éviter tout risque de collision d'ID entre profils et groupes — déclarée
 dans les <code>defaults</code> du <code>ConfigProvider</code>, piège #16), renommage inline (mode
@@ -801,7 +825,7 @@ AI-CONTEXT (invariants), AI-HISTORY (journal), ROADMAP (statut/priorités) — c
 avec navigation commune.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-26</td><td>4f2fb59</td>
+<tr><td>2026-07-26</td><td>962207e</td>
 <td>Ancien <code>tabby_sidebar_roadmap.md</code> retiré, contenu porté (condensé, doublons et
 narration de délibération retirés) dans <code>.AIRules/{README,AI-CONTEXT,AI-HISTORY,ROADMAP}.html</code>.
 Numérotation des 20 pièges et des 7 points fragiles conservée à l'identique (référencée depuis
@@ -814,7 +838,7 @@ CLAUDE.md). Dossier positionné dans le dépôt <code>tabby-ssh-sidebar</code> (
 dev/sysadmin/gestionnaire, plus une clarification directe de l'utilisateur.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-26</td><td>6eff80c</td>
+<tr><td>2026-07-26</td><td>61d397f</td>
 <td><strong>Décisions finales (3<sup>e</sup> échange)</strong> : Vault Auto-Unlock sorti du périmètre
 de <code>better-sidebar</code>, prévu comme plugin séparé avec interfaçage optionnel via
 l'injecteur Angular partagé — clarifié par l'utilisateur que l'objectif de "portabilité" derrière
@@ -824,14 +848,14 @@ machines, pas le partage d'équipe : stockage des workspaces ramené sur <code>c
 partage sélectif à la place. Précisions confirmées : couleurs contextuelles par workspace
 (<code>structuredClone</code> au double-clic), UI adaptative via <code>ResizeObserver</code>,
 sécurité RAM du futur plugin Vault (purge immédiate du mot de passe déchiffré après injection).</td></tr>
-<tr><td>2026-07-26</td><td>(inclus dans 6eff80c)</td>
+<tr><td>2026-07-26</td><td>(inclus dans 61d397f)</td>
 <td><strong>2<sup>e</sup> lot Gemini</strong> : précisions sur le SFTP (liaison au focus split-pane
 avec option de gel, lazy loading anti-freeze, suivi des transferts par flèches d'activité plutôt
 que barre de progression), sur les Workspaces (à ce stade encore stockage JSON externe + favoris
 cloisonnés + logique de cascade, UI onglets→dropdown), sur la sélection multiple (comportements
 calqués sur les standards OS), sur les tunnels SSH (surcouche du moteur natif Tabby), et proposition
 initiale du Vault Auto-Unlock avec purge RAM.</td></tr>
-<tr><td>2026-07-26</td><td>(inclus dans 6eff80c)</td>
+<tr><td>2026-07-26</td><td>(inclus dans 61d397f)</td>
 <td><strong>1<sup>er</sup> lot Gemini</strong> : sensibilité au contexte et persistance de
 navigation pour le SFTP, dropdown + workspace "Tous" pour les Workspaces, alternative "cases à
 cocher + déplacer la sélection ici" pour contourner la complexité du multi-drag Angular CDK. Ajout
@@ -842,12 +866,12 @@ explicitement écarté par l'utilisateur (outils de conversion déjà disponible
 <h2>Publication npm v0.2.0 (2026-07-26)</h2>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-26</td><td>9fac365</td><td>Champ <code>author</code> du package.json fixé à
+<tr><td>2026-07-26</td><td>b85c61b</td><td>Champ <code>author</code> du package.json fixé à
 <code>TooMuhtsh</code> (voir piège #2).</td></tr>
-<tr><td>2026-07-26</td><td>386c1a4</td><td>Dépendances runtime (<code>dompurify</code>, jeux
+<tr><td>2026-07-26</td><td>00be9aa</td><td>Dépendances runtime (<code>dompurify</code>, jeux
 d'icônes Iconify) déplacées vers <code>devDependencies</code> — elles sont bundlées par webpack
 dans <code>dist/index.js</code>, pas nécessaires comme dépendances du paquet publié.</td></tr>
-<tr><td>2026-07-26</td><td>314cab5</td><td>Préparation publication npm : placeholder restant
+<tr><td>2026-07-26</td><td>bd25a84</td><td>Préparation publication npm : placeholder restant
 corrigé, métadonnées <code>package.json</code> mises à jour.</td></tr>
 <tr><td>2026-07-26</td><td>n/a (npm publish, pas un commit)</td><td>Publié sur npm en
 <code>tabby-better-sidebar@0.2.0</code> via compte npm <code>toomuhtsh</code> (token à accès
@@ -864,11 +888,11 @@ favoris, statut live, drag &amp; drop, menus contextuels, icônes personnalisée
 complet (comportement exact, choix d'implémentation) dans les pièges correspondants d'AI-CONTEXT.html.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
-<tr><td>2026-07-26</td><td>36f98b7</td><td>Picker d'icônes (FontAwesome + Iconify MDI/Tabler + import
+<tr><td>2026-07-26</td><td>80b083b</td><td>Picker d'icônes (FontAwesome + Iconify MDI/Tabler + import
 SVG sanitisé DOMPurify), création de dossier/profil par clic droit (vraie modale native
 <code>EditProfileModalComponent</code>, piège #17), suppression de profil par clic droit (popup HTML,
 pas de dialogue Windows natif), fix de la zone de dépôt à 0px de hauteur (piège #19).</td></tr>
-<tr><td>2026-07-26</td><td>8b8748b</td><td>Favoris épinglés, statut de connexion live (pastille
+<tr><td>2026-07-26</td><td>875e66d</td><td>Favoris épinglés, statut de connexion live (pastille
 verte/rouge/grise), glisser-déposer complet (réordonnancement + re-parentage de groupes via
 recréation/migration/suppression, piège #12), suppression de groupe par clic droit (garde-fou
 non-vide), édition de profil par clic droit (redirection + pilotage DOM vers Paramètres → Profils,

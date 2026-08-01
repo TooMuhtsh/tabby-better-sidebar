@@ -169,12 +169,14 @@ Identité configurée **localement** pour ce dépôt (pas globalement) :
 GitHub du compte perso de l'utilisateur). Ne pas committer avec une autre
 adresse sans confirmation explicite.
 
-**Métadonnées d'attribution IA : admises** (`Co-Authored-By: Claude ...` et
-`Claude-Session: ...` en pied de message). Décision requise une fois par dépôt
-par la charte de gouvernance (option `attribution`) ; celle-ci enregistre la
-pratique déjà en place — l'historique public en contient depuis plusieurs
-commits, revenir dessus imposerait de le réécrire. À rediscuter avec
-l'utilisateur si ce choix doit changer, pas à trancher au coup par coup.
+**Métadonnées d'attribution IA : proscrites.** Aucun `Co-Authored-By:`, aucun
+`Claude-Session:`, aucune mention d'outil dans un message de commit — y compris
+si l'outil les ajoute par défaut. Décision requise une fois par dépôt par la
+charte (option `attribution`, `non` depuis le 2026-08-01) ; l'historique
+antérieur a été purgé et force-poussé dans le même geste. La trace de la
+collaboration IA vit dans `.AIRules/`, qui la porte avec son contexte. À
+rediscuter avec l'utilisateur si ce choix doit changer, jamais à trancher au
+coup par coup.
 
 Le dossier `.AIRules/` se commite et se pousse **à chaque modification**, dans
 la foulée du travail qu'il décrit (`A-10`). Le feu vert de l'utilisateur porte

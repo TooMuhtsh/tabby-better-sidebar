@@ -5,7 +5,7 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 
 - **Profil de départ** : `complet`
 - **Charte au moment du cadrage** : `20260731-150737`
-- **Dernière revue de ce profil** : 2026-07-31
+- **Dernière revue de ce profil** : 2026-08-01 (entretien rouvert sur la seule clé `attribution`)
 
 ## Choix
 
@@ -19,7 +19,7 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 | `tempfiles` | `oui` | `.tempfiles/` est déjà déclaré dans `.gitignore` |
 | `distant` | `oui` | `github.com/TooMuhtsh/tabby-better-sidebar` |
 | `visibilité` | `public` | dépôt public dès le premier commit ; la liste de ce qui reste dehors est celle de l'option `visibilité` de la charte |
-| `attribution` | `oui` | trailers `Co-Authored-By` et `Claude-Session` ; pratique déjà présente dans l'historique public, revenir dessus imposerait de le réécrire |
+| `attribution` | `non` | tranché le 2026-08-01, en remplacement de `oui` : aucune métadonnée d'attribution IA dans les messages de commit. La trace de la collaboration reste **dans les documents de gouvernance**, qui la portent avec leur contexte, plutôt que dans un historique Git où elle est bruit. L'historique existant a été purgé dans le même geste — décision assumée malgré la réécriture des hashs |
 | `authentification` | compte `TooMuhtsh`, `gh` CLI authentifié via le trousseau de l'OS, opérations Git en HTTPS | identité de commit configurée **localement** à ce dépôt, pas globalement ; ne jamais committer sous une autre adresse sans confirmation |
 | `branches` | `branche` | tranché au cadrage, en changement de la pratique antérieure : un chantier non abouti et sa documentation arrivent ensemble sur `master`, ce qui garantit A-10 mécaniquement plutôt que par vigilance |
 | `seuil` | `strict` | un statut de chantier engage ; seul le contexte s'écrit au fil de l'eau |
