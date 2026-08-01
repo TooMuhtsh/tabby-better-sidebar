@@ -8,6 +8,8 @@ import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { EmptyFileUpload } from '../sftpLocalTransfer'
 import { DirectoryWeight, SftpDragOut } from '../sftpDragOut'
 import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
+import { SidebarPlusTempFilesService } from '../tempFiles.service'
+import { SftpTransfers } from '../transfers'
 import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
 
@@ -105,11 +107,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         zone: NgZone,
         private editors: SidebarPlusEditorService,
         platform: PlatformService,
+        temp: SidebarPlusTempFilesService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
-        this.editor = new SftpRemoteEditor(notify, editors)
-        this.dragOut = new SftpDragOut(notify, zone)
+        const transfers = new SftpTransfers(platform)
+        this.editor = new SftpRemoteEditor(notify, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel))
+        this.dragOut = new SftpDragOut(notify, zone, transfers, temp)
     }
 
     ngOnDestroy (): void {
@@ -343,7 +347,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             this.notify.notice('Le glisser-déposer des dossiers est désactivé — activez-le dans Paramètres → Better Sidebar')
             return
         }
-        if (this.dragOut.startDrag(item.fullPath) || this.dragOut.isPreparing(item.fullPath)) {
+        if (this.dragOut.startDrag(item)) {
+            // The copy was current as far as the listing knows; confirm that
+            // against the server now that the synchronous part is over.
+            void this.dragOut.revalidate(this.sftp, item)
+            return
+        }
+        if (this.dragOut.isPreparing(item.fullPath)) {
             return
         }
         void this.prepareDrag(item, isDirectory)
@@ -378,11 +388,26 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         if (!weight.truncated) {
             return true
         }
-        const modal = this.ngbModalService.open(ConfirmModalComponent)
-        modal.componentInstance.message =
+        return await this.ask(
             `"${item.name}" contient plus de ${weight.files} fichiers (${filesize(weight.bytes)} au moins). `
-            + 'Tout sera téléchargé avant que le glisser-déposer ne devienne possible, sans progression ni annulation. Continuer ?'
-        modal.componentInstance.confirmLabel = 'Télécharger'
+            + 'Tout sera téléchargé avant que le glisser-déposer ne devienne possible, sans progression ni annulation. Continuer ?',
+            'Télécharger',
+        )
+    }
+
+    /**
+     * The panel's one yes/no question, in HTML rather than a native dialog
+     * (piège #42). Handed to the remote editor as a callback so that it can ask
+     * about a conflict without knowing anything about modals.
+     *
+     * Always defaults to Cancel: every caller asks before something
+     * irreversible — overwriting a remote file, discarding local edits, pulling
+     * a large tree — and a reflex `Entrée` must never be the destructive answer.
+     */
+    private async ask (message: string, confirmLabel: string): Promise<boolean> {
+        const modal = this.ngbModalService.open(ConfirmModalComponent)
+        modal.componentInstance.message = message
+        modal.componentInstance.confirmLabel = confirmLabel
         modal.componentInstance.defaultButton = 'cancel'
         return await modal.result.catch(() => false)
     }

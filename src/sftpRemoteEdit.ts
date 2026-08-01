@@ -1,10 +1,10 @@
 import * as fs from 'fs'
-import * as os from 'os'
 import * as path from 'path'
 import { NotificationsService } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { Opener, SidebarPlusEditorService } from './editorLauncher.service'
-import { LocalFileDownload, LocalFileUpload } from './sftpLocalTransfer'
+import { SidebarPlusTempFilesService } from './tempFiles.service'
+import { SftpTransfers } from './transfers'
 
 /**
  * How the local copy is handed over once downloaded.
@@ -17,12 +17,23 @@ export type OpenMode = 'editor'|'openWith'
 /** The live SFTP transport, borrowed from the one member that publicly exposes its type. */
 type SftpSession = SFTPPanelComponent['sftp']
 
+/** What the remote file looked like at a given moment, as far as change detection needs. */
+interface RemoteStamp {
+    size: number
+    mtime: number
+}
+
+/** Asks the user a yes/no question. Supplied by the panel, which owns the HTML modal (piège #42). */
+export type ConfirmFn = (message: string, confirmLabel: string) => Promise<boolean>
+
 interface EditSession {
     localPath: string
     localDir: string
     watcher: fs.FSWatcher
     /** Size and mtime as of the last transfer in either direction — anything else means the editor saved. */
     baseline: { size: number, mtimeMs: number }
+    /** The remote entry as it stood after that same transfer — anything else means someone else wrote to it. */
+    remote: RemoteStamp
     uploading: boolean
     /** A save that landed while an upload was in flight, replayed once it finishes. */
     pending: boolean
@@ -43,17 +54,24 @@ interface EditSession {
  * only route to the OS association is the caller passing `openWith` — the
  * context menu's deliberate escape hatch, unreachable by double-click.
  *
- * Not implemented, and worth knowing before relying on this: there is no
- * conflict detection. If the remote file changes between the download and a
- * save, the save overwrites it.
+ * Changes made *on the server* while a file is open are detected, not ignored.
+ * Two moments matter, and neither is decided without asking:
+ *
+ *   - **Reopening** an already-open file used to hand back the local copy
+ *     unconditionally, so a file edited on the server came back as the old
+ *     version. It is now compared against the server first.
+ *   - **Saving** used to overwrite whatever had appeared in the meantime, with
+ *     no warning at all — the failure mode that actually loses someone's work.
  */
 export class SftpRemoteEditor {
     private sessions = new Map<string, EditSession>()
-    private counter = 0
 
     constructor (
         private notifications: NotificationsService,
         private editors: SidebarPlusEditorService,
+        private transfers: SftpTransfers,
+        private temp: SidebarPlusTempFilesService,
+        private confirm: ConfirmFn,
     ) { }
 
     /** Hands a local copy over. The opener is settled by `edit()` before anything is downloaded. */
@@ -86,22 +104,17 @@ export class SftpRemoteEditor {
 
         const existing = this.sessions.get(item.fullPath)
         if (existing) {
-            // Already open somewhere — just bring it back to the front rather
-            // than downloading a second copy over the user's unsaved work.
-            this.open(existing.localPath, opener)
+            await this.reopen(sftp, item, existing, opener)
             return
         }
 
-        const localDir = path.join(os.tmpdir(), 'tabby-better-sidebar-edit', `${Date.now()}-${this.counter++}`)
-        await fs.promises.mkdir(localDir, { recursive: true })
+        const localDir = await this.temp.makeDir('edit')
         const localPath = path.join(localDir, item.name)
 
-        const download = new LocalFileDownload(localPath, item.name, item.size, item.mode)
-        await download.openForWriting()
         try {
-            await sftp.download(item.fullPath, download)
+            await this.transfers.download(sftp, item.fullPath, localPath, item.name, item.size, item.mode)
         } catch (e) {
-            await fs.promises.rm(localDir, { recursive: true, force: true }).catch(() => null)
+            await this.temp.remove(localDir)
             // The full path, not just the name: a `Failure` status here is
             // usually the server refusing to open something that is not a
             // regular file (EISDIR is reported as a plain FAILURE), and knowing
@@ -115,6 +128,7 @@ export class SftpRemoteEditor {
             localPath,
             localDir,
             baseline: { size: stat.size, mtimeMs: stat.mtimeMs },
+            remote: await this.remoteStamp(sftp, item),
             uploading: false,
             pending: false,
             debounce: null,
@@ -129,6 +143,69 @@ export class SftpRemoteEditor {
 
         this.open(localPath, opener)
         this.notifications.notice(`${item.name} ouvert — chaque enregistrement sera renvoyé au serveur`)
+    }
+
+    /**
+     * Reopening a file already open here.
+     *
+     * The old behaviour — hand the local copy straight back — exists for a
+     * reason: a second download would wipe unsaved work. It is kept, but only
+     * once the server has been asked. When the remote file has moved on, an
+     * untouched copy is refreshed silently, and a copy with unsaved changes
+     * never is without a decision: no automatic answer can be right when both
+     * sides changed.
+     */
+    private async reopen (sftp: SftpSession, item: SFTPFile, session: EditSession, opener: Opener): Promise<void> {
+        const now = await this.remoteStamp(sftp, item)
+        if (!this.changed(session.remote, now)) {
+            this.open(session.localPath, opener)
+            return
+        }
+
+        if (await this.hasLocalEdits(session) && !await this.confirm(
+            `${item.name} a changé sur le serveur, et votre copie locale a des modifications non enregistrées. `
+            + 'Reprendre la version du serveur fera perdre ces modifications locales.',
+            'Reprendre celle du serveur',
+        )) {
+            this.open(session.localPath, opener)
+            return
+        }
+
+        try {
+            await this.transfers.download(sftp, item.fullPath, session.localPath, item.name, item.size, item.mode)
+        } catch (e) {
+            // The stale copy is still better than nothing — the user asked to
+            // open a file, and refusing outright over a failed refresh would
+            // lose them the gesture as well as the update.
+            this.notifications.error(`Impossible d'actualiser ${item.name} depuis le serveur`, String(e))
+            this.open(session.localPath, opener)
+            return
+        }
+
+        const stat = await fs.promises.stat(session.localPath)
+        session.baseline = { size: stat.size, mtimeMs: stat.mtimeMs }
+        session.remote = now
+        this.notifications.notice(`${item.name} a été actualisé depuis le serveur`)
+        this.open(session.localPath, opener)
+    }
+
+    /** The remote entry as the server reports it now; falls back to the listing's own view. */
+    private async remoteStamp (sftp: SftpSession, item: SFTPFile): Promise<RemoteStamp> {
+        const stat = await sftp.stat(item.fullPath).catch(() => item)
+        return { size: stat.size, mtime: stat.modified.getTime() }
+    }
+
+    private changed (before: RemoteStamp, after: RemoteStamp): boolean {
+        return before.size !== after.size || before.mtime !== after.mtime
+    }
+
+    /** Whether the editor wrote to the copy since the last transfer in either direction. */
+    private async hasLocalEdits (session: EditSession): Promise<boolean> {
+        const stat = await fs.promises.stat(session.localPath).catch(() => null)
+        if (!stat) {
+            return false
+        }
+        return stat.size !== session.baseline.size || stat.mtimeMs !== session.baseline.mtimeMs
     }
 
     /**
@@ -173,17 +250,29 @@ export class SftpRemoteEditor {
             return
         }
 
+        // Set before the question, not after: the flag is what stops a second
+        // save from opening a second modal for the same file while this one
+        // waits for an answer.
         session.uploading = true
-        const upload = new LocalFileUpload(session.localPath, item.name, stat.size, item.mode)
         try {
-            await upload.openForReading()
-            await sftp.upload(item.fullPath, upload)
+            const now = await this.remoteStamp(sftp, item)
+            if (this.changed(session.remote, now) && !await this.confirm(
+                `${item.name} a changé sur le serveur depuis son ouverture. Enregistrer écrasera ces modifications distantes. Continuer ?`,
+                'Écraser',
+            )) {
+                // `session.remote` is deliberately left as it was: the conflict
+                // has not been resolved, so the next save must ask again rather
+                // than treat silence as consent.
+                this.notifications.notice(`${item.name} n'a pas été renvoyé — le fichier distant est intact`)
+                return
+            }
+            await this.transfers.upload(sftp, item.fullPath, session.localPath, item.name, stat.size, item.mode)
             session.baseline = { size: stat.size, mtimeMs: stat.mtimeMs }
+            session.remote = await this.remoteStamp(sftp, item)
             this.notifications.notice(`${item.name} renvoyé sur le serveur`)
         } catch (e) {
             this.notifications.error(`Échec du renvoi de ${item.name}`, String(e))
         } finally {
-            upload.close()
             session.uploading = false
         }
 
@@ -200,7 +289,7 @@ export class SftpRemoteEditor {
                 clearTimeout(session.debounce)
             }
             session.watcher.close()
-            void fs.promises.rm(session.localDir, { recursive: true, force: true }).catch(() => null)
+            void this.temp.remove(session.localDir)
         }
         this.sessions.clear()
     }

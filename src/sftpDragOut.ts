@@ -1,14 +1,29 @@
 import * as fs from 'fs'
-import * as os from 'os'
 import * as path from 'path'
 import { NgZone } from '@angular/core'
 import { NotificationsService } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { electronRemote } from './electronRemote'
-import { LocalFileDownload } from './sftpLocalTransfer'
+import { SidebarPlusTempFilesService } from './tempFiles.service'
+import { SftpTransfers } from './transfers'
 
 /** The live SFTP transport, borrowed from the one member that publicly exposes its type. */
 type SftpSession = SFTPPanelComponent['sftp']
+
+/**
+ * A local copy, and what the remote entry looked like when it was taken.
+ *
+ * Size and mtime are what tells a still-current copy from a stale one. A
+ * *directory* carries neither in any useful form — its own mtime says nothing
+ * about what changed inside it — so a directory copy is reused as-is and
+ * `isDirectory` marks it as unverifiable rather than pretending otherwise.
+ */
+interface ReadyCopy {
+    localPath: string
+    size: number
+    mtime: number
+    isDirectory: boolean
+}
 
 /** What a directory holds, as far as the guard rail below needs to know. */
 export interface DirectoryWeight {
@@ -26,7 +41,10 @@ export interface DirectoryWeight {
  * the plugin bundles to a single file and a `file://` path would have to be
  * resolved at runtime from inside a webpack bundle.
  */
-const DRAG_ICON_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAASUlEQVR4nO3SMQoAIAwEwfz/kRZ2vkJbEe1kI7IHKe+YIhHm1ZTa+s0TgAFOXRSw6+OAdSMFMO9ggPQnFCBAgAABAgQI+AdgqAwQ3EkaXaJWzQAAAABJRU5ErkJggg=='
+/** How many files of a directory are fetched at once. See `downloadAll()`. */
+const DOWNLOAD_CONCURRENCY = 4
+
+const DRAG_ICON_DATA_URL ='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAASUlEQVR4nO3SMQoAIAwEwfz/kRZ2vkJbEe1kI7IHKe+YIhHm1ZTa+s0TgAFOXRSw6+OAdSMFMO9ggPQnFCBAgAABAgQI+AdgqAwQ3EkaXaJWzQAAAABJRU5ErkJggg=='
 
 /**
  * Dragging a remote entry out of the panel and into the OS.
@@ -50,16 +68,18 @@ const DRAG_ICON_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAA
  * desktop and edited there would silently overwrite the server's file.
  */
 export class SftpDragOut {
-    /** Remote path → local copy, for entries already downloaded. */
-    private ready = new Map<string, string>()
+    /** Remote path → the copy taken for it, with the fingerprint it was taken from. */
+    private ready = new Map<string, ReadyCopy>()
     /** Remote paths being downloaded right now — a second drag must not start a second download. */
     private preparing = new Set<string>()
-    private root: string|null = null
-    private counter = 0
+    /** Every directory handed out for this panel, so `dispose()` can drop them all. */
+    private dirs = new Set<string>()
 
     constructor (
         private notifications: NotificationsService,
         private zone: NgZone,
+        private transfers: SftpTransfers,
+        private temp: SidebarPlusTempFilesService,
     ) { }
 
     /**
@@ -92,16 +112,32 @@ export class SftpDragOut {
     }
 
     /**
-     * Starts the native drag for an entry already downloaded.
+     * Whether the copy taken for an entry no longer matches it.
      *
-     * Returns false when there is nothing to drag yet, or when the remote
-     * module is unreachable — the caller then falls back to preparing it.
+     * Compares against the row as displayed, which costs nothing — the
+     * authoritative check is the `stat()` in `prepare()`, this one only avoids
+     * handing over a copy already known to be out of date.
      */
-    startDrag (remotePath: string): boolean {
-        const localPath = this.ready.get(remotePath)
-        if (!localPath) {
+    private isStale (copy: ReadyCopy, item: SFTPFile): boolean {
+        if (copy.isDirectory) {
             return false
         }
+        return copy.size !== item.size || copy.mtime !== item.modified.getTime()
+    }
+
+    /**
+     * Starts the native drag for an entry already downloaded and still current.
+     *
+     * Returns false when there is nothing to drag yet, when the copy is stale,
+     * or when the remote module is unreachable — the caller then falls back to
+     * preparing it.
+     */
+    startDrag (item: SFTPFile): boolean {
+        const copy = this.ready.get(item.fullPath)
+        if (!copy || this.isStale(copy, item)) {
+            return false
+        }
+        const localPath = copy.localPath
         const remote = electronRemote()
         if (!remote) {
             this.notifications.error('Le glisser-déposer sortant n\'est pas disponible sur cette installation')
@@ -125,25 +161,77 @@ export class SftpDragOut {
      * button is often still held, which turns the whole thing into one gesture.
      */
     async prepare (sftp: SftpSession, item: SFTPFile, isDirectory: boolean): Promise<void> {
-        if (this.ready.has(item.fullPath) || this.preparing.has(item.fullPath)) {
+        if (this.preparing.has(item.fullPath)) {
             return
         }
         this.setPreparing(item.fullPath, true)
         try {
-            const localDir = await this.newTempDir()
+            // The server's answer, not the row's — the listing is a snapshot
+            // taken when the directory was last read, and a file changed on the
+            // server since then looks unchanged in it. This is the check that
+            // stops a stale copy from being handed over.
+            const fresh = await this.remoteFingerprint(sftp, item)
+            const existing = this.ready.get(item.fullPath)
+            if (existing && !this.isStale(existing, fresh)) {
+                this.startDrag(fresh)
+                return
+            }
+            this.ready.delete(item.fullPath)
+
+            const localDir = await this.temp.makeDir('drag')
+            this.dirs.add(localDir)
             const localPath = path.join(localDir, item.name)
             if (isDirectory) {
                 await this.downloadDirectory(sftp, item.fullPath, localPath)
             } else {
                 await this.downloadFile(sftp, item.fullPath, localPath, item)
             }
-            this.ready.set(item.fullPath, localPath)
-            this.startDrag(item.fullPath)
+            this.ready.set(item.fullPath, {
+                localPath,
+                size: fresh.size,
+                mtime: fresh.modified.getTime(),
+                isDirectory,
+            })
+            this.startDrag(fresh)
         } catch (e) {
             this.notifications.error(`Impossible de préparer ${item.name} pour le glisser-déposer`, String(e))
         } finally {
             this.setPreparing(item.fullPath, false)
         }
+    }
+
+    /**
+     * Checks a copy that has just been handed over, and says so if it was stale.
+     *
+     * `dragstart` is synchronous: asking the server before starting the drag is
+     * impossible, so a copy that still looks current in the listing is used as
+     * is. This runs right after and closes the gap — the entry is dropped so the
+     * next gesture downloads afresh, and the user is *told*, because silently
+     * handing over yesterday's file is precisely the failure this chantier
+     * exists to fix.
+     */
+    async revalidate (sftp: SftpSession, item: SFTPFile): Promise<void> {
+        const copy = this.ready.get(item.fullPath)
+        if (!copy || copy.isDirectory) {
+            return
+        }
+        const fresh = await this.remoteFingerprint(sftp, item)
+        if (this.isStale(copy, fresh)) {
+            this.ready.delete(item.fullPath)
+            this.notifications.notice(`${item.name} a changé sur le serveur — reglissez-le pour obtenir la version à jour`)
+        }
+    }
+
+    /**
+     * The entry as the server sees it *now*.
+     *
+     * Falls back to the displayed row if the `stat()` fails: a copy that cannot
+     * be checked is better handed over than a gesture that fails outright, and
+     * the download that follows would fail on its own if the entry were really
+     * gone.
+     */
+    private async remoteFingerprint (sftp: SftpSession, item: SFTPFile): Promise<SFTPFile> {
+        return await sftp.stat(item.fullPath).catch(() => item)
     }
 
     /**
@@ -184,26 +272,16 @@ export class SftpDragOut {
 
     /** Called when the browser is torn down — removes every copy made for a drag. */
     dispose (): void {
-        const root = this.root
         this.ready.clear()
         this.preparing.clear()
-        this.root = null
-        if (root) {
-            void fs.promises.rm(root, { recursive: true, force: true }).catch(() => null)
+        for (const dir of this.dirs) {
+            void this.temp.remove(dir)
         }
-    }
-
-    private async newTempDir (): Promise<string> {
-        this.root ??= path.join(os.tmpdir(), 'tabby-better-sidebar-drag', `${Date.now()}`)
-        const dir = path.join(this.root, String(this.counter++))
-        await fs.promises.mkdir(dir, { recursive: true })
-        return dir
+        this.dirs.clear()
     }
 
     private async downloadFile (sftp: SftpSession, remotePath: string, localPath: string, item: SFTPFile): Promise<void> {
-        const download = new LocalFileDownload(localPath, item.name, item.size, item.mode)
-        await download.openForWriting()
-        await sftp.download(remotePath, download)
+        await this.transfers.download(sftp, remotePath, localPath, item.name, item.size, item.mode)
     }
 
     /**
@@ -223,18 +301,54 @@ export class SftpDragOut {
      * target answers, and only through the mode (piège #45).
      */
     private async downloadDirectory (sftp: SftpSession, remotePath: string, localPath: string): Promise<void> {
-        await fs.promises.mkdir(localPath, { recursive: true })
-        for (const entry of await sftp.readdir(remotePath)) {
-            const childLocal = path.join(localPath, entry.name)
-            if (entry.isDirectory) {
-                await this.downloadDirectory(sftp, entry.fullPath, childLocal)
-                continue
+        const files: { remote: string, local: string, item: SFTPFile }[] = []
+
+        const walk = async (remote: string, local: string): Promise<void> => {
+            await fs.promises.mkdir(local, { recursive: true })
+            for (const entry of await sftp.readdir(remote)) {
+                const childLocal = path.join(local, entry.name)
+                if (entry.isDirectory) {
+                    await walk(entry.fullPath, childLocal)
+                    continue
+                }
+                if (entry.isSymlink && await this.targetIsDirectory(sftp, entry.fullPath)) {
+                    continue
+                }
+                files.push({ remote: entry.fullPath, local: childLocal, item: entry })
             }
-            if (entry.isSymlink && await this.targetIsDirectory(sftp, entry.fullPath)) {
-                continue
-            }
-            await this.downloadFile(sftp, entry.fullPath, childLocal, entry)
         }
+
+        // The whole tree is walked before anything is fetched: the directories
+        // have to exist before their files land, and knowing the full list is
+        // what allows the transfers to overlap at all.
+        await walk(remotePath, localPath)
+        await this.downloadAll(files.map(f => () => this.downloadFile(sftp, f.remote, f.local, f.item)))
+    }
+
+    /**
+     * Runs the transfers a few at a time.
+     *
+     * Measured on 26 files totalling 11 MB: over a minute, while the same
+     * directory through Tabby's own download is near-instant, and a single
+     * 10 MB file through this very code path is too. So the cost is per *file*,
+     * not per byte — round trips to open, read and close each one, which
+     * overlap perfectly well. Strictly sequential, they simply queued.
+     *
+     * Bounded rather than unbounded: every transfer shares one SFTP channel,
+     * and a hundred concurrent opens would trade one queue for another while
+     * making a failure much harder to attribute.
+     */
+    private async downloadAll (tasks: (() => Promise<void>)[]): Promise<void> {
+        let next = 0
+        const workers = Array.from(
+            { length: Math.min(DOWNLOAD_CONCURRENCY, tasks.length) },
+            async () => {
+                while (next < tasks.length) {
+                    await tasks[next++]()
+                }
+            },
+        )
+        await Promise.all(workers)
     }
 
     /** A failed `stat()` counts as "directory": the entry is skipped rather than risking the whole copy on it. */

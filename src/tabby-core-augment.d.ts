@@ -16,4 +16,14 @@ declare module 'tabby-core' {
             groups: PartialProfileGroup<T>[]
         ): PartialProfileGroup<T>[]
     }
+
+    // Both take a path the npm typings know nothing about, and both skip their
+    // file dialog entirely when it is supplied — which is what makes them
+    // usable for a transfer to a path we chose ourselves (piège #48). Declared
+    // as extra overloads: the published signatures stay valid, so any call
+    // written against them keeps compiling.
+    interface PlatformService {
+        startDownload (name: string, mode: number, size: number, filePath: string): Promise<FileDownload|null>
+        startUpload (options: FileUploadOptions, paths: string[]): Promise<FileUpload[]>
+    }
 }
