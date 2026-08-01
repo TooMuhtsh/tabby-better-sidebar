@@ -21,6 +21,15 @@ type SftpSession = SFTPPanelComponent['sftp']
 interface RemoteStamp {
     size: number
     mtime: number
+    /**
+     * The permissions as they stood at that instant.
+     *
+     * Read here rather than taken from the listing: the row carries the mode as
+     * of the last directory read, which can predate a `chmod` made in a
+     * terminal since. Restoring *that* after an upload does not preserve the
+     * file's permissions, it silently reverts them.
+     */
+    mode: number
 }
 
 /** Asks the user a yes/no question. Supplied by the panel, which owns the HTML modal (piège #42). */
@@ -192,7 +201,7 @@ export class SftpRemoteEditor {
     /** The remote entry as the server reports it now; falls back to the listing's own view. */
     private async remoteStamp (sftp: SftpSession, item: SFTPFile): Promise<RemoteStamp> {
         const stat = await sftp.stat(item.fullPath).catch(() => item)
-        return { size: stat.size, mtime: stat.modified.getTime() }
+        return { size: stat.size, mtime: stat.modified.getTime(), mode: stat.mode }
     }
 
     private changed (before: RemoteStamp, after: RemoteStamp): boolean {
@@ -266,7 +275,10 @@ export class SftpRemoteEditor {
                 this.notifications.notice(`${item.name} n'a pas été renvoyé — le fichier distant est intact`)
                 return
             }
-            await this.transfers.upload(sftp, item.fullPath, session.localPath, item.name, stat.size, item.mode)
+            // `now.mode`, not `item.mode`: the mode the file has at the instant
+            // it is about to be overwritten, which is the only one worth
+            // putting back.
+            await this.transfers.upload(sftp, item.fullPath, session.localPath, item.name, stat.size, now.mode)
             session.baseline = { size: stat.size, mtimeMs: stat.mtimeMs }
             session.remote = await this.remoteStamp(sftp, item)
             this.notifications.notice(`${item.name} renvoyé sur le serveur`)

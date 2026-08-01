@@ -1,4 +1,4 @@
-import { FileDownload, FileUpload, PlatformService } from 'tabby-core'
+import { FileDownload, FileUpload, NotificationsService, PlatformService } from 'tabby-core'
 import { SFTPPanelComponent } from 'tabby-ssh'
 import { LocalFileDownload, LocalFileUpload } from './sftpLocalTransfer'
 
@@ -19,7 +19,10 @@ type SftpSession = SFTPPanelComponent['sftp']
  * that until now ran completely invisibly.
  */
 export class SftpTransfers {
-    constructor (private platform: PlatformService) { }
+    constructor (
+        private platform: PlatformService,
+        private notifications: NotificationsService,
+    ) { }
 
     /**
      * Whether the installed app takes an imposed path.
@@ -75,8 +78,20 @@ export class SftpTransfers {
         }
         // A mode of 0 means we never knew the original one; leave the server's
         // own default alone rather than clamping the file to nothing.
-        if (mode) {
-            await sftp.chmod(remotePath, mode & 0o7777).catch(() => null)
+        if (!mode) {
+            return
+        }
+        const permissions = mode & 0o7777
+        try {
+            await sftp.chmod(remotePath, permissions)
+        } catch (e) {
+            // Said out loud, not swallowed: the file *was* written, but it no
+            // longer carries the permissions it had. On a script, that is the
+            // difference between runnable and not — the user has to know.
+            this.notifications.error(
+                `${name} a été renvoyé, mais ses permissions n'ont pas pu être rétablies (${permissions.toString(8)})`,
+                String(e),
+            )
         }
     }
 }
