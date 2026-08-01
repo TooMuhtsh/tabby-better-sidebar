@@ -24,6 +24,67 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Transferts officiels, fraîcheur des copies, purge et performance de la liste (2026-08-01)</h2>
+<p>Chantier <a href="ROADMAP.html#transferts-officiels">#transferts-officiels</a> mené sur branche,
+élargi en cours de route par ce que la passe de test a révélé. Le plan portait sur quatre volets ;
+trois défauts de fond, tous antérieurs au chantier, ont été trouvés en mesurant.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-01</td><td><code>53f0a01</code></td>
+<td><strong>Les transferts passent par <code>PlatformService</code>, et le mode est restauré après
+l'envoi.</strong> <code>startDownload</code>/<code>startUpload</code> acceptent un chemin imposé et
+n'ouvrent alors aucun dialogue (<a href="AI-CONTEXT.html#piege-48">#48</a>) : le transfert maison
+n'était pas nécessaire, et il coûtait la progression, la file et l'annulation que la tab-bar affiche
+pour tout transfert publié sur <code>fileTransferStarted$</code>. Les classes maison restent en repli,
+choisi sur l'arité réelle de la méthode. Découvert au passage :
+<code>SFTPSession.upload()</code> n'appelle <em>jamais</em> <code>getMode()</code>
+(<a href="AI-CONTEXT.html#piege-53">#53</a>), donc chaque enregistrement rendait un script
+<code>0755</code> non exécutable, silencieusement, bien avant ce chantier.</td></tr>
+
+<tr><td>2026-08-01</td><td><code>d359f5e</code></td>
+<td><strong><code>stat()</code> ne rend ni les permissions ni la date — deux corrections fausses
+avant la bonne.</strong> Le mode remis était d'abord celui de la ligne affichée, qui date du dernier
+<code>readdir</code> : restaurer <em>ça</em> annule un <code>chmod</code> fait au terminal depuis, ce
+qu'un <code>755</code> redevenu <code>664</code> a montré. Le mode a donc été lu par
+<code>stat()</code> — et vaut toujours <code>0</code>. Une trace en console a tranché en une passe :
+russh construit son <code>stat()</code> par <code>Object.assign({}, md)</code> sur un objet napi, dont
+les accesseurs ne sont pas copiés (<a href="AI-CONTEXT.html#piege-50">#50</a>). Sa propre
+<code>readDirectory()</code> copie champ par champ, avec le commentaire « Can't just spread a napi
+object ». Portée bien plus large que le <code>chmod</code> : la date revenait en 1970, donc la
+fraîcheur ne tenait que par la taille, et le garde-fou des liens vers un dossier
+(<a href="AI-CONTEXT.html#piege-45">#45</a>) testait un mode toujours nul.</td></tr>
+
+<tr><td>2026-08-01</td><td><code>85672cb</code></td>
+<td><strong>La purge des temporaires ne s'exécutait pas, et seul un test l'a montré.</strong> Le
+service porte la purge dans son constructeur, mais Angular ne construit pas un service
+<code>providedIn: 'root'</code> que personne n'injecte
+(<a href="AI-CONTEXT.html#piege-52">#52</a>) : il n'était atteint que par le panneau SFTP, donc jamais
+au démarrage — précisément le cas qu'il devait couvrir. Trouvé en semant un résidu avant le
+lancement plutôt qu'en relisant le code, ce que la relecture n'aurait pas donné : aucune erreur, le
+service existe, il ne se construit simplement jamais.</td></tr>
+
+<tr><td>2026-08-01</td><td><code>896518f</code> · <code>c2bda8c</code></td>
+<td><strong>Un dossier très peuplé rendait le panneau inutilisable ; la cause n'était pas le nombre
+de lignes.</strong> C'est ce que chacune refaisait à chaque cycle de détection
+(<a href="AI-CONTEXT.html#piege-54">#54</a>), et surtout un getter renvoyant un tableau neuf qui
+alimentait un <code>*ngFor</code> dans chaque ligne. Les lignes sont précalculées et mises en cache.
+Le rafraîchissement automatique, demandé dans la foulée, applique l'idée de l'utilisateur — garder le
+cache et ne mettre à jour que la différence : rien ne diffère ⇒ rien n'est réassigné et le cycle ne
+rend rien ; sinon les entrées inchangées gardent leur objet, donc <code>trackBy</code> conserve les
+lignes, sans clignotement ni perte du défilement. Il remplace <code>navigate()</code>, qui vidait la
+liste avant de la remplir.</td></tr>
+
+<tr><td>2026-08-01</td><td><code>205a1d4</code></td>
+<td><strong>Deux réglages d'ergonomie, mesurés plutôt que supposés.</strong> Les notifications
+étaient jugées trop brèves : <code>NotificationsService.notice()</code> code en dur
+<code>timeOut: 1000</code> (<a href="AI-CONTEXT.html#piege-51">#51</a>) — une seconde pour des
+messages demandant une action. Elles passent par <code>ToastrService</code>, l'instance même de
+Tabby. Et la sidebar revient toujours sur Profils au démarrage : la vue SFTP n'a de sens qu'à côté de
+la session pour laquelle elle a été ouverte, et cette session n'existe plus après un redémarrage.</td></tr>
+</table>
+
 <h2><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne (2026-08-01)</h2>
 <p>Premier chantier mené sur une branche depuis que l'option <code>branches</code> vaut
 <code>branche</code> : code et documentation arrivent ensemble sur <code>master</code>. Parti d'un

@@ -43,7 +43,8 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant #transferts</strong></td></tr>
+<tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
+<tr><td><a href="#liste-performance">Performance de la liste SFTP et rafraîchissement automatique</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -824,6 +825,64 @@ la boucle récursive strictement séquentielle de <code>downloadDirectory()</cod
 renderer pendant le geste (<a href="AI-CONTEXT.html#piege-49">piège #49</a>). Le test qui tranche :
 glisser un dossier puis <strong>relâcher immédiatement</strong>, et chronométrer la fin de la
 préparation. Ne pas optimiser avant d'avoir la réponse.</p>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-01</span>
+<p>Les quatre volets sont livrés. Ce que la passe de test a réellement produit dépasse le chantier
+prévu : <strong>trois défauts de fond ont été trouvés par les mesures, pas par le plan</strong>.</p>
+<ul>
+<li><strong>Les permissions étaient perdues à chaque enregistrement.</strong>
+  <code>SFTPSession.upload()</code> n'appelle jamais <code>getMode()</code>
+  (<a href="AI-CONTEXT.html#piege-53">#53</a>) : un script <code>0755</code> revenait au umask du
+  serveur, donc non exécutable, sans un mot. Deux tentatives de correction ont échoué avant la
+  bonne — restaurer le mode de la ligne affichée <em>annule</em> un <code>chmod</code> fait au
+  terminal depuis, puis le mode lu par <code>stat()</code> s'est révélé toujours nul.</li>
+<li><strong><code>stat()</code> ne rend ni les permissions ni la date</strong>
+  (<a href="AI-CONTEXT.html#piege-50">#50</a>, découvert en instrumentant la trace du
+  <code>chmod</code>). La détection de fraîcheur ne tenait donc plus que par la taille : une
+  modification distante de même taille serait passée inaperçue. Toutes les lectures d'entrée passent
+  désormais par <code>readdir</code>.</li>
+<li><strong>La purge des temporaires ne s'exécutait pas</strong>
+  (<a href="AI-CONTEXT.html#piege-52">#52</a>) : le service n'était injecté que par le panneau SFTP,
+  donc jamais construit au démarrage. Trouvé en semant un résidu avant le lancement plutôt qu'en
+  relisant le code.</li>
+</ul>
+<p><strong>Vérifié en test</strong> : permissions conservées, y compris après un <code>chmod</code>
+fait pendant l'édition ; modale de conflit avant tout écrasement, refus laissant le distant intact ;
+réouverture actualisée ; téléchargement d'un dossier passé d'une minute à quasi instantané avec
+intégrité contrôlée (11 263 335 octets de part et d'autre) ; purge au démarrage et à la fermeture.</p>
+<p><strong>Écart assumé</strong> : le glisser-déposer sert une copie encore valide selon la liste
+affichée, puis prévient si le serveur la dément — <code>dragstart</code> étant synchrone, aucun
+appel réseau ne peut le précéder.</p></div>
+
+<h3 id="liste-performance">Performance de la liste SFTP et rafraîchissement automatique</h3>
+<p>Signalé en test le 2026-08-01 : un dossier très peuplé (<code>/tmp</code>) rendait le panneau
+« difficilement utilisable », et rien ne se rafraîchissait après une modification faite au terminal.
+Deux sujets, une seule cause de fond — ce que coûte chaque cycle de détection de changement
+(<a href="AI-CONTEXT.html#piege-54">#54</a>).</p>
+<ul>
+<li><strong>Lignes précalculées</strong> : icône, infobulle et cellules étaient des appels de
+  méthode, réexécutés à chaque cycle. Le plus coûteux n'était pas le calcul mais l'<em>identité</em> —
+  la liste des colonnes visibles, renvoyée neuve à chaque appel, alimente un <code>*ngFor</code> dans
+  chaque ligne et forçait un rediff général.</li>
+<li><strong>Rafraîchissement différentiel</strong>, sur une idée de l'utilisateur en test — « garder
+  le cache et ne mettre à jour que la différence ». Le listing frais est fusionné dans l'ancien : rien
+  ne diffère ⇒ rien n'est réassigné, les caches restent valides et le cycle ne rend rien ; quelque
+  chose diffère ⇒ les entrées inchangées gardent leur objet, donc <code>trackBy</code> conserve les
+  lignes à l'écran. Plus de clignotement, défilement et sélection préservés, et une seule ligne
+  reformatée quand un seul fichier change.</li>
+<li><strong>Intervalle réglable</strong> dans l'onglet Better Sidebar, <strong>désactivé par
+  défaut</strong> : SFTP ne notifie aucun changement, un rafraîchissement est donc un
+  <code>readdir</code> complet. Sauté — jamais mis en attente — pendant qu'un menu est ouvert, qu'un
+  chemin se saisit ou qu'une suppression est en cours.</li>
+<li><strong>Ne remplace pas le chargement par blocs</strong> différé du <a href="#sftp">chantier
+  SFTP</a> : le coût du DOM reste proportionnel au nombre d'entrées.</li>
+</ul>
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-01</span>
+<p>Deux réglages d'ergonomie livrés dans le même geste, tous deux issus de la passe : les
+notifications duraient une seconde (<a href="AI-CONTEXT.html#piege-51">#51</a>) et passent à 8 s, 15 s
+pour une erreur ; et la sidebar <strong>revient toujours sur Profils</strong> au démarrage — la vue
+SFTP n'a de sens qu'à côté de la session pour laquelle elle a été ouverte, et cette session n'existe
+plus après un redémarrage.</p></div>
 
 <h3 id="ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</h3>
 <div class="callout important"><span class="callout-title">Ce n'est pas une régression — diagnostic établi le 2026-08-01</span>

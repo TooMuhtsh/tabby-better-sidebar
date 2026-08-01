@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #50.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #55.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -40,8 +40,8 @@ Tabby.</p>
 <ul>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
-<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49 + 5 points de veille</li>
+<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53 + 5 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
@@ -288,6 +288,34 @@ mutation d'état destinée à l'affichage effectuée <em>après</em> un <code>aw
 Tabby. Bonus : les <code>setTimeout</code> créés à l'intérieur redeviennent patchés, donc leur
 expiration repeint toute seule.</p>
 
+<h3 id="piege-52">#52 — Un service <code>providedIn: 'root'</code> que personne n'injecte n'est
+jamais construit</h3>
+<p>Angular instancie à la demande. Un service dont tout le travail se fait dans le constructeur ne
+s'exécute donc que si quelqu'un le réclame. Constaté sur le nettoyage des fichiers temporaires : il
+n'était atteint que par le panneau SFTP, si bien que sa purge de démarrage tournait à l'ouverture du
+panneau — c'est-à-dire jamais pour une session qui laisse justement des copies derrière elle.</p>
+<p>→ Injecter ces services dans le constructeur du <code>NgModule</code>
+(<code>src/index.ts</code>), comme <code>SidebarPlusMountService</code>. Le
+symptôme est trompeur : aucune erreur, le service existe, il ne s'est simplement jamais construit.</p>
+
+<h3 id="piege-54">#54 — Un appel de méthode dans un template est réévalué à chaque cycle, et Tabby
+en déclenche beaucoup</h3>
+<p>Un terminal vivant suffit à provoquer des cycles de détection en continu. Chaque
+<code>{{ f(x) }}</code> ou <code>[attr]='f(x)'</code> y est réexécuté. Sur la liste SFTP d'un dossier
+très peuplé, l'icône, l'infobulle et chaque cellule étant des appels, cela faisait des milliers de
+formatages de date et de taille par cycle — panneau inutilisable, sans qu'aucun profil ne pointe un
+coupable évident.</p>
+<div class="callout warning"><span class="callout-title">Le pire n'est pas le calcul, c'est l'identité</span>
+<p>Un getter qui renvoie un <strong>tableau neuf</strong> (ici la liste des colonnes visibles,
+alimentant un <code>*ngFor</code> à l'intérieur de chaque ligne) force Angular à rediffer la boucle
+de toutes les lignes à chaque cycle. Le coût est sans rapport avec celui du <code>filter</code>
+lui-même.</p></div>
+<p>→ Précalculer une vue de ligne, mise en cache et invalidée par <em>référence</em> sur ses sources ;
+ne laisser en appel que ce qui change indépendamment de la liste et se résout en une consultation de
+<code>Set</code>/<code>Map</code>. Et pour un rafraîchissement périodique, fusionner le nouveau
+listing dans l'ancien en conservant l'objet des entrées inchangées : sans réaffectation, les caches
+restent valides et le cycle ne rend rien du tout.</p>
+
 <h3 id="piege-42">#42 — Le clic droit « Supprimer » hérité du panneau SFTP natif confirme via un dialogue OS, pas une modale HTML</h3>
 <p>Découvert le 2026-07-30 en creusant la demande utilisateur « toutes les confirmations en modale
 HTML, jamais un appel système ». <code>SidebarPlusSftpBrowserComponent</code> sous-classe
@@ -369,6 +397,46 @@ premier geste <em>prépare</em> une copie, le suivant la fait partir.</li>
 le comportement de la plateforme, pas un défaut du plugin — mais c'est indiscernable d'un blocage,
 et il faut le savoir avant de diagnostiquer une lenteur observée pendant un drag.</li>
 </ul>
+
+<h3 id="piege-50">#50 — <code>SFTPSession.stat()</code> perd les permissions et la date : ne
+jamais s'en servir pour observer une entrée</h3>
+<div class="callout warning"><span class="callout-title">Le piège le plus coûteux rencontré à ce jour</span>
+<p>russh construit le résultat de <code>stat()</code> par
+<code>Object.assign({}, md)</code> sur un <strong>objet napi</strong>, dont les accesseurs ne sont pas
+des propriétés propres énumérables : <strong>rien n'est copié</strong>. Seuls <code>type</code> et
+<code>size</code> sont réaffectés à la main juste après. Tout le reste revient
+<code>undefined</code>, et Tabby le convertit sans broncher — <code>permissions</code> devient un
+mode <code>0</code>, <code>mtime</code> une date au <strong>1<sup>er</sup> janvier 1970</strong>.</p>
+<p>Le comble : <code>readDirectory()</code> de la même bibliothèque copie chaque champ un par un, et
+porte le commentaire <em>« Can't just spread a napi object »</em> — exactement la faute que
+<code>stat()</code> commet.</p></div>
+<p>Ce que ça casse, et qui ne ressemble pas à ça de l'extérieur : un <code>chmod</code> de
+restauration silencieusement sauté (mode 0), une comparaison de fraîcheur qui ne tient plus que par
+la taille — donc <strong>une modification distante de même taille passe inaperçue</strong> —, et tout
+test de type fondé sur le mode, comme le garde-fou des liens vers un dossier du <a href="#piege-45">#45</a>,
+définitivement faux.</p>
+<p><strong>→ Lire une entrée distante par <code>readdir</code> du dossier parent</strong>
+(<code>src/remoteEntry.ts</code>), jamais par <code>stat()</code>. Le surcoût d'un listing est
+incontournable : les permissions et la date n'ont pas d'autre source ici.</p>
+
+<h3 id="piege-51">#51 — <code>NotificationsService.notice()</code> impose une seconde d'affichage</h3>
+<p>Son implémentation code en dur <code>{ timeOut: 1000 }</code>, sans paramètre. C'est convenable
+pour « copié », et beaucoup trop court pour un message demandant une action — « le fichier a changé
+sur le serveur », « reglissez-le pour la version à jour » : ils étaient tout simplement manqués.
+<code>info()</code> et <code>error()</code> laissent le défaut de toastr.</p>
+<p>→ Passer par <code>ToastrService</code> directement (<code>src/notices.service.ts</code>).
+<code>ngx-toastr</code> étant un external webpack, c'est <strong>l'instance de Tabby</strong> : les
+toasts s'empilent avec les siens et sont identiques, seule la durée change.</p>
+
+<h3 id="piege-53">#53 — <code>SFTPSession.upload()</code> n'applique jamais <code>getMode()</code></h3>
+<p>Il écrit dans <code>&lt;path&gt;.tabby-upload</code>, <code>unlink</code> la cible puis renomme
+par-dessus. Le fichier qui atterrit porte donc le mode du fichier temporaire, c'est-à-dire l'umask du
+serveur — <code>getMode()</code> du transfert n'est appelé nulle part. Chaque enregistrement d'un
+script <code>0755</code> le rendait non exécutable, sans un mot.</p>
+<p>→ Un <code>chmod</code> explicite après l'envoi, avec le mode lu <strong>juste avant</strong>
+l'écrasement (via #50, pas via <code>stat()</code>). Le mode porté par la ligne affichée ne convient
+pas : il date du dernier <code>readdir</code> et un <code>chmod</code> fait au terminal depuis n'y
+figure pas — le restaurer <em>annule</em> alors le changement de permissions au lieu de le préserver.</p>
 
 <h3 id="piege-13">#13 — <code>@hidden</code> ne veut pas dire "non exporté"</h3>
 <p>Les deux sont indépendants. <code>EditProfileModalComponent</code> est <code>@hidden</code> ET
