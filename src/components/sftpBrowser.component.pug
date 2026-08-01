@@ -96,28 +96,33 @@
             //- over, or the gesture merely downloads the copy that the next one
             //- will carry. A pug comment cannot live inside an attribute list —
             //- it parses as attributes and fails on the first repeated word.
+            //- Everything here reads a precomputed field. Calling a method per
+            //- row — icon, tooltip, each cell — re-ran it on every change
+            //- detection pass, which a full directory turns into thousands of
+            //- date and size formats per cycle. Only the two genuinely dynamic
+            //- states stay as calls, and both are a plain lookup.
             .sftp-row(
-                *ngFor='let item of displayedFiles; let i = index; trackBy: trackByPath',
+                *ngFor='let row of rows; let i = index; trackBy: trackByRow',
                 [style.grid-template-columns]='gridTemplate',
                 [class.sftp-zebra]='i % 2 === 1',
-                [class.sftp-dim]='isHidden(item)',
-                [class.sftp-selected]='isSelected(item)',
-                [class.sftp-preparing]='isDragPreparing(item)',
+                [class.sftp-dim]='row.hidden',
+                [class.sftp-selected]='isSelected(row.item)',
+                [class.sftp-preparing]='isDragPreparing(row.item)',
                 draggable='true',
-                (dragstart)='onDragStart(item, $event)',
-                (click)='select(item)',
-                (dblclick)='openItem(item)',
-                (contextmenu)='showContextMenu(item, $event)',
-                [title]='rowTooltip(item)'
+                (dragstart)='onDragStart(row.item, $event)',
+                (click)='select(row.item)',
+                (dblclick)='openItem(row.item)',
+                (contextmenu)='showContextMenu(row.item, $event)',
+                [title]='row.tooltip'
             )
                 .cell-icon
-                    i.fa-fw([class]='getIcon(item)')
-                .cell-name {{ item.name }}
+                    i.fa-fw([class]='row.icon')
+                .cell-name {{ row.item.name }}
                 .cell-value(
-                    *ngFor='let column of visibleColumns',
-                    [class.cell-right]='column.numeric',
-                    [title]='cellValue(column, item)'
-                ) {{ cellValue(column, item) }}
+                    *ngFor='let cell of row.cells; let c = index',
+                    [class.cell-right]='visibleColumns[c].numeric',
+                    [title]='cell'
+                ) {{ cell }}
 
         .sftp-message(*ngIf='filterFoundNothing') Aucun fichier ne correspond au filtre.
 

@@ -14,6 +14,24 @@ import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
 
 /** An optional column of the file list. The name column is not one of these — it is always shown. */
+/**
+ * One rendered row, computed once instead of on every change detection pass.
+ *
+ * The template used to call a method for the icon, the tooltip and each cell.
+ * Angular re-runs those on *every* cycle, and Tabby runs a great many of them —
+ * a live terminal alone is enough. On a directory with a few thousand entries
+ * that meant thousands of date and size formatting calls per cycle, which is
+ * what made a full `/tmp` unusable rather than merely slow.
+ */
+export interface SftpRow {
+    item: SFTPFile
+    icon: string
+    tooltip: string
+    hidden: boolean
+    /** Formatted values, positionally aligned with `visibleColumns`. */
+    cells: string[]
+}
+
 export interface SftpColumn {
     id: string
     /** Header caption. Kept short: the whole list lives in a ~300px sidebar. */
@@ -536,9 +554,25 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
 
     ////// COLUMNS //////
     /** Configured columns, in the order declared in AVAILABLE_COLUMNS, ignoring ids that no longer exist. */
+    private columnCache: { key: string, result: SftpColumn[] }|null = null
+
+    /**
+     * Cached for its *identity*, not to save the filter.
+     *
+     * This getter feeds an `*ngFor` inside every row and the grid template of
+     * every row. Returning a fresh array each time made Angular re-diff the
+     * columns of each row on every cycle — the single biggest cost on a large
+     * directory. The config's own column list is the invalidation key.
+     */
     get visibleColumns (): SftpColumn[] {
         const selected: string[] = this.config.store.sidebarPlus?.sftpColumns ?? []
-        return this.availableColumns.filter(c => selected.includes(c.id))
+        const key = selected.join(' ')
+        if (this.columnCache?.key === key) {
+            return this.columnCache.result
+        }
+        const result = this.availableColumns.filter(c => selected.includes(c.id))
+        this.columnCache = { key, result }
+        return result
     }
 
     /**
@@ -547,8 +581,16 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * that generates no box cannot take a hover background or a bottom border.
      */
     get gridTemplate (): string {
-        return ['1.15rem', 'minmax(0, 1fr)', ...this.visibleColumns.map(c => c.width)].join(' ')
+        const columns = this.visibleColumns
+        if (this.gridCache?.columns === columns) {
+            return this.gridCache.result
+        }
+        const result = ['1.15rem', 'minmax(0, 1fr)', ...columns.map(c => c.width)].join(' ')
+        this.gridCache = { columns, result }
+        return result
     }
+
+    private gridCache: { columns: SftpColumn[], result: string }|null = null
 
     isColumnVisible (column: SftpColumn): boolean {
         return this.visibleColumns.some(c => c.id === column.id)
@@ -610,6 +652,40 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
 
     trackByPath (_index: number, item: SFTPFile): string {
         return item.fullPath
+    }
+
+    trackByRow (_index: number, row: SftpRow): string {
+        return row.item.fullPath
+    }
+
+    private rowCache: { source: SFTPFile[], columns: SftpColumn[], result: SftpRow[] }|null = null
+
+    /**
+     * The rows as the template consumes them: everything formatted up front.
+     *
+     * Recomputed only when the sorted list or the visible columns change, both
+     * of which are compared by reference — `displayedFiles` and
+     * `visibleColumns` each hand back a stable array until something real
+     * changes. `isSelected()` and `isDragPreparing()` stay as calls in the
+     * template on purpose: they are a `Set`/`Map` lookup, and they change
+     * without the list changing at all.
+     */
+    get rows (): SftpRow[] {
+        const source = this.displayedFiles
+        const columns = this.visibleColumns
+        const cached = this.rowCache
+        if (cached && cached.source === source && cached.columns === columns) {
+            return cached.result
+        }
+        const result = source.map(item => ({
+            item,
+            icon: this.getIcon(item),
+            tooltip: this.rowTooltip(item),
+            hidden: this.isHidden(item),
+            cells: columns.map(column => this.cellValue(column, item)),
+        }))
+        this.rowCache = { source, columns, result }
+        return result
     }
 
     toggleColumn (column: SftpColumn): void {
