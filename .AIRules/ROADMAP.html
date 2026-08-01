@@ -44,7 +44,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant #transferts</strong></td></tr>
-<tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill planned">🔧 Écrit, test en attente</span></td><td>Haute</td></tr>
+<tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -852,12 +852,17 @@ L'action écrit alors le LF elle-même.</p>
   pour un onglet divisé — le volet focalisé se demande explicitement, comme le fait déjà
   <code>focusTab()</code> dans <code>tabs.ts</code>. Aucun terminal en façade ⇒ ne rien faire, plutôt
   que de deviner une cible : ce raccourci écrit dans une session vivante.</li>
-<li><em>À confirmer au test, pas acquis</em> : que Tabby accepte d'enregistrer
-  <code>Ctrl-Enter</code>, son capteur de raccourcis filtrant certaines touches. Si la combinaison
-  est refusée, l'action reste utilisable en la liant à une autre touche depuis les réglages.</li>
+<li><strong>Confirmé au test</strong> : Tabby accepte <code>Ctrl-Enter</code>, le raccourci apparaît
+  dans les réglages avec sa touche par défaut — la réserve sur son capteur de touches était sans
+  objet.</li>
 </ul>
 <p>Premier usage réel de l'item « Raccourcis globaux » des
 <a href="#ui-polish">options &amp; polissage UI</a>, jusqu'ici jamais instancié.</p>
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-01</span>
+<p>Vérifié sur les cinq points : le raccourci est présent et lié dans les réglages ; le saut de
+ligne s'insère en session locale <em>et</em> en SSH distant ; <kbd>Entrée</kbd> seule continue de
+soumettre ; la combinaison reste sans effet pendant qu'un champ de la sidebar a le focus ; et dans un
+onglet divisé, c'est bien le volet focalisé qui reçoit.</p></div>
 
 <h3 id="confirmations-html">Confirmations en modale HTML (audit de conformité)</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30 comme principe transversal. Audit fait sur

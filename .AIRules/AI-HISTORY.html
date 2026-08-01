@@ -24,6 +24,40 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne (2026-08-01)</h2>
+<p>Premier chantier mené sur une branche depuis que l'option <code>branches</code> vaut
+<code>branche</code> : code et documentation arrivent ensemble sur <code>master</code>. Parti d'un
+signalement de régression du plugin, il s'est terminé en fonctionnalité — le diagnostic ayant montré
+qu'il n'y avait aucune régression à corriger.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-01</td><td><code>8f88366</code></td>
+<td><strong>Le diagnostic a retourné le problème.</strong> Signalé comme une régression imputée à la
+sélection multiple, mesuré au <em>literal next</em> de readline
+(<kbd>Ctrl</kbd>+<kbd>V</kbd> puis la touche) : <kbd>Entrée</kbd> et <kbd>Ctrl</kbd>+<kbd>Entrée</kbd>
+émettent <strong>tous deux <code>^M</code></strong>, seul <kbd>Ctrl</kbd>+<kbd>J</kbd> émet LF. Les
+deux frappes sont donc indistinguables une fois écrites sur le pty : aucune application distante ne
+peut les séparer, et il n'y avait <em>rien à réparer</em> — ni dans le plugin, ni dans l'application,
+ni dans Tabby. Trois observations avaient déjà écarté les fausses pistes : symptôme identique en
+local et en SSH sur des serveurs différents, aucun raccourci <code>Ctrl-Enter</code> déclaré par les
+trois plugins tiers chargés (vérifié dans leurs bundles), et une version de Tabby inchangée depuis le
+2026-07-22.</td></tr>
+
+<tr><td>2026-08-01</td><td><code>8f88366</code></td>
+<td><strong>La correction se place là où la distinction survit encore : le renderer.</strong>
+L'événement clavier y porte <code>ctrlKey</code>, et la couche de raccourcis de Tabby s'exécute avant
+l'écriture sur le pty. Un <code>HotkeyProvider</code> déclare l'action, le
+<code>ConfigProvider</code> lui donne <code>Ctrl-Enter</code> par défaut — sans quoi elle
+apparaîtrait dans les réglages sans aucune touche — et un service abonné à <code>hotkey$</code>
+appelle <code>sendInput('\n')</code>. <code>hotkey$</code> et non
+<code>unfilteredHotkey$</code> : le flux filtré se tait quand un champ de saisie a le focus, ce que
+le test a confirmé depuis le champ de renommage de la sidebar. La cible est le <em>volet</em>
+focalisé, jamais le split que rend <code>app.activeTab</code>, et l'absence de terminal en façade ne
+déclenche rien plutôt que de deviner une destination.</td></tr>
+</table>
+
 <h2>Cadrage rouvert sur <code>attribution</code> — purge de l'attribution IA (2026-08-01)</h2>
 <p>Entretien rouvert sur cette seule clé. <code>attribution</code> passe de <code>oui</code> à
 <strong><code>non</code></strong> : plus aucune métadonnée d'attribution IA dans les messages de
