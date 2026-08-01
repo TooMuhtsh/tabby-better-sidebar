@@ -136,9 +136,60 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.dragOut = new SftpDragOut(notices, zone, transfers, temp)
     }
 
+    override async ngOnInit (): Promise<void> {
+        await super.ngOnInit()
+        this.startAutoRefresh()
+        // The interval is rebuilt on every config change rather than tracked:
+        // the setting is edited from the settings tab, not from here, and
+        // restarting a timer is cheaper than watching one key.
+        this.config.changed$.subscribe(() => this.startAutoRefresh())
+    }
+
     ngOnDestroy (): void {
         this.editor.dispose()
         this.dragOut.dispose()
+        this.stopAutoRefresh()
+    }
+
+    ////// AUTO REFRESH //////
+    private autoRefreshTimer: ReturnType<typeof setInterval>|null = null
+
+    /**
+     * Reloads the listing on a timer, because nothing else does.
+     *
+     * SFTP has no change notification: a file created or removed from a shell
+     * simply does not appear until the directory is read again. Off by default
+     * (0 seconds) — a poll on a large directory is a full `readdir` each time,
+     * and the user is the one who knows whether that trade is worth it here.
+     *
+     * Skipped, never queued, while anything is in the middle of something: a
+     * menu open, a path being typed, a delete in flight. Refreshing under an
+     * open menu would rebuild the rows beneath it, and the selection with them.
+     */
+    private startAutoRefresh (): void {
+        this.stopAutoRefresh()
+        const seconds = Number(this.config.store.sidebarPlus?.sftpAutoRefreshSeconds ?? 0)
+        if (!seconds || seconds <= 0) {
+            return
+        }
+        this.autoRefreshTimer = setInterval(() => void this.autoRefresh(), seconds * 1000)
+    }
+
+    private stopAutoRefresh (): void {
+        if (this.autoRefreshTimer) {
+            clearInterval(this.autoRefreshTimer)
+            this.autoRefreshTimer = null
+        }
+    }
+
+    private async autoRefresh (): Promise<void> {
+        if (!this.sftp || this.deleteInFlight || this.editingPath !== null
+            || this.backgroundMenuOpen || this.displayMenuOpen) {
+            return
+        }
+        // `fallbackOnError: false` — a transient failure must not walk the user
+        // out of the directory they are looking at.
+        await this.navigate(this.path, false).catch(() => null)
     }
 
     ////// CONTEXT MENUS //////

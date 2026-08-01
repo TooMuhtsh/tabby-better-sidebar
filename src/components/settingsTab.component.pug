@@ -60,6 +60,28 @@
       | arrivent en copies vides. Un traitement correct viendra avec le
       | gestionnaire de transferts.
 
+  h3.mt-4.mb-1 Rafraîchissement automatique du panneau SFTP
+  p.text-muted.small.mb-2
+    | SFTP ne signale aucun changement : un fichier créé ou supprimé depuis un
+    | terminal n'apparaît qu'au prochain chargement du dossier. Ce réglage relit
+    | le dossier affiché à intervalle régulier.
+
+  .form-group.mb-2
+    label.form-label(for='sidebar-plus-auto-refresh') Intervalle, en secondes (0 pour désactiver)
+    input#sidebar-plus-auto-refresh.form-control(
+      type='number',
+      min='0',
+      step='1',
+      [ngModel]='autoRefreshSeconds',
+      (ngModelChange)='setAutoRefreshSeconds($event)'
+    )
+  p.text-muted.small
+    | Chaque rafraîchissement relit tout le dossier. Sur un dossier très peuplé
+    | c'est une opération coûteuse, d'où le réglage désactivé par défaut. Le
+    | rafraîchissement est sauté — jamais mis en attente — tant qu'un menu est
+    | ouvert, qu'un chemin est en cours de saisie ou qu'une suppression est en
+    | cours.
+
   h3.mt-4.mb-1 Suppression dans le panneau SFTP
   .form-group.mb-2
     label.form-label(for='sidebar-plus-delete-default') Bouton activé par Entrée dans la confirmation

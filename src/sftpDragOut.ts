@@ -4,6 +4,7 @@ import { NgZone } from '@angular/core'
 import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { electronRemote } from './electronRemote'
+import { readRemoteEntry } from './remoteEntry'
 import { SidebarPlusTempFilesService } from './tempFiles.service'
 import { SftpTransfers } from './transfers'
 
@@ -231,7 +232,7 @@ export class SftpDragOut {
      * gone.
      */
     private async remoteFingerprint (sftp: SftpSession, item: SFTPFile): Promise<SFTPFile> {
-        return await sftp.stat(item.fullPath).catch(() => item)
+        return await readRemoteEntry(sftp, item.fullPath) ?? item
     }
 
     /**
@@ -351,11 +352,22 @@ export class SftpDragOut {
         await Promise.all(workers)
     }
 
-    /** A failed `stat()` counts as "directory": the entry is skipped rather than risking the whole copy on it. */
+    /**
+     * Whether a symlink points at a directory. A failure counts as "yes": the
+     * entry is skipped rather than risking the whole copy on it.
+     *
+     * Resolved through the link and read from the *listing*, not from `stat()`
+     * — whose mode is always 0 here, which left the mode test of piège #45
+     * permanently false and the guard rail resting on `isDirectory` alone.
+     */
     private async targetIsDirectory (sftp: SftpSession, remotePath: string): Promise<boolean> {
         try {
-            const stat = await sftp.stat(remotePath)
-            return stat.isDirectory || (stat.mode & 0o170000) === 0o040000
+            const target = await sftp.readlink(remotePath)
+            const entry = await readRemoteEntry(sftp, path.posix.resolve(path.posix.dirname(remotePath), target))
+            if (!entry) {
+                return true
+            }
+            return entry.isDirectory || (entry.mode & 0o170000) === 0o040000
         } catch {
             return true
         }

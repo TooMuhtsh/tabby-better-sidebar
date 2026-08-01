@@ -60,6 +60,11 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // gesture appears to do nothing while it downloads — with no
             // progress and no way to cancel. Files are always draggable.
             sftpDragOutFolders: false,
+            // Seconds between two automatic reloads of the SFTP listing, 0 to
+            // disable. Off by default: SFTP has no change notification, so a
+            // refresh is a full readdir, which is not free on a large
+            // directory.
+            sftpAutoRefreshSeconds: 0,
             // Display toggles of the SFTP browser's header menu.
             sftpFoldersFirst: true,
             sftpShowHidden: true,

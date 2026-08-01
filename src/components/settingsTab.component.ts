@@ -45,6 +45,17 @@ export class SidebarPlusSettingsTabComponent {
         await this.config.save()
     }
 
+    get autoRefreshSeconds (): number {
+        return Number(this.config.store.sidebarPlus?.sftpAutoRefreshSeconds ?? 0)
+    }
+
+    /** Clamped to whole seconds and never negative; 0 is the documented "off". */
+    async setAutoRefreshSeconds (value: unknown): Promise<void> {
+        const seconds = Math.max(0, Math.round(Number(value) || 0))
+        this.config.store.sidebarPlus.sftpAutoRefreshSeconds = seconds
+        await this.config.save()
+    }
+
     async save (): Promise<void> {
         await this.editors.setEditorPath(this.editorPath.trim())
     }

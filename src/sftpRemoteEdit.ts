@@ -3,6 +3,7 @@ import * as path from 'path'
 import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { Opener, SidebarPlusEditorService } from './editorLauncher.service'
+import { readRemoteEntry } from './remoteEntry'
 import { SidebarPlusTempFilesService } from './tempFiles.service'
 import { SftpTransfers } from './transfers'
 
@@ -200,8 +201,8 @@ export class SftpRemoteEditor {
 
     /** The remote entry as the server reports it now; falls back to the listing's own view. */
     private async remoteStamp (sftp: SftpSession, item: SFTPFile): Promise<RemoteStamp> {
-        const stat = await sftp.stat(item.fullPath).catch(() => item)
-        return { size: stat.size, mtime: stat.modified.getTime(), mode: stat.mode }
+        const fresh = await readRemoteEntry(sftp, item.fullPath) ?? item
+        return { size: fresh.size, mtime: fresh.modified.getTime(), mode: fresh.mode }
     }
 
     private changed (before: RemoteStamp, after: RemoteStamp): boolean {
