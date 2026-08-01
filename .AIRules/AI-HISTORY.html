@@ -24,6 +24,22 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Renommer une entrée depuis le panneau SFTP (2026-08-01)</h2>
+<p>Demande venue en fin de session, livrée sur branche et validée dans la foulée.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-01</td><td><code>88079be</code></td>
+<td><strong>« Renommer... » au clic droit, extension comprise.</strong> Le champ porte le nom complet
+plutôt que la racine : changer l'extension était l'usage demandé, et rien n'avertit en la modifiant —
+sur un serveur distant, c'est délibéré. Deux garde-fous, tous deux tournés vers ce qui ne peut pas
+s'annuler : un <code>/</code> est refusé, car <code>rename()</code> accepterait un chemin et
+déplacerait l'entrée depuis un champ de renommage ; et une collision est vérifiée avant l'appel,
+SFTP v3 laissant chaque serveur décider — certains écrasent. La sélection suit l'entrée, et la liste
+se met à jour par la fusion différentielle plutôt que par <code>navigate()</code>.</td></tr>
+</table>
+
 <h2>Transferts officiels, fraîcheur des copies, purge et performance de la liste (2026-08-01)</h2>
 <p>Chantier <a href="ROADMAP.html#transferts-officiels">#transferts-officiels</a> mené sur branche,
 élargi en cours de route par ce que la passe de test a révélé. Le plan portait sur quatre volets ;

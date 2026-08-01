@@ -45,6 +45,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#liste-performance">Performance de la liste SFTP et rafraîchissement automatique</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
+<tr><td><a href="#renommer-sftp">Renommer une entrée depuis le panneau SFTP</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -883,6 +884,29 @@ notifications duraient une seconde (<a href="AI-CONTEXT.html#piege-51">#51</a>) 
 pour une erreur ; et la sidebar <strong>revient toujours sur Profils</strong> au démarrage — la vue
 SFTP n'a de sens qu'à côté de la session pour laquelle elle a été ouverte, et cette session n'existe
 plus après un redémarrage.</p></div>
+
+<h3 id="renommer-sftp">Renommer une entrée depuis le panneau SFTP</h3>
+<p>Demandé par l'utilisateur le 2026-08-01. Entrée « Renommer... » du clic droit, entre « Ouvrir
+avec... » et « Supprimer », par <code>SFTPSession.rename()</code>, avec la modale HTML de
+<code>tabby-core</code> (<code>PromptModalComponent</code>) — l'invariant des
+<a href="#confirmations-html">confirmations en HTML</a> vaut aussi pour les saisies.</p>
+<ul>
+<li><strong>Champ prérempli avec le nom complet, extension comprise</strong> : pouvoir changer
+  l'extension faisait partie de la demande, elle doit donc être éditable. Aucun avertissement en la
+  changeant — sur un serveur distant, c'est un acte délibéré, pas une bévue à intercepter.</li>
+<li><strong>Renomme, ne déplace pas</strong> : un <code>/</code> est refusé. <code>rename()</code>
+  accepterait volontiers un chemin et relogerait l'entrée ailleurs, ce qui, déclenché depuis un champ
+  de renommage, serait indéchiffrable après coup.</li>
+<li><strong>Collision refusée, pas arbitrée</strong> : l'existence de la cible est vérifiée avant
+  l'appel. SFTP v3 laisse chaque implémentation décider de ce qu'un <code>rename</code> sur un nom
+  existant produit, et certaines écrasent — refuser est la seule réponse qui ne peut rien détruire.
+  Une confirmation « écraser ? » reste possible si l'usage la réclame.</li>
+<li><strong>La sélection suit l'entrée</strong>, et la liste se met à jour par la fusion
+  différentielle du <a href="#liste-performance">rafraîchissement</a>, donc sans clignotement.</li>
+</ul>
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-01</span>
+<p>Vérifié sur un fichier et sur un dossier, changement d'extension compris, ainsi que les deux refus
+attendus — nom contenant <code>/</code>, nom déjà pris — qui laissent le serveur intact.</p></div>
 
 <h3 id="ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</h3>
 <div class="callout important"><span class="callout-title">Ce n'est pas une régression — diagnostic établi le 2026-08-01</span>
