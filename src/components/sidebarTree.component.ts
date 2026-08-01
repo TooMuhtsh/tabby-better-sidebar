@@ -108,11 +108,14 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * ("bascule par onglet ou globale ?"), and a single mode is the version
      * that can be judged in use before committing to per-tab bookkeeping.
      *
-     * Per-machine UI state, so localStorage like panelInternalWidth and
-     * activeWorkspaceId — not a config.yaml key that would sync across
-     * machines on every click.
+     * **Never restored across restarts**, by explicit user request
+     * (2026-08-01): the sidebar always comes back on Profils. The SFTP view
+     * only makes sense next to the session it was opened for, and that session
+     * is gone after a restart — landing in it meant switching back by hand
+     * every single time. The toggle stays session-local state, held in this
+     * field alone.
      */
-    sftpMode = window.localStorage.sidebarPlusSftpMode === 'true'
+    sftpMode = false
 
     /**
      * Groups (isTemplate/blacklist already filtered, like profileGroups) but
@@ -803,7 +806,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     ////// SFTP VIEW //////
     setSftpMode (on: boolean): void {
         this.sftpMode = on
-        window.localStorage.sidebarPlusSftpMode = on ? 'true' : 'false'
         if (on) {
             // Leaving this on would put the sidebar back into the hidden-items
             // panel — not the tree — the next time SFTP is switched off.

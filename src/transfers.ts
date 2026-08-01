@@ -1,4 +1,5 @@
-import { FileDownload, FileUpload, NotificationsService, PlatformService } from 'tabby-core'
+import { FileDownload, FileUpload, PlatformService } from 'tabby-core'
+import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPPanelComponent } from 'tabby-ssh'
 import { LocalFileDownload, LocalFileUpload } from './sftpLocalTransfer'
 
@@ -21,7 +22,7 @@ type SftpSession = SFTPPanelComponent['sftp']
 export class SftpTransfers {
     constructor (
         private platform: PlatformService,
-        private notifications: NotificationsService,
+        private notifications: SidebarPlusNoticesService,
     ) { }
 
     /**
@@ -79,15 +80,18 @@ export class SftpTransfers {
         // A mode of 0 means we never knew the original one; leave the server's
         // own default alone rather than clamping the file to nothing.
         if (!mode) {
+            console.warn(`[better-sidebar] ${name} : mode inconnu (0), permissions non rétablies`)
             return
         }
         const permissions = mode & 0o7777
         try {
             await sftp.chmod(remotePath, permissions)
+            console.info(`[better-sidebar] ${name} : chmod ${permissions.toString(8)} appliqué`)
         } catch (e) {
             // Said out loud, not swallowed: the file *was* written, but it no
             // longer carries the permissions it had. On a script, that is the
             // difference between runnable and not — the user has to know.
+            console.error(`[better-sidebar] ${name} : chmod ${permissions.toString(8)} refusé`, e)
             this.notifications.error(
                 `${name} a été renvoyé, mais ses permissions n'ont pas pu être rétablies (${permissions.toString(8)})`,
                 String(e),

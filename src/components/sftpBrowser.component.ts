@@ -8,6 +8,7 @@ import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { EmptyFileUpload } from '../sftpLocalTransfer'
 import { DirectoryWeight, SftpDragOut } from '../sftpDragOut'
 import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
+import { SidebarPlusNoticesService } from '../notices.service'
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
 import { SftpTransfers } from '../transfers'
 import { clampInViewport } from '../viewport'
@@ -126,12 +127,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         private editors: SidebarPlusEditorService,
         platform: PlatformService,
         temp: SidebarPlusTempFilesService,
+        private notices: SidebarPlusNoticesService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
-        const transfers = new SftpTransfers(platform, notify)
-        this.editor = new SftpRemoteEditor(notify, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel))
-        this.dragOut = new SftpDragOut(notify, zone, transfers, temp)
+        const transfers = new SftpTransfers(platform, notices)
+        this.editor = new SftpRemoteEditor(notices, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel))
+        this.dragOut = new SftpDragOut(notices, zone, transfers, temp)
     }
 
     ngOnDestroy (): void {
@@ -362,7 +364,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         event.preventDefault()
         const isDirectory = this.isDirectoryEntry(item)
         if (isDirectory && !this.config.store.sidebarPlus?.sftpDragOutFolders) {
-            this.notify.notice('Le glisser-déposer des dossiers est désactivé — activez-le dans Paramètres → Better Sidebar')
+            this.notices.notice('Le glisser-déposer des dossiers est désactivé — activez-le dans Paramètres → Better Sidebar')
             return
         }
         if (this.dragOut.startDrag(item)) {
@@ -532,7 +534,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         }
         try {
             await this.deleteRecursive(item)
-            this.notify.notice(`${item.name} supprimé`)
+            this.notices.notice(`${item.name} supprimé`)
             this.selectedPath = null
             await this.navigate(this.path)
         } catch (e) {

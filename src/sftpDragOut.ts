@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { NgZone } from '@angular/core'
-import { NotificationsService } from 'tabby-core'
+import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { electronRemote } from './electronRemote'
 import { SidebarPlusTempFilesService } from './tempFiles.service'
@@ -33,6 +33,9 @@ export interface DirectoryWeight {
     truncated: boolean
 }
 
+/** How many files of a directory are fetched at once. See `downloadAll()`. */
+const DOWNLOAD_CONCURRENCY = 4
+
 /**
  * A 32×32 sheet-of-paper PNG, inlined as a data URL.
  *
@@ -41,10 +44,7 @@ export interface DirectoryWeight {
  * the plugin bundles to a single file and a `file://` path would have to be
  * resolved at runtime from inside a webpack bundle.
  */
-/** How many files of a directory are fetched at once. See `downloadAll()`. */
-const DOWNLOAD_CONCURRENCY = 4
-
-const DRAG_ICON_DATA_URL ='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAASUlEQVR4nO3SMQoAIAwEwfz/kRZ2vkJbEe1kI7IHKe+YIhHm1ZTa+s0TgAFOXRSw6+OAdSMFMO9ggPQnFCBAgAABAgQI+AdgqAwQ3EkaXaJWzQAAAABJRU5ErkJggg=='
+const DRAG_ICON_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAASUlEQVR4nO3SMQoAIAwEwfz/kRZ2vkJbEe1kI7IHKe+YIhHm1ZTa+s0TgAFOXRSw6+OAdSMFMO9ggPQnFCBAgAABAgQI+AdgqAwQ3EkaXaJWzQAAAABJRU5ErkJggg=='
 
 /**
  * Dragging a remote entry out of the panel and into the OS.
@@ -76,7 +76,7 @@ export class SftpDragOut {
     private dirs = new Set<string>()
 
     constructor (
-        private notifications: NotificationsService,
+        private notifications: SidebarPlusNoticesService,
         private zone: NgZone,
         private transfers: SftpTransfers,
         private temp: SidebarPlusTempFilesService,

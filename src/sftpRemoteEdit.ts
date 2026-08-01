@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { NotificationsService } from 'tabby-core'
+import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { Opener, SidebarPlusEditorService } from './editorLauncher.service'
 import { SidebarPlusTempFilesService } from './tempFiles.service'
@@ -76,7 +76,7 @@ export class SftpRemoteEditor {
     private sessions = new Map<string, EditSession>()
 
     constructor (
-        private notifications: NotificationsService,
+        private notifications: SidebarPlusNoticesService,
         private editors: SidebarPlusEditorService,
         private transfers: SftpTransfers,
         private temp: SidebarPlusTempFilesService,
