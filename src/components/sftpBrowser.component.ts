@@ -8,6 +8,7 @@ import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { EmptyFileUpload } from '../sftpLocalTransfer'
 import { DirectoryWeight, SftpDragOut } from '../sftpDragOut'
 import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
+import { SidebarPlusDragOutServer } from '../dragOutServer.service'
 import { SidebarPlusNoticesService } from '../notices.service'
 import { readRemoteEntry } from '../remoteEntry'
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
@@ -129,6 +130,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         platform: PlatformService,
         temp: SidebarPlusTempFilesService,
         private notices: SidebarPlusNoticesService,
+        private dragServer: SidebarPlusDragOutServer,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
@@ -473,10 +475,27 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     private gestureHeld = false
 
     onDragStart (item: SFTPFile, event: DragEvent): void {
+        const isDirectory = this.isDirectoryEntry(item)
+
+        // The real drag-and-drop path: announce the file and let Chromium claim
+        // its content when — and only when — the drop lands. `preventDefault()`
+        // is deliberately *not* called here, since the browser's own drag is the
+        // one doing the work.
+        //
+        // Files only: a `DownloadURL` announces exactly one file, so a
+        // directory still goes through the copy-then-drag route below.
+        if (!isDirectory && this.dragServer.ready && event.dataTransfer) {
+            const url = this.dragServer.offer(this.sftp, item)
+            if (url) {
+                event.dataTransfer.effectAllowed = 'copy'
+                event.dataTransfer.setData('DownloadURL', `application/octet-stream:${item.name}:${url}`)
+                return
+            }
+        }
+
         event.preventDefault()
         this.gestureHeld = true
         window.addEventListener('mouseup', () => { this.gestureHeld = false }, { once: true })
-        const isDirectory = this.isDirectoryEntry(item)
         if (isDirectory && !this.config.store.sidebarPlus?.sftpDragOutFolders) {
             this.notices.notice('Le glisser-déposer des dossiers est désactivé — activez-le dans Paramètres → Better Sidebar')
             return

@@ -48,10 +48,27 @@ sidebar-plus-transfers {
         }
     }
 
+    // The name is the only part allowed to give way: it shrinks and ellipsises
+    // while everything else keeps its natural width. Without `flex: 1 1 0`, a
+    // long name pushed the figures and the timestamp past the edge and flex
+    // wrapped them onto a second line.
     .transfer-name {
+        flex: 1 1 0;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
         min-width: 0;
+    }
+
+    // Everything besides the name holds its size and never wraps — a row is one
+    // line, always.
+    .transfer-arrow,
+    .transfer-figure,
+    .transfer-speed,
+    .transfer-time,
+    .transfer-remove {
+        flex: 0 0 auto;
+        white-space: nowrap;
     }
 
     .transfer-arrow {
