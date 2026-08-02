@@ -174,6 +174,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     profileStatuses = new Map<string, ProfileConnectionStatus>()
     private statusSubscription: Subscription|null = null
+    private configSubscription: Subscription|null = null
     /** Focus moves *between panes* of the active split emit nothing on AppService — see watchSplitFocus(). */
     private splitFocusSubscription: Subscription|null = null
     private modalWatchInterval: ReturnType<typeof setInterval>|null = null
@@ -278,7 +279,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     async ngOnInit (): Promise<void> {
         await this.loadTreeItems()
-        this.config.changed$.subscribe(() => this.loadTreeItems())
+        // Kept so ngOnDestroy can drop it. The component *is* destroyed —
+        // SidebarPlusMountService unmounts it when `sidebarPlus.enabled` goes
+        // false — and an orphaned subscription here means a dead component
+        // still rebuilding the whole tree on every config.save() of the
+        // application, twice cloned, for as long as the window lives.
+        this.configSubscription = this.config.changed$.subscribe(() => this.loadTreeItems())
 
         this.refreshProfileStatuses()
         this.refreshActiveSessions()
@@ -307,6 +313,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     ngOnDestroy (): void {
         this.statusSubscription?.unsubscribe()
+        this.configSubscription?.unsubscribe()
         this.splitFocusSubscription?.unsubscribe()
         if (this.modalWatchInterval) {
             clearInterval(this.modalWatchInterval)
@@ -932,6 +939,21 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     private static groupIdFromContainerId (containerId: string): string {
         return containerId.replace(/^profiles-/, '')
+    }
+
+    /**
+     * Group ids that name a view, not a folder.
+     *
+     * Their rows live in real folders elsewhere — "Épinglés" gathers pinned
+     * profiles from anywhere, the search group flattens the whole tree — so
+     * their displayed order describes nothing that can be written back.
+     * `ungrouped` is deliberately absent: it really is where profiles with no
+     * group live, and its order is theirs.
+     */
+    private static readonly SYNTHETIC_GROUP_IDS = ['favorites', 'search']
+
+    private static isSyntheticGroupId (groupId: string): boolean {
+        return SidebarPlusTreeComponent.SYNTHETIC_GROUP_IDS.includes(groupId)
     }
 
     /** `groups-<id>` → that group's id, `groups-root` → null (the shape persistGroupOrder() expects for the root level). */
@@ -1928,7 +1950,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex)
             profile.group = targetGroup.id === 'ungrouped' ? undefined : targetGroup.id
             await this.profilesService.writeProfile(profile)
-            await this.persistProfileOrder(sourceGroupId, event.previousContainer.data)
+            // Only when the source is a real folder. CDK resolves a drop target
+            // among the lists connected to the *source*, so a profile can be
+            // dragged out of "Épinglés" even though nothing can be dropped into
+            // it — and persisting that list's order on the "Tous" workspace
+            // rewrote `weight` on every profile still pinned, ranking them by
+            // their position among the favorites instead of within their own
+            // folders.
+            if (!SidebarPlusTreeComponent.isSyntheticGroupId(sourceGroupId)) {
+                await this.persistProfileOrder(sourceGroupId, event.previousContainer.data)
+            }
         }
         await this.persistProfileOrder(targetGroup.id, event.container.data)
         this.config.save()
@@ -2285,8 +2316,26 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         newParentGroupId: string|null,
         allGroups: PartialProfileGroup<ProfileGroup>[],
     ): Promise<string> {
+        const fullGroup = allGroups.find(g => g.id === groupId)
+        // Carried over wholesale rather than field by field. Listing the four
+        // fields the sidebar knows about silently dropped `defaults` — the
+        // per-provider group defaults Tabby merges into the ConfigProxy of
+        // *every profile of the folder* — so re-parenting a folder stripped its
+        // profiles of everything they inherited from it. Anything a future
+        // tabby-core adds to ProfileGroup now follows on its own.
+        //
+        // Three fields are deliberately left out: `id`, which has to be empty
+        // for `genId` to mint a new one; `profiles`, whose members are migrated
+        // one at a time below; and `children`, which only exists on a tree node
+        // and would be stale the moment the recursion rebuilds it.
+        const { id: _id, profiles: _profiles, children: _children, ...carried } =
+            (fullGroup ?? {}) as PartialProfileGroup<ProfileGroup> & { children?: unknown }
         const replacement = {
+            ...carried,
             id: '',
+            // From `meta` rather than from the snapshot: the caller hands over
+            // the node as displayed, which is the one carrying a rename made
+            // in this very gesture.
             name: meta.name,
             icon: meta.icon,
             color: meta.color,
@@ -2294,7 +2343,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         } as PartialProfileGroup<ProfileGroup>
         await this.profilesService.newProfileGroup(replacement, { genId: true })
 
-        const fullGroup = allGroups.find(g => g.id === groupId)
         for (const profile of (fullGroup?.profiles ?? []).filter(p => !p.isTemplate)) {
             profile.group = replacement.id
             await this.profilesService.writeProfile(profile)
@@ -2315,6 +2363,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return replacement.id
     }
 
+    /**
+     * Carries every trace of a group's id over to the one it was just given.
+     *
+     * Everything keyed by group id has to be listed here — a state left behind
+     * does not fail, it silently reverts to its default the next time the tree
+     * loads. `favoriteGroups` was the one missing: re-parenting a pinned folder
+     * dropped its star and left a dead id nobody ever collects, since
+     * `pruneDeadOrderIds()` only walks the order maps.
+     */
     private migrateWorkspaceGroupId (oldId: string, newId: string): void {
         this.config.store.sidebarPlus ??= {}
         const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
@@ -2323,12 +2380,39 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             if (hiddenIndex !== -1) {
                 ws.hiddenGroupIds[hiddenIndex] = newId
             }
+            const favoriteIndex = ws.favoriteGroups?.indexOf(oldId) ?? -1
+            if (favoriteIndex !== -1) {
+                ws.favoriteGroups[favoriteIndex] = newId
+            }
             SidebarPlusTreeComponent.renameOrderKey(ws.groupOrder, oldId, newId)
         }
         this.config.store.sidebarPlus.workspaces = workspaces
 
+        // The "Tous" workspace's own favorites, which live at the top level
+        // rather than in an entry of `workspaces`.
+        const favorites: string[] = this.config.store.sidebarPlus.favoriteGroups ?? []
+        const topLevelIndex = favorites.indexOf(oldId)
+        if (topLevelIndex !== -1) {
+            favorites[topLevelIndex] = newId
+            this.config.store.sidebarPlus.favoriteGroups = favorites
+        }
+
         this.config.store.sidebarPlus.groupOrder ??= {}
         SidebarPlusTreeComponent.renameOrderKey(this.config.store.sidebarPlus.groupOrder, oldId, newId)
+
+        // Collapsed state lives in localStorage, not in config.yaml — same
+        // reasoning, same consequence if forgotten: the folder came back
+        // expanded after every re-parenting.
+        try {
+            const collapsed = JSON.parse(window.localStorage.sidebarPlusGroupCollapsed ?? '{}')
+            if (oldId in collapsed) {
+                collapsed[newId] = collapsed[oldId]
+                delete collapsed[oldId]
+                window.localStorage.sidebarPlusGroupCollapsed = JSON.stringify(collapsed)
+            }
+        } catch {
+            // Unreadable storage is not worth failing a move over.
+        }
     }
 
     /** Renames `oldId` to `newId` both as a value wherever it appears in a sibling order list, and as the map's own parent key (siblings ordered *under* that group). */
@@ -2783,9 +2867,22 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return new Promise(resolve => setTimeout(resolve, ms))
     }
 
+    /**
+     * Refuses to delete a folder that still holds anything — counted on the
+     * *unfiltered* snapshot, not on the node as displayed.
+     *
+     * The displayed node has already been through the active workspace's
+     * hide lists, so a folder whose whole content is hidden there looked empty
+     * and sailed past this guard. `deleteProfileGroup()` then removed the group
+     * and cleared `group` on every profile that lived in it: the hidden
+     * profiles resurfaced in "Ungrouped", visible everywhere, and hidden
+     * subfolders were orphaned up to the root. `rawGroupsSnapshot` is the same
+     * source `isSelfOrDescendant()` and `rescueTargetGroupId()` already consult
+     * for exactly this kind of check.
+     */
     async deleteGroup (group: PartialProfileGroup<CollapsableProfileGroup>): Promise<void> {
-        const childCount = group.children?.length ?? 0
-        const profileCount = group.profiles?.length ?? 0
+        const childCount = this.rawGroupsSnapshot.filter(g => g.parentGroupId === group.id).length
+        const profileCount = this.rawGroupsSnapshot.find(g => g.id === group.id)?.profiles?.length ?? 0
         if (childCount || profileCount) {
             const reasons: string[] = []
             if (childCount) {
@@ -2794,9 +2891,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             if (profileCount) {
                 reasons.push(`${profileCount} profil${profileCount > 1 ? 's' : ''}`)
             }
+            // Said explicitly when the folder looks empty on screen: otherwise
+            // the refusal reads as a bug rather than as a warning.
+            const visible = (group.children?.length ?? 0) + (group.profiles?.length ?? 0)
+            const hint = visible === 0
+                ? ` Ce contenu est masqué dans le workspace « ${this.activeWorkspace?.name ?? 'courant'} ».`
+                : ''
             this.notifications.error(
                 `Impossible de supprimer "${group.name}"`,
-                `Ce dossier contient encore ${reasons.join(' et ')}. Videz-le d'abord.`,
+                `Ce dossier contient encore ${reasons.join(' et ')}.${hint} Videz-le d'abord.`,
             )
             this.closeContextMenu()
             return
