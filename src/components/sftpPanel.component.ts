@@ -17,7 +17,19 @@ import {
 import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
 import { SSHTabComponent } from 'tabby-ssh'
 import { getAllOpenTabs, isLiveSSHTab } from '../tabs'
+import { SidebarPlusNoticesService } from '../notices.service'
 import { SidebarPlusSftpBrowserComponent } from './sftpBrowser.component'
+
+/**
+ * How long a lost session is given to come back before the sidebar switches
+ * away from it.
+ *
+ * Long enough to cover a reconnect (connection + auth), short enough that a
+ * genuinely dead session doesn't leave a panel answering "Session closed" to
+ * every gesture. sync() runs on a 1s tick, so the switch lands between this
+ * value and one second later.
+ */
+const SESSION_LOSS_GRACE_MS = 3000
 
 /**
  * Hosts the SFTP browser inside the sidebar, bound to whatever SSH tab
@@ -107,6 +119,14 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
      * to `/` on its own.
      */
     private lastPaths = new Map<SSHTabComponent, string>()
+    /**
+     * When the bound session was first seen as lost, or null while it is fine.
+     *
+     * Drives the grace period rather than a timer: sync() already runs on a
+     * tick, and a timer would have to be cancelled from every path that
+     * rebinds, releases or destroys the panel.
+     */
+    private sessionLostSince: number|null = null
     private subscription: Subscription|null = null
     /** Tracks the focus changes *within* the active split tab, re-subscribed whenever the active tab changes. */
     private splitFocusSubscription: Subscription|null = null
@@ -123,6 +143,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         private app: AppService,
         private appRef: ApplicationRef,
         private environmentInjector: EnvironmentInjector,
+        private notices: SidebarPlusNoticesService,
     ) { }
 
     ngOnInit (): void {
@@ -180,6 +201,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         this.boundTab = null
         this.boundSession = null
         this.boundTabTitle = null
+        this.sessionLostSince = null
     }
 
     private sync (): void {
@@ -196,11 +218,24 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         // blocks of the same sidebar answering "does this session exist"
         // differently. No automatic return when it comes back: one click is
         // enough, and the user may well have moved on to the profiles.
+        //
+        // But not on the spot: a reconnect that lands within the grace period
+        // is a rebuild, and the panel comes back on its own directory without
+        // the view ever moving. Waiting is what makes that the normal outcome
+        // instead of a race against the tick — measured on the tab's own
+        // Reconnect button, which beats a 1s tick often enough to look random.
         if (this.boundSessionIsLost()) {
+            this.sessionLostSince ??= Date.now()
+            if (Date.now() - this.sessionLostSince < SESSION_LOSS_GRACE_MS) {
+                return
+            }
+            const label = this.boundTabTitle ? ` (${this.boundTabTitle})` : ''
             this.dropDeadPanel()
+            this.notices.notice(`Session SSH perdue${label} — retour sur la vue Profils`)
             this.closed.emit()
             return
         }
+        this.sessionLostSince = null
 
         const tab = this.resolveFocusedSSHTab()
         if (tab === this.boundTab && tab?.sshSession === this.boundSession) {
@@ -254,6 +289,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         this.boundTab = null
         this.boundSession = null
         this.boundTabTitle = null
+        this.sessionLostSince = null
     }
 
     /**
