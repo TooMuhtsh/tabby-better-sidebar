@@ -289,3 +289,25 @@ sidebar-plus-sftp-browser .sftp-row.sftp-preparing {
         font-style: italic;
     }
 }
+
+// Where a drop is about to land. Exactly one of the two is ever shown: a row
+// when a folder is aimed at, the outline when nothing is and the files go to
+// the directory on screen. Showing both at once would say two places at the
+// same time, which is the one thing this feedback exists to prevent.
+//
+// Stronger than selection on purpose — the selection may well be somewhere else
+// on the list while the drag is in flight, and the target has to be the thing
+// the eye lands on.
+sidebar-plus-sftp-browser .sftp-row.sftp-drop-target,
+sidebar-plus-sftp-browser .sftp-row.sftp-drop-target:hover {
+    background-color: color-mix(in srgb, var(--theme-primary) 85%, transparent);
+    box-shadow: inset 0 0 0 1px var(--theme-primary);
+    // The `..` row is dimmed at rest; as a target it has to read like any other.
+    opacity: 1;
+}
+
+// Inset rather than a plain border: the body already has one, and a second
+// would shift every row by a pixel the moment a drag enters the panel.
+sidebar-plus-sftp-browser .sftp-body.sftp-drop-here {
+    box-shadow: inset 0 0 0 2px var(--theme-primary);
+}

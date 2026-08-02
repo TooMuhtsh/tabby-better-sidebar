@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #64.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #65.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -41,7 +41,7 @@ Tabby.</p>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61 + 6 points de veille</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64 + 6 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8, #63</li>
@@ -430,6 +430,26 @@ mais le voile est retiré entre-temps : <code>Cannot read properties of undefine
 l'exception, le transfert n'est pas affecté, et le scintillement théorique du voile n'a été vu ni en
 test ni à l'usage. À connaître pour ne pas partir en chasse d'un bug du plugin en lisant la console
 pendant un glisser — le fichier fautif est celui de Tabby.</p>
+
+<h3 id="piege-64">#64 — <code>startUploadFromDragEvent()</code> ne lit qu'une <em>tranche</em> de chaque
+dossier déposé : au-delà, le reste part à la poubelle sans un mot</h3>
+<p><code>PlatformService.startUploadFromDragEvent()</code> parcourt l'arborescence déposée en
+appelant <code>dirReader.readEntries(...)</code> <strong>une seule fois</strong> par dossier. Or
+<code>readEntries()</code> ne rend pas un listing : il rend une tranche — 100 entrées sous Chromium —
+et le <strong>seul</strong> signal de fin prévu par l'API est une réponse vide, donc il faut le
+rappeler jusqu'à ce qu'il ne rende plus rien. Un dossier de 250 fichiers en envoie 100, sans erreur,
+sans avertissement, et le récapitulatif qui suit compte ce qu'il a vu : « 100 fichiers envoyés ».</p>
+<p>Ce piège vaut pour tout ce qui accepte un dépôt, y compris la <code>dropZone.directive</code> de
+<code>tabby-core</code>, qui délègue à cette même méthode. → Ce plugin fait sa propre traversée
+(<code>readAllEntries()</code> dans <code>sftpBrowser.component.ts</code>), qui boucle jusqu'à la
+réponse vide. Deux effets de bord bienvenus : <code>startUploadFromDragEvent()</code> publie chaque
+fichier sur <code>fileTransferStarted$</code> <em>pendant</em> le parcours — donc avant toute
+confirmation, ce qui laissait des lignes « en cours » que rien ne terminait si l'utilisateur
+renonçait — et <code>appRoot</code> y étant abonné, chaque dépôt ouvrait le menu de transferts natif.
+Construire nos <code>HTMLFileUpload</code> nous-mêmes et les inscrire au registre au moment où ils
+démarrent règle les deux.</p>
+<p><code>HTMLFileUpload</code> est exportable : présent dans les typings <em>et</em> dans le bloc
+d'export runtime du bundle installé, vérifié aux deux niveaux (<a href="#piege-13">#13</a>).</p>
 
 <h3 id="piege-57">#57 — <code>SFTPPanelComponent.ngOnInit()</code> appelle <code>openSFTP()</code> hors de
 son try/catch : l'échec tue le panneau en silence</h3>
