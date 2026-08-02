@@ -139,6 +139,19 @@ de chargement de plugin.
   cas d'échec sur un groupe imbriqué). Le re-parentage passe par
   recréation + migration profil par profil + suppression de l'ancien (voir
   .AIRules/AI-CONTEXT.html, piège #12).
+- **Ce re-parentage donne au dossier un nouvel id : tout état rangé par id de
+  groupe doit migrer dans le même geste**, sinon il retombe à son défaut au
+  prochain chargement, sans erreur — `groupOrder` (comme valeur *et* comme clé),
+  `hiddenGroupIds`, `favoriteGroups` **des workspaces et du niveau supérieur**,
+  et `localStorage.sidebarPlusGroupCollapsed`. Et recopier le groupe *entier*
+  moins `id`/`profiles`/`children` plutôt qu'une liste de champs : `defaults`
+  est fusionné par Tabby dans chaque profil du dossier, le perdre les dépouille
+  en silence (.AIRules/AI-CONTEXT.html, piège #62).
+- **Ne jamais écrire un caractère de contrôle brut dans un source** (`'\0'`, pas
+  l'octet lui-même) : `rg` et `grep` classent alors tout le fichier comme
+  binaire et le sautent **sans le dire**, ce qui a rendu
+  `sftpBrowser.component.ts` invisible à toute recherche
+  (.AIRules/AI-CONTEXT.html, piège #63).
 - **Avant toute fonctionnalité touchant `config.store.groups`/`.profiles`,
   tester d'abord sur des entrées jetables** (`grp-zzz-test-*`, ajoutées à la
   main dans `config.yaml` puis supprimées après coup), jamais directement
