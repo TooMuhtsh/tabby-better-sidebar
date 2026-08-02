@@ -423,6 +423,14 @@ sidebar-plus-tree .active-sessions {
 // <body>, outside .sidebar-plus-tree's DOM subtree — these rules must NOT be
 // nested under .sidebar-plus-tree (an ancestor-scoped selector would never
 // match the relocated element).
+//
+// The consequence is that they are global, and Tabby's own tab bar uses CDK
+// drag-drop too: reordering tabs picks up the preview styling below, and the
+// `!important` height/margin collapse of `.cdk-drag-placeholder`. The template
+// already puts a dedicated class on each preview (`.profile-drag-preview`,
+// `.group-drag-preview`), so narrowing these selectors is possible — see the
+// "Ménage avant release soignée" entry of the roadmap. Not done blind: the
+// placeholder carries no class of ours.
 .cdk-drag-preview {
     box-sizing: border-box;
     border-radius: .3rem;
@@ -680,9 +688,11 @@ sidebar-plus-tree .active-sessions {
 // <sidebar-plus-tree> tag, which is already position: relative for .grabber.
 // `right` clears the resize grabber so it stays grabbable.
 // Reuses .active-sessions-header/-count from the sessions block above, so the
-// two live-state sections read as one family. Scoped to the plugin's tag like
-// every other rule in this file — left unscoped it was global CSS matching any
-// `.active-tunnels` elsewhere in Tabby.
+// two live-state sections read as one family. Scoped to the plugin's tag —
+// left unscoped it was global CSS matching any `.active-tunnels` elsewhere in
+// Tabby. Note that most rules in this file are *not* scoped that way: only this
+// one, `sidebar-plus-tree`, `… input`, `… .view-mode-bar` and
+// `… .active-sessions` are. See the note above `.cdk-drag-preview`.
 sidebar-plus-tree .active-tunnels {
     flex: 0 0 auto;
     margin-bottom: .35rem;

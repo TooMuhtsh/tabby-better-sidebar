@@ -14,9 +14,14 @@ import { FileDownload, FileUpload } from 'tabby-core'
  * assignable.
  *
  * Going through `SFTPSession.upload()` rather than writing the remote file
- * directly is deliberate: it writes to `<path>.tabby-upload` and renames over
- * the target, so a transfer interrupted halfway never leaves a truncated file
- * on the server.
+ * directly is deliberate: it writes to `<path>.tabby-upload` first, so a
+ * transfer interrupted halfway never leaves a truncated file on the server.
+ *
+ * It is not, however, atomic, and the difference matters: the sequence is
+ * `unlink(path)` *then* `rename(temp, path)`, so a break between the two leaves
+ * nothing at all, and the target's identity is replaced on every save — which
+ * is what destroys a symlink rather than writing through it (see the roadmap's
+ * chantier on editing through a symlink).
  */
 
 /** Chunk size matching SFTPFileHandle.read()'s own, so neither side re-buffers. */

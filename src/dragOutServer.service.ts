@@ -257,7 +257,18 @@ export class SidebarPlusDragOutServer {
         }
     }
 
-    /** Called when the last panel goes away: stops listening and forgets every pending offer. */
+    /**
+     * Stops listening and forgets every pending offer.
+     *
+     * Nothing calls this today, and that is deliberate rather than an oversight:
+     * the service is `providedIn: 'root'`, so it lives as long as the window,
+     * and tearing it down when the last SFTP panel closes would leave `ready`
+     * false for good — the constructor is the only thing that ever starts the
+     * server. What would otherwise justify the teardown is already covered:
+     * the socket listens on the loopback interface only, on a port the OS
+     * picks, each offer is a one-shot random token consumed before it is
+     * served, and `pruneExpired()` drops anything a gesture abandoned.
+     */
     dispose (): void {
         this.offers.clear()
         this.server?.close()
