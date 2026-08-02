@@ -24,6 +24,86 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Panneau SFTP : suivre l'état réel de la session (2026-08-02)</h2>
+<p>Branche <code>fix/sftp-session-perdue</code>. Porte les points 1 et 2 du chantier
+<a href="ROADMAP.html#panneau-etat-session">#panneau-etat-session</a> : le panneau qui restait mort
+après une perte de connexion, et la sidebar qui rend la main aux Profils quand la session liée n'est
+plus exploitable. Les points 3 et 4 restent ouverts.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-02</td><td><code>97eca30</code></td>
+<td><strong>Trois secondes de grâce avant de quitter la vue, et une notice quand elle est
+quittée.</strong> Sans délai, l'issue dépendait de l'instant du tick : le bouton
+<em>Reconnect</em> de l'onglet remonte une session en moins d'une seconde, donc tantôt le panneau se
+reconstruisait sur place avec son dossier, tantôt la sidebar basculait sur les Profils —
+<strong>deux comportements pour le même geste</strong>, au hasard de la course. Une perte n'agit
+donc plus qu'au bout de <code>SESSION_LOSS_GRACE_MS</code> ; une reconnexion qui rentre dans cette
+fenêtre est traitée pour ce qu'elle est, une reconstruction, et la vue ne bouge pas.
+<strong>Contrepartie assumée</strong> : pendant ces trois secondes le panneau reste affiché mais
+inerte — un geste y répond « Session closed ». La notice, demandée par l'utilisateur, passe par le
+service maison, seul canal dont la durée est réglable
+(<a href="AI-CONTEXT.html#piege-51">#51</a>). Délai retenu avec lui après mesure du comportement
+non déterministe.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>3b400e1</code></td>
+<td><strong>Le panneau reconstruit retrouve son dossier.</strong> Régression du commit précédent,
+relevée en test : détruire le panneau jette son <code>path</code>, et le cache donnait jusque-là
+cette mémoire de navigation gratuitement — on repartait donc de la racine après chaque coupure. Le
+dernier dossier est retenu par onglet avant destruction et réinjecté avant l'attache, dans la même
+fenêtre que <code>session</code> : c'est <code>ngOnInit</code> qui lit les deux. Si le dossier a
+disparu entre-temps, le <code>ngOnInit</code> hérité notifie et retombe sur <code>/</code> tout
+seul — rien à ajouter de notre côté. La table est purgée avec les onglets fermés.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>6df05d7</code></td>
+<td><strong>La vraie cause : on comparait des onglets, pas des sessions.</strong> Le correctif de
+<code>fe449a5</code> était posé sur un chemin de code <em>jamais emprunté</em> — le panneau restait
+mort exactement comme avant. <code>sync()</code> sortait sur <code>tab === this.boundTab</code>, or
+un onglet qui perd sa connexion et se reconnecte est le <strong>même objet</strong>
+<code>SSHTabComponent</code> : seul <code>tab.sshSession</code> est remplacé, donc
+<code>attachPanel()</code> n'était jamais rappelé et la comparaison d'identité qu'il porte jamais
+évaluée. Le garde-fou qui aurait dû forcer un passage par le placeholder ne se déclenchait pas
+davantage : <code>resolveFocusedSSHTab()</code> testait <code>sshSession?.open</code>, et
+<strong>ce drapeau ment</strong> — jamais remis à <code>false</code>
+(<a href="AI-CONTEXT.html#piege-59">#59</a>). Le test honnête existait déjà à côté, pour « Sessions
+actives » (<a href="AI-CONTEXT.html#piege-37">#37</a>) : il est désormais porté par
+<code>isLiveSSHTab()</code> dans <code>src/tabs.ts</code> et appelé par les deux blocs, qui avaient
+divergé — la liste retirait une session que le panneau continuait de servir, l'incohérence relevée
+au point 2 du chantier. Livré avec, le point 2 lui-même : la sidebar rend la main aux Profils quand
+la session liée est perdue ou quand le canal n'a jamais pu s'ouvrir
+(<a href="AI-CONTEXT.html#piege-57">#57</a>), sans retour automatique. Le panneau mort est détruit
+et non mis en cache — il tient un canal SFTP sur un transport disparu.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>fe449a5</code></td>
+<td><strong>Première tentative : reconstruire le panneau quand la session a changé.</strong>
+<code>attachPanel()</code> compare l'identité de la session et détruit le panneau en cache quand elle
+diffère ; <code>super.ngOnInit()</code> est entouré d'un try/catch, l'échec d'ouverture du canal
+devenant l'état <code>sftpUnavailable</code> lisible par le panneau hôte
+(<a href="AI-CONTEXT.html#piege-57">#57</a>). Les deux morceaux sont bons et ont été conservés,
+mais aucun n'était atteint : voir <code>6df05d7</code>. Consigne au passage le piège
+<a href="AI-CONTEXT.html#piege-58">#58</a>.</td></tr>
+</table>
+
+<div class="callout warning">
+<span class="callout-title">Ce que la passe de test a établi, et ce qu'elle n'a pas pu établir</span>
+<p><strong>La reproduction écrite au design était fausse</strong> : <code>systemctl restart sshd</code>
+ne coupe pas les sessions établies — les <code>sshd</code> enfants survivent au redémarrage du
+démon parent. Les deux gestes qui reproduisent sont le bouton <em>Reconnect</em> de la barre
+d'outils de l'onglet (reconnexion rapide, sous la grâce) et
+<code>sudo ss -K state established '( sport = :22 )'</code> (perte durable, jusqu'à la touche de
+reconnexion).</p>
+<p><strong>La bascule sur <code>exit</code> n'a pas été observée</strong>, faute de pouvoir l'être :
+le <code>behaviorOnSessionEnd</code> de l'utilisateur ferme l'onglet, qui part donc avec son panneau
+et est nettoyé par <code>pruneClosedTabs()</code>. Le code la couvre — <code>isLiveSSHTab()</code>
+lit le shell, pas le transport — mais <em>elle reste non exercée</em> tant qu'un profil n'est pas
+réglé sur « garder l'onglet ouvert ». L'incohérence avec « Sessions actives » que décrivait le
+design n'est pas davantage observable dans cette configuration.</p>
+<p>Validé en test manuel le 2026-08-02 : reconnexion rapide sans bascule ni perte de dossier,
+perte durable suivie de la bascule et de sa notice, panneau de nouveau opérationnel au retour, et
+non-régression du cache par onglet.</p>
+</div>
+
 <h2>Glisser-déposer sortant réel, gestionnaire de transferts et réglages (2026-08-01 → 2026-08-02)</h2>
 <p>Branche <code>feat/transferts-ui</code>, ouverte le 2026-08-01 et mise en pause en cours de passe
 de test, reprise et terminée le 2026-08-02. Elle porte le volet 1 du chantier
