@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #60.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #61.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -465,6 +465,23 @@ impossible sur ce chemin — <code>will-download</code> d'Electron ne rendrait q
 menu contextuel, où c'est nous qui imposons le chemin à
 <code>platform.startDownload()</code> : ne pas confondre les deux, c'est ce que font les plugins SFTP
 qui affichent cette vérification.</p></div>
+
+<h3 id="piege-60">#60 — une case à cocher nue est <em>invisible</em> sur le thème de Tabby :
+utiliser <code>&lt;toggle&gt;</code></h3>
+<p>Un <code>input.form-check-input</code> écrit à la main dans un onglet de réglages ne se voit
+<strong>pas du tout</strong> une fois décoché : Bootstrap ne dessine son interrupteur que dans un
+conteneur <code>.form-check.form-switch</code>, et sans lui l'élément est un carré transparent dont
+la bordure se confond avec le fond sombre. Coché, il redevient visible — d'où un défaut qui ne se
+manifeste que sur la moitié des états, et qui se lit comme un <em>contrôle manquant</em> plutôt que
+comme un contrôle non coché.</p>
+<p><code>ToggleComponent</code> de <code>tabby-core</code> apporte ce conteneur et l'apparence des
+réglages natifs. Il porte <code>/** @hidden */</code>, qui ne prouve rien
+(<a href="#piege-13">#13</a>) : il figure bien dans les <code>exports</code> du module dans le bundle
+installé, et <code>TabbyCoreModule</code> étant importé par ce plugin, le sélecteur
+<code>toggle</code> est disponible dans nos templates. Il étend <code>CheckboxComponent</code> et
+fournit <code>NG_VALUE_ACCESSOR</code>, donc <code>[ngModel]</code>/<code>(ngModelChange)</code>
+fonctionnent tels quels. Les typings npm ne l'exportent pas — sans conséquence, un sélecteur de
+template n'est pas typé.</p>
 
 <h3 id="piege-59">#59 — <code>SSHSession.open</code> n'est <em>jamais</em> remis à
 <code>false</code>, et un onglet qui se reconnecte garde son identité</h3>
