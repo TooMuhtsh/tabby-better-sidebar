@@ -3,6 +3,7 @@ import * as http from 'http'
 import { Injectable } from '@angular/core'
 import { FileDownload } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
+import { SidebarPlusTransfersService } from './transfersRegistry.service'
 
 /** The live SFTP transport, borrowed from the one member that publicly exposes its type. */
 type SftpSession = SFTPPanelComponent['sftp']
@@ -92,7 +93,9 @@ export class SidebarPlusDragOutServer {
     private port = 0
     private offers = new Map<string, Offer>()
 
-    constructor () {
+    constructor (
+        private transfers: SidebarPlusTransfersService,
+    ) {
         // Started eagerly: `dragstart` is synchronous and cannot wait for a
         // listening socket, so the port has to be known before the first
         // gesture. Failing to start is not fatal — the caller falls back to the
@@ -162,13 +165,21 @@ export class SidebarPlusDragOutServer {
 
         res.writeHead(200, {
             'Content-Type': 'application/octet-stream',
-            // Both matter: the length is what gives Windows a progress bar and
-            // an ETA instead of an unbounded spinner.
+            // The length lets the receiving end know when the file is whole
+            // rather than merely when the socket closed — which is what tells a
+            // truncated transfer apart from a finished one. It buys no progress
+            // UI: measured, Windows shows none. The bytes are written by
+            // Chromium, as a download, and Electron surfaces no download
+            // indicator of its own — hence the transfer panel below.
             'Content-Length': String(offer.item.size),
             'Content-Disposition': `attachment; filename="${encodeURIComponent(offer.item.name)}"`,
         })
 
         const transfer = new HttpFileDownload(res, offer.item)
+        // Announced here, not at `dragstart`: this is the moment the drop
+        // actually happened and the bytes start moving. A gesture begun and
+        // abandoned never shows up.
+        this.transfers.track(transfer)
         try {
             await offer.sftp.download(offer.item.fullPath, transfer)
         } catch {

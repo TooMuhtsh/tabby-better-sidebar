@@ -46,6 +46,19 @@ export class SidebarPlusSettingsTabComponent {
         await this.config.save()
     }
 
+    get hideNativeTransfersMenu (): boolean {
+        return this.config.store.sidebarPlus?.hideNativeTransfersMenu ?? true
+    }
+
+    /**
+     * No repaint to force here: the class on `body` is applied by
+     * SidebarPlusMountService, which is already listening to `config.changed$`.
+     */
+    async setHideNativeTransfersMenu (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.hideNativeTransfersMenu = value
+        await this.config.save()
+    }
+
     get autoRefreshSeconds (): number {
         return Number(this.config.store.sidebarPlus?.sftpAutoRefreshSeconds ?? 0)
     }

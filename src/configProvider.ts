@@ -70,6 +70,12 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             sftpShowHidden: true,
             sftpColumnBorders: true,
             sftpZebra: true,
+            // Hides Tabby's own transfers button and dropdown from the tab bar,
+            // the plugin's own panel showing the same transfers and more. On by
+            // default: left visible, the native dropdown *opens by itself* on
+            // every transfer, so keeping both means a popup covering the tabs on
+            // top of a panel that already says it. Untick to get it back.
+            hideNativeTransfersMenu: true,
             // favorites/favoriteGroups above double as the "Tous" workspace's
             // own favorites (no migration needed — they're already live in
             // the user's config.yaml). Each entry here carries its own.

@@ -47,9 +47,11 @@
     h3 Glisser-déposer sortant
     .section-intro
       | Glisser une entrée du panneau SFTP vers l'Explorateur la télécharge à
-      | cet endroit. Le fichier doit exister localement avant que le système ne
-      | puisse le prendre : le premier glisser d'une entrée sert à la préparer,
-      | le suivant l'emporte.
+      | cet endroit. Pour un <strong>fichier</strong>, le téléchargement démarre
+      | au dépôt : un seul geste suffit, et rien n'est écrit avant de savoir où.
+      | Un <strong>dossier</strong> doit exister localement avant que le système
+      | ne puisse le prendre — le premier glisser sert à le préparer, le suivant
+      | l'emporte.
 
     .form-line
       .header
@@ -63,6 +65,25 @@
           type='checkbox',
           [ngModel]='dragOutFolders',
           (ngModelChange)='setDragOutFolders($event)'
+        )
+
+  .settings-section
+    h3 Transferts
+
+    .form-line
+      .header
+        .title Masquer le menu des transferts de Tabby
+        .description
+          | Le gestionnaire en bas de la sidebar montre les mêmes transferts, y
+          | compris ceux lancés par le panneau SFTP natif ou un autre plugin.
+          | Laissé visible, le menu de la barre d'onglets <strong>s'ouvre de
+          | lui-même</strong> à chaque transfert et recouvre les onglets, et ses
+          | lignes ne s'effacent qu'une par une, à la main.
+      .control
+        input#sidebar-plus-hide-native-transfers.form-check-input(
+          type='checkbox',
+          [ngModel]='hideNativeTransfersMenu',
+          (ngModelChange)='setHideNativeTransfersMenu($event)'
         )
 
   .settings-section

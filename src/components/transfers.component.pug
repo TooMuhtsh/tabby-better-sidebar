@@ -1,16 +1,24 @@
 //- Hidden whole when empty, like the sessions and tunnels blocks: an empty
 //- header would cost sidebar height for nothing.
 .sidebar-plus-transfers(*ngIf='transfers.entries.length')
-    a.active-sessions-header((click)='toggle($event)', href='#')
+    //- `.transfers-header` is this block's own class, not the tree's
+    //- `.active-sessions-header`: that one is styled under
+    //- `sidebar-plus-tree .active-sessions`, which never matched here — the
+    //- header sat unstyled, without even `display: flex` (piège #56).
+    a.transfers-header((click)='toggle($event)', href='#')
         .fa.fa-fw.fas.me-1(
             [class.fa-chevron-down]='!collapsed',
             [class.fa-chevron-right]='collapsed'
         )
-        span.me-auto Transferts
-        span.active-sessions-count {{ transfers.entries.length }}
+        span Transferts
+        span.transfers-count(
+            [class.active]='transfers.activeCount > 0',
+            [title]='transfers.summaryTitle'
+        ) {{ transfers.summary }}
         //- A div, never a nested <a>: an anchor inside an anchor is silently
-        //- un-nested by the parser (piège #38).
-        .transfer-clear(
+        //- un-nested by the parser (piège #38). `ms-auto` pins it to the right
+        //- edge, which only works now that the header is a flex container.
+        .transfer-clear.ms-auto(
             (click)='clear($event)',
             title='Vider la liste — les transferts en cours seront annulés'
         )
@@ -27,14 +35,23 @@
                 [class.fa-arrow-down]='entry.direction === "down"',
                 [class.fa-arrow-up]='entry.direction === "up"'
             )
+            //- Every value here is a plain field of the entry, never a call:
+            //- change detection runs these expressions on every pass, and Tabby
+            //- runs a great many passes (piège #54). The registry's tick is what
+            //- keeps them fresh.
             span.transfer-name.no-wrap.me-auto {{ entry.name }}
-            span.transfer-speed(*ngIf='entry.state === "active"') {{ speedLabel(entry) }}
+            span.transfer-speed(*ngIf='entry.state === "active"') {{ entry.speedLabel }}
             span.transfer-figure(*ngIf='entry.state === "active"') {{ entry.percent }}%
-            span.transfer-figure(*ngIf='entry.state === "done"') {{ sizeLabel(entry) }}
+            span.transfer-figure(*ngIf='entry.state === "done"') {{ entry.sizeLabel }}
             span.transfer-figure(*ngIf='entry.state === "cancelled"') annulé
-            span.transfer-time {{ entry.startedAt }}
+            //- Blank until a speed is known, and gone once there is nothing left
+            //- to wait for — hence its own span rather than a suffix on the time.
+            span.transfer-eta(*ngIf='entry.etaLabel', title='Temps restant estimé') ~{{ entry.etaLabel }}
+            span.transfer-time(title='Temps écoulé') {{ entry.elapsedLabel }}
+            //- A bin rather than a cross: on a finished line it removes, on a
+            //- running one it cancels *and* removes — one gesture, one meaning.
             .transfer-remove(
                 (click)='remove(entry, $event)',
-                [title]='entry.state === "active" ? "Annuler ce transfert" : "Retirer de la liste"'
+                [title]='entry.state === "active" ? "Annuler ce transfert et le retirer" : "Retirer de la liste"'
             )
-                .fa.fa-fw.fas.fa-times
+                .fa.fa-fw.fas.fa-trash

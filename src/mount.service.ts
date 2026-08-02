@@ -1,6 +1,10 @@
+import './hostChrome.scss'
 import { ApplicationRef, ComponentRef, EnvironmentInjector, Injectable, createComponent } from '@angular/core'
 import { AppService, ConfigService } from 'tabby-core'
 import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
+
+/** Set on `body` while Tabby's own transfers menu is to stay out of the way. */
+const HIDE_NATIVE_TRANSFERS_CLASS = 'sidebar-plus-hide-native-transfers'
 
 @Injectable({ providedIn: 'root' })
 export class SidebarPlusMountService {
@@ -19,11 +23,17 @@ export class SidebarPlusMountService {
     }
 
     private sync (): void {
-        if (this.config.store.sidebarPlus?.enabled ?? true) {
+        const enabled = this.config.store.sidebarPlus?.enabled ?? true
+        if (enabled) {
             this.mount()
         } else {
             this.unmount()
         }
+        // Conditioned on `enabled` too, not on the setting alone: a plugin that
+        // is switched off has no business still hiding a piece of the host's UI,
+        // and its own transfer panel is gone at that point anyway.
+        const hide = enabled && (this.config.store.sidebarPlus?.hideNativeTransfersMenu ?? true)
+        document.body.classList.toggle(HIDE_NATIVE_TRANSFERS_CLASS, hide)
     }
 
     private mount (): void {

@@ -1,5 +1,4 @@
 import './transfers.component.scss'
-import { filesize } from 'filesize'
 import { Component } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { SidebarPlusTransfersService, TransferEntry } from '../transfersRegistry.service'
@@ -32,15 +31,6 @@ export class SidebarPlusTransfersComponent {
         event.preventDefault()
         this.collapsed = !this.collapsed
         window.localStorage.sidebarPlusTransfersCollapsed = this.collapsed ? 'true' : 'false'
-    }
-
-    /** `0 B/s` while a transfer is starting reads as broken; blank reads as "not yet". */
-    speedLabel (entry: TransferEntry): string {
-        return entry.state === 'active' && entry.speed > 0 ? `${filesize(entry.speed)}/s` : ''
-    }
-
-    sizeLabel (entry: TransferEntry): string {
-        return entry.size > 0 ? String(filesize(entry.size)) : ''
     }
 
     remove (entry: TransferEntry, event: MouseEvent): void {

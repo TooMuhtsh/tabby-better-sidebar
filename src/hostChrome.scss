@@ -1,0 +1,26 @@
+// Styles that reach into Tabby's own chrome rather than into this plugin's
+// components. Kept apart from every component stylesheet on purpose: what
+// touches the host application should be readable in one place, and removable
+// in one place.
+//
+// Applied only while `body` carries the class — SidebarPlusMountService puts it
+// there and takes it away, following the setting and the plugin's own enabled
+// state. Nothing here is unconditional: a plugin that is switched off must
+// leave the host exactly as it found it.
+
+body.sidebar-plus-hide-native-transfers {
+    // The dropdown host in the tab bar. Verified against the running DOM: this
+    // selector matches exactly one element, while `button[ngbDropdownToggle]`
+    // alone would have matched two elsewhere in the app. The attribute survives
+    // in the DOM — Angular keeps a template's static attributes.
+    .btn-group.background > div[ngbDropdown] {
+        display: none !important;
+    }
+
+    // The menu itself, again: `container="body"` moves it out of the host when
+    // it opens, so hiding the host is not enough to keep it off the screen.
+    // Tabby opens this dropdown by itself whenever a transfer starts.
+    transfers-menu {
+        display: none !important;
+    }
+}
