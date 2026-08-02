@@ -1,4 +1,5 @@
 import './sftpBrowser.component.scss'
+import { posix } from 'path'
 import { filesize } from 'filesize'
 import { AfterViewChecked, Component, ElementRef, HostListener, Inject, NgZone, OnDestroy } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
@@ -428,15 +429,15 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         }
 
         const fullPath = this.path.endsWith('/') ? `${this.path}${name}` : `${this.path}/${name}`
-        try {
-            // stat() throwing is how a free name is recognised — there is no
-            // exists() on the session, and creating over an existing file
-            // would silently truncate it.
-            await this.sftp.stat(fullPath)
+        // There is no `exists()` on the session, and creating over an existing
+        // file would silently truncate it. Read through the parent's listing
+        // rather than through `stat()`: same answer for an ordinary file, but
+        // `stat()` follows links, so a *dangling* symlink of that name reported
+        // the name as free — and the create then clobbered the link. Same check
+        // as `renameEntry()` makes, by the same route.
+        if (await readRemoteEntry(this.sftp, fullPath)) {
             this.notify.error(`${name} existe déjà`)
             return
-        } catch {
-            // Not there: good, carry on.
         }
 
         try {
@@ -487,6 +488,55 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         return f.isDirectory || (f.mode & SidebarPlusSftpBrowserComponent.S_IFMT) === SidebarPlusSftpBrowserComponent.S_IFDIR
     }
 
+    /** A symlink chain longer than this is a loop as far as we are concerned. */
+    private static readonly MAX_SYMLINK_HOPS = 8
+
+    /**
+     * Follows a symlink to the entry it really designates.
+     *
+     * Read through `readRemoteEntry()` — the parent directory's listing — and
+     * never through `stat()`, whose mode comes back 0 and whose date comes back
+     * 1970 (piège #50). That is the whole point: the resolved entry has to carry
+     * a *usable* mode and mtime, since everything downstream depends on them.
+     *
+     * Returns null when the chain cannot be followed — a dangling link, a loop,
+     * or a server that refuses `readlink`.
+     */
+    private async resolveSymlink (item: SFTPFile): Promise<SFTPFile|null> {
+        let current = item
+        for (let hop = 0; hop < SidebarPlusSftpBrowserComponent.MAX_SYMLINK_HOPS; hop++) {
+            if (!current.isSymlink) {
+                return current
+            }
+            const raw = await this.sftp.readlink(current.fullPath)
+            const absolute = raw.startsWith('/')
+                ? raw
+                : posix.resolve(posix.dirname(current.fullPath), raw)
+            const next = await readRemoteEntry(this.sftp, absolute)
+            if (!next) {
+                return null
+            }
+            current = next
+        }
+        return null
+    }
+
+    /**
+     * Opens an entry: directories navigate, files take the edit round-trip.
+     *
+     * A symlink is resolved to its target **and the target is what gets
+     * edited** — path included. Keeping the link's own path here is what used
+     * to make three things go wrong at once, none of them visible at the time:
+     * the mode read for the download came from `stat()` and was 0, so the local
+     * copy was created read-only and the editor could not save; the mode
+     * restored after an upload was the *link's* (`0o120777`), so the file came
+     * back world-writable; and the freshness check compared the link's size and
+     * date, which never move when the target changes, so conflict detection was
+     * dead. Writing to the resolved path settles all three, and has a fourth
+     * effect worth stating: `SFTPSession.upload()` unlinks its target before
+     * renaming over it, so editing "through" the link used to replace it with a
+     * regular file. It no longer touches the link at all.
+     */
     private async openEntry (item: SFTPFile, mode: OpenMode): Promise<void> {
         this.select(item)
         if (this.isDirectoryEntry(item)) {
@@ -494,22 +544,30 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             return
         }
         if (item.isSymlink) {
-            // Resolve first: a symlink to a directory has to navigate, and
-            // `item.size`/`item.mode` describe the link, not its target.
+            let target: SFTPFile|null
             try {
-                const target = await this.sftp.readlink(item.fullPath)
-                const base = this.path.endsWith('/') ? this.path.slice(0, -1) : this.path
-                const stat = await this.sftp.stat(target.startsWith('/') ? target : `${base}/${target}`)
-                if (this.isDirectoryEntry(stat)) {
-                    await this.navigate(item.fullPath)
-                    return
-                }
-                await this.editor.edit(this.sftp, { ...stat, fullPath: item.fullPath, name: item.name }, mode)
-                return
+                target = await this.resolveSymlink(item)
             } catch (e) {
                 this.notify.error(`Impossible de suivre le lien ${item.name}`, String(e))
                 return
             }
+            if (!target) {
+                this.notices.error(`${item.name} pointe vers une cible introuvable`)
+                return
+            }
+            if (this.isDirectoryEntry(target)) {
+                // Navigation stays on the link's own path: that is the location
+                // the user asked for, and the server resolves it on its own.
+                await this.navigate(item.fullPath)
+                return
+            }
+            // Said out loud when the names differ: the editor is about to open
+            // something else than the row that was double-clicked.
+            if (target.name !== item.name) {
+                this.notices.notice(`${item.name} → ${target.fullPath}`)
+            }
+            await this.editor.edit(this.sftp, target, mode)
+            return
         }
         await this.editor.edit(this.sftp, item, mode)
     }
