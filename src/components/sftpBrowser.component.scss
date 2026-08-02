@@ -227,7 +227,14 @@ sidebar-plus-sftp-browser .sftp-grid.with-col-borders .cell-value {
     border-left: 1px solid var(--theme-secondary);
 }
 
-sidebar-plus-sftp-browser .sftp-grid.with-zebra .sftp-zebra {
+// The stripe is a *base*, so every state has to be able to paint over it. Left
+// as a plain descendant selector it could not be: two classes plus the gate put
+// it at (0,3,1), above hover and selection at (0,2,1), so an odd-numbered row
+// kept its grey when hovered and when selected — the accent was computed and
+// then lost to the cascade, which is why it read as a list that highlights only
+// every other row rather than as a bug. `:where()` contributes no specificity,
+// dropping the rule to (0,1,1) and putting every state above it for good.
+sidebar-plus-sftp-browser :where(.sftp-grid.with-zebra) .sftp-zebra {
     background-color: rgba(128, 128, 128, .06);
 }
 
