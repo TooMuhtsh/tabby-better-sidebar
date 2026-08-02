@@ -1,7 +1,7 @@
 {
   "name": "tabby-better-sidebar",
-  "version": "0.2.0",
-  "description": "Enhanced connection sidebar for Tabby: pinned favorites, live connection status, drag & drop, a custom icon picker (FontAwesome + Iconify + SVG import), and folder/profile creation and deletion, all from the sidebar.",
+  "version": "0.3.0",
+  "description": "Enhanced connection sidebar for Tabby: a contextual SFTP browser inside the sidebar itself, pinned favorites, live connection status, active sessions, workspaces, SSH tunnels, drag & drop (including dragging remote files out to the OS), a transfer manager, and a custom icon picker.",
   "keywords": [
     "tabby-plugin"
   ],
@@ -17,9 +17,10 @@
   },
   "scripts": {
     "build": "webpack --progress --color",
+    "build:prod": "webpack --progress --color --mode production",
     "watch": "webpack --progress --color --watch",
     "lint:airules": "html-validate \".AIRules/**/*.html\"",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build:prod"
   },
   "files": [
     "dist"
@@ -41,6 +42,7 @@
     "apply-loader": "^2.0.0",
     "css-loader": "^6.8.0",
     "dompurify": "^3.4.12",
+    "filesize": "^11.0.22",
     "fuzzy-search": "^3.2.1",
     "html-validate": "^11.6.0",
     "pug": "^2.0.4",
@@ -56,8 +58,5 @@
     "typescript": "^4.9.5",
     "webpack": "^5.24.4",
     "webpack-cli": "^4.5.0"
-  },
-  "dependencies": {
-    "filesize": "^11.0.22"
   }
 }
