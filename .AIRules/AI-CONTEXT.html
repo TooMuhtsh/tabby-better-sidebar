@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #62.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #64.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -42,9 +42,9 @@ Tabby.</p>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61 + 6 points de veille</li>
-<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
+<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
-<li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
+<li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8, #63</li>
 <li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20</li>
 </ul>
 
@@ -1041,6 +1041,38 @@ correction ont été perdus à raisonner sur ce que <code>CdkDragDrop.currentInd
 valoir. Une trace de cinq lignes imprimant l'index, la ligne survolée et le tableau avant/après a
 tranché en un seul geste utilisateur. Sur un bug de placement, instrumenter avant de raisonner.</p>
 
+<h3 id="piege-62">#62 — Un re-parentage de dossier change son id : tout ce qui est indexé par
+cet id doit migrer, ou revient à son défaut</h3>
+<p>Tabby n'offre aucun moyen de re-parenter un groupe (<a href="#piege-12">#12</a>) : le seul chemin
+sûr est <em>recréer sous un nouvel id, migrer, supprimer l'ancien</em>. Le nouvel id est donc un fait
+acquis de l'opération, et <strong>tout état que ce plugin range par id de groupe doit suivre dans le
+même geste</strong>. Un état oublié ne provoque aucune erreur : il retombe silencieusement à sa
+valeur par défaut au prochain chargement de l'arbre, et laisse un id mort derrière lui.</p>
+<p>Recensement au 2026-08-02 — <code>migrateWorkspaceGroupId()</code> les couvre tous :</p>
+<ul>
+<li><code>sidebarPlus.groupOrder</code> et <code>ws.groupOrder</code> — comme <em>valeur</em> dans une
+  liste de fratrie <strong>et</strong> comme <em>clé</em> du parent (d'où
+  <code>renameOrderKey()</code>, qui fait les deux) ;</li>
+<li><code>ws.hiddenGroupIds</code> ;</li>
+<li><code>ws.favoriteGroups</code> <em>et</em> <code>sidebarPlus.favoriteGroups</code> — celui du
+  niveau supérieur porte les favoris du workspace « Tous », qui n'a pas d'entrée dans
+  <code>workspaces</code> ; c'est celui qu'on oublie ;</li>
+<li><code>localStorage.sidebarPlusGroupCollapsed</code> — hors de <code>config.yaml</code>, donc hors
+  du champ de vision quand on relit le code de persistance.</li>
+</ul>
+<p>Et le <strong>contenu</strong> du groupe compte autant que son id : recopier une liste de champs
+choisis à la main perd tout ce que <code>ProfileGroup</code> porte d'autre. Le champ
+<code>defaults</code> est le piège concret — Tabby le fusionne dans le <code>ConfigProxy</code> de
+<em>chaque profil du dossier</em> via <code>getProviderProfileGroupDefaults()</code>, donc le perdre
+dépouille les profils de tout leur héritage, en silence. → recopier le groupe entier moins
+<code>id</code>, <code>profiles</code> et <code>children</code>.</p>
+<div class="callout"><span class="callout-title">Reconstituer un appel du composant en test</span>
+<p><code>getProfileGroups()</code> ne remplit pas <code>profiles</code> sans qu'on le demande. Le
+composant appelle
+<code>getProfileGroups({ includeNonUserGroup: true, includeProfiles: true })</code> ; un harnais qui
+reprend le nom de la méthode sans ses options observe un faux négatif — constaté le 2026-08-02, il
+avait fait conclure à tort que les profils ne suivaient pas leur dossier.</p></div>
+
 <h3 id="piege-27">#27 — <code>Get-Content</code>/<code>Set-Content -Encoding utf8</code> (PS 5.1) corrompt les accents de <code>config.yaml</code></h3>
 <div class="callout warning"><span class="callout-title">A réellement abîmé la config utilisateur</span>
 <p>Un chemin de clé SSH <code>…\Développement\…</code> est devenu
@@ -1145,6 +1177,33 @@ chargement de plugin dans des <code>catch</code> génériques.</p>
 <p>Après toute modification du plugin : <strong>tuer et relancer tout le process</strong>
 <code>Tabby.exe</code> — pas un simple reload de page. Le cache de modules Node est global au
 process.</p></div>
+<div class="callout note"><span class="callout-title">Atteindre l'état vivant depuis le CDP</span>
+<p>Le build de Tabby est en mode production : <code>ngDevMode</code> vaut <code>false</code> et
+<code>window.ng</code> n'expose <strong>pas</strong> <code>getComponent()</code>. Sur un élément
+hôte, <code>__ngContext__</code> est un simple entier, inexploitable. Le chemin qui marche :</p>
+<pre><code>const core = require('@angular/core')                       // require existe dans le renderer
+const inj  = core.getPlatform()._modules[0]._r3Injector     // l'injecteur du module racine
+const app  = inj.get(core.ApplicationRef)
+const cmp  = app._views.map(v =&gt; v.context || (v._lView &amp;&amp; v._lView[8]))
+                       .find(c =&gt; c &amp;&amp; c.constructor.name === 'SidebarPlusTreeComponent')
+const config = inj.get(require('tabby-core').ConfigService) // config.store en clair, malgré le coffre</code></pre>
+<p>La sidebar apparaît dans <code>_views</code> parce que <code>SidebarPlusMountService</code>
+l'attache par <code>appRef.attachView()</code>. C'est aussi la seule façon de lire
+<code>config.store</code> : le coffre-fort chiffre <code>config.yaml</code> sur disque, mais l'objet
+vivant, lui, est en clair.</p></div>
+
+<h3 id="piege-63">#63 — Un octet de contrôle brut dans un source le rend « binaire » pour
+<code>rg</code> et <code>grep</code>, qui le sautent sans rien dire</h3>
+<p>Une chaîne littérale contenant un <code>\0</code> <strong>écrit brut</strong> plutôt qu'échappé
+compile et s'exécute normalement — mais <code>ripgrep</code> et <code>grep</code> classent alors le
+fichier entier comme binaire et l'excluent de tout résultat, <em>sans message</em>. Un fichier de
+1136 lignes est ainsi resté invisible à toute recherche de code jusqu'au 2026-08-02, y compris pour
+vérifier si une méthode était encore utilisée : la réponse « aucune occurrence » était fausse.</p>
+<p>Git, lui, ne s'en aperçoit pas si l'octet est au-delà des 8000 premiers : ses <code>diff</code>
+restent lisibles, donc rien ne signale le problème côté revue.</p>
+<p>→ Toujours écrire ces caractères sous forme échappée (<code>'\0'</code>, <code>'\x1b'</code>…).
+Pour dépister : <code>grep -c "n_importe_quoi" fichier.ts</code> répondant
+<code>Binary file … matches</code> est le symptôme.</p>
 
 <h2 id="cat-npm">Publication &amp; distribution npm</h2>
 

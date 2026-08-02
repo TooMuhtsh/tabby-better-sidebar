@@ -48,7 +48,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#liste-performance">Performance de la liste SFTP et rafraîchissement automatique</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#renommer-sftp">Renommer une entrée depuis le panneau SFTP</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
-<tr><td><a href="#integrite-donnees">Intégrité des données au re-parentage et à la suppression</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td><strong>Haute — pertes de données silencieuses</strong></td></tr>
+<tr><td><a href="#integrite-donnees">Intégrité des données au re-parentage et à la suppression</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Haute</td></tr>
 <tr><td><a href="#liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td><strong>Haute — permissions distantes</strong></td></tr>
 <tr><td><a href="#cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
@@ -1135,7 +1135,19 @@ soumettre ; la combinaison reste sans effet pendant qu'un champ de la sidebar a 
 onglet divisé, c'est bien le volet focalisé qui reçoit.</p></div>
 
 <h3 id="integrite-donnees">Intégrité des données au re-parentage et à la suppression
-<span class="pill planned">📋 À arbitrer</span></h3>
+<span class="pill done">✅ Fait (2026-08-02)</span></h3>
+<div class="callout note"><span class="callout-title">Livré et testé le 2026-08-02</span>
+<p>Branche <code>fix/integrite-donnees</code>, commit <code>990387a</code>. Passe de test pilotée
+dans Tabby sur des entrées <code>grp-zzz-test-*</code>, détaillée dans
+<a href="AI-HISTORY.html">AI-HISTORY</a> : les quatre scénarios passent, la non-régression aussi, et
+la configuration réelle a été retrouvée identique champ à champ après coup.</p>
+<p>Le scénario des « Épinglés » a été rejoué avec l'ancien comportement pour vérifier que le test
+prouve quelque chose : il <strong>reclassait bien deux profils réels de l'utilisateur</strong>. Ce
+n'était donc pas un défaut théorique.</p>
+<p><strong>Reste ouvert</strong>, sans perte de données : <code>pruneDeadOrderIds()</code> ne ramasse
+que <code>groupOrder</code>/<code>profileOrder</code>, donc les ids morts s'accumulent encore dans
+<code>favorites</code>, <code>favoriteGroups</code> et <code>hiddenGroupIds</code> après une
+<em>suppression</em>. Cosmétique, à traiter quand on y repassera.</p></div>
 <p class="muted">Trois défauts trouvés à la revue de code du 2026-08-02, tous dans le même domaine :
 les gestes de la sidebar qui réécrivent <code>config.store.groups</code> /
 <code>.profiles</code> — celui-là même qui a déjà corrompu la configuration de production une fois

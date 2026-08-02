@@ -24,6 +24,112 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Revue générale, remise en ordre des documents, et intégrité des données (2026-08-02)</h2>
+<p>Revue complète demandée sur le code, la gouvernance et les documents de production. Deux branches :
+<code>chore/mise-en-ordre-doc-et-release</code> pour ce qui était de la mise en ordre, puis
+<code>fix/integrite-donnees</code> pour le premier des trois chantiers que la revue a ouverts
+(<a href="ROADMAP.html#integrite-donnees">#integrite-donnees</a>).</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-02</td><td><code>990387a</code></td>
+<td><strong>Trois pertes silencieuses dans les gestes qui réécrivent <code>config.store</code>.</strong>
+<code>reparentGroup()</code> recréait le dossier déplacé en recopiant quatre champs choisis à la main ;
+<code>ProfileGroup</code> en porte un cinquième, <code>defaults</code>, que Tabby fusionne dans le
+<code>ConfigProxy</code> de <em>chaque profil du dossier</em> — déplacer un dossier dépouillait donc
+ses profils de tout ce qu'ils héritaient de lui, et récursivement. Le groupe est désormais recopié
+en entier moins <code>id</code>, <code>profiles</code> et <code>children</code>.
+<code>migrateWorkspaceGroupId()</code> ne migrait ni <code>favoriteGroups</code> ni l'état replié du
+<code>localStorage</code> : un dossier favori perdait son étoile et revenait déplié.
+<code>onProfileDrop()</code> persistait l'ordre du conteneur source même quand celui-ci est une
+<em>vue</em> — CDK résolvant la cible parmi les listes connectées à la source, on peut sortir un
+profil des « Épinglés » sans pouvoir rien y déposer, et sur « Tous » cela réécrivait le
+<code>weight</code> de tous les profils encore épinglés. Enfin <code>deleteGroup()</code> comptait le
+contenu du nœud <em>affiché</em>, déjà filtré par le workspace actif : un dossier dont tout le
+contenu y est masqué passait le garde-fou, et <code>deleteProfileGroup()</code> renvoyait ses profils
+dans « Ungrouped ». Le comptage passe par <code>rawGroupsSnapshot</code>, non filtré, et le refus dit
+explicitement quand le contenu est masqué. L'abonnement à <code>config.changed$</code> est aussi
+résilié à la destruction du composant.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>fb55222</code></td>
+<td><strong>Préparation de la 0.3.0.</strong> Le <code>README.md</code> public et la
+<code>description</code> npm décrivaient le plugin d'<em>avant</em> le SFTP — workspaces et SFTP
+annoncés comme non faits alors qu'ils sont livrés depuis le 2026-07-29, rien des 94 commits suivants,
+et deux renvois vers <code>tabby_sidebar_roadmap.md</code>, découpé en <code>.AIRules/</code> depuis.
+<code>prepublishOnly</code> passe par un <code>build:prod</code> ; <code>filesize</code> rejoint les
+<code>devDependencies</code>, webpack le bundlant déjà. Rien n'a été publié.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>ddc4b1f</code></td>
+<td><strong>Un octet NUL rendait <code>sftpBrowser.component.ts</code> invisible aux recherches.</strong>
+Le séparateur de la clé de cache des colonnes était écrit <em>brut</em> dans le source ;
+<code>rg</code> et <code>grep</code> classent alors le fichier entier comme binaire et le sautent en
+silence — 1136 lignes hors de portée de toute recherche de code, ce qui s'est produit pendant cette
+revue même. Écrit <code>'\0'</code>. Sept commentaires qui décrivaient autre chose que le code ont
+été repris dans le même geste, dont celui de <code>tempFiles</code> qui affirmait l'inverse du
+comportement réel, trois mentions de <code>stat()</code> là où tout passe par
+<code>readRemoteEntry()</code>, et la justification de onze getters par un échappement pug qui
+n'existe pas — vérifié en compilant le template, seize bindings du même fichier utilisent des
+littéraux entre guillemets et fonctionnent.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>90989f3</code></td>
+<td><strong>Dérives de gouvernance corrigées, et ce que la revue a trouvé consigné.</strong>
+<code>CLAUDE.md</code> décrivait le correctif <code>min-height: 8px</code> inconditionnel du
+<a href="AI-CONTEXT.html#piege-19">#19</a>, remplacé depuis par celui du
+<a href="AI-CONTEXT.html#piege-26">#26</a> — <code>AI-CONTEXT</code> avait été corrigé le 2026-07-31,
+pas le fichier d'instructions, ce qu'<code>A-11</code> vise précisément. Il annonçait aussi une
+remise à niveau inachevée alors que ses cinq items étaient faits. Le sommaire d'AI-CONTEXT ignorait
+les pièges #59, #60 et #61. Côté roadmap, six contradictions internes levées, dont un chapô disant
+« Rien n'est implémenté » quatre lignes au-dessus d'un volet marqué Fait. Trois chantiers ouverts
+pour arbitrage : <a href="ROADMAP.html#integrite-donnees">#integrite-donnees</a>,
+<a href="ROADMAP.html#liens-symboliques-edition">#liens-symboliques-edition</a> et
+<a href="ROADMAP.html#cycle-de-vie">#cycle-de-vie</a>.</td></tr>
+
+<tr><td>2026-08-02</td><td>n/a (opération Git)</td>
+<td><strong>Restes de la purge d'attribution du 2026-08-01 nettoyés.</strong> La branche
+<code>backup-avant-purge-attribution</code> était la « fausse sauvegarde » que décrit
+<a href="AI-CONTEXT.html#piege-11">#11</a> : <code>filter-branch</code> l'avait réécrite elle aussi,
+elle était ancêtre de <code>master</code> et ne contenait rien d'unique. Les
+<code>refs/original/</code>, seul vrai filet, portaient encore 63 mentions d'attribution. Avant de
+les supprimer, le contrôle du #11 a été refait sous une autre forme — <code>master</code> ayant
+avancé de 32 commits depuis, un <code>diff</code> direct ne prouvait plus rien : l'arbre du sommet
+d'avant purge a été retrouvé <strong>à l'identique</strong> dans <code>master</code>
+(<code>5459d63</code>), ce qui établit que la réécriture n'avait touché que les messages. Le dépôt ne
+porte plus aucune métadonnée d'attribution.</td></tr>
+</table>
+
+<h3>Passe de test du 2026-08-02 — pilotée par l'assistant, à la demande de l'utilisateur</h3>
+<p>Menée dans Tabby lancé en <code>--debug --remote-debugging-port=9333</code>, sur des entrées
+<code>grp-zzz-test-*</code> exclusivement, avec un instantané complet de <code>groups</code>,
+<code>profiles</code> et <code>sidebarPlus</code> pris avant tout geste. L'instance vivante du
+composant s'atteint par <code>getPlatform()._modules[0]._r3Injector</code> puis les vues attachées à
+l'<code>ApplicationRef</code> — <code>window.ng</code> ne sert à rien, le build étant en production
+et <code>ngDevMode</code> à <code>false</code>. <strong>État final comparé champ à champ à
+l'instantané : identique.</strong></p>
+<ul>
+<li><strong>Re-parentage</strong> — neuf vérifications sur neuf : <code>defaults</code> et couleur
+  préservés, les deux profils suivent, le sous-dossier reste favori <em>et</em> replié sous son
+  nouvel id, aucun id mort laissé derrière.</li>
+<li><strong>Sortie depuis « Épinglés »</strong> — le profil change bien de dossier et aucun autre
+  <code>weight</code> n'est réécrit. L'ancien comportement a été rejoué sous sauvegarde pour vérifier
+  que le test prouve quelque chose : il reclassait bien <strong>deux profils réels de
+  l'utilisateur</strong> (<code>Claude</code> et <code>app.exemple.fr</code>). Restauré et vérifié
+  dans la foulée.</li>
+<li><strong>Dossier masqué par un workspace</strong> — le dossier paraissait vide à l'écran, la
+  suppression est refusée, le profil masqué garde son dossier, et le message nomme le workspace en
+  cause.</li>
+<li><strong>Non-régression</strong> — un dossier réellement vide se supprime sans message ; un
+  dossier non vide et visible est refusé avec le message d'origine, sans mention parasite du
+  masquage.</li>
+</ul>
+<div class="callout note"><span class="callout-title">Un faux négatif, dû au harnais</span>
+<p>La première passe concluait que les profils ne suivaient pas leur dossier. C'était le harnais :
+il appelait <code>getProfileGroups()</code> sans options, ce qui ne remplit pas
+<code>profiles</code>, là où le composant passe
+<code>{ includeNonUserGroup: true, includeProfiles: true }</code>. À retenir pour toute passe future
+qui reconstitue un appel du composant : <strong>reprendre ses options, pas seulement son nom de
+méthode</strong>.</p></div>
+
 <h2>Transferts : montrer qu'un transfert est mort, et le servir nous-mêmes (2026-08-02)</h2>
 <p>Branche <code>fix/transferts-interrompus</code>. Ouverte sur le point 3 de
 <a href="ROADMAP.html#panneau-etat-session">#panneau-etat-session</a> — « demander confirmation si un
