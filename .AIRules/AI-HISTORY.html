@@ -33,6 +33,25 @@ entrées les plus récentes en tête.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
+<tr><td>2026-08-02</td><td><code>2dfdd91</code></td>
+<td><strong>Éditer un lien symbolique éditait le lien, avec quatre conséquences.</strong>
+<code>openEntry()</code> résolvait le lien par <code>sftp.stat()</code>, dont le mode revient à 0
+(<a href="AI-CONTEXT.html#piege-50">#50</a>) : ce 0 partait dans
+<code>platform.startDownload(name, mode, …)</code>, qui fait <code>fs.open(path, 'w', mode)</code>,
+donc la copie locale atterrissait en <code>444</code> et l'éditeur refusait d'enregistrer. Si
+l'éditeur forçait l'écriture, le mode restauré après envoi était celui du <em>lien</em>,
+<code>0o120777</code> — dont <code>&amp; 0o7777</code> donne <code>0o777</code> : le fichier distant
+finissait accessible en écriture à tout le monde, le mécanisme du
+<a href="AI-CONTEXT.html#piege-53">#53</a> se retournant sur ce cas. La détection de conflit livrée
+la veille ne pouvait pas fonctionner, comparant taille et date du lien, qui ne bougent jamais quand
+la cible change. Et <code>SFTPSession.upload()</code> faisant <code>unlink</code> avant
+<code>rename</code>, chaque enregistrement <em>détruisait</em> le lien. Le lien est désormais résolu
+une fois par <code>readlink()</code> + <code>readRemoteEntry()</code>, et c'est la cible qui est
+éditée, chemin compris — les quatre tombent ensemble. Au passage, le dernier <code>stat()</code>
+d'observation de <code>src/</code> disparaît : <code>createFileFromMenu()</code> testait un nom libre
+par <code>stat()</code>, qui suit les liens, si bien qu'un lien cassé du même nom faisait croire le
+nom disponible.</td></tr>
+
 <tr><td>2026-08-02</td><td><code>990387a</code></td>
 <td><strong>Trois pertes silencieuses dans les gestes qui réécrivent <code>config.store</code>.</strong>
 <code>reparentGroup()</code> recréait le dossier déplacé en recopiant quatre champs choisis à la main ;
@@ -122,6 +141,24 @@ l'instantané : identique.</strong></p>
   dossier non vide et visible est refusé avec le message d'origine, sans mention parasite du
   masquage.</li>
 </ul>
+<h3>Passe de test du 2026-08-02 sur les liens symboliques — serveur réel</h3>
+<p>Menée sur un serveur de l'utilisateur, avec son autorisation explicite, dans
+<code>/tmp/zzz-test-symlink/</code> — répertoire créé pour l'occasion et supprimé après coup, rien
+touché en dehors. Une cible en <code>0o640</code>, un lien vers elle, et un lien cassé.</p>
+<p><strong>Sept vérifications sur sept</strong>, round-trip complet inclus : c'est la cible qui part
+à l'éditeur, avec son mode réel <code>0o640</code> ; la copie locale est inscriptible ; le lien
+cassé est annoncé au lieu d'être subi ; et après téléchargement, modification et renvoi, <strong>le
+lien existe toujours</strong> et la cible a gardé <code>0o640</code>.</p>
+<p>La contre-preuve a été mesurée sur ce même serveur plutôt que supposée :
+<code>stat()</code> du lien rend un mode <code>0o0</code> et une date au
+<strong>1970-01-01T00:00:00Z</strong>, et le <code>chmod</code> qu'appliquait l'ancien chemin aurait
+bien été <code>0o777</code>.</p>
+<div class="callout note"><span class="callout-title">Une décision prise en cours de passe</span>
+<p>La connexion a demandé une vérification de clé d'hôte. <strong>« Accepter uniquement cette
+fois »</strong> a été choisi plutôt que « Accepter et mémoriser » : graver une décision de confiance
+dans la configuration de l'utilisateur n'était pas nécessaire au test. Le mot de passe, lui, a été
+saisi par l'utilisateur — aucun secret n'a transité par l'assistant.</p></div>
+
 <div class="callout note"><span class="callout-title">Un faux négatif, dû au harnais</span>
 <p>La première passe concluait que les profils ne suivaient pas leur dossier. C'était le harnais :
 il appelait <code>getProfileGroups()</code> sans options, ce qui ne remplit pas
