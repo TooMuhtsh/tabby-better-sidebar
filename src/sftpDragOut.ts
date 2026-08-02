@@ -197,6 +197,16 @@ export class SftpDragOut {
                 this.handOver(fresh, isGestureHeld)
                 return
             }
+            // The copy being replaced is dropped from disk here, not left to
+            // `dispose()`: re-dragging a file that keeps changing used to add a
+            // temp directory per attempt, all of them kept until the panel went
+            // away. Deleted before the new download rather than after, so a
+            // failure cannot leave two copies where there should be one.
+            if (existing) {
+                const staleDir = path.dirname(existing.localPath)
+                this.dirs.delete(staleDir)
+                await this.temp.remove(staleDir)
+            }
             this.ready.delete(item.fullPath)
 
             const localDir = await this.temp.makeDir('drag')

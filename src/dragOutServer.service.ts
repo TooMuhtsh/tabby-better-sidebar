@@ -3,6 +3,7 @@ import * as http from 'http'
 import { Injectable } from '@angular/core'
 import { FileDownload } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
+import { readRemoteEntry } from './remoteEntry'
 import { SidebarPlusTransfersService } from './transfersRegistry.service'
 
 /** The live SFTP transport, borrowed from the one member that publicly exposes its type. */
@@ -164,12 +165,26 @@ export class SidebarPlusDragOutServer {
             return
         }
         const server = http.createServer((req, res) => void this.handle(req, res))
-        server.on('error', () => { this.server = null })
         await new Promise<void>(resolve => {
+            // Settled by whichever comes first. Listening only for `listening`
+            // left this promise pending for the life of the window when the
+            // socket failed to bind — nothing awaited it, but a promise that can
+            // never settle is not something to leave lying around.
+            const done = (): void => {
+                server.off('listening', onListening)
+                server.off('error', onError)
+                resolve()
+            }
+            const onListening = (): void => done()
+            const onError = (): void => { this.server = null; done() }
+            server.once('listening', onListening)
+            server.once('error', onError)
             // Port 0 asks the OS for a free one; '127.0.0.1' is what keeps this
             // off every other interface.
-            server.listen(0, '127.0.0.1', () => resolve())
+            server.listen(0, '127.0.0.1')
         })
+        // Past the handshake, a late failure just closes the shop.
+        server.on('error', () => { this.server = null })
         const address = server.address()
         if (address && typeof address === 'object') {
             this.server = server
@@ -213,11 +228,24 @@ export class SidebarPlusDragOutServer {
         // Consumed on the way out, before anything is served: a token answers
         // once. A retried or replayed request finds nothing.
         this.offers.delete(token)
+        // Every request is also a chance to forget what a drag abandoned an hour
+        // ago: nothing else runs on a timer here, and a pending offer holds its
+        // SFTP session alive.
+        this.pruneExpired()
         if (!offer || offer.expiresAt < Date.now()) {
             res.writeHead(404)
             res.end()
             return
         }
+
+        // The row the drag started from is a snapshot of the last `readdir`, and
+        // the drop can land much later. Announcing that stale size would make
+        // the header disagree with the body, which is exactly what tells the
+        // other end the download is truncated. Asked again here — through the
+        // listing, never `stat()` (piège #50) — and the offer is answered with
+        // whatever the server says now. A read that fails is not fatal: the
+        // snapshot is still the best guess available.
+        const item = await readRemoteEntry(offer.sftp, offer.item.fullPath).catch(() => null) ?? offer.item
 
         res.writeHead(200, {
             'Content-Type': 'application/octet-stream',
@@ -227,11 +255,11 @@ export class SidebarPlusDragOutServer {
             // UI: measured, Windows shows none. The bytes are written by
             // Chromium, as a download, and Electron surfaces no download
             // indicator of its own — hence the transfer panel below.
-            'Content-Length': String(offer.item.size),
-            'Content-Disposition': `attachment; filename="${encodeURIComponent(offer.item.name)}"`,
+            'Content-Length': String(item.size),
+            'Content-Disposition': `attachment; filename="${encodeURIComponent(item.name)}"`,
         })
 
-        const transfer = new HttpFileDownload(res, offer.item)
+        const transfer = new HttpFileDownload(res, item)
         // Announced here, not at `dragstart`: this is the moment the drop
         // actually happened and the bytes start moving. A gesture begun and
         // abandoned never shows up.

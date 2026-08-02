@@ -48,16 +48,32 @@ export class SidebarPlusMountService {
             environmentInjector: this.environmentInjector,
         })
         this.appRef.attachView(this.componentRef.hostView)
-        const rootNode = (this.componentRef.hostView as any).rootNodes[0] as HTMLElement
-        container.insertBefore(rootNode, container.firstChild)
+        container.insertBefore(this.rootNodeOf(this.componentRef), container.firstChild)
     }
 
+    /**
+     * Takes the sidebar back out — of the DOM as well as of Angular.
+     *
+     * `.remove()` is not a precaution: `ComponentRef.destroy()` does **not**
+     * touch the DOM here. Angular's default DOM renderer leaves `destroyNode`
+     * null, so destroying a view built by `createComponent()` and inserted by
+     * hand leaves that node exactly where it was put. Switching the plugin off
+     * therefore left a frozen, unresponsive sidebar on screen, and switching it
+     * back on inserted a *second* one next to the corpse — the mount above only
+     * checks its own reference, which had been cleared. The SFTP panel does the
+     * same thing in `destroyPanel()`, for the same reason.
+     */
     private unmount (): void {
         if (!this.componentRef) {
             return
         }
+        this.rootNodeOf(this.componentRef).remove()
         this.appRef.detachView(this.componentRef.hostView)
         this.componentRef.destroy()
         this.componentRef = null
+    }
+
+    private rootNodeOf (ref: ComponentRef<SidebarPlusTreeComponent>): HTMLElement {
+        return (ref.hostView as unknown as { rootNodes: HTMLElement[] }).rootNodes[0]
     }
 }

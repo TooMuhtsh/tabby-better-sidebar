@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import { NgZone } from '@angular/core'
 import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { Opener, SidebarPlusEditorService } from './editorLauncher.service'
@@ -84,7 +85,23 @@ export class SftpRemoteEditor {
         private transfers: SftpTransfers,
         private temp: SidebarPlusTempFilesService,
         private confirm: ConfirmFn,
+        private zone: NgZone,
     ) { }
+
+    /**
+     * Runs something back inside Angular's zone.
+     *
+     * Everything this class does after an edit starts from an `fs.watch`
+     * callback, and zone.js — the browser build, the only one Tabby loads —
+     * does not patch Node's EventEmitter. So the conflict modal and every
+     * notification raised from that path were being opened outside the zone: no
+     * change detection followed, and they appeared only when something else
+     * happened to trigger a cycle (piège #41). This is the same guard
+     * `SftpDragOut` already applies to its own state.
+     */
+    private inZone<T> (work: () => T): T {
+        return this.zone.run(work)
+    }
 
     /** Hands a local copy over. The opener is settled by `edit()` before anything is downloaded. */
     private open (localPath: string, opener: Opener): void {
@@ -287,7 +304,7 @@ export class SftpRemoteEditor {
                 // `session.remote` is deliberately left as it was: the conflict
                 // has not been resolved, so the next save must ask again rather
                 // than treat silence as consent.
-                this.notifications.notice(`${item.name} n'a pas été renvoyé — le fichier distant est intact`)
+                this.inZone(() => this.notifications.notice(`${item.name} n'a pas été renvoyé — le fichier distant est intact`))
                 return
             }
             // `now.mode`, not `item.mode`: the mode the file has at the instant
@@ -296,9 +313,9 @@ export class SftpRemoteEditor {
             await this.transfers.upload(sftp, item.fullPath, session.localPath, item.name, stat.size, now.mode)
             session.baseline = { size: stat.size, mtimeMs: stat.mtimeMs }
             session.remote = await this.remoteStamp(sftp, item)
-            this.notifications.notice(`${item.name} renvoyé sur le serveur`)
+            this.inZone(() => this.notifications.notice(`${item.name} renvoyé sur le serveur`))
         } catch (e) {
-            this.notifications.error(`Échec du renvoi de ${item.name}`, String(e))
+            this.inZone(() => this.notifications.error(`Échec du renvoi de ${item.name}`, String(e)))
         } finally {
             session.uploading = false
         }

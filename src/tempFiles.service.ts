@@ -24,17 +24,21 @@ const ROOT = path.join(os.tmpdir(), 'tabby-better-sidebar')
  *     cancelled close would have deleted the copy of a file still open in the
  *     user's editor.
  *
- * Per-window directories are what keeps one window's copies apart from
- * another's.
+ * Per-window directories keep one window's copies apart from another's, and the
+ * purge decides what to delete by asking whether the process that owns a
+ * directory is **still running** — its pid is right there in the name.
  *
- * They are *not* enough to make the startup purge safe with several windows
- * open, contrary to what this said until 2026-08-02: `process.uptime()` is the
- * age of the current renderer, not of the application, so a window opened at
- * 10:30 treats the 10:00 window's directory as predating "boot" and deletes it
- * — including a file being edited right then, after which the watcher has
- * nothing left to send. See the "Cycle de vie" chantier in the roadmap; the fix
- * is not settled, and this note is here so the flaw is not rediscovered from
- * the symptom.
+ * That question replaced a boot-time cutoff, which was wrong as soon as a second
+ * window existed: `process.uptime()` is the age of the *current renderer*, not
+ * of the application, so a window opened at 10:30 treated the 10:00 window's
+ * directory as predating "boot" and deleted it — including a file being edited
+ * right then, after which the watcher had nothing left to send and every save
+ * went silently nowhere.
+ *
+ * A pid can be recycled by an unrelated process, which would make us keep a
+ * directory one run too long. That is the harmless side of the trade: this
+ * class exists to avoid leaving copies behind, never to risk deleting one that
+ * is in use.
  */
 @Injectable({ providedIn: 'root' })
 export class SidebarPlusTempFilesService {
@@ -59,22 +63,45 @@ export class SidebarPlusTempFilesService {
     }
 
     /**
-     * Removes what earlier runs left behind.
+     * Removes what runs that are over left behind.
      *
-     * The cutoff is the moment this process started, not an age in hours: a
-     * directory created before Tabby launched cannot belong to anything still
-     * running, whereas a fixed age would eventually delete a long editing
-     * session's own copy.
+     * A directory is fair game only when the process named in it is gone. Our
+     * own is skipped explicitly rather than relying on it looking alive: it is
+     * the one case where being wrong would delete the copies of the window
+     * doing the deleting.
      */
     private async purgeStale (): Promise<void> {
-        const bootTime = Date.now() - process.uptime() * 1000
         const entries = await fs.promises.readdir(ROOT, { withFileTypes: true }).catch(() => [])
         for (const entry of entries) {
             const dir = path.join(ROOT, entry.name)
-            const stat = await fs.promises.stat(dir).catch(() => null)
-            if (stat && stat.mtimeMs < bootTime) {
+            if (dir === this.sessionDir) {
+                continue
+            }
+            const pid = Number(entry.name.split('-')[0])
+            // A name we did not write: no owner can be read from it, so leave it
+            // alone rather than guess.
+            if (!Number.isInteger(pid) || pid <= 0) {
+                continue
+            }
+            if (!SidebarPlusTempFilesService.isProcessAlive(pid)) {
                 await this.remove(dir)
             }
+        }
+    }
+
+    /**
+     * Whether a pid still belongs to a running process.
+     *
+     * Signal 0 performs the permission and existence checks without delivering
+     * anything. `EPERM` means the process is there but out of reach — alive for
+     * our purposes, and the answer that errs towards keeping a directory.
+     */
+    private static isProcessAlive (pid: number): boolean {
+        try {
+            process.kill(pid, 0)
+            return true
+        } catch (e) {
+            return (e as NodeJS.ErrnoException).code === 'EPERM'
         }
     }
 

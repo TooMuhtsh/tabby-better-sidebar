@@ -139,7 +139,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
         const transfers = new SftpTransfers(platform, notices, registry)
-        this.editor = new SftpRemoteEditor(notices, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel))
+        this.editor = new SftpRemoteEditor(notices, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel), zone)
         this.dragOut = new SftpDragOut(notices, zone, transfers, temp)
     }
 
