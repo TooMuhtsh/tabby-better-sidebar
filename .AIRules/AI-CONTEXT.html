@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #65.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #67.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -1238,6 +1238,45 @@ avance. Lire après un tour de boucle d'événements.</li>
 <code>ref.changeDetectorRef.detectChanges()</code>, sa template n'a produit aucun DOM, et toute
 recherche de ligne dans son hôte rend vide.</li>
 </ul></div>
+
+<h3 id="piege-65">#65 — Piloter un glisser sur une ligne du panneau SFTP <strong>gèle le
+renderer</strong>, CDP compris</h3>
+<p>Le chemin de glisser-déposer sortant appelle <code>webContents.startDrag()</code>, qui ouvre la
+boucle de messages OLE de Windows : elle attend un vrai geste souris et ne rend la main qu'à son
+terme. Déclenchée sans souris, elle ne se termine jamais — le renderer ne répond plus, le
+<code>Runtime.evaluate</code> en cours reste pendant, et les requêtes <code>/json/list</code>
+finissent par ne plus aboutir non plus. Seul un <code>Stop-Process</code> en sort. Le symptôme se lit
+comme un blocage du plugin alors que c'est le harnais qui a déclenché une API bloquante.</p>
+<p>Deux façons d'y tomber, toutes deux vérifiées le 2026-08-02 :</p>
+<ul>
+<li><code>element.dispatchEvent(new DragEvent('dragstart', …))</code> sur une ligne
+  <code>draggable</code> ;</li>
+<li>appeler <code>onDragStart()</code> directement sur l'instance <em>quand une copie locale est
+  déjà prête</em> — <code>startDrag()</code> part alors dans la foulée. Le cas se déclenche aussi
+  au premier geste sur un dossier, la copie étant téléchargée puis remise tout de suite si
+  <code>gestureHeld</code> est vrai, ce qu'un pilotage ne dément jamais.</li>
+</ul>
+<p><strong>Pour piloter malgré tout</strong> : appeler les handlers à la main (jamais
+<code>dispatchEvent</code>), avec un objet d'événement fabriqué portant un vrai
+<code>DataTransfer</code> et l'élément DOM réel comme <code>target</code> — c'est ce que
+<code>aimFrom()</code> interroge. Et neutraliser le chemin sortant avant de toucher à un dossier :
+soit <code>config.store.sidebarPlus.sftpDragOutFolders = false</code> <em>en mémoire</em> (aucun
+<code>config.save()</code>, donc rien n'atteint <code>config.yaml</code>), soit remplacer
+<code>dragOut.startDrag</code> par une doublure. Tout ce qui touche au dépôt <em>entrant</em> et au
+déplacement interne se pilote sans précaution.</p>
+
+<h3 id="piege-66">#66 — Un <code>DataTransfer</code> fabriqué ne dit pas la vérité sur
+<code>effectAllowed</code> / <code>dropEffect</code></h3>
+<p>La spécification ne rend ces deux champs inscriptibles que dans leur phase : <code>effectAllowed</code>
+pendant <code>dragstart</code>, <code>dropEffect</code> pendant <code>dragenter</code>/<code>dragover</code>.
+Sur un <code>new DataTransfer()</code> piloté hors d'un vrai glisser, les affectations sont
+<strong>ignorées sans erreur</strong> et la lecture rend <code>'none'</code> — y compris là où le
+code vient d'écrire <code>'copyMove'</code> ou <code>'move'</code>. Une passe de test qui conclut de
+là que le curseur est faux se trompe de coupable.</p>
+<p>Ce qu'une telle passe établit malgré tout, et qui suffit à valider la logique : les types annoncés
+(<code>dataTransfer.types</code>), l'acceptation de la cible (<code>preventDefault()</code> appelé ou
+non), les classes portées par les lignes, et l'état réel du serveur après coup. Le curseur, lui, ne
+se vérifie qu'à la main.</p>
 
 <h3 id="piege-63">#63 — Un octet de contrôle brut dans un source le rend « binaire » pour
 <code>rg</code> et <code>grep</code>, qui le sautent sans rien dire</h3>

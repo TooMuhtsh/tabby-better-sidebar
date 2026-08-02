@@ -9,7 +9,7 @@ Dépôt distant : https://github.com/TooMuhtsh/tabby-better-sidebar (public).
 
 **Avant toute session de travail sur ce projet, lire `.AIRules/README.html`**
 (index + protocole), puis `.AIRules/AI-CONTEXT.html` (invariants, pièges déjà
-rencontrés — numérotés jusqu'à #64, le #7 est un trou hérité de la
+rencontrés — numérotés jusqu'à #66, le #7 est un trou hérité de la
 restructuration doc ; le prochain numéro libre est indiqué en tête du fichier —
 et points fragiles à revérifier après mise à jour de Tabby) et
 `.AIRules/AI-HISTORY.html`/`.AIRules/ROADMAP.html` pour l'état d'avancement et
@@ -181,6 +181,22 @@ de chargement de plugin.
   tranche, le reste part à la poubelle sans erreur et sans trace
   (.AIRules/AI-CONTEXT.html, piège #64). Ce plugin fait sa propre traversée,
   `readAllEntries()` dans `sftpBrowser.component.ts`.
+- **Un même `dragstart` porte deux gestes, et ils ne se partagent pas pareil.** Un
+  fichier annonce sa copie vers l'OS par un `DownloadURL`, qui voyage *dans* le
+  glisser HTML5 : le type maison `application/x-tabby-sftp-path` s'ajoute à côté
+  et le déplacement interne cohabite. Un dossier, lui, réclame
+  `preventDefault()` + `webContents.startDrag()` — donc le geste entier, et pas
+  de déplacement possible. D'où les deux temps : glisser un dossier le déplace,
+  le sortir de la fenêtre sans le déposer démarre sa copie, le geste suivant
+  l'emporte. La sortie de fenêtre se lit à l'**âge du dernier `dragover`** reçu
+  par le document, jamais à un comptage `dragenter`/`dragleave`.
+- **Ne jamais piloter un glisser sur une ligne du panneau SFTP** : le chemin
+  sortant appelle `startDrag()`, dont la boucle OLE de Windows attend une vraie
+  souris et **gèle le renderer**, CDP compris — seul un `Stop-Process` en sort
+  (.AIRules/AI-CONTEXT.html, piège #65). Appeler les handlers à la main, et
+  neutraliser le chemin sortant avant de toucher à un dossier. Et ne rien
+  conclure de `effectAllowed`/`dropEffect` sur un `DataTransfer` fabriqué : hors
+  de leur phase, les affectations sont ignorées sans erreur (piège #66).
 - **Un état visuel doit être plus spécifique que le fond qu'il recouvre.** Une
   règle de fond écrite en descendant (`.sftp-grid.with-zebra .sftp-zebra`) pèse
   `(0,3,1)` et bat le survol comme la sélection, à `(0,2,1)` : l'accent est

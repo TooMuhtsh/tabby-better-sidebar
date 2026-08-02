@@ -318,3 +318,15 @@ sidebar-plus-sftp-browser .sftp-row.sftp-drop-target:hover {
 sidebar-plus-sftp-browser .sftp-body.sftp-drop-here {
     box-shadow: inset 0 0 0 2px var(--theme-primary);
 }
+
+// The row a move started from. Chromium's own drag image is a snapshot taken at
+// `dragstart` and follows the cursor, so without this the list keeps showing the
+// entry exactly where it was, as though the gesture had not begun.
+//
+// Placed after the drop-target rules, and equally specific, so that a row aimed
+// at itself does not dim while it is highlighted — `canMoveTo()` refuses that
+// case, and the two states must not describe it at once.
+sidebar-plus-sftp-browser .sftp-row.sftp-drag-source,
+sidebar-plus-sftp-browser .sftp-row.sftp-drag-source:hover {
+    opacity: .45;
+}

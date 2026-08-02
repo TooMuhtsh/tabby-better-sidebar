@@ -37,7 +37,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
-<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Volets 1 et 2 faits (2026-08-02) — volet 3 restant</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
+<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Les trois volets faits (2026-08-02) — deux retours de test à traiter</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
 <tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill progress">🚧 Points 1 et 2 faits, 3 sans objet (2026-08-02) — point 4 restant</span></td><td>Haute</td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -370,8 +370,10 @@ file d'attente — mais dans son propre panneau, pas sur la session.</p></div>
 ce chantier passe devant <a href="#auto-enter">Auto-Enter</a> et devient le prochain à construire.
 Il absorbe le « mini-gestionnaire de transferts » différé du <a href="#sftp">SFTP contextuel</a> et
 débloque au passage l'affichage des états de transfert attendu par
-<a href="#sessions-actives">Sessions actives</a>. <strong>Volets 1 et 2 livrés le 2026-08-02</strong> ;
-volet 3 non commencé.</p>
+<a href="#sessions-actives">Sessions actives</a>. <strong>Les trois volets sont livrés le
+2026-08-02.</strong> Deux retours de la passe manuelle du volet 3 restent ouverts (curseur d'interdit
+hors fenêtre, notice à rendre persistante), ainsi qu'une vérification demandée : ce que les plugins
+SFTP graphiques existants gèrent déjà de ces mécaniques.</p>
 
 <p>Trois demandes distinctes, à traiter dans cet ordre — la première est autonome, les deux autres
 partagent leur plomberie de dépôt :</p>
@@ -573,7 +575,71 @@ déclencher par accident une fois qu'on peut viser n'importe quelle ligne, prév
 (le <code>panel-conflict-resolver</code> de <code>tabby-sftp-plus</code> reste la référence citée
 pour ce sujet), plus un récapitulatif après coup « N fichiers envoyés vers &lt;chemin&gt; ».</p></div>
 
-<h4>3. Glisser-déposer interne au panneau SFTP</h4>
+<h4>3. Glisser-déposer interne au panneau SFTP — <span class="pill done">✅ Fait (2026-08-02)</span></h4>
+<div class="callout note"><span class="callout-title">Fait — validé dans l'usage par l'utilisateur le 2026-08-02</span>
+<p>Branche <code>feat/deplacement-interne-sftp</code>. Le plan ci-dessous a été suivi — drag HTML5,
+distinction par <code>dataTransfer.types</code>, <code>rename()</code>, garde-fous — avec
+<strong>un ajout qui n'était pas prévu et qui a demandé un arbitrage</strong>, plus deux points
+tranchés en construisant.</p>
+<p><strong>Le geste de départ était déjà pris.</strong> Le <a href="#drag-out">glisser-déposer
+sortant</a> occupe le même <code>dragstart</code>, et les deux ne se partagent pas de la même façon
+selon la nature de l'entrée :</p>
+<ul>
+<li><strong>Un fichier n'a pas de conflit</strong> : son drag-out passe par un
+  <code>DownloadURL</code>, qui voyage <em>dans</em> le glisser HTML5. Le type maison
+  <code>application/x-tabby-sftp-path</code> s'ajoute à côté, et Chromium sert celui que la cible du
+  dépôt sait lire. Un même geste déplace dans le panneau ou copie vers l'OS, sans rien décider au
+  départ.</li>
+<li><strong>Un dossier, si</strong> : sa copie vers l'OS réclame <code>preventDefault()</code> puis
+  <code>webContents.startDrag()</code>, qui n'accepte qu'un chemin <em>déjà présent sur le disque</em>
+  — donc tout le geste, et pas de glisser HTML5, donc pas de déplacement possible. Or l'utilisateur a
+  <code>sftpDragOutFolders</code> activé : laisser la copie prioritaire aurait privé le déplacement
+  interne des dossiers, ce que ce volet demande explicitement.</li>
+</ul>
+<p><strong>Tranché avec l'utilisateur le 2026-08-02 : les deux, en deux temps.</strong> Glisser un
+dossier le déplace, toujours. Le sortir de la fenêtre et le lâcher là <em>déclare l'intention</em> :
+la copie démarre et le geste suivant sur cette même ligne l'emporte vers l'OS. Ce n'est pas un
+détour inventé pour l'occasion — c'est la forme que la copie d'un dossier avait déjà
+(« préparation…, glissez-le à nouveau »), <code>startDrag()</code> exigeant un fichier existant. La
+sortie de fenêtre se lit à l'<strong>âge du dernier <code>dragover</code></strong> reçu par le
+document, pas à un comptage <code>dragenter</code>/<code>dragleave</code> que Chromium rapporte déjà
+mal ici. Deux options écartées : donner la priorité à la copie quand le réglage est coché (l'option
+devenait un choix exclusif et muet), et réserver le geste au seul déplacement en renvoyant la copie
+au menu contextuel — qui l'offre pourtant bien, sous « Download directory ».</p>
+<p><strong>Collision : refus, pas d'écrasement</strong> (confirmé par l'utilisateur). Même réponse
+que <code>renameEntry()</code>, et pour la même raison : SFTP v3 laisse au serveur le soin de décider
+ce que fait un <code>rename</code> sur un nom occupé, et certains remplacent. Écraser demanderait un
+<code>unlink</code>/<code>rmdir</code> récursif préalable — trop destructif pour un glisser. La
+lecture passe par <code>readRemoteEntry()</code>, jamais par le <code>stat()</code> que ce plan
+recommandait plus bas (<a href="AI-CONTEXT.html#piege-50">#50</a>).</p>
+<p><strong>La source du geste est retenue par le composant</strong>, et pas seulement posée sur le
+<code>DataTransfer</code> : <code>getData()</code> rend une chaîne vide pendant
+<code>dragover</code>, où seuls les <em>types</em> sont lisibles — or c'est là que se décide le
+surlignage. Le chemin annoncé sert au drop, à confirmer que le geste vient bien de ce panneau. Un
+déplacement impossible n'est pas refusé par un message après coup : <code>preventDefault()</code>
+n'est pas appelé, donc le dépôt ne peut pas avoir lieu et le curseur le dit.</p>
+<p><strong>Franchissement de points de montage</strong> : rien de spécial n'a été tenté. SFTP n'offre
+aucun moyen de savoir où un chemin est monté ; l'échec du serveur est remonté tel quel.</p>
+</div>
+<div class="callout warning"><span class="callout-title">Deux retours de la passe manuelle, à traiter</span>
+<p>Validé dans l'usage, avec deux réserves que l'utilisateur a explicitement renvoyées à plus
+tard :</p>
+<ul>
+<li><strong>Le curseur d'interdit persiste hors de Tabby</strong> pendant qu'on glisse un dossier
+  vers le Bureau — le geste aboutit quand même. Le glisser ne porte alors qu'un type que l'OS ignore,
+  d'où le refus affiché ; c'est cohérent avec le mécanisme (rien ne part vraiment à ce
+  moment-là) mais ça se lit comme un échec.</li>
+<li><strong>La notice « glissez-le à nouveau » doit tenir</strong> : plus grande, plus visible, et
+  affichée <em>jusqu'à ce que le second geste ait eu lieu</em> plutôt que sur une minuterie. C'est le
+  seul repère qui dit pourquoi le premier geste n'a rien donné.</li>
+</ul></div>
+<div class="callout note"><span class="callout-title">À instruire avant d'aller plus loin</span>
+<p>Demandé par l'utilisateur le 2026-08-02 : <strong>vérifier ce que les plugins SFTP graphiques
+existants gèrent déjà</strong> de ces mécaniques — déplacement interne, dépôt sur une ligne de
+dossier, glisser sortant. <code>tabby-sftp-plus</code> est la référence déjà citée ailleurs dans
+cette roadmap (son <code>panel-conflict-resolver</code>). L'enjeu n'est pas d'abandonner ce qui est
+construit, mais de savoir ce qui a déjà été résolu ailleurs avant d'en écrire davantage — même
+principe que « réutiliser l'API officielle plutôt que la réinventer ».</p></div>
 <ul>
 <li><strong>Mécanisme</strong> : déplacer une ligne sur la ligne d'un dossier (ou sur
   <code>..</code>) = <code>SFTPSession.rename(ancien, nouveau)</code> — présent dans les typings
