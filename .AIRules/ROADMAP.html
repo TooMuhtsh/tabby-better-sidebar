@@ -49,7 +49,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#renommer-sftp">Renommer une entrée depuis le panneau SFTP</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#integrite-donnees">Intégrité des données au re-parentage et à la suppression</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Haute</td></tr>
-<tr><td><a href="#liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td><strong>Haute — permissions distantes</strong></td></tr>
+<tr><td><a href="#liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Haute</td></tr>
 <tr><td><a href="#cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -1224,7 +1224,26 @@ workspace » ne demandent pas la même action.</p>
 </ul>
 
 <h3 id="liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique
-<span class="pill planned">📋 À arbitrer</span></h3>
+<span class="pill done">✅ Fait (2026-08-02)</span></h3>
+<div class="callout note"><span class="callout-title">Livré et testé sur un serveur réel le 2026-08-02</span>
+<p>Branche <code>fix/liens-symboliques</code>. Le lien est résolu une fois, par
+<code>readlink()</code> puis <code>readRemoteEntry()</code> — jamais <code>stat()</code> — et
+<strong>c'est la cible résolue qui est éditée, chemin compris</strong>. Les quatre conséquences
+tombent ensemble : mode réel donc copie inscriptible, <code>chmod</code> de la cible avec son propre
+mode, empreinte de fraîcheur prise là où les changements ont lieu, et le lien n'est plus touché
+puisqu'on n'écrit plus dessus. Chaîne bornée à huit sauts, cible introuvable annoncée.</p>
+<p><strong>Passe réelle</strong> menée sur un serveur de l'utilisateur, dans un répertoire jetable
+sous <code>/tmp</code>, supprimé après coup : sept vérifications sur sept, dont le round-trip complet
+— téléchargement, modification, renvoi — au terme duquel <strong>le lien existe toujours</strong> et
+la cible a gardé son <code>0o640</code>.</p>
+<p>La contre-preuve a été mesurée sur ce même serveur : <code>stat()</code> du lien rend bien un mode
+<code>0o0</code> et une date au <strong>1<sup>er</sup> janvier 1970</strong>, et le
+<code>chmod</code> qu'appliquait l'ancien chemin aurait bien été <code>0o777</code>. Le défaut
+n'était pas théorique.</p>
+<p><strong>Effet de bord acquis</strong> : le dernier <code>stat()</code> d'observation de
+<code>src/</code> disparaît. <code>createFileFromMenu()</code> testait la disponibilité d'un nom par
+<code>stat()</code>, qui suit les liens — un lien cassé du même nom faisait croire le nom libre, et
+la création écrasait le lien.</p></div>
 <p class="muted">Trouvé à la revue de code du 2026-08-02, et vérifié pas à pas. Un seul geste —
 double-cliquer une entrée qui est un lien vers un fichier, cas courant sur un serveur
 (<code>sites-enabled/</code>, un <code>.env</code> lié…) — enchaîne trois conséquences, dont une
