@@ -24,6 +24,55 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Dépôt depuis l'OS sur un dossier distant visé (2026-08-02)</h2>
+<p>Volet 2 du chantier <a href="ROADMAP.html#transferts">Transferts SFTP</a>, sur la branche
+<code>feat/depot-sur-dossier-distant</code>. Testé de bout en bout sur un serveur réel — pilotage par
+l'injecteur Angular depuis le CDP (<a href="AI-CONTEXT.html#piege-8">#8</a>), dans un dossier jetable
+supprimé après coup — puis validé par l'utilisateur au vrai geste, glisser depuis l'Explorateur.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-02</td><td><code>3a48aab</code></td>
+<td><strong>Le survol et la sélection étaient invisibles une ligne sur deux.</strong> Défaut trouvé
+en écrivant la règle de la ligne ciblée, qui l'aurait hérité. La règle des zébrures s'écrit
+<code>.sftp-grid.with-zebra .sftp-zebra</code>, soit deux classes plus la porte — <code>(0,3,1)</code>
+— quand le survol et la sélection sont à <code>(0,2,1)</code>. Sur une ligne impaire, et les zébrures
+sont actives par défaut, la couleur d'accent était donc calculée puis perdue dans la cascade. Ce qui
+ne se lit pas comme un défaut mais comme une liste qui ne s'allume qu'une ligne sur deux, d'où des
+mois sans qu'il soit vu. Vérifié sur les sélecteurs réellement émis dans le bundle, pas sur le SCSS
+source, et mesuré au <code>getComputedStyle</code> : en réinjectant l'ancien sélecteur avec une
+couleur témoin, c'est bien lui qui gagne. La porte passe en <code>:where()</code>, qui n'apporte
+aucune spécificité — la zébrure tombe à <code>(0,1,1)</code> et tout état peint par-dessus.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>8b665e8</code></td>
+<td><strong>Un dépôt atterrit désormais où il est lâché, et n'écrase plus rien en silence.</strong>
+La <code>dropZone</code> de tabby-core n'émet que le <code>DirectoryUpload</code>, jamais le
+<code>DragEvent</code> : la position du curseur — donc la ligne visée — lui échappe par construction.
+Le panneau gère <code>dragover</code>/<code>drop</code> lui-même, en un seul point du corps, ce qui
+donne aussi la main sur le retour visuel. Ligne de dossier → ce dossier, ligne <code>..</code> → le
+parent, tout le reste → le dossier affiché. Un lien symbolique est suivi au dépôt et non au survol,
+et quand il ne mène pas à un dossier le dépôt retombe sur le dossier affiché en le disant.
+<code>SFTPSession.upload()</code> renommant par-dessus sa cible, chaque dossier de destination est
+listé une fois (<code>readdir</code>, jamais <code>stat()</code>,
+<a href="AI-CONTEXT.html#piege-50">#50</a>) et les collisions sont confirmées en une seule question :
+rien n'est écrit avant la réponse, pas même un <code>mkdir</code>.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>8b665e8</code></td>
+<td><strong>Et la traversée de l'arborescence déposée devient la nôtre.</strong>
+<code>startUploadFromDragEvent()</code>, que la roadmap recommandait de réutiliser, appelle
+<code>readEntries()</code> une seule fois par dossier — or l'API ne rend qu'une tranche, 100 entrées
+sous Chromium, et ne signale la fin que par une réponse vide. Au-delà, le reste partait à la poubelle
+sans erreur, et le récapitulatif comptait ce qu'il avait vu. Mesuré sur la même arborescence de
+252 fichiers : <strong>101 contre 252</strong> (<a href="AI-CONTEXT.html#piege-64">#64</a>). Deux
+effets de bord bienvenus : cette méthode publiait chaque fichier sur
+<code>fileTransferStarted$</code> <em>pendant</em> le parcours, donc avant toute confirmation — le
+test l'a montré en laissant 101 lignes « en cours » que rien ne terminait — et
+<code>appRoot</code> y étant abonné, chaque dépôt ouvrait le menu de transferts natif. Nos
+<code>HTMLFileUpload</code> sont désormais construits et inscrits au registre au moment où ils
+démarrent, un à la fois.</td></tr>
+</table>
+
 <h2>Revue générale, remise en ordre des documents, et intégrité des données (2026-08-02)</h2>
 <p>Revue complète demandée sur le code, la gouvernance et les documents de production. Deux branches :
 <code>chore/mise-en-ordre-doc-et-release</code> pour ce qui était de la mise en ordre, puis

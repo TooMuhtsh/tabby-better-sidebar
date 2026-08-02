@@ -37,7 +37,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
-<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Volet 1 fait (2026-08-02) — volets 2 et 3 restants</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
+<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Volets 1 et 2 faits (2026-08-02) — volet 3 restant</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
 <tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill progress">🚧 Points 1 et 2 faits, 3 sans objet (2026-08-02) — point 4 restant</span></td><td>Haute</td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -370,8 +370,8 @@ file d'attente — mais dans son propre panneau, pas sur la session.</p></div>
 ce chantier passe devant <a href="#auto-enter">Auto-Enter</a> et devient le prochain à construire.
 Il absorbe le « mini-gestionnaire de transferts » différé du <a href="#sftp">SFTP contextuel</a> et
 débloque au passage l'affichage des états de transfert attendu par
-<a href="#sessions-actives">Sessions actives</a>. <strong>Volet 1 livré le 2026-08-02</strong> ;
-volets 2 et 3 non commencés.</p>
+<a href="#sessions-actives">Sessions actives</a>. <strong>Volets 1 et 2 livrés le 2026-08-02</strong> ;
+volet 3 non commencé.</p>
 
 <p>Trois demandes distinctes, à traiter dans cet ordre — la première est autonome, les deux autres
 partagent leur plomberie de dépôt :</p>
@@ -508,7 +508,37 @@ profit d'une position sous les sessions actives, l'arbre étant contraint en hau
 repliables empilées (sessions, tunnels, transferts) risquent d'écraser l'arbre — d'où l'importance
 du « masqué quand vide », qui est le comportement déjà retenu pour les deux autres.</p></div>
 
-<h4>2. Dépôt depuis l'OS directement sur un dossier distant</h4>
+<h4>2. Dépôt depuis l'OS directement sur un dossier distant — <span class="pill done">✅ Fait (2026-08-02)</span></h4>
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-02</span>
+<p>Branche <code>feat/depot-sur-dossier-distant</code>, détail dans
+<a href="AI-HISTORY.html">AI-HISTORY</a>. Le plan ci-dessous a été suivi sur l'essentiel — un seul
+point de gestion du <code>drop</code>, garde-fou de cible, confirmation groupée avant écrasement,
+récapitulatif après coup — avec <strong>trois écarts</strong>, tous tranchés en construisant :</p>
+<ul>
+<li><strong>La traversée de l'arborescence est la nôtre, pas
+<code>startUploadFromDragEvent()</code></strong> que ce plan recommandait. Cette méthode n'appelle
+<code>readEntries()</code> qu'une fois par dossier, or l'API ne rend qu'une tranche de 100 entrées et
+ne signale la fin que par une réponse vide : au-delà, le reste partait en silence
+(<a href="AI-CONTEXT.html#piege-64">#64</a>, mesuré — 101 fichiers contre 252 sur la même
+arborescence). Conséquence bienvenue : nos <code>HTMLFileUpload</code> ne sont plus publiés sur
+<code>fileTransferStarted$</code> pendant le parcours, donc plus de lignes « en cours » que rien ne
+termine si la confirmation est refusée.</li>
+<li><strong>Le contrôle de collision passe par un <code>readdir</code> par dossier de
+destination</strong>, et non par le <code>stat()</code> par cible écrit plus bas : <code>stat()</code>
+suit les liens et rend un mode nul (<a href="AI-CONTEXT.html#piege-50">#50</a>), et une lecture par
+fichier relirait le même dossier N fois. Six fichiers répartis sur trois dossiers coûtent trois
+listings.</li>
+<li><strong>La ligne <code>..</code> est bien une cible</strong> — la question laissée ouverte
+ci-dessous est tranchée par l'affirmative.</li>
+</ul>
+<p>Le <strong>lien symbolique</strong> est résolu au dépôt et non au survol (un <code>readlink</code>
+par <code>dragover</code> est hors de question) : la ligne s'allume sur <code>isSymlink</code>, et
+s'il ne mène pas à un dossier le dépôt retombe sur le dossier affiché <em>et le dit</em>. Quand il y
+mène, la destination est le chemin du <em>lien</em>, que le serveur résout — le lien n'est jamais
+touché. Le retour visuel remplace le voile plein cadre de la directive : ligne ciblée allumée, ou à
+défaut cadre du corps, jamais les deux.</p>
+</div>
+
 <p>Aujourd'hui le dépôt fonctionne mais atterrit toujours dans le dossier <em>affiché</em> : la
 template pose <code>dropZone</code> (la directive de tabby-core) sur <code>.sftp-body</code>, qui
 émet un <code>DirectoryUpload</code> transmis à <code>uploadOneFolder()</code>, lequel écrit sous
