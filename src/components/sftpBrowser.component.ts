@@ -139,8 +139,34 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.dragOut = new SftpDragOut(notices, zone, transfers, temp)
     }
 
+    /**
+     * True when the SFTP channel could not be opened at all.
+     *
+     * Read by the host panel, which has no other way of telling a browser that
+     * is merely empty from one that never got a channel.
+     */
+    sftpUnavailable = false
+
+    /** What the server or the transport actually said — shown rather than guessed at. */
+    sftpUnavailableReason = ''
+
+    /**
+     * `super.ngOnInit()` calls `session.openSFTP()` **outside** its own
+     * try/catch — only the `navigate()` that follows is guarded. So a server
+     * without an SFTP subsystem, or a transport that died between the tab
+     * opening and the panel being built, rejects here and takes the whole
+     * `ngOnInit` down: unhandled rejection, `this.sftp` left undefined, and a
+     * panel that shows nothing and says nothing. Catching it is what turns a
+     * silent dead view into a state the panel above can act on.
+     */
     override async ngOnInit (): Promise<void> {
-        await super.ngOnInit()
+        try {
+            await super.ngOnInit()
+        } catch (error) {
+            this.sftpUnavailable = true
+            this.sftpUnavailableReason = String((error as Error)?.message ?? error)
+            return
+        }
         this.startAutoRefresh()
         // The interval is rebuilt on every config change rather than tracked:
         // the setting is edited from the settings tab, not from here, and

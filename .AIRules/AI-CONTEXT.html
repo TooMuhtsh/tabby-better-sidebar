@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #57.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #59.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -41,7 +41,7 @@ Tabby.</p>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55 + 5 points de veille</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58 + 5 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
@@ -430,6 +430,41 @@ mais le voile est retiré entre-temps : <code>Cannot read properties of undefine
 l'exception, le transfert n'est pas affecté, et le scintillement théorique du voile n'a été vu ni en
 test ni à l'usage. À connaître pour ne pas partir en chasse d'un bug du plugin en lisant la console
 pendant un glisser — le fichier fautif est celui de Tabby.</p>
+
+<h3 id="piege-57">#57 — <code>SFTPPanelComponent.ngOnInit()</code> appelle <code>openSFTP()</code> hors de
+son try/catch : l'échec tue le panneau en silence</h3>
+<p>Dans le composant natif :</p>
+<pre><code>this.sftp = await this.session.openSFTP()   // ← hors du try
+try { await this.navigate(this.path) } catch { … }</code></pre>
+<p>Seul le <code>navigate()</code> est gardé. Un serveur sans sous-système SFTP, ou un transport mort
+entre l'ouverture de l'onglet et la construction du panneau, fait rejeter le premier appel :
+<strong>rejet de promesse non géré</strong>, <code>this.sftp</code> reste <code>undefined</code>, et
+le panneau n'affiche rien <em>et ne dit rien</em>. Toute sous-classe qui fait
+<code>await super.ngOnInit()</code> hérite du problème. → Entourer l'appel au parent d'un try/catch et
+en faire un état lisible, faute de quoi la seule issue visible pour l'utilisateur est de tuer
+l'onglet.</p>
+
+<h3 id="piege-58">#58 — Un glisser-déposer sortant ne dit jamais où le fichier a été déposé, et
+l'affichage se termine avant l'écriture</h3>
+<p>Mesuré le 2026-08-02 sur un fichier de 5,52 Go. Notre ligne de transfert passe à « terminé » à
+17:03:48 ; une seconde plus tard une fenêtre de l'<strong>Explorateur Windows</strong> apparaît
+(processus <code>explorer</code>, classe <code>OperationStatusWindow</code>, titre « X % terminé ») et
+ne disparaît qu'à 17:04:11. <strong>22 secondes</strong> pendant lesquelles la sidebar annonçait une
+fin qui n'avait pas eu lieu.</p>
+<p>Mécanique : Chromium matérialise le contenu dans un fichier <strong>temporaire</strong>, puis remet
+ce chemin au shell, qui <strong>copie</strong> vers l'endroit du dépôt (250 Mo/s mesurés — une copie,
+pas un renommage, donc volumes distincts). Cette fenêtre appartient à <code>explorer.exe</code> :
+<strong>elle n'est pas masquable depuis le plugin</strong>, et Tabby n'y est pour rien (aucun dialogue
+de ce genre dans son bundle).</p>
+<div class="callout warning"><span class="callout-title">La destination est inconnaissable, ne pas
+chercher à la vérifier</span>
+<p>Le protocole de glisser-déposer de Windows ne communique <strong>jamais</strong> à l'application
+source l'endroit où la cible a déposé. Un contrôle « le fichier est-il bien arrivé ? » est donc
+impossible sur ce chemin — <code>will-download</code> d'Electron ne rendrait que le chemin
+<em>temporaire</em> de Chromium. Ce contrôle reste possible sur les téléchargements lancés par le
+menu contextuel, où c'est nous qui imposons le chemin à
+<code>platform.startDownload()</code> : ne pas confondre les deux, c'est ce que font les plugins SFTP
+qui affichent cette vérification.</p></div>
 
 <h3 id="piege-50">#50 — <code>SFTPSession.stat()</code> perd les permissions et la date : ne
 jamais s'en servir pour observer une entrée</h3>

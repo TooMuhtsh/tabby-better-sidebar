@@ -38,6 +38,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
 <tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Volet 1 fait (2026-08-02) — volets 2 et 3 restants</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
+<tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill progress">🚧 Correctif écrit, non testé (2026-08-02)</span></td><td>Haute — <strong>le prochain</strong></td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -557,6 +558,71 @@ pour ce sujet), plus un récapitulatif après coup « N fichiers envoyés vers &
 c'est un mécanisme différent (<code>DownloadURL</code>/fichier promis), sans rapport avec la
 plomberie ci-dessus. Repris et détaillé dans <a href="#drag-out">Glisser-déposer sortant</a>
 ci-dessous.</p>
+
+<h3 id="panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</h3>
+<p class="muted">Ouvert le 2026-08-02 sur un bug remonté en test, élargi par ce que le diagnostic a
+mis au jour. Les quatre points ci-dessous partagent la même mécanique — savoir si la session porte
+encore un SFTP utilisable — et se traitent donc ensemble. <strong>Options tranchées avec l'utilisateur
+le 2026-08-02</strong>, aucune n'est implémentée sauf le correctif du bug, écrit mais
+<strong>non testé</strong>.</p>
+
+<h4>1. Bug : après une perte de connexion, le panneau reste mort jusqu'au kill de l'onglet</h4>
+<p>Deux causes cumulées, l'une chez nous, l'autre chez Tabby :</p>
+<ul>
+<li><code>attachPanel()</code> met les panneaux <strong>en cache par onglet</strong> et ne lie
+<code>session</code> qu'à la création ; le cache n'est purgé que par
+<code>tabClosed$</code>/<code>tabRemoved$</code>, donc par la mort de l'<em>onglet</em>, jamais par
+celle de la <em>session</em>. À la reconnexion, l'ancien panneau est réattaché avec son transport
+mort — d'où « seul un kill répare », le kill étant le seul geste qui vide le cache.</li>
+<li><a href="AI-CONTEXT.html#piege-57">Piège #57</a> : <code>openSFTP()</code> est appelé hors du
+try/catch du composant natif, donc son échec laissait un panneau vide et muet.</li>
+</ul>
+<p><strong>Correctif écrit</strong> (branche <code>fix/sftp-session-perdue</code>) : le panneau est
+reconstruit dès que la session n'est plus la même ou que la précédente a échoué à ouvrir son canal, et
+l'échec devient l'état <code>sftpUnavailable</code>, lisible par le panneau hôte.
+<strong>Inconnue à lever au test</strong> : à la reconnexion, Tabby fabrique-t-il un nouvel objet
+<code>sshSession</code> ou ranime-t-il le même ? Le <a href="AI-CONTEXT.html#piege-37">piège #37</a>
+rappelle que ce transport est compté par référence — si c'est le même objet qui repart, la comparaison
+d'identité ne suffit pas et il faudra s'abonner à <code>SFTPSession.closed$</code>.</p>
+
+<h4>2. Rendre la main aux Profils quand il n'y a pas de SFTP</h4>
+<p><strong>Tranché : sur échec d'<code>openSFTP()</code> ET sur fin du shell (<code>exit</code>).</strong>
+Le second cas est le plus important et n'était pas dans la demande initiale : après un
+<code>exit</code>, le transport survit (piège #37) donc le SFTP continue de fonctionner, alors que
+« Sessions actives » a déjà retiré la ligne — <strong>deux blocs de la même sidebar donnant deux
+réponses opposées à « cette session existe-t-elle ? »</strong>. C'est notre incohérence, pas celle de
+Tabby, et c'est elle qu'on corrige.</p>
+<p>Écarté : basculer dès qu'aucun onglet SSH n'est focalisé — une session qui met deux secondes à
+monter renverrait sur Profils, avec un retour manuel à faire.</p>
+<p><strong>Pas de retour automatique</strong> quand la session redevient exploitable : l'utilisateur
+est peut-être reparti travailler dans les profils, et un clic suffit. Réglable, le défaut suivant le
+comportement retenu ici.</p>
+
+<h4>3. Transfert en cours au moment de la bascule</h4>
+<p>Retirer le panneau détruit le composant, ce qui libère le canal SFTP et <strong>annule le
+transfert</strong> — brutal sur plusieurs Go entamés. <strong>Tranché : demander confirmation</strong>
+(la recommandation était d'attendre la fin en silence ; l'utilisateur préfère être consulté).
+Réutiliser <code>ConfirmModalComponent</code>, jamais un dialogue OS
+(<a href="#confirmations-html">invariant</a>).</p>
+
+<h4>4. Ne plus annoncer « terminé » pour un glisser sortant</h4>
+<p>Mesuré : 22 s d'écart entre notre « terminé » et l'écriture réelle du fichier
+(<a href="AI-CONTEXT.html#piege-58">piège #58</a>). <strong>Tranché : un état transitoire pendant la
+copie</strong>, l'utilisateur acceptant explicitement qu'il soit approximatif (« mentir au pire c'est
+pas très grave ici »).</p>
+<div class="callout warning"><span class="callout-title">Le contrôle d'existence demandé n'est pas
+possible sur ce chemin</span>
+<p>Demande de l'utilisateur : vérifier que le fichier est bien arrivé là où il a été déposé, « comme
+d'autres plugins SFTP le font ». <strong>Impossible pour un glisser-déposer</strong> — Windows ne
+communique jamais la destination à l'application source, et <code>will-download</code> d'Electron ne
+rendrait que le chemin temporaire de Chromium. Les plugins qui affichent ce contrôle le font sur des
+téléchargements <em>avec sélecteur de chemin</em>, où ils ont eux-mêmes choisi la destination. Ce
+contrôle est en revanche <strong>faisable pour nos téléchargements par le menu contextuel</strong>,
+qui imposent leur chemin à <code>platform.startDownload()</code> — à traiter comme un point distinct
+si le besoin est confirmé.</p>
+<p>Reste donc à trancher au moment de coder : sur quoi lever l'état transitoire, puisque rien ne
+signale la fin de la copie du shell. Piste la moins mauvaise : une durée estimée d'après la taille et
+le débit observé, assumée comme approximative.</p></div>
 
 <h3 id="sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30, avec trois autres axes UX/sécurité —

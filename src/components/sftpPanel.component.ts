@@ -239,6 +239,18 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
 
     private attachPanel (tab: SSHTabComponent): void {
         let ref = this.panels.get(tab)
+        // A cached panel binds its session **once**, at creation, and this cache
+        // is only ever pruned when the tab itself goes away. So a connection
+        // that drops and comes back handed the user the old panel, still
+        // holding the dead transport and its closed SFTP channel: nothing
+        // displayed, nothing recoverable, and killing the tab was the only
+        // gesture that emptied the cache. Rebuilding on identity change is what
+        // makes a reconnected session usable again.
+        if (ref && (ref.instance.session !== tab.sshSession || ref.instance.sftpUnavailable)) {
+            this.destroyPanel(ref)
+            this.panels.delete(tab)
+            ref = undefined
+        }
         if (!ref) {
             ref = createComponent(SidebarPlusSftpBrowserComponent, {
                 environmentInjector: this.environmentInjector,
