@@ -41,7 +41,7 @@ Tabby.</p>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58 + 5 points de veille</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58 + 6 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
@@ -1038,6 +1038,25 @@ sauvegarde avant de considérer l'opération terminée : le dégât est totaleme
 <p>Utilisées uniquement selon la discipline du piège #12. Si le format de stockage des groupes dans
 <code>config.yaml</code> change, retester le re-parentage sur des groupes jetables avant de faire
 confiance au comportement existant.</p>
+
+<h4 id="fragile-8">Téléchargements servis par nous, et non par <code>platform.startDownload()</code></h4>
+<p>Depuis le 2026-08-02, l'entrée « Download » du menu contextuel passe par
+<code>downloadItem()</code> surchargé : le fichier est servi par notre serveur HTTP local et écrit
+par Chromium (voir <a href="ROADMAP.html#transferts">#transferts</a>). Trois appuis non contractuels
+à revérifier après une montée de version :</p>
+<ul>
+<li>l'entrée du menu appelle bien <code>panel.downloadItem(item)</code> — si Tabby la rebranche sur
+  <code>download()</code>, la surcharge devient inopérante <em>sans erreur</em>, et le seul symptôme
+  sera le retour du libellé « annulé » sur un transfert coupé ;</li>
+<li>Tabby n'installe <strong>aucun</strong> gestionnaire <code>will-download</code> : c'est ce qui
+  laisse Electron ouvrir sa boîte « Enregistrer sous ». S'il en ajoutait un, la destination pourrait
+  être imposée sans que rien ne le signale ;</li>
+<li><code>Content-Disposition: attachment</code> reste ce qui fait télécharger plutôt que naviguer.</li>
+</ul>
+<p>Choix assumé de l'utilisateur le 2026-08-02, en connaissance de ce qu'il coûte : on renonce à la
+progression du menu de transferts natif (masqué par défaut de toute façon) pour gagner un échec
+visible — la voie native appelle <code>sftp.download()</code> <strong>sans l'attendre</strong>, donc
+sa rupture n'est observable nulle part.</p>
 
 <h4 id="fragile-5">Clone non garanti de <code>getProfileGroups()</code>/<code>buildGroupTree()</code></h4>
 <p>Le <code>structuredClone()</code> défensif (piège #12) part du principe que l'API peut renvoyer

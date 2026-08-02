@@ -182,6 +182,48 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.stopAutoRefresh()
     }
 
+    /**
+     * Serves the file ourselves and lets Chromium write it, instead of the
+     * inherited `platform.startDownload()` path.
+     *
+     * The inherited one calls `this.sftp.download(...)` **without awaiting
+     * it** (`sftpPanel.component.ts:252` of the installed app), so a transport
+     * that dies mid-transfer rejects a promise nobody holds: the failure never
+     * reaches us, and all the panel sees is the `transfer.cancel()` tabby-ssh
+     * makes on its way out — a line reading "annulé" for something the user
+     * never cancelled. Going through our own HTTP offer puts the rejection back
+     * in a catch we own, which is what tells a dead transfer apart from a
+     * cancelled one.
+     *
+     * Chromium does the writing. Tabby installs no `will-download` handler
+     * (checked in its bundle), so Electron falls back to its own "Save as"
+     * dialog — the same path prompt the inherited version raised. What is given
+     * up is the native transfers menu's progress bar, which this plugin hides
+     * by default and whose own panel says more (percentage, speed, ETA).
+     *
+     * Directories and symlinks stay on the inherited path: a `DownloadURL`
+     * offer serves exactly one file, and resolving a link needs the `stat()`
+     * that piège #50 warns against.
+     */
+    override async downloadItem (item: SFTPFile): Promise<void> {
+        if (item.isDirectory || item.isSymlink || !this.dragServer.ready) {
+            await super.downloadItem(item)
+            return
+        }
+        const url = this.dragServer.offer(this.sftp, item)
+        if (!url) {
+            await super.downloadItem(item)
+            return
+        }
+        // A detached anchor is enough — the offer answers with
+        // `Content-Disposition: attachment`, so Chromium downloads rather than
+        // navigates, and the transfer registers itself when the request lands.
+        const link = document.createElement('a')
+        link.href = url
+        link.download = item.name
+        link.click()
+    }
+
     ////// AUTO REFRESH //////
     private autoRefreshTimer: ReturnType<typeof setInterval>|null = null
 
