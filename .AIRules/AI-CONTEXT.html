@@ -1210,7 +1210,34 @@ const config = inj.get(require('tabby-core').ConfigService) // config.store en c
 <p>La sidebar apparaît dans <code>_views</code> parce que <code>SidebarPlusMountService</code>
 l'attache par <code>appRef.attachView()</code>. C'est aussi la seule façon de lire
 <code>config.store</code> : le coffre-fort chiffre <code>config.yaml</code> sur disque, mais l'objet
-vivant, lui, est en clair.</p></div>
+vivant, lui, est en clair.</p>
+<p><code>_views</code> ne contient que les vues attachées à <code>ApplicationRef</code> — donc pas un
+composant enfant d'un template. Deux compléments couvrent le reste :</p>
+<pre><code>// une classe de composant declaree par le module, meme sans instance vivante
+const Browser = require('tabby-better-sidebar').default.ɵmod.declarations
+    .find(d =&gt; d.name === 'SidebarPlusSftpBrowserComponent')
+
+// n'importe quel service `providedIn: 'root'` deja instancie, par son nom
+let registry = null
+inj.records.forEach(rec =&gt; {
+    const v = rec &amp;&amp; rec.value
+    if (v &amp;&amp; v.constructor &amp;&amp; v.constructor.name === 'SidebarPlusTransfersService') { registry = v }
+})</code></pre>
+<p>Avec la classe, <code>core.createComponent(Browser, { hostElement, environmentInjector })</code>
+puis <code>instance.session = …</code> et <code>await instance.ngOnInit()</code> donnent un composant
+réel branché sur une vraie session — le geste que fait <code>attachPanel()</code>. Il se démonte
+comme lui : <strong>retirer le nœud puis détruire la vue</strong>, dans cet ordre.</p>
+<p>Deux choses à ne pas déduire de travers en pilotant :</p>
+<ul>
+<li><strong><code>NgbModal.activeInstances</code> émet à l'intérieur de <code>open()</code></strong>,
+donc <em>avant</em> que l'appelant ait affecté les <code>@Input()</code> de la modale. Lire
+<code>componentInstance.message</code> dans l'abonnement rend <code>undefined</code> et les valeurs
+par défaut — ce qui se lit comme un défaut du code observé alors que c'est la sonde qui est en
+avance. Lire après un tour de boucle d'événements.</li>
+<li><strong>Un composant créé de la sorte n'est pas dans le cycle de détection</strong> : sans
+<code>ref.changeDetectorRef.detectChanges()</code>, sa template n'a produit aucun DOM, et toute
+recherche de ligne dans son hôte rend vide.</li>
+</ul></div>
 
 <h3 id="piege-63">#63 — Un octet de contrôle brut dans un source le rend « binaire » pour
 <code>rg</code> et <code>grep</code>, qui le sautent sans rien dire</h3>
