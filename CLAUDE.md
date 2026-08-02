@@ -9,7 +9,7 @@ Dépôt distant : https://github.com/TooMuhtsh/tabby-better-sidebar (public).
 
 **Avant toute session de travail sur ce projet, lire `.AIRules/README.html`**
 (index + protocole), puis `.AIRules/AI-CONTEXT.html` (invariants, pièges déjà
-rencontrés — numérotés jusqu'à #47, le #7 est un trou hérité de la
+rencontrés — numérotés jusqu'à #56, le #7 est un trou hérité de la
 restructuration doc ; le prochain numéro libre est indiqué en tête du fichier —
 et points fragiles à revérifier après mise à jour de Tabby) et
 `.AIRules/AI-HISTORY.html`/`.AIRules/ROADMAP.html` pour l'état d'avancement et
@@ -102,6 +102,14 @@ de chargement de plugin.
 - Composants Angular : `template: require('./x.pug')`, jamais `templateUrl`
   (ne fonctionne pas pour un plugin tiers — voir .AIRules/AI-CONTEXT.html, piège #3). Pour les
   styles, `import './x.scss'` en side-effect, pas `styleUrls`.
+- **Reprendre une classe stylée ailleurs ne reprend rien si son sélecteur est
+  descendant d'un autre composant.** Le SCSS étant global, une classe identique
+  donne l'illusion du partage : `sidebar-plus-tree .active-sessions
+  .active-sessions-header` ne s'applique pas dans un composant frère, et le
+  symptôme est un style *partiellement* absent (pas de `display: flex`, donc
+  bouton qui tombe à la ligne et `me-auto` sans effet), jamais une erreur. Lire
+  le sélecteur complet avant de toucher aux propriétés, et vérifier dans le DOM
+  plutôt que de croire un commentaire (.AIRules/AI-CONTEXT.html, piège #56).
 - **`:host { ... }` ne fonctionne PAS dans le SCSS de ce plugin** — cible le
   nom du tag custom element (ex: `sidebar-plus-tree { ... }`) à la place. Le
   SCSS étant injecté en CSS globale brute (side-effect import, requis

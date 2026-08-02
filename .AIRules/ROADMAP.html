@@ -37,7 +37,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
-<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
+<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Volet 1 fait (2026-08-02) — volets 2 et 3 restants</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -369,7 +369,29 @@ partagent leur plomberie de dépôt :</p>
   dans un autre dossier distant), pour l'ergonomie.</li>
 </ol>
 
-<h4>1. Gestionnaire de transferts (bas de sidebar, horodaté)</h4>
+<h4>1. Gestionnaire de transferts (bas de sidebar, horodaté) — <span class="pill done">✅ Fait (2026-08-02)</span></h4>
+<div class="callout note"><span class="callout-title">Livré, avec deux écarts au plan ci-dessous</span>
+<p><strong>L'option (c) a été suivie</strong> : le panneau s'abonne à <code>fileTransferStarted$</code>
+et reflète donc aussi les transferts du panneau natif et des autres plugins. Deux différences avec ce
+qui était écrit ici, toutes deux tranchées en test :</p>
+<ul>
+<li><strong>Nos propres transferts n'y sont pas publiés, ils sont inscrits directement.</strong>
+  Publier sur le flux natif aurait fait ouvrir le dropdown de Tabby par-dessus les onglets à chaque
+  geste (<code>appRoot</code> appelle <code>open()</code> à chaque émission), et sa liste ne se vide
+  qu'une ligne à la fois, à la main : masquée, elle aurait grossi sans recours. Le registre expose
+  donc <code>track()</code>, et l'abonnement ne sert qu'à capter ce qui vient d'ailleurs.</li>
+<li><strong>L'horodatage a été remplacé par le temps écoulé</strong>, à la demande de l'utilisateur
+  au test : l'heure de début ne se lit pas, la durée si. Elle compte pendant le transfert et se fige
+  sur le total à la fin. Une colonne <strong>ETA</strong> l'accompagne, masquée dès qu'elle serait
+  malhonnête (taille inconnue, transfert à l'arrêt, déjà fini).</li>
+</ul>
+<p>Le <strong>chemin distant et la session</strong> prévus dans la ligne n'y sont pas : la ligne est
+restée volontairement compacte, et l'information n'a pas été réclamée au test. À rouvrir si le besoin
+se manifeste — le registre les a sous la main pour nos propres transferts.</p>
+<p><strong>Le menu natif est masqué</strong> par un réglage coché par défaut, visant l'hôte du
+dropdown <em>et</em> <code>transfers-menu</code> — l'avertissement ci-dessous sur
+<code>container='body'</code> s'est vérifié tel quel.</p>
+</div>
 <ul>
 <li><strong>Registre maison comme source de vérité</strong>, alimenté par notre panneau au moment où
   il lance un transfert. Motif : <code>FileTransfer</code> (tabby-core) ne porte <em>ni</em> le chemin

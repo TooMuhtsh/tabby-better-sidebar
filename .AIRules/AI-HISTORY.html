@@ -24,6 +24,64 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Glisser-déposer sortant réel, gestionnaire de transferts et réglages (2026-08-01 → 2026-08-02)</h2>
+<p>Branche <code>feat/transferts-ui</code>, ouverte le 2026-08-01 et mise en pause en cours de passe
+de test, reprise et terminée le 2026-08-02. Elle porte le volet 1 du chantier
+<a href="ROADMAP.html#transferts">#transferts</a> et l'aboutissement de
+<a href="ROADMAP.html#drag-out">#drag-out</a> : le téléchargement démarre enfin <em>au dépôt</em>,
+ce que <code>startDrag()</code> ne permettait pas.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-02</td><td><code>ab76ebc</code></td>
+<td><strong>Le transfert se voit au dépôt, l'ETA remplace le silence, et le menu natif s'efface.</strong>
+Le prototype <code>DownloadURL</code> marchait mais ne disait rien : quelques ko passent avant qu'on
+s'en aperçoive, quelques centaines de Mo font une minute de silence complet.
+<code>HttpFileDownload</code> étant construit à la main, il ne passait par personne — ni la sidebar ni
+la tab-bar, toutes deux abonnées à <code>fileTransferStarted$</code>. Il est désormais inscrit au
+registre quand la requête HTTP arrive, donc au dépôt, jamais pour un geste abandonné.
+<strong>Inscrit, et non publié sur le flux natif</strong> : <code>appRoot</code> ouvre son dropdown à
+chaque émission, ce qui aurait posé le menu de Tabby par-dessus les onglets à chaque glisser, et ses
+lignes ne s'effacent qu'une par une — masqué, il aurait grossi sans recours. D'où le réglage qui le
+masque, coché par défaut, visant l'hôte du dropdown <em>et</em> <code>transfers-menu</code>, que
+<code>container='body'</code> téléporte hors du bouton. Mesure contre commentaire : le
+<code>Content-Length</code> ne donne <em>aucune</em> barre de progression sous Windows — les octets
+sont écrits par Chromium comme un téléchargement, et Electron n'a pas d'indicateur ; le commentaire
+qui prétendait l'inverse est corrigé. Côté ligne : temps écoulé au lieu de l'heure de début, colonne
+ETA tant qu'elle est honnête, et vitesse recalculée ici, <code>getSpeed()</code> ne mesurant que le
+dernier bloc entre deux <code>increaseProgress()</code> — d'un ordre de grandeur à l'autre, aucune
+estimation n'en sort. Enfin l'en-tête, qui empruntait <code>.active-sessions-header</code> à un
+sélecteur descendant d'un <em>autre</em> composant et n'a donc jamais été stylé
+(<a href="AI-CONTEXT.html#piege-56">#56</a>) : sans <code>display: flex</code>, le bouton tombait à la
+ligne et <code>me-auto</code> collait le compteur au titre — deux défauts d'apparence, une seule
+cause.</td></tr>
+
+<tr><td>2026-08-01</td><td><code>cb3df0f</code></td>
+<td><strong>Le glisser-déposer sortant réel, par <code>DownloadURL</code>.</strong> L'utilisateur
+refusait le fonctionnement en deux temps : le téléchargement doit démarrer au dépôt.
+<code>webContents.startDrag()</code> en est incapable, il exige un fichier déjà sur le disque
+(<a href="AI-CONTEXT.html#piege-49">#49</a>). La voie retenue passe par le moteur et non par une API
+d'Electron : une entrée <code>DownloadURL</code> du <code>DataTransfer</code> annonce nom, type et
+URL, et Chromium ne réclame le contenu qu'au dépôt — le rendu différé de Windows.
+<code>src/dragOutServer.service.ts</code> sert cette URL en streamant les octets SFTP dans la réponse
+HTTP, sans copie temporaire : écoute sur <code>127.0.0.1</code>, port éphémère, jeton aléatoire
+consommé à la première requête, backpressure respecté. <code>dragstart</code> n'appelle plus
+<code>preventDefault()</code> pour un fichier ; les dossiers et le cas « serveur non démarré »
+gardent l'ancien chemin. <strong>Validé en test le 2026-08-02</strong> — effet de bord bénin consigné
+en <a href="AI-CONTEXT.html#piege-55">#55</a>.</td></tr>
+
+<tr><td>2026-08-01</td><td><code>44c22e7</code>, <code>aa6afd7</code>, <code>8985c5e</code></td>
+<td><strong>Gestionnaire de transferts, clic dans le vide, et mise en page des réglages.</strong> Le
+gestionnaire s'installe en bas de sidebar, masqué quand vide, alimenté par
+<code>fileTransferStarted$</code> — la source même de la tab-bar, donc il reflète aussi les transferts
+du panneau natif et des autres plugins (option (c) de la roadmap). Retirer une ligne active
+<strong>annule</strong> le transfert, sémantique reprise du menu natif ; vider demande confirmation.
+Le clic dans le vide de la liste SFTP désélectionne, sauf sur l'en-tête et sur <code>..</code>. Les
+réglages reprennent la mise en page de l'autre plugin de l'utilisateur : une <code>.form-line</code>
+par réglage, le chemin de l'éditeur sous son intitulé et pleine largeur.</td></tr>
+</table>
+
 <h2>Renommer une entrée depuis le panneau SFTP (2026-08-01)</h2>
 <p>Demande venue en fin de session, livrée sur branche et validée dans la foulée.</p>
 

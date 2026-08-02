@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #55.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #57.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -40,8 +40,8 @@ Tabby.</p>
 <ul>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
-<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53 + 5 points de veille</li>
+<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55 + 5 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
@@ -122,6 +122,24 @@ retourne une string.</p>
 n'est interprété que par le compilateur de templates Angular ou en Shadow DOM natif, ni l'un ni
 l'autre ne s'applique ici. Le navigateur ignore silencieusement la règle (aucune erreur). → Cibler
 le nom du tag custom element réel (ex. <code>sidebar-plus-tree { ... }</code>) à la place.</p>
+
+<h3 id="piege-56">#56 — Réutiliser une classe stylée par un autre composant ne réutilise rien si son
+sélecteur est descendant de ce composant</h3>
+<p>Le bloc « Transferts » reprenait les classes <code>.active-sessions-header</code> et
+<code>.active-sessions-count</code> du bloc « Sessions actives », en supposant hériter de son
+apparence. Mais ces règles sont écrites sous <code>sidebar-plus-tree .active-sessions { ... }</code>,
+et le bloc des transferts est un composant <em>frère</em> : aucune ne s'est jamais appliquée.</p>
+<p>Le piège n'est pas la règle CSS, qui est ordinaire — c'est qu'<strong>il n'y a aucun
+symptôme franc</strong>. L'en-tête s'affichait, simplement sans <code>display: flex</code> : le
+bouton passait à la ligne suivante (un <code>div</code> redevenu bloc) et <code>me-auto</code>, qui
+n'a d'effet que dans un conteneur flex, laissait le compteur collé au titre — « Transferts2 ». Deux
+défauts d'apparence sans rapport apparent, une seule cause. Un commentaire en tête du fichier
+affirmait par-dessus le marché que le style était partagé, ce qui a fait chercher ailleurs.</p>
+<div class="callout warning"><span class="callout-title">Vérifier, pas supposer</span>
+<p>Devant un style « qui ne prend pas », lire le <em>sélecteur complet</em> de la règle visée avant
+de toucher aux propriétés — et ne jamais croire un commentaire qui dit qu'un style est partagé sans
+l'avoir constaté dans le DOM (<code>getComputedStyle</code> via CDP tranche en une commande).</p>
+</div>
 
 <h3 id="piege-33">#33 — Un composant Tabby greffé ailleurs arrive <em>sans mise en page</em> : le CSS natif est encapsulé, contrairement à celui de ce plugin</h3>
 <p>Asymétrie facile à prendre à l'envers. Ce plugin injecte son SCSS en CSS globale brute (piège
@@ -397,6 +415,21 @@ premier geste <em>prépare</em> une copie, le suivant la fait partir.</li>
 le comportement de la plateforme, pas un défaut du plugin — mais c'est indiscernable d'un blocage,
 et il faut le savoir avant de diagnostiquer une lenteur observée pendant un drag.</li>
 </ul>
+
+<h3 id="piege-55">#55 — Un <code>dragstart</code> laissé à Chromium réveille la zone de dépôt de
+Tabby, qui lève une exception dans le vide</h3>
+<p>Le glisser-déposer sortant par <code>DownloadURL</code> (voir <a href="ROADMAP.html#drag-out">le
+chantier</a>) n'appelle délibérément <strong>pas</strong> <code>preventDefault()</code> : c'est le
+glisser natif du moteur qui fait le travail. Effet de bord — le glisser se propage à la fenêtre et
+réveille la <code>dropZone.directive</code> de <code>tabby-core</code>, celle qui accueille un
+fichier déposé depuis l'Explorateur vers un terminal. Elle crée son voile « déposez ici » sur
+<code>dragenter</code> et programme un <code>setTimeout</code> pour lui ajouter sa classe visible,
+mais le voile est retiré entre-temps : <code>Cannot read properties of undefined (reading
+'classList')</code>, levée depuis <code>tabby-core</code> et non depuis ce plugin.</p>
+<p><strong>Sans conséquence observable</strong>, et laissé tel quel après constat : Tabby avale
+l'exception, le transfert n'est pas affecté, et le scintillement théorique du voile n'a été vu ni en
+test ni à l'usage. À connaître pour ne pas partir en chasse d'un bug du plugin en lisant la console
+pendant un glisser — le fichier fautif est celui de Tabby.</p>
 
 <h3 id="piege-50">#50 — <code>SFTPSession.stat()</code> perd les permissions et la date : ne
 jamais s'en servir pour observer une entrée</h3>
