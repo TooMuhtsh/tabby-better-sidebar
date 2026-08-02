@@ -38,6 +38,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
 <tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Volet 1 fait (2026-08-02) — volets 2 et 3 restants</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
+<tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill progress">🚧 Points 1 et 2 faits (2026-08-02) — points 3 et 4 restants</span></td><td>Haute</td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -557,6 +558,116 @@ pour ce sujet), plus un récapitulatif après coup « N fichiers envoyés vers &
 c'est un mécanisme différent (<code>DownloadURL</code>/fichier promis), sans rapport avec la
 plomberie ci-dessus. Repris et détaillé dans <a href="#drag-out">Glisser-déposer sortant</a>
 ci-dessous.</p>
+
+<h3 id="panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</h3>
+<p class="muted">Ouvert le 2026-08-02 sur un bug remonté en test, élargi par ce que le diagnostic a
+mis au jour. Les quatre points ci-dessous partagent la même mécanique — savoir si la session porte
+encore un SFTP utilisable — et se traitent donc ensemble. <strong>Options tranchées avec l'utilisateur
+le 2026-08-02</strong>. <strong>Points 1 et 2 livrés, testés et validés le 2026-08-02</strong>
+(branche <code>fix/sftp-session-perdue</code>, 4 commits, détail dans
+<a href="AI-HISTORY.html">AI-HISTORY</a>) ; les points 3 et 4 restent à faire, le chantier reste
+donc ouvert.</p>
+
+<h4>1. Bug : après une perte de connexion, le panneau reste mort jusqu'au kill de l'onglet</h4>
+<p>Deux causes cumulées, l'une chez nous, l'autre chez Tabby :</p>
+<ul>
+<li><code>attachPanel()</code> met les panneaux <strong>en cache par onglet</strong> et ne lie
+<code>session</code> qu'à la création ; le cache n'est purgé que par
+<code>tabClosed$</code>/<code>tabRemoved$</code>, donc par la mort de l'<em>onglet</em>, jamais par
+celle de la <em>session</em>. À la reconnexion, l'ancien panneau est réattaché avec son transport
+mort — d'où « seul un kill répare », le kill étant le seul geste qui vide le cache.</li>
+<li><a href="AI-CONTEXT.html#piege-57">Piège #57</a> : <code>openSFTP()</code> est appelé hors du
+try/catch du composant natif, donc son échec laissait un panneau vide et muet.</li>
+</ul>
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-02</span>
+<p><strong>Une troisième cause manquait, et elle annulait les deux autres.</strong> Le premier
+correctif (<code>fe449a5</code>) reconstruisait bien le panneau sur changement d'identité de session,
+mais <code>sync()</code> sortait avant de l'appeler, sur <code>tab === this.boundTab</code> : un
+onglet reconnecté est le <em>même objet</em>, seul <code>tab.sshSession</code> change. Et le
+garde-fou censé forcer un passage par le placeholder testait <code>sshSession?.open</code>, drapeau
+qui n'est <strong>jamais</strong> remis à <code>false</code>
+(<a href="AI-CONTEXT.html#piege-59">piège #59</a>). Le panneau restait donc mort exactement comme
+avant le correctif.</p>
+<p><strong>L'inconnue est levée, et par lecture du code plutôt qu'au test</strong> : Tabby fabrique
+bien un nouvel objet. <code>SSHSession.destroy()</code> émet <code>willDestroy$</code>, sur quoi le
+multiplexeur retire la session de sa map, donc <code>setupOneSession()</code> ne retrouve rien à
+réutiliser. La comparaison d'identité suffit — <code>SFTPSession.closed$</code> n'a pas été
+nécessaire.</p>
+<p>Le test de vivacité est désormais unique : <code>isLiveSSHTab()</code> dans
+<code>src/tabs.ts</code>, appelé par le panneau <em>et</em> par « Sessions actives », qui avaient
+divergé. Le dossier courant est retenu par onglet et réinjecté dans le panneau reconstruit, le cache
+ne pouvant plus l'assurer sur ce chemin.</p>
+</div>
+<div class="callout warning"><span class="callout-title">La reproduction consignée ici était fausse</span>
+<p><code>sudo systemctl restart sshd</code> <strong>ne coupe pas</strong> les sessions établies : les
+<code>sshd</code> enfants survivent au redémarrage du démon parent. Les deux gestes qui reproduisent
+réellement sont le bouton <em>Reconnect</em> de la barre d'outils de l'onglet (reconnexion rapide,
+absorbée par le délai de grâce) et
+<code>sudo ss -K state established '( sport = :22 )'</code> (perte durable, jusqu'à la touche de
+reconnexion). Symptôme à reconnaître quand le panneau est mort : <strong>« Session closed »</strong>
+remonté par russh à chaque geste, dans un panneau qui s'affiche pourtant normalement.</p>
+</div>
+
+<h4>2. Rendre la main aux Profils quand il n'y a pas de SFTP</h4>
+<p><strong>Tranché : sur échec d'<code>openSFTP()</code> ET sur fin du shell (<code>exit</code>).</strong>
+Le second cas est le plus important et n'était pas dans la demande initiale : après un
+<code>exit</code>, le transport survit (piège #37) donc le SFTP continue de fonctionner, alors que
+« Sessions actives » a déjà retiré la ligne — <strong>deux blocs de la même sidebar donnant deux
+réponses opposées à « cette session existe-t-elle ? »</strong>. C'est notre incohérence, pas celle de
+Tabby, et c'est elle qu'on corrige.</p>
+<p>Écarté : basculer dès qu'aucun onglet SSH n'est focalisé — une session qui met deux secondes à
+monter renverrait sur Profils, avec un retour manuel à faire.</p>
+<p><strong>Pas de retour automatique</strong> quand la session redevient exploitable : l'utilisateur
+est peut-être reparti travailler dans les profils, et un clic suffit. Réglable, le défaut suivant le
+comportement retenu ici.</p>
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-02</span>
+<p><strong>Un délai de grâce de trois secondes, non prévu au design</strong>, a été ajouté après
+mesure : sans lui, l'issue dépendait de l'instant du tick d'une seconde — le bouton
+<em>Reconnect</em> remonte une session plus vite que ça, donc le même geste basculait ou ne
+basculait pas, au hasard. Une reconnexion qui rentre dans la fenêtre est traitée comme une
+reconstruction : la vue ne bouge pas et le panneau revient sur son dossier. C'est la généralisation
+du motif qui avait fait écarter « basculer dès qu'aucun onglet SSH n'est focalisé », juste au-dessus.
+<strong>Contrepartie assumée</strong> : pendant ces trois secondes le panneau reste affiché mais
+inerte.</p>
+<p>La bascule <strong>s'annonce par une notice</strong> (demande de l'utilisateur) : la vue change
+sous ses yeux sans qu'il ait rien demandé. Le panneau mort est détruit plutôt que mis en cache — il
+tient un canal SFTP sur un transport disparu.</p>
+</div>
+<div class="callout warning"><span class="callout-title">La bascule sur <code>exit</code> n'a pas pu être observée</span>
+<p>Le <code>behaviorOnSessionEnd</code> de l'utilisateur <strong>ferme l'onglet</strong> à la fin du
+shell : l'onglet part avec son panneau, et <code>pruneClosedTabs()</code> fait le ménage avant que
+la bascule ait à se déclencher. Le code la couvre — <code>isLiveSSHTab()</code> lit le shell, pas le
+transport — mais <strong>ce chemin reste non exercé</strong> tant qu'un profil n'est pas réglé sur
+« garder l'onglet ouvert ». L'incohérence avec « Sessions actives » décrite ci-dessus n'est pas
+davantage observable dans cette configuration : à vérifier le jour où un profil change de réglage,
+plutôt qu'à supposer acquis.</p>
+</div>
+
+<h4>3. Transfert en cours au moment de la bascule</h4>
+<p>Retirer le panneau détruit le composant, ce qui libère le canal SFTP et <strong>annule le
+transfert</strong> — brutal sur plusieurs Go entamés. <strong>Tranché : demander confirmation</strong>
+(la recommandation était d'attendre la fin en silence ; l'utilisateur préfère être consulté).
+Réutiliser <code>ConfirmModalComponent</code>, jamais un dialogue OS
+(<a href="#confirmations-html">invariant</a>).</p>
+
+<h4>4. Ne plus annoncer « terminé » pour un glisser sortant</h4>
+<p>Mesuré : 22 s d'écart entre notre « terminé » et l'écriture réelle du fichier
+(<a href="AI-CONTEXT.html#piege-58">piège #58</a>). <strong>Tranché : un état transitoire pendant la
+copie</strong>, l'utilisateur acceptant explicitement qu'il soit approximatif (« mentir au pire c'est
+pas très grave ici »).</p>
+<div class="callout warning"><span class="callout-title">Le contrôle d'existence demandé n'est pas
+possible sur ce chemin</span>
+<p>Demande de l'utilisateur : vérifier que le fichier est bien arrivé là où il a été déposé, « comme
+d'autres plugins SFTP le font ». <strong>Impossible pour un glisser-déposer</strong> — Windows ne
+communique jamais la destination à l'application source, et <code>will-download</code> d'Electron ne
+rendrait que le chemin temporaire de Chromium. Les plugins qui affichent ce contrôle le font sur des
+téléchargements <em>avec sélecteur de chemin</em>, où ils ont eux-mêmes choisi la destination. Ce
+contrôle est en revanche <strong>faisable pour nos téléchargements par le menu contextuel</strong>,
+qui imposent leur chemin à <code>platform.startDownload()</code> — à traiter comme un point distinct
+si le besoin est confirmé.</p>
+<p>Reste donc à trancher au moment de coder : sur quoi lever l'état transitoire, puisque rien ne
+signale la fin de la copie du shell. Piste la moins mauvaise : une durée estimée d'après la taille et
+le débit observé, assumée comme approximative.</p></div>
 
 <h3 id="sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30, avec trois autres axes UX/sécurité —
