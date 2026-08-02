@@ -24,6 +24,46 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Déplacer une entrée distante au glisser-déposer (2026-08-02)</h2>
+<p>Volet 3 du chantier <a href="ROADMAP.html#transferts">Transferts SFTP</a>, sur la branche
+<code>feat/deplacement-interne-sftp</code>. Le design est dans la roadmap ; ce qui suit est ce que la
+construction a appris.</p>
+<p><strong>Le geste de départ était déjà occupé par le glisser sortant</strong>, et les deux natures
+d'entrée ne se partagent pas pareil : un fichier annonce sa copie par un <code>DownloadURL</code>,
+qui voyage dans le glisser HTML5 — le type maison s'ajoute à côté et rien n'a à être décidé au
+départ. Un dossier, lui, réclame <code>preventDefault()</code> puis
+<code>webContents.startDrag()</code>, donc le geste entier. L'utilisateur ayant
+<code>sftpDragOutFolders</code> activé, le laisser prioritaire aurait supprimé en silence ce que ce
+volet vient ajouter. <strong>Arbitrage rendu par l'utilisateur : les deux, en deux temps</strong> —
+glisser un dossier le déplace ; le sortir de la fenêtre et le lâcher là démarre sa copie, et le geste
+suivant l'emporte. La sortie de fenêtre se lit à l'âge du dernier <code>dragover</code> reçu par le
+document.</p>
+<p><strong>Passe de test sur un serveur réel</strong> (machine <em>VPN</em>, autonomie accordée par
+l'utilisateur), dans <code>/tmp/zzz-test-move/</code> créé pour l'occasion, rien touché en dehors.
+Neuf vérifications, dont les trois refus au survol — dossier visé sur lui-même, entrée lâchée dans le
+dossier où elle est déjà — sans le moindre écrit sur le serveur, le refus d'une collision, le
+déplacement <em>à travers</em> un lien symbolique vers un dossier, et un lien cassé qui ne déplace
+rien et le dit. Le <strong>curseur</strong>, lui, ne s'y vérifie pas
+(<a href="AI-CONTEXT.html#piege-66">#66</a>) : c'est la passe manuelle de l'utilisateur qui a validé
+l'usage, et qui a rapporté les deux réserves consignées en roadmap.</p>
+<p><strong>Trois gels du renderer</strong> avant d'y arriver, tous dus au harnais et non au plugin :
+piloter un glisser sur une ligne finit par appeler <code>startDrag()</code>, dont la boucle OLE
+attend une souris qui n'existe pas (<a href="AI-CONTEXT.html#piege-65">#65</a>). C'est ce qui a
+révélé au passage que le réglage était activé côté utilisateur, donc le conflit ci-dessus.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-02</td><td><code>4d652d0</code></td>
+<td><strong>Une entrée distante se déplace en la glissant sur un dossier.</strong> Le glisser annonce
+<code>application/x-tabby-sftp-path</code> ; survol et dépôt distinguent l'interne de l'entrant sur
+les <em>types</em>, jamais sur la position. <code>rename()</code> côté serveur : rien ne transite.
+Garde-fous — dossier dans lui-même ou dans un de ses descendants, entrée déjà dans la cible,
+destination occupée — refusés en amont, sans <code>preventDefault()</code>, donc le dépôt ne peut pas
+avoir lieu. Un dossier garde son glisser HTML5 et ne part vers l'OS qu'au geste suivant une sortie de
+fenêtre.</td></tr>
+</table>
+
 <h2>Dépôt depuis l'OS sur un dossier distant visé (2026-08-02)</h2>
 <p>Volet 2 du chantier <a href="ROADMAP.html#transferts">Transferts SFTP</a>, sur la branche
 <code>feat/depot-sur-dossier-distant</code>. Testé de bout en bout sur un serveur réel — pilotage par

@@ -106,11 +106,14 @@
             //- comes and goes, so a CSS-side parity would flip whenever the
             //- panel is at the root.
             //-
-            //- `draggable` + (dragstart) is the native drag towards the OS. The
-            //- handler always calls preventDefault(): either startDrag() takes
-            //- over, or the gesture merely downloads the copy that the next one
-            //- will carry. A pug comment cannot live inside an attribute list —
-            //- it parses as attributes and fails on the first repeated word.
+            //- `draggable` + (dragstart) carries two gestures at once: a move
+            //- to another remote directory, always, and a copy towards the OS
+            //- when the entry is one a DownloadURL can announce. (dragend) is
+            //- reached only by the first — the drag-out of a directory calls
+            //- preventDefault(), and a cancelled HTML drag is the only thing
+            //- that ends there. A pug comment cannot live inside an attribute
+            //- list — it parses as attributes and fails on the first repeated
+            //- word.
             //- Everything here reads a precomputed field. Calling a method per
             //- row — icon, tooltip, each cell — re-ran it on every change
             //- detection pass, which a full directory turns into thousands of
@@ -125,8 +128,10 @@
                 [class.sftp-selected]='isSelected(row.item)',
                 [class.sftp-preparing]='isDragPreparing(row.item)',
                 [class.sftp-drop-target]='isDropTarget(row.item)',
+                [class.sftp-drag-source]='isDragSource(row.item)',
                 draggable='true',
                 (dragstart)='onDragStart(row.item, $event)',
+                (dragend)='onDragEnd($event)',
                 (click)='select(row.item)',
                 (dblclick)='openItem(row.item)',
                 (contextmenu)='showContextMenu(row.item, $event)',

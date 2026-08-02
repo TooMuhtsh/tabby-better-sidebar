@@ -49,6 +49,22 @@ interface PlannedUpload {
     remotePath: string
 }
 
+/**
+ * What a row puts on the clipboard when it is dragged inside the panel.
+ *
+ * A type of our own is what tells an internal move from files coming in from
+ * the OS — never the cursor's position, which says nothing about what is being
+ * carried. Chromium hands custom types back verbatim within the same window,
+ * and ignores them everywhere else, so the same gesture can announce this *and*
+ * a `DownloadURL` for the OS without either reading the other's.
+ *
+ * Its value is the entry's full remote path. Read at the drop and compared to
+ * the source the panel remembers: `getData()` answers an empty string during
+ * `dragover` (only `types` is readable there), so the live field is what the
+ * highlight is computed from, and this is what confirms it at the end.
+ */
+const INTERNAL_DRAG_TYPE = 'application/x-tabby-sftp-path'
+
 /** A whole drop, flattened: the directories to create, then the files to send. */
 interface DropPlan {
     /** Parents before children — `planFromEntries()` walks the tree depth-first, so the order is already right. */
@@ -237,6 +253,9 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.dragOut.dispose()
         this.stopAutoRefresh()
         this.clearDropTarget()
+        // The one listener this component puts on `document` — a panel torn
+        // down mid-gesture would otherwise leave it there for good.
+        this.stopWatchingWindowExit()
     }
 
     /**
@@ -661,29 +680,70 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     onDragStart (item: SFTPFile, event: DragEvent): void {
         const isDirectory = this.isDirectoryEntry(item)
 
+        // A directory that asked to leave on the previous gesture. The copy to
+        // the OS takes the *whole* gesture — see `dragOutIntent` — so nothing
+        // else is set up here.
+        if (isDirectory && this.claimDragOutIntent(item)) {
+            event.preventDefault()
+            this.copyToOS(item, true)
+            return
+        }
+
+        // Announced first, and on every gesture that keeps its HTML drag: this
+        // is what makes an internal move possible, and it costs nothing when
+        // the drop lands outside — Chromium hands custom types to the source
+        // window only.
+        event.dataTransfer?.setData(INTERNAL_DRAG_TYPE, item.fullPath)
+        this.internalDragSource = item
+
         // The real drag-and-drop path: announce the file and let Chromium claim
         // its content when — and only when — the drop lands. `preventDefault()`
         // is deliberately *not* called here, since the browser's own drag is the
         // one doing the work.
         //
         // Files only: a `DownloadURL` announces exactly one file, so a
-        // directory still goes through the copy-then-drag route below.
+        // directory cannot be offered this way and takes the route below.
         if (!isDirectory && this.dragServer.ready && event.dataTransfer) {
             const url = this.dragServer.offer(this.sftp, item)
             if (url) {
-                event.dataTransfer.effectAllowed = 'copy'
+                // Both, because both are on offer: copy towards the OS, move
+                // inside the panel. `effectAllowed` is the gate `dropEffect`
+                // has to fit through — leaving it at `copy` would have the
+                // engine veto the move rather than merely mislabel it.
+                event.dataTransfer.effectAllowed = 'copyMove'
                 event.dataTransfer.setData('DownloadURL', `application/octet-stream:${item.name}:${url}`)
                 return
             }
         }
 
-        event.preventDefault()
-        this.gestureHeld = true
-        window.addEventListener('mouseup', () => { this.gestureHeld = false }, { once: true })
-        if (isDirectory && !this.config.store.sidebarPlus?.sftpDragOutFolders) {
-            this.notices.notice('Le glisser-déposer des dossiers est désactivé — activez-le dans Paramètres → Better Sidebar')
+        // A directory keeps its HTML drag: this gesture is the move's, and
+        // `preventDefault()` would take that away. Leaving the window without
+        // dropping is what asks for the copy instead, and the *next* gesture is
+        // the one that carries it out.
+        if (isDirectory) {
+            if (event.dataTransfer) {
+                event.dataTransfer.effectAllowed = 'move'
+            }
+            this.watchForWindowExit(item)
             return
         }
+
+        // A file with no HTTP offer to announce — the drag-out server failed to
+        // start. Falls back to the local copy, which needs the whole gesture.
+        event.preventDefault()
+        // No HTML drag from here on, so there is no internal move to be had
+        // either — and no `dragend` coming to clear this.
+        this.internalDragSource = null
+        this.copyToOS(item, false)
+    }
+
+    /**
+     * The copy-to-OS route: hand over the local copy if there is one, otherwise
+     * take it and say so.
+     */
+    private copyToOS (item: SFTPFile, isDirectory: boolean): void {
+        this.gestureHeld = true
+        window.addEventListener('mouseup', () => { this.gestureHeld = false }, { once: true })
         if (this.dragOut.startDrag(item)) {
             // The copy was current as far as the listing knows; confirm that
             // against the server now that the synchronous part is over.
@@ -696,11 +756,85 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         void this.prepareDrag(item, isDirectory)
     }
 
-    private async prepareDrag (item: SFTPFile, isDirectory: boolean): Promise<void> {
+    private async prepareDrag (item: SFTPFile, isDirectory: boolean): Promise<boolean> {
         if (isDirectory && !await this.confirmHeavyDirectory(item)) {
-            return
+            return false
         }
         await this.dragOut.prepare(this.sftp, item, isDirectory, () => this.gestureHeld)
+        return true
+    }
+
+    ////// A DIRECTORY ASKING TO LEAVE //////
+    /**
+     * Full path of the directory whose *next* drag goes to the OS.
+     *
+     * One gesture cannot serve both purposes. Moving a row needs the HTML drag
+     * to run; copying a directory out needs `preventDefault()` and Electron's
+     * `startDrag()`, which only accepts a path that already exists on disk — so
+     * the two are mutually exclusive, and a file only escapes the choice because
+     * a `DownloadURL` rides along with the HTML drag.
+     *
+     * The gesture is therefore split in two, which is what the copy already did
+     * anyway ("prepare, then drag again"): dragging a directory out of the
+     * window without dropping it states the intent and starts the download, and
+     * the gesture after that is the one that carries it away. Dragging it inside
+     * the panel moves it, always.
+     */
+    private dragOutIntent: string|null = null
+
+    /** True once, for the directory that asked. Cleared as it is served, so the gesture after is a move again. */
+    private claimDragOutIntent (item: SFTPFile): boolean {
+        if (this.dragOutIntent !== item.fullPath) {
+            return false
+        }
+        this.dragOutIntent = null
+        return true
+    }
+
+    /**
+     * Past this long without a `dragover` anywhere in the window, the pointer is
+     * taken to be outside it.
+     *
+     * `dragover` fires at mouse-move rate while the cursor is over the document,
+     * and stops the moment it leaves — so the age of the last one is what tells
+     * "dropped on the desktop" from "let go inside Tabby". Preferred over
+     * counting `dragenter`/`dragleave` pairs, which Chromium already reports
+     * unreliably here (see `onDragLeave`).
+     */
+    private static readonly WINDOW_EXIT_MS = 150
+
+    private windowExitCandidate: SFTPFile|null = null
+    private lastPointerInWindow = 0
+    private windowExitWatcher: (() => void)|null = null
+
+    private watchForWindowExit (item: SFTPFile): void {
+        this.stopWatchingWindowExit()
+        this.windowExitCandidate = item
+        this.lastPointerInWindow = Date.now()
+        this.windowExitWatcher = () => { this.lastPointerInWindow = Date.now() }
+        // Capture phase, on the document: this has to see every `dragover` of
+        // the window, including those a handler further down stops.
+        document.addEventListener('dragover', this.windowExitWatcher, true)
+    }
+
+    private stopWatchingWindowExit (): void {
+        if (this.windowExitWatcher) {
+            document.removeEventListener('dragover', this.windowExitWatcher, true)
+            this.windowExitWatcher = null
+        }
+        this.windowExitCandidate = null
+    }
+
+    /**
+     * Whether the gesture that just ended was aimed out of the window.
+     *
+     * Both halves matter: a drop the panel accepted ends with its own
+     * `dropEffect`, and a gesture let go anywhere inside Tabby has a fresh
+     * `dragover` behind it.
+     */
+    private wasAimedOutOfWindow (event: DragEvent|undefined): boolean {
+        return event?.dataTransfer?.dropEffect === 'none'
+            && Date.now() - this.lastPointerInWindow > SidebarPlusSftpBrowserComponent.WINDOW_EXIT_MS
     }
 
     /**
@@ -749,7 +883,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         return await modal.result.catch(() => false)
     }
 
-    ////// DROP FROM THE OS //////
+    ////// WHERE A DROP LANDS — SHARED BY BOTH KINDS //////
     /**
      * Where a drop would land, while one is being dragged over the list. Null
      * when nothing is. The row bearing that path is the one highlighted; when
@@ -778,6 +912,18 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     private carriesFiles (event: DragEvent): boolean {
         const types = event.dataTransfer?.types
         return !!types && types.includes('Files') && !types.includes('DownloadURL')
+    }
+
+    /**
+     * Whether this drag is a row of this very panel, on its way to another
+     * directory.
+     *
+     * Asked *before* `carriesFiles()` by both handlers below: a file dragged
+     * from here announces `DownloadURL` — and therefore `Files` — as well, so
+     * the two questions overlap and only the order settles which one answers.
+     */
+    private carriesInternalPath (event: DragEvent): boolean {
+        return !!event.dataTransfer?.types.includes(INTERNAL_DRAG_TYPE)
     }
 
     /**
@@ -810,20 +956,34 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     onDragOver (event: DragEvent): void {
-        if (!this.sftp || !this.carriesFiles(event)) {
+        if (!this.sftp) {
+            return
+        }
+        const internal = this.carriesInternalPath(event)
+        if (!internal && !this.carriesFiles(event)) {
+            return
+        }
+        const aimed = this.aimFrom(event.target as HTMLElement)
+        // A move that cannot happen shows nothing and accepts nothing: without
+        // `preventDefault()` the drop never fires, which is exactly the answer
+        // for a directory aimed at itself or a row already where it would land.
+        if (internal && !this.canMoveTo(aimed)) {
+            this.clearDropTarget()
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = 'none'
+            }
             return
         }
         // Without this the drop event never fires, and the cursor keeps
         // Chromium's default "move" glyph for something that copies.
         event.preventDefault()
         if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = 'copy'
+            event.dataTransfer.dropEffect = internal ? 'move' : 'copy'
         }
         if (this.dropClearTimer) {
             clearTimeout(this.dropClearTimer)
             this.dropClearTimer = null
         }
-        const aimed = this.aimFrom(event.target as HTMLElement)
         this.dropOnUpRow = aimed === 'up'
         this.dropTargetPath = aimed === 'up'
             ? posix.dirname(this.path)
@@ -872,16 +1032,28 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     onDrop (event: DragEvent): void {
-        if (!this.sftp || !this.carriesFiles(event)) {
+        if (!this.sftp) {
+            return
+        }
+        const internal = this.carriesInternalPath(event)
+        if (!internal && !this.carriesFiles(event)) {
             return
         }
         event.preventDefault()
         event.stopPropagation()
         const aimed = this.aimFrom(event.target as HTMLElement)
+        const source = this.internalDragSource
         this.clearDropTarget()
+        if (internal) {
+            // Read while the event is still being dispatched — `getData()`
+            // answers nothing once the handler has returned.
+            void this.receiveMove(source, event.dataTransfer?.getData(INTERNAL_DRAG_TYPE) ?? '', aimed)
+            return
+        }
         void this.receiveDrop(this.claimEntries(event), aimed)
     }
 
+    ////// DROP FROM THE OS //////
     /**
      * Takes hold of what was dropped, synchronously.
      *
@@ -947,7 +1119,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * own path rather than the target's — the server resolves it, and it is the
      * location the user aimed at. `openEntry()` navigates the same way.
      */
-    private async resolveDestination (aimed: SFTPFile|'up'|null): Promise<string> {
+    private async resolveDestination (aimed: SFTPFile|'up'|null, intent: 'upload'|'move' = 'upload'): Promise<string> {
         if (aimed === null) {
             return this.path
         }
@@ -962,8 +1134,12 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             return aimed.fullPath
         }
         // Said out loud rather than silently retargeted: the row lit up, and
-        // the files are not going there.
-        this.notices.notice(`${aimed.name} n’est pas un dossier — envoi dans ${this.path}`)
+        // nothing is going there. The two outcomes differ — files fall back to
+        // the directory on screen, whereas a move to it is no move at all,
+        // since that is where the dragged row already lives.
+        this.notices.notice(intent === 'move'
+            ? `${aimed.name} n’est pas un dossier — rien n’a été déplacé`
+            : `${aimed.name} n’est pas un dossier — envoi dans ${this.path}`)
         return this.path
     }
 
@@ -1098,6 +1274,172 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
                 failed.slice(0, SidebarPlusSftpBrowserComponent.COLLISIONS_NAMED).join(', '),
             )
         }
+    }
+
+    ////// MOVING A ROW WITHIN THE SERVER //////
+    /**
+     * The row a drag started from, for as long as the gesture lasts.
+     *
+     * Kept here rather than read from the `DataTransfer` because `getData()` is
+     * write-only until the drop: during `dragover` the engine exposes the list
+     * of types and nothing else, and the target highlight has to be decided on
+     * every one of those events. Null while nothing is being dragged, and null
+     * as well for the gestures that call `preventDefault()` — those have no HTML
+     * drag, hence no move to offer and no `dragend` to clean up after.
+     *
+     * A panel can only ever see its own: `detachPanel()` takes the whole root
+     * node out of the document, so only the focused tab's browser is there to
+     * receive a drop.
+     */
+    private internalDragSource: SFTPFile|null = null
+
+    /** Dims the row being moved, so the gesture reads as coming from somewhere. */
+    isDragSource (item: SFTPFile): boolean {
+        return this.internalDragSource?.fullPath === item.fullPath
+    }
+
+    /**
+     * Ends the gesture, dropped or not.
+     *
+     * `dragend` fires on the source element whatever the outcome, including a
+     * drop outside the window and an `Échap` — which is what makes it the one
+     * reliable place to forget the source, and the one place from which a
+     * directory dragged towards the OS can be recognised at all.
+     */
+    onDragEnd (event?: DragEvent): void {
+        const candidate = this.windowExitCandidate
+        const leftWindow = this.wasAimedOutOfWindow(event)
+        this.stopWatchingWindowExit()
+        this.internalDragSource = null
+        this.clearDropTarget()
+        if (candidate && leftWindow) {
+            this.askedToLeave(candidate)
+        }
+    }
+
+    /**
+     * A directory was dragged out of the window and let go there.
+     *
+     * Nothing can have reached the desktop — the HTML drag carried a type the
+     * OS ignores — so this is where the copy starts, and the *next* drag on the
+     * same row is the one that hands it over. That two-step shape is not new:
+     * it is what a directory drag-out has always done, `startDrag()` needing a
+     * file that already exists on disk.
+     */
+    private askedToLeave (item: SFTPFile): void {
+        if (!this.config.store.sidebarPlus?.sftpDragOutFolders) {
+            // Kept from the gesture this replaced: without it, dragging a
+            // directory to the desktop does nothing and says nothing, and the
+            // setting that governs it is undiscoverable.
+            this.notices.notice('Le glisser-déposer des dossiers vers l’extérieur est désactivé — activez-le dans Paramètres → Better Sidebar')
+            return
+        }
+        this.dragOutIntent = item.fullPath
+        // Cleared on refusal so that the next gesture is a move again: the
+        // question `prepareDrag()` may ask is a way out, not a postponement.
+        void this.prepareDrag(item, true).then(accepted => {
+            if (!accepted && this.dragOutIntent === item.fullPath) {
+                this.dragOutIntent = null
+            }
+        })
+    }
+
+    /**
+     * Whether the row being dragged could land on what is currently aimed at.
+     *
+     * Synchronous, like `aimFrom()` and for the same reason: it runs on every
+     * `dragover`. So a symlink is judged on its own path — a link leading back
+     * inside the dragged directory is only caught at the drop, by the same test
+     * run against the resolved destination.
+     *
+     * Answering false is what leaves `preventDefault()` uncalled, so the drop
+     * cannot happen at all: an impossible move is refused by the cursor rather
+     * than by an error message after the fact.
+     */
+    private canMoveTo (aimed: SFTPFile|'up'|null): boolean {
+        const source = this.internalDragSource
+        if (!source) {
+            return false
+        }
+        const destination = aimed === null
+            ? this.path
+            : aimed === 'up' ? posix.dirname(this.path) : aimed.fullPath
+        // Already there. The common one by far: the pointer spends most of a
+        // drag over rows that are not directories, all of which aim at the
+        // directory the entry is already in.
+        if (posix.dirname(source.fullPath) === destination) {
+            return false
+        }
+        return !this.isSelfOrDescendant(source.fullPath, destination)
+    }
+
+    /**
+     * Whether a path is the other one or lives underneath it.
+     *
+     * The separator matters: without it `/tmp/ab` would read as being inside
+     * `/tmp/a`. Same guard as the profile tree's own `isSelfOrDescendant()`,
+     * against a move that would make a directory its own ancestor — the server
+     * usually refuses it, but not always, and a `rename` that succeeds there
+     * detaches the whole subtree.
+     */
+    private isSelfOrDescendant (ancestor: string, candidate: string): boolean {
+        return candidate === ancestor || candidate.startsWith(ancestor.endsWith('/') ? ancestor : `${ancestor}/`)
+    }
+
+    /**
+     * Moves the dragged entry into the aimed directory.
+     *
+     * `rename()` on a server-side move costs nothing and transfers nothing —
+     * within one filesystem it is a directory entry being rewritten. Across two
+     * mount points the server refuses outright, which is reported as it comes
+     * rather than guessed at beforehand: SFTP has no way to ask where a path is
+     * mounted.
+     *
+     * The announced path is checked against the remembered row rather than
+     * used: a mismatch means the drag did not come from this panel's own state,
+     * and the safe answer to a move whose source is uncertain is not to make it.
+     */
+    private async receiveMove (source: SFTPFile|null, announcedPath: string, aimed: SFTPFile|'up'|null): Promise<void> {
+        if (!source || announcedPath !== source.fullPath) {
+            return
+        }
+        const destination = await this.resolveDestination(aimed, 'move')
+        // Both re-run against the *resolved* destination: a symlink is judged
+        // on its own path while the cursor moves, so this is the first point at
+        // which a link leading back into the dragged directory — or back into
+        // the directory on screen — is visible at all.
+        if (destination === posix.dirname(source.fullPath)) {
+            return
+        }
+        if (this.isSelfOrDescendant(source.fullPath, destination)) {
+            this.notices.error(`${source.name} ne peut pas être déplacé dans lui-même`)
+            return
+        }
+
+        const target = posix.join(destination, source.name)
+        // Refused rather than overwritten, exactly as `renameEntry()` does:
+        // SFTP v3 leaves it to the server to decide what a rename onto an
+        // existing name does, and some replace it. Refusing is the one answer
+        // that cannot destroy anything.
+        if (await readRemoteEntry(this.sftp, target)) {
+            this.notices.error(`${source.name} existe déjà dans ${destination}`)
+            return
+        }
+
+        try {
+            await this.sftp.rename(source.fullPath, target)
+        } catch (e) {
+            this.notices.error(`Impossible de déplacer ${source.name} vers ${destination}`, String(e))
+            return
+        }
+
+        // The entry has left the directory on screen, so the selection has
+        // nothing left to point at — unlike a rename, where it follows.
+        if (this.selectedPath === source.fullPath) {
+            this.selectedPath = null
+        }
+        await this.refreshListing()
+        this.notices.notice(`${source.name} déplacé vers ${destination}`)
     }
 
     ////// DELETE //////
