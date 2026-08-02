@@ -3,7 +3,7 @@ import { posix } from 'path'
 import { filesize } from 'filesize'
 import { AfterViewChecked, Component, ElementRef, HostListener, Inject, NgZone, OnDestroy } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
-import { ConfigService, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
+import { ConfigService, HTMLFileUpload, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { EmptyFileUpload } from '../sftpLocalTransfer'
@@ -34,6 +34,60 @@ export interface SftpRow {
     hidden: boolean
     /** Formatted values, positionally aligned with `visibleColumns`. */
     cells: string[]
+}
+
+/**
+ * One file of a drop, and the remote path it is headed for.
+ *
+ * Resolved up front, before anything is written: the collision check needs the
+ * whole list, and the confirmation it may raise has to happen before the first
+ * byte leaves. The `File` is only a handle — the transfer that reads it is
+ * built when its turn comes, not here.
+ */
+interface PlannedUpload {
+    file: File
+    remotePath: string
+}
+
+/** A whole drop, flattened: the directories to create, then the files to send. */
+interface DropPlan {
+    /** Parents before children — `planFromEntries()` walks the tree depth-first, so the order is already right. */
+    directories: string[]
+    files: PlannedUpload[]
+}
+
+/**
+ * Reads a dropped directory **whole**.
+ *
+ * `readEntries()` answers with a slice, not a listing — 100 entries at a time
+ * in Chromium — and the only end-of-listing signal the API gives is an empty
+ * answer. So it has to be called until it returns nothing.
+ *
+ * This is why the drop no longer goes through
+ * `PlatformService.startUploadFromDragEvent()`, which the roadmap had planned
+ * on: it calls `readEntries()` exactly once per directory. Everything past the
+ * first slice is dropped with no error and no trace, and the recap that follows
+ * counts only what it saw — a folder of 250 files uploads 150 fewer than it
+ * says.
+ */
+function readAllEntries (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
+    return new Promise((resolve, reject) => {
+        const all: FileSystemEntry[] = []
+        const step = (): void => reader.readEntries(batch => {
+            if (!batch.length) {
+                resolve(all)
+                return
+            }
+            all.push(...batch)
+            step()
+        }, reject)
+        step()
+    })
+}
+
+/** The callback-style `FileSystemFileEntry.file()`, awaited. */
+function entryFile (entry: FileSystemFileEntry): Promise<File> {
+    return new Promise((resolve, reject) => entry.file(resolve, reject))
 }
 
 /** An optional column of the file list. The name column is not one of these — it is always shown. */
@@ -128,13 +182,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         private notify: NotificationsService,
         private ngbModalService: NgbModal,
         private elementRef: ElementRef<HTMLElement>,
-        zone: NgZone,
+        private zone: NgZone,
         private editors: SidebarPlusEditorService,
         platform: PlatformService,
         temp: SidebarPlusTempFilesService,
         private notices: SidebarPlusNoticesService,
         private dragServer: SidebarPlusDragOutServer,
-        registry: SidebarPlusTransfersService,
+        private registry: SidebarPlusTransfersService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
@@ -182,6 +236,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.editor.dispose()
         this.dragOut.dispose()
         this.stopAutoRefresh()
+        this.clearDropTarget()
     }
 
     /**
@@ -692,6 +747,357 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         modal.componentInstance.confirmLabel = confirmLabel
         modal.componentInstance.defaultButton = 'cancel'
         return await modal.result.catch(() => false)
+    }
+
+    ////// DROP FROM THE OS //////
+    /**
+     * Where a drop would land, while one is being dragged over the list. Null
+     * when nothing is. The row bearing that path is the one highlighted; when
+     * it is the current directory, the body is outlined instead.
+     */
+    dropTargetPath: string|null = null
+
+    /** Set when the `..` row is the target — the one destination that is not a row of the listing. */
+    dropOnUpRow = false
+
+    isDropTarget (item: SFTPFile): boolean {
+        return !this.dropOnUpRow && this.dropTargetPath === item.fullPath
+    }
+
+    get dropInCurrentDirectory (): boolean {
+        return !this.dropOnUpRow && this.dropTargetPath === this.path
+    }
+
+    /**
+     * Whether this drag is files coming in from the OS.
+     *
+     * A drag *out* of this panel announces itself as `DownloadURL`, and
+     * Chromium reports it over the source window too — without this it would be
+     * read as an incoming drop and the file uploaded back on top of itself.
+     */
+    private carriesFiles (event: DragEvent): boolean {
+        const types = event.dataTransfer?.types
+        return !!types && types.includes('Files') && !types.includes('DownloadURL')
+    }
+
+    /**
+     * Where a drop over this element would land.
+     *
+     * Deliberately synchronous — it runs on every `dragover`, which fires
+     * continuously while the cursor moves. A symlink is therefore answered as
+     * itself and only resolved at the drop: telling a link to a directory from
+     * a link to a file costs a `readlink` round trip, which has no place here.
+     *
+     * Anything that is not a directory row — a file, the header, the empty area
+     * below the list — answers null, meaning the current directory. That is the
+     * guard the roadmap asked for: a drop can never land somewhere the user did
+     * not aim at, only in the directory already on screen.
+     */
+    private aimFrom (target: HTMLElement): SFTPFile|'up'|null {
+        const row = target.closest('.sftp-row')
+        if (!row || row.classList.contains('sftp-header-row')) {
+            return null
+        }
+        if (row.classList.contains('sftp-row-up')) {
+            return 'up'
+        }
+        const itemPath = (row as HTMLElement).dataset.path
+        const item = itemPath ? this.displayedFiles.find(file => file.fullPath === itemPath) : null
+        if (!item || !(this.isDirectoryEntry(item) || item.isSymlink)) {
+            return null
+        }
+        return item
+    }
+
+    onDragOver (event: DragEvent): void {
+        if (!this.sftp || !this.carriesFiles(event)) {
+            return
+        }
+        // Without this the drop event never fires, and the cursor keeps
+        // Chromium's default "move" glyph for something that copies.
+        event.preventDefault()
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'copy'
+        }
+        if (this.dropClearTimer) {
+            clearTimeout(this.dropClearTimer)
+            this.dropClearTimer = null
+        }
+        const aimed = this.aimFrom(event.target as HTMLElement)
+        this.dropOnUpRow = aimed === 'up'
+        this.dropTargetPath = aimed === 'up'
+            ? posix.dirname(this.path)
+            : aimed?.fullPath ?? this.path
+    }
+
+    /**
+     * Long enough to outlive a spurious `dragleave`, short enough not to leave a
+     * highlight behind. `dragover` fires at mouse-move rate while the pointer is
+     * inside, so any delay above a frame or two bridges the gap.
+     */
+    private static readonly DROP_CLEAR_MS = 120
+
+    private dropClearTimer: ReturnType<typeof setTimeout>|null = null
+
+    /**
+     * `dragleave` fires on every crossing between children, so the only useful
+     * question is whether the cursor left the panel altogether.
+     *
+     * The answer is not always reliable: Chromium reports a null
+     * `relatedTarget` on some crossings, which reads as "left the panel" for a
+     * pointer that never went anywhere. Hence the delay — a `dragover` still to
+     * come cancels it, and the highlight stops flickering under a moving cursor.
+     */
+    onDragLeave (event: DragEvent): void {
+        const to = event.relatedTarget as Node|null
+        if (to && (event.currentTarget as HTMLElement).contains(to)) {
+            return
+        }
+        if (this.dropClearTimer) {
+            clearTimeout(this.dropClearTimer)
+        }
+        this.dropClearTimer = setTimeout(
+            () => this.clearDropTarget(),
+            SidebarPlusSftpBrowserComponent.DROP_CLEAR_MS,
+        )
+    }
+
+    private clearDropTarget (): void {
+        if (this.dropClearTimer) {
+            clearTimeout(this.dropClearTimer)
+            this.dropClearTimer = null
+        }
+        this.dropTargetPath = null
+        this.dropOnUpRow = false
+    }
+
+    onDrop (event: DragEvent): void {
+        if (!this.sftp || !this.carriesFiles(event)) {
+            return
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        const aimed = this.aimFrom(event.target as HTMLElement)
+        this.clearDropTarget()
+        void this.receiveDrop(this.claimEntries(event), aimed)
+    }
+
+    /**
+     * Takes hold of what was dropped, synchronously.
+     *
+     * `dataTransfer.items` is only readable while the event is being
+     * dispatched — `webkitGetAsEntry()` answers null once the handler has
+     * returned — so the entries have to be claimed here, before the first
+     * await. The entries themselves stay valid afterwards; the item list does
+     * not.
+     */
+    private claimEntries (event: DragEvent): FileSystemEntry[] {
+        const items = event.dataTransfer?.items
+        if (!items) {
+            return []
+        }
+        const entries: FileSystemEntry[] = []
+        for (let i = 0; i < items.length; i++) {
+            const entry = items[i].webkitGetAsEntry()
+            if (entry) {
+                entries.push(entry)
+            }
+        }
+        return entries
+    }
+
+    private async receiveDrop (entries: FileSystemEntry[], aimed: SFTPFile|'up'|null): Promise<void> {
+        if (!entries.length) {
+            return
+        }
+        // Everything below resumes from `readEntries`/`file()` callbacks, which
+        // zone.js does not patch: it mutates state and may open a modal, and
+        // would otherwise not be painted until something else triggered a cycle
+        // (piège #41).
+        await this.zone.run(async () => {
+            const destination = await this.resolveDestination(aimed)
+            let plan: DropPlan
+            try {
+                plan = await this.planFromEntries(entries, destination)
+            } catch (e) {
+                this.notices.error('Impossible de lire ce qui a été déposé', String(e))
+                return
+            }
+            if (!plan.files.length && !plan.directories.length) {
+                return
+            }
+            const collisions = await this.findCollisions(plan.files)
+            // Nothing has been written at this point — not even a directory —
+            // so turning the question down leaves the server exactly as it was.
+            if (collisions.length && !await this.confirmOverwrite(collisions, destination)) {
+                return
+            }
+            const failed = await this.runPlan(plan)
+            this.reportDrop(plan, failed, destination)
+            await this.refreshListing()
+        })
+    }
+
+    /**
+     * Turns the aimed row into the directory the files are written under.
+     *
+     * The symlink case is the one that needed a decision: the row was
+     * highlighted on `isSymlink` alone, so the link still has to be followed
+     * here. When it does lead to a directory, the destination is the **link's**
+     * own path rather than the target's — the server resolves it, and it is the
+     * location the user aimed at. `openEntry()` navigates the same way.
+     */
+    private async resolveDestination (aimed: SFTPFile|'up'|null): Promise<string> {
+        if (aimed === null) {
+            return this.path
+        }
+        if (aimed === 'up') {
+            return posix.dirname(this.path)
+        }
+        if (!aimed.isSymlink) {
+            return aimed.fullPath
+        }
+        const target = await this.resolveSymlink(aimed).catch(() => null)
+        if (target && this.isDirectoryEntry(target)) {
+            return aimed.fullPath
+        }
+        // Said out loud rather than silently retargeted: the row lit up, and
+        // the files are not going there.
+        this.notices.notice(`${aimed.name} n’est pas un dossier — envoi dans ${this.path}`)
+        return this.path
+    }
+
+    /** Flattens what was dropped into what has to be created and what has to be sent. */
+    private async planFromEntries (entries: FileSystemEntry[], base: string): Promise<DropPlan> {
+        const plan: DropPlan = { directories: [], files: [] }
+        const walk = async (entry: FileSystemEntry, at: string): Promise<void> => {
+            if (entry.isFile) {
+                plan.files.push({
+                    file: await entryFile(entry as FileSystemFileEntry),
+                    remotePath: posix.join(at, entry.name),
+                })
+                return
+            }
+            if (!entry.isDirectory) {
+                return
+            }
+            const directory = posix.join(at, entry.name)
+            plan.directories.push(directory)
+            for (const child of await readAllEntries((entry as FileSystemDirectoryEntry).createReader())) {
+                await walk(child, directory)
+            }
+        }
+        for (const entry of entries) {
+            await walk(entry, base)
+        }
+        return plan
+    }
+
+    /**
+     * Which of the planned files already exist on the server.
+     *
+     * `SFTPSession.upload()` writes to `<path>.tabby-upload` and renames it
+     * over the target, so an existing file is replaced without a word. That was
+     * tolerable while a drop could only land in the directory on screen; now
+     * that any row can be aimed at, a slip of the cursor is enough.
+     *
+     * One listing per destination directory rather than one lookup per file:
+     * `readRemoteEntry()` reads the parent listing anyway, so asking it file by
+     * file would re-read the same directory N times. A directory that does not
+     * exist yet simply answers nothing, which is the right answer. And never a
+     * `stat()`, which follows links and reports a dangling one as free (piège
+     * #50).
+     */
+    private async findCollisions (files: PlannedUpload[]): Promise<string[]> {
+        const byDirectory = new Map<string, PlannedUpload[]>()
+        for (const file of files) {
+            const parent = posix.dirname(file.remotePath)
+            const bucket = byDirectory.get(parent)
+            if (bucket) {
+                bucket.push(file)
+            } else {
+                byDirectory.set(parent, [file])
+            }
+        }
+        const collisions: string[] = []
+        for (const [directory, bucket] of byDirectory) {
+            const entries = await this.sftp.readdir(directory).catch(() => [])
+            const existing = new Set(entries.map(entry => entry.name))
+            for (const file of bucket) {
+                if (existing.has(posix.basename(file.remotePath))) {
+                    collisions.push(posix.basename(file.remotePath))
+                }
+            }
+        }
+        return collisions
+    }
+
+    /** Names enumerated up to this many; past it, a count. A modal listing forty files says nothing. */
+    private static readonly COLLISIONS_NAMED = 5
+
+    private async confirmOverwrite (collisions: string[], destination: string): Promise<boolean> {
+        const named = collisions.slice(0, SidebarPlusSftpBrowserComponent.COLLISIONS_NAMED)
+        const rest = collisions.length - named.length
+        const list = named.join(', ') + (rest > 0 ? `, et ${rest} autre${rest > 1 ? 's' : ''}` : '')
+        const head = collisions.length > 1
+            ? `${collisions.length} fichiers existent déjà sous ${destination} et seront écrasés`
+            : `Un fichier existe déjà sous ${destination} et sera écrasé`
+        return await this.ask(`${head} : ${list}. Continuer ?`, 'Écraser')
+    }
+
+    /**
+     * Runs a plan through to the end and answers with the names that failed.
+     *
+     * Each transfer is built and registered when its turn comes rather than up
+     * front. The panel's elapsed time counts from the moment a line is
+     * registered, so queueing fifty of them at once would show forty-nine
+     * clocks running against 0 % — forty-nine transfers that read as stalled
+     * when they have simply not started. The uploads are sequential: one SFTP
+     * channel carries them all.
+     */
+    private async runPlan (plan: DropPlan): Promise<string[]> {
+        for (const directory of plan.directories) {
+            // A directory that already exists is the normal case when merging
+            // into an existing tree; the native panel ignores the same failure.
+            await this.sftp.mkdir(directory).catch(() => undefined)
+        }
+        const failed: string[] = []
+        for (const planned of plan.files) {
+            const transfer = new HTMLFileUpload(planned.file)
+            this.registry.track(transfer)
+            try {
+                await this.sftp.upload(planned.remotePath, transfer)
+            } catch (e) {
+                // The registry only ever learns of a cancellation or a
+                // completion: a transfer whose channel died answers false to
+                // both, and its line would stay "en cours" for the rest of the
+                // session. Reported per file here, and summed up once below —
+                // one toast per failure would bury the list under itself when
+                // the transport is what died.
+                this.registry.markFailed(transfer, String((e as Error)?.message ?? e))
+                failed.push(planned.file.name)
+            }
+        }
+        return failed
+    }
+
+    private reportDrop (plan: DropPlan, failed: string[], destination: string): void {
+        const sent = plan.files.length - failed.length
+        const folders = plan.directories.length
+        if (sent > 0) {
+            this.notices.notice(
+                `${sent} fichier${sent > 1 ? 's' : ''} envoyé${sent > 1 ? 's' : ''} vers ${destination}`
+                + (folders > 0 ? ` (${folders} dossier${folders > 1 ? 's' : ''})` : ''),
+            )
+        } else if (folders > 0 && !failed.length) {
+            this.notices.notice(`${folders} dossier${folders > 1 ? 's' : ''} créé${folders > 1 ? 's' : ''} dans ${destination}`)
+        }
+        if (failed.length) {
+            this.notices.error(
+                `${failed.length} fichier${failed.length > 1 ? 's' : ''} sur ${plan.files.length} n’${failed.length > 1 ? 'ont' : 'a'} pas pu être envoyé${failed.length > 1 ? 's' : ''}`,
+                failed.slice(0, SidebarPlusSftpBrowserComponent.COLLISIONS_NAMED).join(', '),
+            )
+        }
     }
 
     ////// DELETE //////

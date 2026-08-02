@@ -227,7 +227,14 @@ sidebar-plus-sftp-browser .sftp-grid.with-col-borders .cell-value {
     border-left: 1px solid var(--theme-secondary);
 }
 
-sidebar-plus-sftp-browser .sftp-grid.with-zebra .sftp-zebra {
+// The stripe is a *base*, so every state has to be able to paint over it. Left
+// as a plain descendant selector it could not be: two classes plus the gate put
+// it at (0,3,1), above hover and selection at (0,2,1), so an odd-numbered row
+// kept its grey when hovered and when selected — the accent was computed and
+// then lost to the cascade, which is why it read as a list that highlights only
+// every other row rather than as a bug. `:where()` contributes no specificity,
+// dropping the rule to (0,1,1) and putting every state above it for good.
+sidebar-plus-sftp-browser :where(.sftp-grid.with-zebra) .sftp-zebra {
     background-color: rgba(128, 128, 128, .06);
 }
 
@@ -288,4 +295,26 @@ sidebar-plus-sftp-browser .sftp-row.sftp-preparing {
         opacity: .6;
         font-style: italic;
     }
+}
+
+// Where a drop is about to land. Exactly one of the two is ever shown: a row
+// when a folder is aimed at, the outline when nothing is and the files go to
+// the directory on screen. Showing both at once would say two places at the
+// same time, which is the one thing this feedback exists to prevent.
+//
+// Stronger than selection on purpose — the selection may well be somewhere else
+// on the list while the drag is in flight, and the target has to be the thing
+// the eye lands on.
+sidebar-plus-sftp-browser .sftp-row.sftp-drop-target,
+sidebar-plus-sftp-browser .sftp-row.sftp-drop-target:hover {
+    background-color: color-mix(in srgb, var(--theme-primary) 85%, transparent);
+    box-shadow: inset 0 0 0 1px var(--theme-primary);
+    // The `..` row is dimmed at rest; as a target it has to read like any other.
+    opacity: 1;
+}
+
+// Inset rather than a plain border: the body already has one, and a second
+// would shift every row by a pixel the moment a drag enters the panel.
+sidebar-plus-sftp-browser .sftp-body.sftp-drop-here {
+    box-shadow: inset 0 0 0 2px var(--theme-primary);
 }

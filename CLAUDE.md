@@ -9,7 +9,7 @@ Dépôt distant : https://github.com/TooMuhtsh/tabby-better-sidebar (public).
 
 **Avant toute session de travail sur ce projet, lire `.AIRules/README.html`**
 (index + protocole), puis `.AIRules/AI-CONTEXT.html` (invariants, pièges déjà
-rencontrés — numérotés jusqu'à #61, le #7 est un trou hérité de la
+rencontrés — numérotés jusqu'à #64, le #7 est un trou hérité de la
 restructuration doc ; le prochain numéro libre est indiqué en tête du fichier —
 et points fragiles à revérifier après mise à jour de Tabby) et
 `.AIRules/AI-HISTORY.html`/`.AIRules/ROADMAP.html` pour l'état d'avancement et
@@ -173,6 +173,21 @@ de chargement de plugin.
   d'un lien est `0o120777`), détection de conflit morte, et destruction du lien
   par le `unlink` que `upload()` fait avant son `rename`. Résolution par
   `readlink()` + `readRemoteEntry()`, bornée à huit sauts.
+- **Une arborescence déposée se lit en bouclant sur `readEntries()`** jusqu'à ce
+  qu'il rende un tableau vide : l'API n'en donne qu'une tranche à la fois (100
+  entrées sous Chromium) et n'a pas d'autre signal de fin.
+  `PlatformService.startUploadFromDragEvent()` — et donc la `dropZone` de
+  tabby-core, qui lui délègue — ne l'appelle qu'une fois : au-delà de la première
+  tranche, le reste part à la poubelle sans erreur et sans trace
+  (.AIRules/AI-CONTEXT.html, piège #64). Ce plugin fait sa propre traversée,
+  `readAllEntries()` dans `sftpBrowser.component.ts`.
+- **Un état visuel doit être plus spécifique que le fond qu'il recouvre.** Une
+  règle de fond écrite en descendant (`.sftp-grid.with-zebra .sftp-zebra`) pèse
+  `(0,3,1)` et bat le survol comme la sélection, à `(0,2,1)` : l'accent est
+  calculé puis perdu dans la cascade, et le symptôme est une liste qui ne
+  s'allume qu'une ligne sur deux — jamais une erreur. Envelopper la porte dans
+  `:where()`, qui n'apporte aucune spécificité. Et vérifier sur les sélecteurs
+  **réellement émis dans le bundle**, pas sur le SCSS source.
 - **Un composant monté à la main se retire à la main.** Le renderer DOM d'Angular
   laisse `destroyNode` nul, donc `ComponentRef.destroy()` ne touche pas au DOM :
   après `createComponent()` + insertion manuelle, il faut `.remove()` le nœud

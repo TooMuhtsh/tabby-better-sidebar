@@ -55,15 +55,20 @@
     button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='clearFilter()', title='Effacer le filtre')
         .fa.fa-fw.fas.fa-times
 
-//- dropZone is tabby-core's DropZoneDirective, exported by TabbyCoreModule —
-//- keeps drag-and-drop upload working exactly as in the native panel.
+//- Drops are handled here rather than by tabby-core's `dropZone` directive:
+//- the directive only emits the DirectoryUpload, never the DragEvent, so the
+//- cursor position — hence the targeted row — is unreachable from it. Its
+//- full-frame "hint" is replaced by the row highlight below, which says *where*
+//- the files will land instead of merely that they can.
 //- The click handler sits on the body, not on a filler element: the empty area
 //- below the rows is the body's own padding, and a click there has to clear the
 //- selection. Row clicks reach here too — `clearSelectionFromBackground()`
 //- ignores anything originating inside a row.
 .sftp-body(
-    dropZone,
-    (transfer)='uploadOneFolder($event)',
+    [class.sftp-drop-here]='dropInCurrentDirectory',
+    (dragover)='onDragOver($event)',
+    (dragleave)='onDragLeave($event)',
+    (drop)='onDrop($event)',
     (contextmenu)='onBackgroundContextMenu($event)',
     (click)='clearSelectionFromBackground($event)'
 )
@@ -87,6 +92,7 @@
             .sftp-row.sftp-row-up(
                 *ngIf='canGoUp',
                 [style.grid-template-columns]='gridTemplate',
+                [class.sftp-drop-target]='dropOnUpRow',
                 (click)='goUp()',
                 title='Remonter d’un niveau'
             )
@@ -113,10 +119,12 @@
             .sftp-row(
                 *ngFor='let row of rows; let i = index; trackBy: trackByRow',
                 [style.grid-template-columns]='gridTemplate',
+                [attr.data-path]='row.item.fullPath',
                 [class.sftp-zebra]='i % 2 === 1',
                 [class.sftp-dim]='row.hidden',
                 [class.sftp-selected]='isSelected(row.item)',
                 [class.sftp-preparing]='isDragPreparing(row.item)',
+                [class.sftp-drop-target]='isDropTarget(row.item)',
                 draggable='true',
                 (dragstart)='onDragStart(row.item, $event)',
                 (click)='select(row.item)',
