@@ -59,8 +59,16 @@ demandées.
 ```
 npm install --ignore-scripts   # --ignore-scripts : évite les postinstall natifs inutiles ici
 npm run build                  # ou npm run watch en dev
+npm run build:prod             # webpack --mode production ; ce que prepublishOnly appelle
 npm run lint:airules           # valide la syntaxe des documents HTML de .AIRules/
 ```
+
+`build` reste le build de **développement** — c'est celui qu'on veut pour tester
+dans Tabby (non minifié, source-map exploitable). `build:prod` n'est là que pour
+la publication, où `prepublishOnly` l'appelle tout seul : ne pas publier un
+bundle de dev. Le gain de poids est modeste (5,8 → 5,1 Mo), l'essentiel du
+paquet étant les collections d'icônes Iconify — voir le chantier « Ménage avant
+release soignée » de la roadmap.
 
 `lint:airules` est le validateur imposé par `A-14` (option `validateur` du
 `PROFIL.md`) : **à lancer après toute modification d'un document `.AIRules/` qui
@@ -152,6 +160,29 @@ de chargement de plugin.
   binaire et le sautent **sans le dire**, ce qui a rendu
   `sftpBrowser.component.ts` invisible à toute recherche
   (.AIRules/AI-CONTEXT.html, piège #63).
+- **`SFTPSession.stat()` ne sert jamais à observer une entrée** : il rend un mode
+  `0` et une date au 1<sup>er</sup> janvier 1970 (piège #50). Toute lecture passe
+  par `readRemoteEntry()` (`src/remoteEntry.ts`), qui lit le listing du dossier
+  parent. Il ne reste aucun `stat()` d'observation dans `src/` — ne pas en
+  réintroduire, y compris pour la question apparemment anodine « ce nom est-il
+  libre ? » (`stat()` suit les liens, donc un lien cassé du même nom répond que
+  le nom est libre).
+- **Un lien symbolique se résout, et c'est la cible qu'on manipule** — chemin
+  compris. Travailler sur le chemin du lien faisait tout échouer à la fois :
+  copie locale en lecture seule, `chmod 0777` sur la cible au renvoi (le mode
+  d'un lien est `0o120777`), détection de conflit morte, et destruction du lien
+  par le `unlink` que `upload()` fait avant son `rename`. Résolution par
+  `readlink()` + `readRemoteEntry()`, bornée à huit sauts.
+- **Un composant monté à la main se retire à la main.** Le renderer DOM d'Angular
+  laisse `destroyNode` nul, donc `ComponentRef.destroy()` ne touche pas au DOM :
+  après `createComponent()` + insertion manuelle, il faut `.remove()` le nœud
+  racine avant de détruire, sinon la vue morte reste affichée et le remontage en
+  crée une seconde.
+- **Tout ce qui part d'un callback Node est hors zone Angular.** zone.js — la
+  version navigateur, seule chargée par Tabby — ne patche pas les `EventEmitter`
+  de Node : un `fs.watch`, un `http.Server`, une promesse native de russh
+  reprennent hors zone, et l'interface ne se repeint pas (piège #41). Envelopper
+  les mutations d'état et l'ouverture des modales dans `zone.run()`.
 - **Avant toute fonctionnalité touchant `config.store.groups`/`.profiles`,
   tester d'abord sur des entrées jetables** (`grp-zzz-test-*`, ajoutées à la
   main dans `config.yaml` puis supprimées après coup), jamais directement
