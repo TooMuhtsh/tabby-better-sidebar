@@ -13,6 +13,7 @@ import { SidebarPlusNoticesService } from '../notices.service'
 import { readRemoteEntry } from '../remoteEntry'
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
 import { SftpTransfers } from '../transfers'
+import { SidebarPlusTransfersService } from '../transfersRegistry.service'
 import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
 
@@ -131,10 +132,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         temp: SidebarPlusTempFilesService,
         private notices: SidebarPlusNoticesService,
         private dragServer: SidebarPlusDragOutServer,
+        registry: SidebarPlusTransfersService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
-        const transfers = new SftpTransfers(platform, notices)
+        const transfers = new SftpTransfers(platform, notices, registry)
         this.editor = new SftpRemoteEditor(notices, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel))
         this.dragOut = new SftpDragOut(notices, zone, transfers, temp)
     }

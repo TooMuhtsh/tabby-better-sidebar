@@ -3,7 +3,7 @@ import { Injectable, NgZone } from '@angular/core'
 import { FileDownload, FileTransfer, PlatformService } from 'tabby-core'
 
 export type TransferDirection = 'up'|'down'
-export type TransferState = 'active'|'done'|'cancelled'
+export type TransferState = 'active'|'done'|'cancelled'|'failed'
 
 /**
  * One line of the panel.
@@ -32,6 +32,8 @@ export interface TransferEntry {
     startedAtMs: number
     lastBytes: number
     lastTickAt: number
+    /** What killed the transfer, shown on hover. Empty unless the state is `failed`. */
+    failureReason: string
 }
 
 /** How often the visible figures are recomputed while something is running. */
@@ -122,9 +124,35 @@ export class SidebarPlusTransfersService {
                 startedAtMs: now,
                 lastBytes: 0,
                 lastTickAt: now,
+                failureReason: '',
             })
             this.refreshSummary()
             this.startTicking()
+        })
+    }
+
+    /**
+     * Marks a transfer that died instead of finishing.
+     *
+     * Nothing else can. The tick only ever reads `isCancelled()` and
+     * `isComplete()`, and a transfer whose SSH transport disappeared answers
+     * false to both: its line stayed `active` for good, frozen at whatever
+     * percentage it had reached, speed decaying to zero — which reads as "still
+     * going" for something that is over. Only the caller awaiting the transfer
+     * sees the rejection, so the caller is who reports it here.
+     */
+    markFailed (transfer: FileTransfer, reason?: string): void {
+        this.zone.run(() => {
+            const entry = this.entries.find(candidate => candidate.transfer === transfer)
+            if (!entry || entry.state !== 'active') {
+                return
+            }
+            this.finish(entry, 'failed', Date.now())
+            entry.failureReason = reason ?? ''
+            this.refreshSummary()
+            if (!this.activeCount) {
+                this.stopTicking()
+            }
         })
     }
 
@@ -140,7 +168,12 @@ export class SidebarPlusTransfersService {
         const active = this.entries.filter(entry => entry.state === 'active').length
         const done = this.entries.filter(entry => entry.state === 'done').length
         const cancelled = this.entries.filter(entry => entry.state === 'cancelled').length
-        this.summary = active > 0 ? `${active} en cours` : String(this.entries.length)
+        const failed = this.entries.filter(entry => entry.state === 'failed').length
+        // A failure outranks the plain total even when nothing is running: it is
+        // the one state the user has to know about without opening the list.
+        this.summary = active > 0
+            ? `${active} en cours`
+            : failed > 0 ? `${failed} interrompu${failed > 1 ? 's' : ''}` : String(this.entries.length)
         const parts: string[] = []
         if (active > 0) {
             parts.push(`${active} en cours`)
@@ -150,6 +183,9 @@ export class SidebarPlusTransfersService {
         }
         if (cancelled > 0) {
             parts.push(cancelled > 1 ? `${cancelled} annulés` : '1 annulé')
+        }
+        if (failed > 0) {
+            parts.push(failed > 1 ? `${failed} interrompus` : '1 interrompu')
         }
         this.summaryTitle = parts.join(', ')
     }

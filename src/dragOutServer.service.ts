@@ -182,11 +182,15 @@ export class SidebarPlusDragOutServer {
         this.transfers.track(transfer)
         try {
             await offer.sftp.download(offer.item.fullPath, transfer)
-        } catch {
+        } catch (error) {
             // No error page is possible — the headers are already out and the
             // body is half written. Killing the socket is what tells the other
             // side the file is incomplete.
             res.destroy()
+            // And the panel line, which would otherwise stay "en cours" for
+            // good: a dead transport rejects here without ever cancelling or
+            // completing the transfer.
+            this.transfers.markFailed(transfer, String((error as Error)?.message ?? error))
         }
     }
 

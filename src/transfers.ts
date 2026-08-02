@@ -1,5 +1,6 @@
-import { FileDownload, FileUpload, PlatformService } from 'tabby-core'
+import { FileDownload, FileTransfer, FileUpload, PlatformService } from 'tabby-core'
 import { SidebarPlusNoticesService } from './notices.service'
+import { SidebarPlusTransfersService } from './transfersRegistry.service'
 import { SFTPPanelComponent } from 'tabby-ssh'
 import { LocalFileDownload, LocalFileUpload } from './sftpLocalTransfer'
 
@@ -23,7 +24,27 @@ export class SftpTransfers {
     constructor (
         private platform: PlatformService,
         private notifications: SidebarPlusNoticesService,
+        private registry: SidebarPlusTransfersService,
     ) { }
+
+    /**
+     * Runs a transfer and tells the registry when it dies.
+     *
+     * A rejection here is the *only* sign that a transfer is over without
+     * having finished — losing the SSH transport mid-download rejects the
+     * promise, but leaves `isCancelled()` and `isComplete()` both false, so the
+     * line would otherwise stay "en cours" for the rest of the session. The
+     * error is re-thrown untouched: reporting is not handling, and every caller
+     * already has its own idea of what to say.
+     */
+    private async report<T> (transfer: FileTransfer, run: () => Promise<T>): Promise<T> {
+        try {
+            return await run()
+        } catch (error) {
+            this.registry.markFailed(transfer, String((error as Error)?.message ?? error))
+            throw error
+        }
+    }
 
     /**
      * Whether the installed app takes an imposed path.
@@ -43,7 +64,7 @@ export class SftpTransfers {
             if (!transfer) {
                 throw new Error(`Le téléchargement de ${name} n'a pas pu démarrer`)
             }
-            await sftp.download(remotePath, transfer)
+            await this.report(transfer, () => sftp.download(remotePath, transfer))
             return
         }
         const fallback: FileDownload = new LocalFileDownload(localPath, name, size, mode)
@@ -67,7 +88,7 @@ export class SftpTransfers {
             if (!transfer) {
                 throw new Error(`L'envoi de ${name} n'a pas pu démarrer`)
             }
-            await sftp.upload(remotePath, transfer)
+            await this.report(transfer, () => sftp.upload(remotePath, transfer))
         } else {
             const fallback = new LocalFileUpload(localPath, name, size, mode)
             await fallback.openForReading()

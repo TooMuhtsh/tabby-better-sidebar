@@ -29,6 +29,7 @@
             *ngFor='let entry of transfers.entries; trackBy: trackById',
             [class.transfer-done]='entry.state === "done"',
             [class.transfer-cancelled]='entry.state === "cancelled"',
+            [class.transfer-failed]='entry.state === "failed"',
             [title]='entry.name'
         )
             .fa.fa-fw.fas.transfer-arrow(
@@ -44,6 +45,12 @@
             span.transfer-figure(*ngIf='entry.state === "active"') {{ entry.percent }}%
             span.transfer-figure(*ngIf='entry.state === "done"') {{ entry.sizeLabel }}
             span.transfer-figure(*ngIf='entry.state === "cancelled"') annulé
+            //- The percentage reached is kept alongside: "interrompu" alone
+            //- does not say whether 2 % or 98 % had made it across.
+            span.transfer-figure(
+                *ngIf='entry.state === "failed"',
+                [title]='entry.failureReason'
+            ) interrompu à {{ entry.percent }} %
             //- Blank until a speed is known, and gone once there is nothing left
             //- to wait for — hence its own span rather than a suffix on the time.
             span.transfer-eta(*ngIf='entry.etaLabel', title='Temps restant estimé') ~{{ entry.etaLabel }}
