@@ -50,7 +50,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#integrite-donnees">Intégrité des données au re-parentage et à la suppression</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Haute</td></tr>
 <tr><td><a href="#liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Haute</td></tr>
-<tr><td><a href="#cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -1287,7 +1287,23 @@ là où les changements ont lieu. Reste à décider ce qu'on fait de la destruct
 fichier » veut dire.</p>
 
 <h3 id="cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser
-<span class="pill planned">📋 À arbitrer</span></h3>
+<span class="pill done">✅ Fait (2026-08-02)</span></h3>
+<div class="callout note"><span class="callout-title">Livré le 2026-08-02, deux points testés en conditions réelles</span>
+<p>Branche <code>fix/cycle-de-vie</code>. Les sept points listés ci-dessous sont traités.</p>
+<p><strong>Testé</strong> — le démontage : éteindre puis rallumer le plugin deux fois de suite laisse
+exactement une sidebar dans le DOM et une vue attachée, là où l'ancien code en laissait une morte à
+l'écran puis en ajoutait une seconde. Et la purge des temporaires : un dossier dont le processus
+propriétaire est mort est bien supprimé au démarrage, un dossier dont le processus vit est bien
+conservé — c'est ce second cas que l'ancien repère temporel manquait, effaçant les copies d'une
+fenêtre ouverte plus tôt.</p>
+<p><strong>Non exercé en conditions réelles</strong>, faute de scénario reproductible à peu de
+frais : la revalidation du <code>Content-Length</code> au dépôt, et la promesse de démarrage du
+serveur quand la socket refuse de se lier. Les deux sont des chemins d'erreur ou de course ; le code
+est en place, aucune passe ne l'a exercé.</p>
+<p><strong>Choix à connaître</strong> : la purge décide par « le processus nommé dans le dossier
+vit-il encore ? », pid lu dans le nom du dossier. Un pid recyclé par un processus sans rapport ferait
+garder un dossier un run de trop — c'est le côté inoffensif du compromis, cette classe existant pour
+éviter d'abandonner des copies, jamais pour risquer d'en supprimer une en cours d'usage.</p></div>
 <p class="muted">Défauts de cycle de vie relevés à la même revue. Aucun n'est déclenché par un usage
 courant ; ils sont réunis ici pour ne pas être redécouverts un par un.</p>
 <ul>

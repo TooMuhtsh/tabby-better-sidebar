@@ -33,6 +33,31 @@ entrées les plus récentes en tête.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
+<tr><td>2026-08-02</td><td><code>1738529</code></td>
+<td><strong>Sept défauts de cycle de vie, dont deux visibles.</strong>
+<code>SidebarPlusMountService.unmount()</code> détachait la vue et détruisait le composant sans
+retirer le nœud : le renderer DOM d'Angular laisse <code>destroyNode</code> nul, donc éteindre le
+plugin laissait une sidebar figée à l'écran, et le rallumer en insérait une <em>seconde</em> à côté
+du cadavre. Et la purge des copies temporaires prenait pour repère
+<code>process.uptime()</code> — l'âge du <em>renderer courant</em>, pas de l'application : une
+fenêtre ouverte à 10h30 jugeait « antérieur au démarrage » le dossier de la fenêtre de 10h00 et
+l'effaçait, fichier en cours d'édition compris, après quoi l'enregistrement suivant partait
+silencieusement nulle part. Elle demande désormais si le processus nommé dans le dossier vit
+encore.</td></tr>
+<tr><td>2026-08-02</td><td><code>1738529</code></td>
+<td><strong>Cinq défauts plus discrets du même voisinage.</strong> Le
+<code>Content-Length</code> du glisser sortant venait de la ligne affichée et n'était jamais
+revérifié au dépôt, si bien qu'un fichier ayant changé de taille depuis le dernier
+<code>readdir</code> était servi avec un en-tête qui contredisait son corps — ce qui, pour le
+receveur, <em>est</em> la définition d'un téléchargement tronqué. Les offres périmées n'étaient
+purgées que par un glisser suivant, chacune retenant sa session SFTP jusqu'à dix minutes ; chaque
+requête les balaie maintenant. Chaque préparation de glisser laissait son dossier temporaire quand
+une copie périmée était remplacée. La promesse de démarrage du serveur ne se résolvait jamais si la
+socket refusait de se lier. Et <code>SftpRemoteEditor</code> était le seul collaborateur à ne pas
+recevoir <code>NgZone</code>, alors que toute sa chaîne part d'un callback <code>fs.watch</code> que
+zone.js ne patche pas : sa modale de conflit et ses notifications n'étaient peintes qu'au prochain
+cycle déclenché par autre chose (<a href="AI-CONTEXT.html#piege-41">#41</a>).</td></tr>
+
 <tr><td>2026-08-02</td><td><code>2dfdd91</code></td>
 <td><strong>Éditer un lien symbolique éditait le lien, avec quatre conséquences.</strong>
 <code>openEntry()</code> résolvait le lien par <code>sftp.stat()</code>, dont le mode revient à 0
@@ -166,6 +191,28 @@ il appelait <code>getProfileGroups()</code> sans options, ce qui ne remplit pas
 <code>{ includeNonUserGroup: true, includeProfiles: true }</code>. À retenir pour toute passe future
 qui reconstitue un appel du composant : <strong>reprendre ses options, pas seulement son nom de
 méthode</strong>.</p></div>
+
+<h3>Passe de test du 2026-08-02 sur le cycle de vie</h3>
+<p>Deux des sept points ont été exercés pour de bon, les deux visibles.</p>
+<p><strong>Démontage</strong> : éteindre puis rallumer le plugin, deux cycles de suite, laisse
+exactement <strong>une</strong> sidebar dans le DOM et une vue attachée à l'<code>ApplicationRef</code>.
+Avant le correctif, l'extinction en laissait une figée à l'écran et le rallumage en ajoutait une
+seconde.</p>
+<p><strong>Purge des temporaires</strong> : deux dossiers témoins posés à la main, l'un nommé d'après
+un pid mort, l'autre d'après un processus vivant, puis Tabby relancé. Le premier est purgé, le second
+conservé — c'est ce second cas que l'ancien repère temporel manquait, puisqu'il jugeait « antérieur
+au démarrage » tout ce qui précédait le renderer courant.</p>
+<div class="callout note"><span class="callout-title">Ce qui n'a pas été exercé</span>
+<p>La revalidation du <code>Content-Length</code> au dépôt et la promesse de démarrage du serveur
+quand la socket refuse de se lier : deux chemins d'erreur ou de course, sans scénario reproductible à
+peu de frais. Le code est en place, aucune passe ne l'a parcouru — à ne pas présenter comme
+validé.</p></div>
+<div class="callout note"><span class="callout-title">Un placeholder résolu dans une entrée ancienne</span>
+<p>La cellule Hash du chantier <em>Tunnels SSH (2026-07-29)</em> portait <code>(ce commit)</code>,
+jamais remplacé — c'est ce que l'audit du 2026-07-31 avait manqué en cherchant la formule
+« commit en cours ». Le commit visé est <code>500017b</code>, qui a livré les tunnels <em>et</em>
+écrit cette entrée. Il a été inscrit : le placeholder était fait pour l'être, donc le résoudre
+achève l'entrée plutôt que de la réécrire — <code>A-4</code> reste tenu.</p></div>
 
 <h2>Transferts : montrer qu'un transfert est mort, et le servir nous-mêmes (2026-08-02)</h2>
 <p>Branche <code>fix/transferts-interrompus</code>. Ouverte sur le point 3 de
@@ -841,7 +888,7 @@ sont acquises, l'action sur une session vivante ne l'est pas.</p>
 <table>
 <tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
 
-<tr><td>2026-07-29</td><td>(ce commit)</td>
+<tr><td>2026-07-29</td><td><code>500017b</code></td>
 <td><strong>Tunnels SSH</strong> : popup « Tunnels du profil… » (liste, ajout, suppression,
 modification par double-clic), pastille à deux états sur les profils — allumée si des tunnels sont
 montés, estompée s'ils sont seulement configurés — et section « Tunnels actifs » repliable montrant
