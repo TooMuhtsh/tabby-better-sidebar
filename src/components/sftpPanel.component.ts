@@ -16,7 +16,7 @@ import {
 } from '@angular/core'
 import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
 import { SSHTabComponent } from 'tabby-ssh'
-import { getAllOpenTabs } from '../tabs'
+import { getAllOpenTabs, isLiveSSHTab } from '../tabs'
 import { SidebarPlusSftpBrowserComponent } from './sftpBrowser.component'
 
 /**
@@ -83,6 +83,17 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
      */
     private panels = new Map<SSHTabComponent, ComponentRef<SidebarPlusSftpBrowserComponent>>()
     private boundTab: SSHTabComponent|null = null
+    /**
+     * The session the visible panel was built against.
+     *
+     * Tracked separately from the tab because a tab that loses its connection
+     * and reconnects is *the same object* — only `sshSession` is replaced. The
+     * tab alone was what sync() compared, so it returned early forever and the
+     * rebuild in attachPanel() was never reached: the panel stayed bound to the
+     * dead transport, answering "Session closed" to every gesture, until the
+     * tab itself was killed.
+     */
+    private boundSession: SSHTabComponent['sshSession'] = null
     private subscription: Subscription|null = null
     /** Tracks the focus changes *within* the active split tab, re-subscribed whenever the active tab changes. */
     private splitFocusSubscription: Subscription|null = null
@@ -153,6 +164,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             this.detachPanel(this.boundTab)
         }
         this.boundTab = null
+        this.boundSession = null
         this.boundTabTitle = null
     }
 
@@ -162,18 +174,71 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         }
         this.watchSplitFocus()
 
+        // Hand the sidebar back to the profile tree rather than leave a panel
+        // that can no longer serve anything on screen. Decided with the user on
+        // 2026-08-02, and it covers `exit` as much as a dropped link: the
+        // transport survives a shell that ended, so the SFTP view went on
+        // working for a session "Sessions actives" had already dropped — two
+        // blocks of the same sidebar answering "does this session exist"
+        // differently. No automatic return when it comes back: one click is
+        // enough, and the user may well have moved on to the profiles.
+        if (this.boundSessionIsLost()) {
+            this.dropDeadPanel()
+            this.closed.emit()
+            return
+        }
+
         const tab = this.resolveFocusedSSHTab()
-        if (tab === this.boundTab) {
+        if (tab === this.boundTab && tab?.sshSession === this.boundSession) {
             return
         }
         if (this.boundTab) {
             this.detachPanel(this.boundTab)
         }
         this.boundTab = tab
+        this.boundSession = tab?.sshSession ?? null
         this.boundTabTitle = tab?.title ?? null
         if (tab) {
             this.attachPanel(tab)
         }
+    }
+
+    /**
+     * True when the panel on screen is bound to a session that is gone for
+     * good — as opposed to one that has already been replaced by a reconnect,
+     * which is a rebuild and is handled by attachPanel().
+     */
+    private boundSessionIsLost (): boolean {
+        const tab = this.boundTab
+        if (!tab) {
+            return false
+        }
+        if (tab.sshSession !== this.boundSession) {
+            return false
+        }
+        // `sftpUnavailable`: the channel never opened at all (piège #57). The
+        // panel is up but empty and mute, so there is nothing to keep showing.
+        return !isLiveSSHTab(tab) || (this.panels.get(tab)?.instance.sftpUnavailable ?? false)
+    }
+
+    /**
+     * Unlike releaseBoundPanel(), this destroys the panel instead of caching
+     * it: it holds an SFTP channel on a transport that is gone, so nothing in
+     * it can be reused, and keeping it would only hand it back on the next
+     * visit to a tab that is about to get a brand new session anyway.
+     */
+    private dropDeadPanel (): void {
+        const tab = this.boundTab
+        if (tab) {
+            const ref = this.panels.get(tab)
+            if (ref) {
+                this.destroyPanel(ref)
+                this.panels.delete(tab)
+            }
+        }
+        this.boundTab = null
+        this.boundSession = null
+        this.boundTabTitle = null
     }
 
     /**
@@ -196,7 +261,10 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         // A tab whose session is still negotiating (or already dropped) has no
         // usable transport — the browser's ngOnInit would call openSFTP() on
         // it and throw. Stay on the placeholder until it is genuinely up.
-        return tab.sshSession?.open ? tab : null
+        //
+        // `sshSession.open` alone was the test here, and it is a lie for a
+        // session that died: the flag is never cleared (see isLiveSSHTab).
+        return isLiveSSHTab(tab) ? tab : null
     }
 
     /**

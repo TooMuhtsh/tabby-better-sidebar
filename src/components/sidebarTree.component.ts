@@ -23,7 +23,7 @@ import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh
 import { ICON_ENTRIES, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
-import { focusTab, getAllOpenTabs } from '../tabs'
+import { focusTab, getAllOpenTabs, isLiveSSHTab } from '../tabs'
 import { clampInViewport } from '../viewport'
 
 interface CollapsableProfileGroup extends ProfileGroup {
@@ -1093,21 +1093,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             if (!(tab instanceof SSHTabComponent)) {
                 continue
             }
-            // Two conditions, and both are needed — see piège #37.
-            //
-            // `sshSession` is the SSH *transport*, and it deliberately outlives
-            // the shell: it is reference-counted for multiplexing and still
-            // carries the SFTP channel, so `sshSession.open` stays true after
-            // an `exit` on the server. Alone, it left ended sessions listed as
-            // live indefinitely (found in manual testing on 2026-07-29).
-            //
-            // `session` is the shell itself, and Tabby nulls it out on session
-            // end (`onSessionDestroyed()` → `setSession(null)`, verified in the
-            // installed app's compiled tabby-terminal). That is what the tab's
-            // own "Reconnecter" banner keys off, so it is the honest answer to
-            // "is this session live". Keeping the transport check too means a
-            // listed row can always serve the SFTP shortcut.
-            if (!tab.sshSession?.open || !(tab as unknown as ProfileBackedTab).session) {
+            // Both halves of the test matter — see isLiveSSHTab and piège #37.
+            // Shared with the SFTP panel since 2026-08-02: the two had drifted
+            // apart, this list dropping a session the panel went on serving.
+            if (!isLiveSSHTab(tab)) {
                 continue
             }
             const profile = (tab as unknown as ProfileBackedTab).profile

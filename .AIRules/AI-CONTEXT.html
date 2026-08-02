@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #59.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #60.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -465,6 +465,39 @@ impossible sur ce chemin — <code>will-download</code> d'Electron ne rendrait q
 menu contextuel, où c'est nous qui imposons le chemin à
 <code>platform.startDownload()</code> : ne pas confondre les deux, c'est ce que font les plugins SFTP
 qui affichent cette vérification.</p></div>
+
+<h3 id="piege-59">#59 — <code>SSHSession.open</code> n'est <em>jamais</em> remis à
+<code>false</code>, et un onglet qui se reconnecte garde son identité</h3>
+<p>Deux faits distincts, découverts ensemble le 2026-08-02 en cherchant pourquoi le correctif du
+panneau SFTP mort n'avait aucun effet. Le premier complète le <a href="#piege-37">#37</a> et le
+durcit&nbsp;:</p>
+<ul>
+<li><strong><code>open</code> ment.</strong> Dans le bundle réellement chargé, le seul
+<code>this.open = false</code> est l'initialisation du champ dans le constructeur ;
+<code>destroy()</code> se contente de <code>willDestroy.next()</code> puis
+<code>ssh.disconnect()</code>. Une session tuée par une coupure de lien <strong>se déclare ouverte
+aussi longtemps que l'objet vit</strong>. Le #37 disait « <code>open</code> reste vrai après un
+<code>exit</code> » ; c'est en réalité plus large — il reste vrai après n'importe quelle mort.</li>
+<li><strong>Un onglet reconnecté est le même objet.</strong>
+<code>ConnectableTerminalTabComponent.reconnect()</code> détruit la session shell puis rappelle
+<code>initializeSession()</code> sur le <em>même</em> <code>SSHTabComponent</code> : seul
+<code>tab.sshSession</code> est remplacé (par un objet neuf — le multiplexeur purge sa map sur
+<code>willDestroy$</code>, donc <code>setupOneSession()</code> ne retrouve rien à réutiliser).
+Tout code qui compare des onglets pour décider s'il doit se reconstruire ne verra donc
+<strong>jamais</strong> de changement.</li>
+</ul>
+<p>Combinés, ces deux faits rendaient le panneau SFTP définitivement mort après une perte de
+connexion&nbsp;: <code>sync()</code> sortait sur <code>tab === this.boundTab</code>, et le garde-fou
+qui aurait dû le sauver testait <code>sshSession?.open</code>. Symptôme à reconnaître —
+<strong>« Session closed »</strong> remonté par russh à chaque geste dans un panneau qui, lui,
+s'affiche normalement.</p>
+<div class="callout important"><span class="callout-title">La vivacité d'une session se lit à un
+seul endroit</span>
+<p><code>isLiveSSHTab()</code> (<code>src/tabs.ts</code>) porte le test des deux conditions, et les
+deux blocs qui en dépendent — « Sessions actives » et le panneau SFTP — l'appellent. Ils avaient
+divergé&nbsp;: la liste retirait une session que le panneau continuait de servir. Ne pas réécrire ce
+test sur place, l'appeler.</p>
+</div>
 
 <h3 id="piege-50">#50 — <code>SFTPSession.stat()</code> perd les permissions et la date : ne
 jamais s'en servir pour observer une entrée</h3>
