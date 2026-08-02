@@ -31,11 +31,31 @@ const OFFER_TTL_MS = 10 * 60 * 1000
  * the file was dropped.
  */
 class HttpFileDownload extends FileDownload {
+    /**
+     * True once the other end walked away before the file was whole.
+     *
+     * Chromium asks for the bytes *before* showing its "Save as" dialog, so
+     * dismissing that dialog closes the connection on a transfer that has
+     * already started. That is a user cancelling, not a transfer breaking —
+     * the caller reads this to tell the two apart.
+     */
+    clientGone = false
+
     constructor (
         private response: http.ServerResponse,
         private item: SFTPFile,
     ) {
         super()
+        // `close` fires either way; `writableFinished` is what says whether the
+        // response got to say everything it had to say.
+        this.response.on('close', () => {
+            if (!this.response.writableFinished) {
+                this.clientGone = true
+            }
+        })
+        this.response.on('error', () => {
+            this.clientGone = true
+        })
     }
 
     getName (): string {
@@ -56,10 +76,46 @@ class HttpFileDownload extends FileDownload {
      * which on a 4 GB video is the difference between a transfer and a crash.
      */
     async write (buffer: Uint8Array): Promise<void> {
+        // Throwing is the only way out: `SFTPSession.download()` loops on
+        // `read()`/`write()` and never consults `isCancelled()`, so cancelling
+        // the transfer does not stop it — only an exception does. Without this,
+        // a dismissed dialog left the loop reading the whole file out of the
+        // server and writing it into a dead socket.
+        if (this.clientGone || this.response.destroyed) {
+            throw new Error('Téléchargement abandonné')
+        }
         if (!this.response.write(Buffer.from(buffer))) {
-            await new Promise<void>(resolve => this.response.once('drain', () => resolve()))
+            await this.awaitDrain()
         }
         this.increaseProgress(buffer.length)
+    }
+
+    /**
+     * Waits for the socket buffer to empty, or gives up if the other end goes.
+     *
+     * Listening for `drain` alone is what hung: on a closed response that event
+     * never comes, so the promise never settled and the transfer stayed
+     * "en cours" for the rest of the session, holding its SFTP reads open.
+     */
+    private awaitDrain (): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            const cleanup = (): void => {
+                this.response.off('drain', onDrain)
+                this.response.off('close', onGone)
+                this.response.off('error', onGone)
+            }
+            const onDrain = (): void => {
+                cleanup()
+                resolve()
+            }
+            const onGone = (): void => {
+                cleanup()
+                reject(new Error('Téléchargement abandonné'))
+            }
+            this.response.once('drain', onDrain)
+            this.response.once('close', onGone)
+            this.response.once('error', onGone)
+        })
     }
 
     close (): void {
@@ -187,9 +243,16 @@ export class SidebarPlusDragOutServer {
             // body is half written. Killing the socket is what tells the other
             // side the file is incomplete.
             res.destroy()
-            // And the panel line, which would otherwise stay "en cours" for
-            // good: a dead transport rejects here without ever cancelling or
-            // completing the transfer.
+            if (transfer.clientGone) {
+                // The user dismissed the "Save as" dialog, or Chromium gave up:
+                // nothing broke, so the line says "annulé" like any other
+                // cancellation. `cancel()` is what the registry's tick reads.
+                transfer.cancel()
+                return
+            }
+            // Otherwise the transport died under the transfer, and the line
+            // would stay "en cours" for good: nothing else ever cancels or
+            // completes it.
             this.transfers.markFailed(transfer, String((error as Error)?.message ?? error))
         }
     }

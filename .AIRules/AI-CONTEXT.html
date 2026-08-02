@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #61.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #62.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -465,6 +465,26 @@ impossible sur ce chemin — <code>will-download</code> d'Electron ne rendrait q
 menu contextuel, où c'est nous qui imposons le chemin à
 <code>platform.startDownload()</code> : ne pas confondre les deux, c'est ce que font les plugins SFTP
 qui affichent cette vérification.</p></div>
+
+<h3 id="piege-61">#61 — <code>SFTPSession.download()</code> ne consulte jamais l'annulation : seule
+une exception arrête la boucle</h3>
+<p>La boucle du composant natif est un <code>while (true)</code> de <code>handle.read()</code> puis
+<code>await transfer.write(chunk)</code>, sans un seul <code>isCancelled()</code>. Appeler
+<code>cancel()</code> sur le <code>FileTransfer</code> <strong>ne l'interrompt pas</strong> : elle
+continue de lire le fichier entier depuis le serveur. Le seul levier d'arrêt est une exception levée
+depuis <code>write()</code>, c'est-à-dire depuis notre propre code.</p>
+<p>Corollaire rencontré le 2026-08-02, en servant un téléchargement par HTTP : attendre
+<code>response.once('drain')</code> sur une réponse dont le client est parti <strong>ne se résout
+jamais</strong> — l'événement ne viendra plus. La boucle restait suspendue indéfiniment, la ligne du
+panneau affichait « en cours » pour le reste de la session, et le canal SFTP restait ouvert dessus.
+Symptôme observé : annuler la boîte « Enregistrer sous » laissait un téléchargement qui n'avait
+jamais réellement commencé. → Toute attente sur un flux réseau doit écouter <code>close</code> et
+<code>error</code> en plus de l'événement attendu, et un <code>write()</code> doit refuser d'écrire
+sur un flux mort au lieu de le tenter.</p>
+<p>À distinguer dans l'affichage : un client qui s'en va est une <strong>annulation</strong>
+(<code>writableFinished</code> faux sur <code>close</code>), un transport qui meurt est une
+<strong>interruption</strong> — même exception, deux causes, et les confondre fait dire « annulé » à
+ce que personne n'a annulé.</p>
 
 <h3 id="piege-60">#60 — une case à cocher nue est <em>invisible</em> sur le thème de Tabby :
 utiliser <code>&lt;toggle&gt;</code></h3>
