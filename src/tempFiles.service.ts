@@ -24,9 +24,17 @@ const ROOT = path.join(os.tmpdir(), 'tabby-better-sidebar')
  *     cancelled close would have deleted the copy of a file still open in the
  *     user's editor.
  *
- * Per-window directories are what makes the startup purge safe with several
- * windows open: a second window must not wipe the copies of the first, and the
- * boot-time cutoff guarantees it never does.
+ * Per-window directories are what keeps one window's copies apart from
+ * another's.
+ *
+ * They are *not* enough to make the startup purge safe with several windows
+ * open, contrary to what this said until 2026-08-02: `process.uptime()` is the
+ * age of the current renderer, not of the application, so a window opened at
+ * 10:30 treats the 10:00 window's directory as predating "boot" and deletes it
+ * — including a file being edited right then, after which the watcher has
+ * nothing left to send. See the "Cycle de vie" chantier in the roadmap; the fix
+ * is not settled, and this note is here so the flaw is not rediscovered from
+ * the symptom.
  */
 @Injectable({ providedIn: 'root' })
 export class SidebarPlusTempFilesService {

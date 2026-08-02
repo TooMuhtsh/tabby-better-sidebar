@@ -200,11 +200,18 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     renameValue = ''
     profileTemplates: { provider: ProfileProvider<Profile>, template: PartialProfile<Profile> }[] = []
 
-    // Pug/Angular ends up serializing the template's *ngIf attribute value
-    // with double quotes and HTML-entity-escaping any literal `"` inside it
-    // (e.g. `contextMenuMode === "icon"` becomes `contextMenuMode === &quot;icon&quot;`
-    // in the compiled template string) — comparing against a boolean getter
-    // instead of a quoted string literal sidesteps that escaping entirely.
+    // One getter per value of `contextMenuMode`, so the template never has to
+    // spell the string out.
+    //
+    // The escaping this was once thought to work around is real but harmless:
+    // pug does serialize `contextMenuMode === "icon"` as
+    // `contextMenuMode === &quot;icon&quot;` in the compiled template, and
+    // Angular decodes the entities before parsing the expression. Verified by
+    // compiling this very template — sixteen bindings elsewhere in it rely on
+    // quoted literals and work (`activeWorkspaceId === "all"`,
+    // `group.icon ?? "far fa-folder"`, and the connection status dot among
+    // them). So these getters are a readability choice, not a workaround: a
+    // new mode does not *have* to get one.
     get isMenuMode (): boolean {
         return this.contextMenuMode === 'menu'
     }

@@ -15,7 +15,7 @@
 </nav>
 
 <h1>Roadmap</h1>
-<p class="muted">Dernière revue : 2026-07-31</p>
+<p class="muted">Dernière revue : 2026-08-02</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
 techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
@@ -32,7 +32,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
-<tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
 <tr><td><a href="#robustesse">Robustesse édition de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
@@ -43,11 +43,14 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
-<tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01, refondu le 2026-08-02)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#liste-performance">Performance de la liste SFTP et rafraîchissement automatique</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#renommer-sftp">Renommer une entrée depuis le panneau SFTP</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
+<tr><td><a href="#integrite-donnees">Intégrité des données au re-parentage et à la suppression</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td><strong>Haute — pertes de données silencieuses</strong></td></tr>
+<tr><td><a href="#liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td><strong>Haute — permissions distantes</strong></td></tr>
+<tr><td><a href="#cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser</a></td><td><span class="pill planned">📋 À arbitrer (2026-08-02)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -61,10 +64,15 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
     <td><span class="pill done">✅ Revue faite (2026-07-31)</span></td>
     <td>Entretien récurrent</td></tr>
+<tr><td><a href="#menage-release">Ménage avant release soignée</a></td>
+    <td><span class="pill planned">📋 Proposé</span></td><td>Avant toute publication npm</td></tr>
 </table>
 
 <h2>Phase 1 — priorité absolue</h2>
-<p>Les deux fonctionnalités qui justifient de remplacer MobaXterm par Tabby + ce plugin.</p>
+<p>Les deux fonctionnalités qui justifiaient de remplacer MobaXterm par Tabby + ce plugin — le
+<a href="#sftp">SFTP contextuel</a> et les <a href="#workspaces">workspaces</a>. Tout ce qui a
+suivi est né de leur usage réel : cette phase a grossi au fil des passes de test, ce qui explique
+qu'elle porte aujourd'hui bien plus que deux entrées.</p>
 
 <h3 id="sftp">SFTP contextuel</h3>
 <p>Bascule Profils/SFTP dans l'espace de la sidebar elle-même (pas un panneau séparé ancré à
@@ -126,19 +134,24 @@ gestion de modes qui n'avait pas à être résolu pour prouver le reste.</p>
   l'option de <em>geler</em> la vue active n'est pas construite.</li>
 <li><strong>Chargement par blocs</strong> (lazy loading RxJS) : la liste est chargée d'un coup. À
   reprendre si un dossier distant très peuplé fige l'interface.</li>
-<li><strong>Suivi des transferts</strong> : ni flèches d'activité sur le profil, ni mini-gestionnaire
-  pliable en bas de sidebar. → repris et détaillé dans
+<li><strong>Suivi des transferts</strong> : repris et détaillé dans
   <a href="#transferts">Transferts SFTP</a>, <strong>priorité relevée à Haute le 2026-07-29</strong>
-  à la demande de l'utilisateur.</li>
+  à la demande de l'utilisateur. Le <strong>gestionnaire en bas de sidebar est livré</strong> depuis
+  le 2026-08-02 (visible dans les deux vues) ; les <strong>flèches d'activité sur la ligne du
+  profil</strong>, elles, ne sont toujours pas construites.</li>
 </ul>
 
-<h4>Limites connues du renvoi de fichier édité</h4>
-<div class="callout warning">
-<p><strong>Pas de détection de conflit</strong> : si le fichier distant change entre le
-téléchargement et un enregistrement, l'enregistrement l'écrase. <code>tabby-sftp-plus</code> a un
-<code>panel-conflict-resolver</code> dont s'inspirer le jour où ça remonte.</p>
+<h4>Limites connues du renvoi de fichier édité <span class="pill done">✅ Levées (2026-08-01)</span></h4>
+<div class="callout note"><span class="callout-title">Ce que ce bloc décrivait, et qui n'a plus cours</span>
+<p>Les deux limites listées ici à la livraison du chantier ont été traitées par
+<a href="#transferts-officiels">Transferts par l'API officielle</a> — elles sont conservées pour que
+la trace de ce qui a été corrigé reste lisible, pas parce qu'elles décrivent l'état actuel :</p>
+<p><strong>Pas de détection de conflit</strong> : si le fichier distant changeait entre le
+téléchargement et un enregistrement, l'enregistrement l'écrasait. → <strong>Levée</strong> par le
+point 2, qui compare l'empreinte distante avant tout envoi et ouvre une modale de conflit.</p>
 <p><strong>Nettoyage des copies temporaires</strong> à la destruction du panneau, pas à la fermeture
-de l'éditeur — un fichier reste donc sur disque tant que la sidebar vit.</p>
+de l'éditeur. → <strong>Levée</strong> par le point 3 : purge au démarrage de tout ce qu'un run
+antérieur a laissé, et purge du dossier de la fenêtre à sa fermeture.</p>
 </div>
 
 <h4 id="sftp-scp">Écarté : SCP <span class="pill out">⛔</span></h4>
@@ -347,16 +360,18 @@ cloisonnée par workspace (une session ouverte est un fait de l'app, pas du work
 masquer serait un moyen de la perdre de vue) ; l'état replié va en <code>localStorage</code>, pas
 dans <code>config.yaml</code>.</p>
 <p><strong>Reste à faire sur ce chantier</strong> : l'intégration visuelle des états de transfert
-SFTP (vitesse, file d'attente) listée ci-dessus n'est pas livrée — elle dépend du mini-gestionnaire
-de transferts différé du chantier <a href="#sftp">SFTP contextuel</a>, et suivra celui-ci, désormais
-repris dans <a href="#transferts">Transferts SFTP</a> (priorité relevée le 2026-07-29).</p></div>
+SFTP (vitesse, file d'attente) <em>sur la ligne de session elle-même</em> n'est pas livrée. Le motif
+de blocage, lui, est levé : le mini-gestionnaire dont elle dépendait est en place depuis le
+2026-08-02 (<a href="#transferts">Transferts SFTP</a>, volet 1), et affiche déjà vitesse, ETA et
+file d'attente — mais dans son propre panneau, pas sur la session.</p></div>
 
 <h3 id="transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-29, avec une <strong>urgence relevée</strong> :
 ce chantier passe devant <a href="#auto-enter">Auto-Enter</a> et devient le prochain à construire.
 Il absorbe le « mini-gestionnaire de transferts » différé du <a href="#sftp">SFTP contextuel</a> et
 débloque au passage l'affichage des états de transfert attendu par
-<a href="#sessions-actives">Sessions actives</a>. Rien n'est implémenté.</p>
+<a href="#sessions-actives">Sessions actives</a>. <strong>Volet 1 livré le 2026-08-02</strong> ;
+volets 2 et 3 non commencés.</p>
 
 <p>Trois demandes distinctes, à traiter dans cet ordre — la première est autonome, les deux autres
 partagent leur plomberie de dépôt :</p>
@@ -903,6 +918,22 @@ double-clic. Aucun garde-fou supplémentaire n'a donc été nécessaire.</p>
 fin de préparation (sur un dossier lent, un geste qui ne produit rien est indiscernable d'une
 panne), la fraîcheur de la copie resservie, et la lenteur du téléchargement d'un dossier.</p></div>
 
+<div class="callout important"><span class="callout-title">Dépassé le 2026-08-02 : le transfert
+démarre désormais au dépôt</span>
+<p>Tout ce qui précède décrit la conception en deux temps, imposée par
+<a href="AI-CONTEXT.html#piege-49">piège #49</a>. Elle <strong>n'est plus le chemin principal</strong>
+depuis le 2026-08-02 : Chromium offre une autre route que <code>startDrag()</code> — une entrée
+<code>DownloadURL</code> dans le <code>DataTransfer</code> du glisser, qui annonce un nom et une URL
+dont le contenu n'est réclamé qu'<em>au moment du dépôt</em>. C'est le rendu différé de Windows,
+atteint par le moteur plutôt que par une API Electron. Le plugin sert lui-même cette URL depuis un
+serveur HTTP sur la boucle locale, port éphémère, un jeton aléatoire à usage unique par fichier, rien
+d'énumérable (<code>src/dragOutServer.service.ts</code>).</p>
+<p>Conséquence pratique : <strong>un fichier part en un seul geste</strong>, sans copie préalable, et
+le transfert apparaît dans le gestionnaire au moment où les octets bougent. Le chemin en deux temps
+décrit plus haut <strong>subsiste comme repli</strong> — il sert encore aux dossiers (une offre
+<code>DownloadURL</code> ne transporte qu'un fichier) et à toute installation où le serveur local ne
+démarre pas.</p></div>
+
 <h3 id="transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</h3>
 <p>Demandé par l'utilisateur le 2026-08-01, en réponse à la lenteur du drag-out sur un dossier et à
 une perte de fraîcheur rencontrée à l'usage. Principe posé à cette occasion, et valable au-delà de ce
@@ -1102,6 +1133,172 @@ L'action écrit alors le LF elle-même.</p>
 ligne s'insère en session locale <em>et</em> en SSH distant ; <kbd>Entrée</kbd> seule continue de
 soumettre ; la combinaison reste sans effet pendant qu'un champ de la sidebar a le focus ; et dans un
 onglet divisé, c'est bien le volet focalisé qui reçoit.</p></div>
+
+<h3 id="integrite-donnees">Intégrité des données au re-parentage et à la suppression
+<span class="pill planned">📋 À arbitrer</span></h3>
+<p class="muted">Trois défauts trouvés à la revue de code du 2026-08-02, tous dans le même domaine :
+les gestes de la sidebar qui réécrivent <code>config.store.groups</code> /
+<code>.profiles</code> — celui-là même qui a déjà corrompu la configuration de production une fois
+(<a href="AI-CONTEXT.html#piege-12">piège #12</a>). Aucun n'a été corrigé à chaud : chacun demande
+une passe de test sur des entrées <code>grp-zzz-test-*</code>, comme l'impose l'option
+<code>discipline-test</code> du <a href="PROFIL.md">PROFIL</a>.</p>
+
+<h4>1. Le re-parentage d'un dossier perd ses <code>defaults</code> de groupe</h4>
+<p><code>reparentGroup()</code> (<code>sidebarTree.component.ts</code>) recrée le dossier sous un id
+neuf en ne recopiant que <code>name</code>, <code>icon</code>, <code>color</code> et
+<code>parentGroupId</code>, puis supprime l'ancien. Or l'interface <code>ProfileGroup</code> de
+<code>tabby-core</code> porte aussi un champ <strong><code>defaults</code></strong>, que Tabby lit à
+l'exécution par <code>getProviderProfileGroupDefaults()</code> et fusionne dans le
+<code>ConfigProxy</code> de <strong>chaque profil du dossier</strong>. Ces réglages hérités
+disparaissent donc du <code>config.yaml</code>, sans erreur ni avertissement — et récursivement, la
+fonction se rappelant sur chaque sous-dossier.</p>
+<p><strong>Ce que ça donne à l'usage</strong> : un dossier « Prod » portant des defaults SSH de
+groupe (utilisateur, port, clé, jump host) glissé dans un autre dossier depuis la sidebar, et tous
+ses profils perdent leur héritage.</p>
+<p><strong>Correctif envisagé</strong> : recopier <code>defaults</code> — et, tant qu'à faire,
+n'importe quel champ que la version installée de Tabby ajouterait — plutôt que d'énumérer les quatre
+champs connus. Reste à décider si l'on recopie le groupe entier moins l'id, ou si l'on maintient une
+liste explicite : la première option est robuste aux évolutions de <code>tabby-core</code>, la
+seconde dit ce qu'elle fait.</p>
+
+<h4>2. Sortir un profil des « Épinglés » réordonne des profils d'autres dossiers</h4>
+<p>« Épinglés » est un groupe <em>synthétique</em> : ses entrées vivent réellement dans des dossiers
+différents. On ne peut rien y déposer, mais on peut parfaitement en <em>sortir</em> un profil vers un
+vrai dossier — CDK résout la cible d'un glisser parmi les listes connectées à la <strong>source</strong>.
+Le dépôt appelle alors <code>persistProfileOrder('favorites', …)</code> avec ce qui reste affiché
+dans « Épinglés ». Sur le workspace « Tous », cela descend jusqu'à
+<code>persistProfileWeights()</code>, qui écrit <code>weight = index</code> sur chacun de ces
+profils — <strong>selon leur rang dans la liste des favoris</strong>, pas dans leur dossier.</p>
+<p><strong>Ce que ça donne à l'usage</strong> : cinq profils épinglés répartis dans trois dossiers,
+on en glisse un vers un dossier, et les quatre autres remontent ou descendent dans leurs dossiers
+respectifs au prochain rechargement de l'arbre. Sur un workspace nommé, l'effet est bénin — la clé
+morte <code>profileOrder['favorites']</code> est nettoyée à l'écriture suivante. Le glisser d'une
+<em>multi-sélection</em> est épargné, lui : il passe par <code>moveSelectionToGroup()</code>, qui
+n'itère que de vrais groupes.</p>
+<p><strong>Correctif envisagé</strong> : ne persister l'ordre de la source que lorsqu'elle est un
+vrai dossier. Les deux conteneurs synthétiques (<code>favorites</code>, <code>search</code>) sont
+identifiables par leur id.</p>
+
+<h4>3. Un dossier « vide » peut ne l'être que dans le workspace regardé</h4>
+<p><code>deleteGroup()</code> refuse de supprimer un dossier non vide en comptant
+<code>group.children</code> et <code>group.profiles</code> — c'est-à-dire le nœud de l'arbre
+<strong>affiché</strong>, donc filtré par le workspace actif. Un dossier dont tout le contenu est
+masqué dans ce workspace paraît vide et passe le garde-fou. <code>deleteProfileGroup()</code>
+supprime alors le groupe et retire son <code>group</code> à chaque profil qui y vivait : les profils
+masqués retombent dans « Ungrouped », visibles partout, et les sous-dossiers masqués remontent à la
+racine.</p>
+<p><strong>Correctif envisagé</strong> : compter sur <code>rawGroupsSnapshot</code>, le cliché
+non filtré que le composant tient déjà et qu'<code>isSelfOrDescendant()</code> et
+<code>rescueTargetGroupId()</code> consultent précisément pour ce genre de garde. Le message d'erreur
+gagnerait à distinguer les deux cas — « contient 2 profils » et « contient 2 profils, masqués dans ce
+workspace » ne demandent pas la même action.</p>
+
+<h4>Trois défauts mineurs du même voisinage</h4>
+<ul>
+<li><strong><code>migrateWorkspaceGroupId()</code> oublie <code>favoriteGroups</code></strong> : il
+  migre <code>hiddenGroupIds</code> et les ordres, pas les favoris. Un dossier favori perd son étoile
+  au re-parentage et laisse un id mort, que <code>pruneDeadOrderIds()</code> ne ramasse pas non plus
+  — il ne traite que <code>groupOrder</code>/<code>profileOrder</code>. Même accumulation d'ids morts
+  dans <code>hiddenGroupIds</code> après une suppression de dossier, et dans <code>favorites</code>
+  après une suppression de profil.</li>
+<li><strong>L'état replié d'un dossier ne suit pas non plus</strong> : il vit dans
+  <code>localStorage</code> sous l'ancien id, donc le dossier revient déplié après un re-parentage.</li>
+<li><strong>L'abonnement à <code>config.changed$</code> n'est jamais résilié</strong>
+  (<code>ngOnInit</code>) : <code>ngOnDestroy()</code> libère les quatre autres. Le composant
+  <em>est</em> détruit quand <code>sidebarPlus.enabled</code> repasse à <code>false</code>, et
+  chaque cycle laisse alors un composant mort qui recharge tout l'arbre à chaque
+  <code>config.save()</code> de l'application. Peu probable en pratique : cette clé n'a aucune
+  interface, il faut éditer <code>config.yaml</code> à la main.</li>
+</ul>
+
+<h3 id="liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique
+<span class="pill planned">📋 À arbitrer</span></h3>
+<p class="muted">Trouvé à la revue de code du 2026-08-02, et vérifié pas à pas. Un seul geste —
+double-cliquer une entrée qui est un lien vers un fichier, cas courant sur un serveur
+(<code>sites-enabled/</code>, un <code>.env</code> lié…) — enchaîne trois conséquences, dont une
+qui touche la sécurité du fichier distant.</p>
+
+<h4>1. Le mode part à 0, donc la copie locale est créée en lecture seule</h4>
+<p><code>openEntry()</code> résout le lien par <code>sftp.stat()</code>, seul appel d'observation
+qui subsiste dans <code>src/</code> — et <code>stat()</code> rend un mode 0
+(<a href="AI-CONTEXT.html#piege-50">piège #50</a>). Ce 0 est étalé dans l'objet passé à l'éditeur,
+puis transmis à <code>platform.startDownload(name, mode, …)</code>, dont l'implémentation Electron
+fait <code>fs.open(path, 'w', mode)</code>. La copie locale atterrit donc en <code>444</code> :
+l'éditeur l'ouvre et <strong>refuse d'enregistrer</strong>.</p>
+<p>Accessoirement, le test de type du <a href="AI-CONTEXT.html#piege-45">piège #45</a> sur le
+résultat de ce <code>stat()</code> est mort — <code>mode &amp; S_IFMT</code> vaut toujours 0. Le
+garde-fou tient par <code>isDirectory</code> seul, que <code>russh</code> réaffecte à la main.</p>
+
+<h4>2. Si l'éditeur force l'écriture, le fichier distant finit en <code>777</code></h4>
+<p>VS Code et Notepad++ proposent d'écraser un fichier en lecture seule. L'envoi part alors, et le
+mode restauré après coup est celui qu'a lu <code>remoteStamp()</code> — qui interroge
+<code>fullPath</code>, c'est-à-dire <strong>le lien</strong>, pas sa cible. Un lien symbolique a un
+mode <code>0o120777</code> ; <code>&amp; 0o7777</code> en fait <code>0o777</code>, et c'est ce
+<code>chmod</code> qui est appliqué. <strong>Le fichier devient accessible en écriture à tout le
+monde sur le serveur</strong>, silencieusement — le mécanisme du
+<a href="AI-CONTEXT.html#piege-53">piège #53</a>, correct pour un fichier ordinaire, se retourne ici.</p>
+<p>S'y ajoute que <code>SFTPSession.upload()</code> fait <code>unlink</code> de la cible avant de
+renommer le temporaire par-dessus : <strong>le lien lui-même est détruit</strong> et remplacé par un
+fichier régulier.</p>
+
+<h4>3. La détection de conflit ne peut pas fonctionner</h4>
+<p><code>changed()</code> compare taille et date de <code>fullPath</code> — donc du lien, dont ni
+l'une ni l'autre ne bouge quand la cible change. Pour tout fichier ouvert par un lien, la modale de
+conflit livrée le 2026-08-01 ne se déclenchera jamais.</p>
+
+<p><strong>Piste de correctif</strong>, à arbitrer : résoudre le lien une fois, par
+<code>readlink()</code> + <code>readRemoteEntry()</code> — jamais <code>stat()</code> — et faire
+travailler tout le reste de la chaîne sur <em>le chemin de la cible</em>, en ne gardant le nom du
+lien que pour l'affichage. Cela règle les trois points d'un coup : mode réel, donc copie
+inscriptible ; <code>chmod</code> sur la cible avec son propre mode ; empreinte de fraîcheur prise
+là où les changements ont lieu. Reste à décider ce qu'on fait de la destruction du lien par
+<code>upload()</code> — écrire dans la cible résolue l'évite, mais change ce que « renvoyer ce
+fichier » veut dire.</p>
+
+<h3 id="cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser
+<span class="pill planned">📋 À arbitrer</span></h3>
+<p class="muted">Défauts de cycle de vie relevés à la même revue. Aucun n'est déclenché par un usage
+courant ; ils sont réunis ici pour ne pas être redécouverts un par un.</p>
+<ul>
+<li><strong>Désactiver le plugin laisse sa sidebar à l'écran, et la réactiver en met deux.</strong>
+  <code>SidebarPlusMountService.unmount()</code> détache la vue et détruit le composant, mais ne
+  retire jamais le nœud hôte inséré à la main : le renderer DOM d'Angular 15 ne définit pas
+  <code>destroyNode</code>, donc <code>ComponentRef.destroy()</code> ne touche pas au DOM. Le
+  panneau SFTP fait la chose juste au même endroit (<code>destroyPanel()</code> appelle
+  <code>.remove()</code> avant <code>destroy()</code>) — c'est le même geste à reproduire.
+  Déclencheur : <code>sidebarPlus.enabled</code> à <code>false</code>, qui n'a aucune interface.</li>
+<li><strong>Une seconde fenêtre Tabby efface les copies temporaires de la première.</strong> La purge
+  de démarrage prend pour repère <code>process.uptime()</code>, c'est-à-dire le démarrage du
+  <em>renderer courant</em> — pas de l'application. Une fenêtre ouverte à 10h30 juge donc « antérieur
+  au démarrage » le dossier de la fenêtre de 10h00 et le supprime, y compris le fichier en cours
+  d'édition : le <code>fs.watch</code> ne renvoie plus rien et l'enregistrement suivant sort en
+  silence. Le commentaire de tête du service affirme exactement l'inverse — <em>« the boot-time
+  cutoff guarantees it never does »</em>. À vérifier d'abord : que chaque fenêtre Tabby est bien un
+  processus distinct ; si un renderer était partagé, le défaut n'existe pas.</li>
+<li><strong>Le <code>Content-Length</code> du glisser sortant vient d'une taille périmée.</strong>
+  L'offre est faite au <code>dragstart</code> depuis la ligne affichée, et servie telle quelle au
+  dépôt sans redemander au serveur. Si le fichier a grossi ou maigri depuis le dernier
+  <code>readdir</code>, l'en-tête et le corps divergent, et Chromium conclut à un téléchargement
+  tronqué. Le chemin concurrent (copie puis glisser) revalide, lui, explicitement : c'est une
+  incohérence entre les deux routes, pas un oubli isolé.</li>
+<li><strong>Une offre de glisser retient sa session SFTP jusqu'à dix minutes</strong>, et n'est
+  purgée que par le glisser suivant — <code>pruneExpired()</code> n'est appelé que depuis
+  <code>offer()</code>, jamais par un timer.</li>
+<li><strong>Chaque préparation de glisser laisse son dossier temporaire</strong> : quand une copie
+  périmée est remplacée, l'entrée est écrasée mais l'ancien dossier reste sur disque jusqu'au
+  démontage du panneau.</li>
+<li><strong>Si le serveur de glisser ne démarre pas, <code>start()</code> ne se résout jamais</strong> :
+  le gestionnaire <code>error</code> remet la référence à <code>null</code>, mais le
+  <code>resolve</code> du <code>listen()</code> n'est jamais appelé. Sans effet visible — le repli
+  s'applique — mais c'est une promesse pendante pour la vie de la fenêtre. Et si
+  <code>address()</code> ne rend pas d'objet, le serveur écoute sans être stocké : plus rien ne peut
+  le fermer.</li>
+<li><strong><code>SftpRemoteEditor</code> est le seul collaborateur à ne pas recevoir
+  <code>NgZone</code></strong>, alors que toute sa chaîne part d'un callback <code>fs.watch</code>
+  que zone.js ne patche pas : la modale de conflit et ses notifications ne sont peintes qu'au
+  prochain cycle déclenché par autre chose (<a href="AI-CONTEXT.html#piege-41">piège #41</a>).
+  L'incohérence est certaine, le symptôme visible reste à confirmer en session réelle.</li>
+</ul>
 
 <h3 id="confirmations-html">Confirmations en modale HTML (audit de conformité)</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30 comme principe transversal. Audit fait sur
@@ -1319,40 +1516,54 @@ portée de main même avant d'implémenter ce chantier des favoris.</p>
 
 <h2>Non daté — à faire quand utile</h2>
 
-<h3 id="ui-polish">Options &amp; polissage UI</h3>
+<h3 id="ui-polish">Options &amp; polissage UI
+<span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02) — le reste ouvert</span></h3>
+<div class="callout note"><span class="callout-title">Ce chantier s'est vidé par le bas</span>
+<p>Aucun de ses items n'a jamais été construit « pour lui-même » : chacun est arrivé en dépendance
+d'un autre chantier, et le statut global n'a pas suivi. État repris item par item ci-dessous. Ce qui
+reste ouvert tient en trois points : l'agencement de la page de paramètres en quatre sections,
+l'icône d'engrenage en bas de sidebar, et le gel de la vue.</p></div>
 <h4>Agencement de la page de paramètres (Settings Layout)</h4>
 <p>Structurer l'interface de configuration du plugin en 4 sections distinctes :</p>
 <ol>
 <li><strong>Général &amp; Affichage</strong> : options de masquage de l'UI native redondante,
   gestion des raccourcis clavier globaux.</li>
-<li><strong>Sessions Actives &amp; SFTP</strong> : fréquences de rafraîchissement, interrupteur de
-  gel de la vue, historique de file d'attente.</li>
+<li><strong>Sessions Actives &amp; SFTP</strong> : fréquences de rafraîchissement
+  <span class="pill done">✅ Fait (2026-08-01)</span> — réglage <code>sftpAutoRefreshSeconds</code>,
+  0 par défaut ; restent l'interrupteur de gel de la vue et l'historique de file d'attente.</li>
 <li><strong>Workspaces</strong> : liste des espaces de travail, import/export JSON sélectif,
   assignation des couleurs de bordure par défaut.</li>
 <li><strong>Automatisation &amp; Macros</strong> : gestion globale des Quick Snippets et logs du
   moteur d'Auto-Enter.</li>
 </ol>
 <ul>
-<li><strong>Double entrée de configuration</strong> : sous-onglet dédié dans les options globales
-  de Tabby (<code>tabby-settings</code>) + icône d'engrenage discrète en bas à droite de la
-  sidebar, les deux pointant vers les mêmes réglages.</li>
-<li><strong>UI trimming</strong> : option pour masquer des composants natifs de Tabby devenus
-  redondants (ex. bouton de transfert SFTP d'origine) via injection de CSS global
-  (<code>display: none !important</code>), en s'inspirant des patterns déjà observés dans
-  <code>tabby-sftp-plus</code>.</li>
-<li><strong>Raccourcis globaux</strong> : <code>HotkeyProvider</code> pour mapper des raccourcis
-  clavier (changer de workspace, basculer vers le SFTP actif, afficher le panneau des tunnels).</li>
+<li><strong>Double entrée de configuration</strong> : le sous-onglet dédié dans les options globales
+  de Tabby (<code>tabby-settings</code>) existe depuis le 2026-07-30
+  <span class="pill done">✅</span> ; l'<strong>icône d'engrenage discrète en bas à droite de la
+  sidebar</strong>, pointant vers les mêmes réglages, reste à construire.</li>
+<li><strong>UI trimming</strong> <span class="pill done">✅ Fait (2026-08-02)</span> : option pour
+  masquer des composants natifs de Tabby devenus redondants. Livrée pour le premier cas rencontré,
+  le bouton et le dropdown de transferts natifs, via <code>src/hostChrome.scss</code> appliqué par
+  une classe que <code>SidebarPlusMountService</code> pose et retire — un plugin désactivé doit
+  laisser l'hôte tel qu'il l'a trouvé. Réglage <code>hideNativeTransfersMenu</code>, coché par
+  défaut. Le mécanisme est réutilisable pour tout autre composant natif à masquer.</li>
+<li><strong>Raccourcis globaux</strong> <span class="pill done">✅ Fait (2026-08-01)</span> :
+  <code>HotkeyProvider</code> en place (<code>src/hotkeys.ts</code>), premier usage réel avec
+  <a href="#ctrl-entree"><kbd>Ctrl</kbd>+<kbd>Entrée</kbd></a>. Les raccourcis envisagés ici —
+  changer de workspace, basculer vers le SFTP actif, afficher les tunnels — ne sont pas mappés : ils
+  se posent au coup par coup, la plomberie ne les bloque plus.</li>
 </ul>
-<h4>Retours de la passe de test du 2026-08-01</h4>
+<h4>Retours de la passe de test du 2026-08-01 <span class="pill done">✅ Fait (2026-08-01)</span></h4>
 <ul>
 <li><strong>Reprendre le visuel de l'onglet de réglages de <code>tabby-better-vault</code></strong>
-  pour celui de « Better Sidebar ». Demandé pendant la passe de test du
-  <a href="#drag-out">drag-out</a>. L'onglet est né le 2026-07-30 avec une seule option et n'a jamais
-  reçu de mise en forme propre ; l'autre plugin de l'utilisateur sert de référence, ce qui aligne les
-  deux au passage.</li>
-<li><strong>Cliquer dans le vide désélectionne</strong> ce qui est sélectionné, dans le panneau SFTP.
-  À vérifier avant de coder côté sidebar : un clic droit dans le vide y ouvre déjà le menu « créer à
-  la racine », le geste ne doit pas entrer en conflit.</li>
+  pour celui de « Better Sidebar » <span class="pill done">✅</span>. Demandé pendant la passe de
+  test du <a href="#drag-out">drag-out</a>. L'onglet est né le 2026-07-30 avec une seule option et
+  n'avait jamais reçu de mise en forme propre ; l'autre plugin de l'utilisateur a servi de
+  référence, ce qui aligne les deux.</li>
+<li><strong>Cliquer dans le vide désélectionne</strong> ce qui est sélectionné, dans le panneau SFTP
+  <span class="pill done">✅</span>. Le conflit redouté avec le clic droit « créer à la racine » n'a
+  pas eu lieu : l'en-tête et la ligne <code>..</code> portent la même classe que les entrées et sont
+  donc exclus du geste.</li>
 </ul>
 
 <h3 id="sidebar-search">Barre de filtrage rapide (Sidebar Search)</h3>
@@ -1393,7 +1604,9 @@ la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre.</p>
 s'appliquent jamais d'office (<code>A-7</code>) —, <code>20260731-204511</code> est <em>purement
 additive</em>. Vérifié à la fusion : <strong>aucune option ajoutée ou retirée</strong> (22 de part et
 d'autre) et <strong>les quinze invariants sont inchangés</strong>, donc aucune question de cadrage
-nouvelle à arbitrer. Deux items restent ouverts, <strong>dans cet ordre</strong> :</p>
+nouvelle à arbitrer. <strong>La remise à niveau est terminée</strong> : les cinq items ci-dessous
+ont été menés dans l'ordre où ils sont listés, le pied de page en dernier comme le veut la règle
+rappelée plus bas.</p>
 <table>
 <tr><th>Item</th><th>Statut</th></tr>
 <tr><td>Copies verbatim de <code>GOUVERNANCE-IA.md</code> et <code>GABARITS.md</code> —
@@ -1426,8 +1639,9 @@ nouvelle à arbitrer. Deux items restent ouverts, <strong>dans cet ordre</strong
     dépendance retirée depuis, le flag restant nécessaire pour une autre.</td></tr>
 <tr><td><strong>Roadmap</strong> — 16 statuts « Fait » confrontés au dépôt</td>
     <td>Aucun à faire redescendre : chacun porte une trace de code <em>et</em> de validation ou de
-    mise en service. Le <a href="#drag-out">glisser-déposer sortant</a> est le cas d'école tenu
-    correctement — code commité (<code>73f9b94</code>), statut maintenu à « Proposé » faute de test.</td></tr>
+    mise en service. Le <a href="#drag-out">glisser-déposer sortant</a> était le cas d'école tenu
+    correctement — code commité (<code>73f9b94</code>), statut maintenu à « Proposé » faute de test
+    <em>à cette date</em> ; il est passé à « Fait » le lendemain, une fois testé.</td></tr>
 <tr><td><strong>Journal</strong> — conformité <code>A-4</code></td>
     <td>Conforme, rien à corriger : aucun <code>(commit en cours)</code> survivant, aucune formule
     ambiguë, et les treize hashes cités pointent tous vers des commits réels.</td></tr>
@@ -1481,8 +1695,47 @@ seul, et ces mentions nommaient la règle telle qu'elle existait à la date de l
   se contredisaient à l'intérieur d'une même page.</li>
 </ul>
 
-<h3>Ménage avant release soignée</h3>
-<p>Corriger le placeholder de copyright dans <code>LICENSE</code> (voir <a href="AI-CONTEXT.html">AI-CONTEXT §1</a>).</p>
+<h3 id="menage-release">Ménage avant release soignée</h3>
+<ul>
+<li>Corriger le placeholder de copyright dans <code>LICENSE</code> (voir
+  <a href="AI-CONTEXT.html">AI-CONTEXT §1</a>) — il porte aujourd'hui
+  <code>Copyright (c) 2026 tabby-better-sidebar contributors</code>, formule valable en soi : reste à
+  décider si c'est la forme voulue ou un reste à nommer.</li>
+<li><strong>Construire en mode production pour publier.</strong> <code>npm run build</code> ne pose
+  pas <code>NODE_ENV</code>, donc webpack reste en <code>development</code> : le paquet publié
+  embarque un bundle non minifié et sa source-map. Mesuré le 2026-08-02 sur l'état de
+  <code>master</code> : 6,9 Mo décompressés, dont 5,8 Mo de <code>dist/index.js</code> et 886 Ko de
+  <code>index.js.map</code>. <code>prepublishOnly</code> appelant ce même script, la correction tient
+  dans un script de build dédié.</li>
+<li><strong><code>filesize</code> est déclaré en <code>dependencies</code></strong> alors que webpack
+  le bundle (il n'est pas dans <code>externals</code>) : chaque installation du plugin télécharge un
+  paquet qui ne sert à rien à l'exécution. Sa place est en <code>devDependencies</code>, avec
+  <code>dompurify</code> et <code>fuzzy-search</code>, qui sont dans le même cas et correctement
+  classés.</li>
+<li><strong>Le <code>README.md</code> public et la <code>description</code> de
+  <code>package.json</code></strong> décrivent le plugin d'avant le SFTP — c'est ce que lisent GitHub
+  et npm. Repris le 2026-08-02.</li>
+<li><strong>Le SCSS de la sidebar déborde sur Tabby.</strong> Constaté le 2026-08-02 : cinq règles
+  seulement de <code>sidebarTree.component.scss</code> sont préfixées par le tag du composant, tout
+  le reste est de la CSS globale — le style étant injecté en side-effect, il n'y a aucune
+  encapsulation (<a href="AI-CONTEXT.html#piege-14">piège #14</a>). Deux débordements identifiés
+  dans le bundle de Tabby installé : <code>.cdk-drag-preview</code> et surtout
+  <code>.cdk-drag-placeholder</code>, qui impose <code>height: 0 !important</code> et ses voisins —
+  or <strong>la barre d'onglets de Tabby utilise elle aussi CDK drag-drop</strong>, donc réordonner
+  des onglets passe par nos règles. Et <code>.grabber</code>, qui existe dans la sidebar native.
+  Les aperçus portent déjà des classes à nous (<code>.profile-drag-preview</code>,
+  <code>.group-drag-preview</code>) et se resserrent sans risque ; le <em>placeholder</em>, lui, n'en
+  porte aucune — c'est le point à concevoir. Aucun symptôme rapporté à ce jour : à traiter comme une
+  fuite à refermer, pas comme un bug ouvert.</li>
+<li><strong>97 % du paquet, ce sont des icônes.</strong> Mesuré le 2026-08-02 : le bundle de
+  production fait 5,1 Mo, dont ~0,6 Mo seulement de code et de dépendances réelles — le reste vient
+  de <code>@iconify-json/mdi</code> (2,95 Mo) et <code>@iconify-json/tabler</code> (2,02 Mo),
+  importés en entier par <code>src/icons.ts</code> pour alimenter le sélecteur d'icônes. Passer en
+  mode production n'y change presque rien : c'est de la donnée, pas du code à minifier. Trois pistes,
+  aucune tranchée : n'embarquer qu'un sous-ensemble des deux collections, les charger à la demande à
+  la première ouverture du sélecteur, ou les laisser telles quelles en assumant le poids. À décider
+  avant de publier, pas après.</li>
+</ul>
 
 <h2>Hors périmètre</h2>
 

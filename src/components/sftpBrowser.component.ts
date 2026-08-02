@@ -17,7 +17,6 @@ import { SidebarPlusTransfersService } from '../transfersRegistry.service'
 import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
 
-/** An optional column of the file list. The name column is not one of these — it is always shown. */
 /**
  * One rendered row, computed once instead of on every change detection pass.
  *
@@ -36,6 +35,7 @@ export interface SftpRow {
     cells: string[]
 }
 
+/** An optional column of the file list. The name column is not one of these — it is always shown. */
 export interface SftpColumn {
     id: string
     /** Header caption. Kept short: the whole list lives in a ~300px sidebar. */
@@ -106,16 +106,17 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
 
     displayToggles = SidebarPlusSftpBrowserComponent.DISPLAY_TOGGLES
 
-    // Declared explicitly rather than relying on Angular inheriting the
-    // parent's factory: the parameters are the contract with SSHModule's
-    // providers, and spelling them out keeps a future change in tabby-ssh a
-    // compile error instead of a runtime injection failure.
     /** Full path of the selected entry, or null. Single selection only — there is no bulk action to justify more. */
     selectedPath: string|null = null
 
     private editor: SftpRemoteEditor
     private dragOut: SftpDragOut
 
+    // Declared explicitly rather than relying on Angular inheriting the
+    // parent's factory: the parameters are the contract with SSHModule's
+    // providers, and spelling them out keeps a future change in tabby-ssh a
+    // compile error instead of a runtime injection failure.
+    //
     // `notify`/`ngbModalService` rather than `notifications`/`ngbModal`: the
     // parent already holds *private* fields under those names, and
     // redeclaring one in a subclass is a type error — so the injected
@@ -846,7 +847,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      */
     get visibleColumns (): SftpColumn[] {
         const selected: string[] = this.config.store.sidebarPlus?.sftpColumns ?? []
-        const key = selected.join(' ')
+        const key = selected.join('\0')
         if (this.columnCache?.key === key) {
             return this.columnCache.result
         }
@@ -1077,7 +1078,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         return at > 0 ? item.name.slice(at + 1) : ''
     }
 
-    /** Dotfiles, dimmed rather than hidden — the panel has no "show hidden" toggle to get them back. */
+    /**
+     * Dotfiles. Dimmed when shown, and shown by default: the `sftpShowHidden`
+     * toggle in the header menu is what decides, `displayedFiles` filtering them
+     * out when it is off.
+     */
     isHidden (item: SFTPFile): boolean {
         return item.name.startsWith('.')
     }

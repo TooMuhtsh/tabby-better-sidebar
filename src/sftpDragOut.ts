@@ -124,7 +124,8 @@ export class SftpDragOut {
      * Whether the copy taken for an entry no longer matches it.
      *
      * Compares against the row as displayed, which costs nothing — the
-     * authoritative check is the `stat()` in `prepare()`, this one only avoids
+     * authoritative check is the one `prepare()` makes against the server, via
+     * `readRemoteEntry()` and never `stat()` (piège #50). This one only avoids
      * handing over a copy already known to be out of date.
      */
     private isStale (copy: ReadyCopy, item: SFTPFile): boolean {
@@ -260,7 +261,7 @@ export class SftpDragOut {
     /**
      * The entry as the server sees it *now*.
      *
-     * Falls back to the displayed row if the `stat()` fails: a copy that cannot
+     * Falls back to the displayed row if the read fails: a copy that cannot
      * be checked is better handed over than a gesture that fails outright, and
      * the download that follows would fail on its own if the entry were really
      * gone.
@@ -346,8 +347,9 @@ export class SftpDragOut {
      * the server answer `Failure` (EISDIR), which would throw and fail the whole
      * directory: one link would make a perfectly ordinary tree undraggable. And
      * the entry's own flags cannot tell the two apart — `isDirectory` is false
-     * for any symlink, and its `mode` describes the link. Only a `stat()` of the
-     * target answers, and only through the mode (piège #45).
+     * for any symlink, and its `mode` describes the link. Only reading the
+     * *target* answers, and only through its mode (piège #45) — read from the
+     * parent's listing, never through `stat()`, see `targetIsDirectory()`.
      */
     private async downloadDirectory (sftp: SftpSession, remotePath: string, localPath: string): Promise<void> {
         const files: { remote: string, local: string, item: SFTPFile }[] = []
