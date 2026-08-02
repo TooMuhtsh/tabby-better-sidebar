@@ -94,6 +94,19 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
      * tab itself was killed.
      */
     private boundSession: SSHTabComponent['sshSession'] = null
+    /**
+     * Last remote directory each tab was browsing, so a rebuilt panel resumes
+     * where the old one was.
+     *
+     * The cache gave that memory for free — a panel that is never destroyed
+     * keeps its own `path`. Rebuilding on a reconnect is the one path that
+     * loses it, and landing back on `/` after every dropped link is exactly
+     * the kind of small regression that makes a feature feel unfinished.
+     * Re-injected before the new panel's ngOnInit reads it; if the directory
+     * is gone by then, the inherited ngOnInit already notifies and falls back
+     * to `/` on its own.
+     */
+    private lastPaths = new Map<SSHTabComponent, string>()
     private subscription: Subscription|null = null
     /** Tracks the focus changes *within* the active split tab, re-subscribed whenever the active tab changes. */
     private splitFocusSubscription: Subscription|null = null
@@ -151,6 +164,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             this.destroyPanel(ref)
         }
         this.panels.clear()
+        this.lastPaths.clear()
     }
 
     /**
@@ -232,6 +246,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         if (tab) {
             const ref = this.panels.get(tab)
             if (ref) {
+                this.rememberPath(tab, ref)
                 this.destroyPanel(ref)
                 this.panels.delete(tab)
             }
@@ -293,6 +308,11 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
     /** Drops cached panels whose tab is gone, so a long session doesn't accumulate dead views. */
     private pruneClosedTabs (): void {
         const open = new Set(getAllOpenTabs(this.app))
+        for (const tab of this.lastPaths.keys()) {
+            if (!open.has(tab)) {
+                this.lastPaths.delete(tab)
+            }
+        }
         for (const [tab, ref] of this.panels) {
             if (!open.has(tab)) {
                 this.destroyPanel(ref)
@@ -315,6 +335,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         // gesture that emptied the cache. Rebuilding on identity change is what
         // makes a reconnected session usable again.
         if (ref && (ref.instance.session !== tab.sshSession || ref.instance.sftpUnavailable)) {
+            this.rememberPath(tab, ref)
             this.destroyPanel(ref)
             this.panels.delete(tab)
             ref = undefined
@@ -327,6 +348,13 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             // is what triggers the first change detection pass, and that is
             // where ngOnInit() reads `session` to open the SFTP channel.
             ref.instance.session = tab.sshSession!
+            // Same window for `path`, and for the same reason — ngOnInit
+            // navigates to it. Only set when there is something to restore, so
+            // a first panel keeps the inherited default.
+            const path = this.lastPaths.get(tab)
+            if (path) {
+                ref.instance.path = path
+            }
             // Suppresses the panel's "working directory detection" tip banner,
             // which needs a shell session we deliberately don't reach for here.
             ref.instance.cwdDetectionAvailable = false
@@ -348,6 +376,12 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         }
         this.rootNodeOf(ref).remove()
         this.appRef.detachView(ref.hostView)
+    }
+
+    private rememberPath (tab: SSHTabComponent, ref: ComponentRef<SidebarPlusSftpBrowserComponent>): void {
+        if (ref.instance.path) {
+            this.lastPaths.set(tab, ref.instance.path)
+        }
     }
 
     private destroyPanel (ref: ComponentRef<SidebarPlusSftpBrowserComponent>): void {
