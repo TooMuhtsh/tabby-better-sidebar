@@ -24,6 +24,86 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Transferts : montrer qu'un transfert est mort, et le servir nous-mêmes (2026-08-02)</h2>
+<p>Branche <code>fix/transferts-interrompus</code>. Ouverte sur le point 3 de
+<a href="ROADMAP.html#panneau-etat-session">#panneau-etat-session</a> — « demander confirmation si un
+transfert est en cours au moment de la bascule » — dont la vérification a montré que la prémisse
+était fausse. Ce qui a été livré à la place répond au besoin réel : savoir qu'un transfert est
+mort.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-02</td><td><code>e07f676</code></td>
+<td><strong>Un client qui s'en va arrête vraiment le transfert, et la ligne le dit.</strong>
+Signalé en test : annuler la boîte « Enregistrer sous » laissait une ligne « en cours » pour un
+téléchargement jamais lancé du point de vue de l'utilisateur. Chromium réclame les octets
+<em>avant</em> d'afficher sa boîte, donc la réponse est déjà servie quand il renonce — et deux
+défauts se cumulaient. <code>res.write()</code> sur une réponse détruite rend <code>false</code>, et
+l'attente de <code>drain</code> qui suit ne se résolvait <strong>jamais</strong> : boucle suspendue à
+vie, ligne figée, canal SFTP tenu ouvert dessus. Et rien ne l'aurait arrêtée de toute façon —
+<code>SFTPSession.download()</code> ne consulte jamais <code>isCancelled()</code>, donc annuler un
+<code>FileTransfer</code> ne l'interrompt pas ; seule une exception levée depuis notre
+<code>write()</code> le fait (<a href="AI-CONTEXT.html#piege-61">#61</a>). La ligne distingue
+désormais les deux causes : client parti = <em>annulé</em> (<code>writableFinished</code> faux),
+transport mort = <em>interrompu</em>.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>9cf52aa</code></td>
+<td><strong>Le téléchargement du menu contextuel passe par notre offre HTTP.</strong> Un transfert
+coupé s'affichait « annulé » par ce chemin et « interrompu » par le glisser sortant — même cause,
+deux libellés, et le plus courant des deux mentait. La voie héritée appelle
+<code>this.sftp.download(...)</code> <strong>sans l'attendre</strong>
+(<code>sftpPanel.component.ts:252</code> de l'app installée), donc son rejet n'est tenu par personne :
+la seule trace qui nous parvienne est le <code>transfer.cancel()</code> que <code>tabby-ssh</code>
+fait au passage. Servir les octets nous-mêmes remet le rejet dans un <code>catch</code> qui est le
+nôtre. Chromium écrit le fichier, Tabby n'installant aucun gestionnaire
+<code>will-download</code> — c'est donc la boîte « Enregistrer sous » d'Electron qui s'ouvre, comme
+avant. <strong>Arbitrage tranché par l'utilisateur</strong> : on renonce à la progression du menu de
+transferts natif — masqué par défaut — pour gagner un échec visible. Point de veille
+<a href="AI-CONTEXT.html#fragile-8">fragile-8</a> ajouté à la checklist d'après-update.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>371cde5</code></td>
+<td><strong>Les cases à cocher des réglages deviennent visibles.</strong> Signalé en test :
+« Masquer le menu des transferts de Tabby » n'affichait aucune case. Ce n'était pas une régression —
+rien n'avait bougé dans ce bloc depuis son arrivée, et le template compilé contenait bien l'input.
+Bootstrap ne dessine son interrupteur que dans un conteneur <code>.form-check.form-switch</code> :
+un <code>input.form-check-input</code> nu rend un carré transparent, <strong>invisible une fois
+décoché</strong> sur le thème sombre, visible une fois coché. Le réglage ayant été décoché la veille
+pour vérifier le retour du menu natif, il avait disparu de l'écran — ce qui se lit comme un contrôle
+manquant, pas comme un contrôle non coché. Les deux cases de la page passent par
+<code>toggle</code>, le composant de <code>tabby-core</code>, vérifié dans les exports du bundle
+installé avant usage (<a href="AI-CONTEXT.html#piege-13">#13</a>).
+<a href="AI-CONTEXT.html#piege-60">#60</a>.</td></tr>
+
+<tr><td>2026-08-02</td><td><code>0b4f3b2</code></td>
+<td><strong>Un transfert tué ne reste plus « en cours » à vie, et <code>dispose()</code> n'efface
+plus sous les pieds d'un transfert.</strong> Le registre ne change d'état que sur
+<code>isCancelled()</code> ou <code>isComplete()</code>, auxquels un transfert dont le transport a
+disparu répond non deux fois : sa ligne restait active pour toujours, figée à son pourcentage. Seul
+l'appelant qui attend la promesse voit le rejet, donc c'est lui qui le signale — nouvel état
+<code>failed</code>, ligne « interrompu à N % » avec la raison en infobulle. Second défaut trouvé au
+même endroit : <code>dispose()</code> supprimait les dossiers temporaires sans regarder si une copie
+de glisser ou un renvoi d'édition y écrivait encore ; Windows refuse d'effacer un fichier ouvert et
+l'échec était avalé, donc le symptôme était un temporaire abandonné, silencieusement, et précisément
+quand une coupure détruit le panneau en plein enregistrement. Les deux <code>dispose()</code>
+attendent maintenant ce qui est en vol.</td></tr>
+</table>
+
+<div class="callout warning">
+<span class="callout-title">Trois faits à ne pas redécouvrir</span>
+<p><strong>La voie Chromium transfère pendant que la boîte « Enregistrer sous » est ouverte.</strong>
+Le pourcentage monte avant toute validation, et les octets d'une annulation sont perdus — rien ne
+s'écrit chez l'utilisateur, Chromium jetant son tampon. <strong>Caractéristique assumée</strong>,
+constatée en test et acceptée : l'alternative (<code>platform.startDownload()</code> attendu, qui
+n'ouvre le flux qu'après le choix du dossier) a été proposée puis écartée, l'annulation coupant
+réellement le transfert.</p>
+<p><strong><code>downloadFolder</code> reste sur la voie héritée</strong> : une offre
+<code>DownloadURL</code> sert exactement un fichier. « Download directory » affichera donc encore
+« annulé » sur une coupure — écart connu, pas un oubli.</p>
+<p><strong>Le libellé « annulé » n'était pas un défaut d'affichage</strong> mais l'absence d'un
+<code>await</code> côté natif. Chercher la cause dans le registre aurait été une impasse.</p>
+</div>
+
 <h2>Panneau SFTP : suivre l'état réel de la session (2026-08-02)</h2>
 <p>Branche <code>fix/sftp-session-perdue</code>. Porte les points 1 et 2 du chantier
 <a href="ROADMAP.html#panneau-etat-session">#panneau-etat-session</a> : le panneau qui restait mort

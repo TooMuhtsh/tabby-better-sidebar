@@ -75,6 +75,14 @@ export class SftpDragOut {
     private preparing = new Set<string>()
     /** Every directory handed out for this panel, so `dispose()` can drop them all. */
     private dirs = new Set<string>()
+    /**
+     * Preparations still running, as promises rather than as a flag.
+     *
+     * `preparing` says *that* something is running; only a promise says *when*
+     * it stops, which is what `dispose()` needs before it deletes the directory
+     * being written into.
+     */
+    private inFlight = new Set<Promise<void>>()
 
     constructor (
         private notifications: SidebarPlusNoticesService,
@@ -166,6 +174,17 @@ export class SftpDragOut {
             return
         }
         this.setPreparing(item.fullPath, true)
+        const run = this.runPrepare(sftp, item, isDirectory, isGestureHeld)
+        this.inFlight.add(run)
+        try {
+            await run
+        } finally {
+            this.inFlight.delete(run)
+            this.setPreparing(item.fullPath, false)
+        }
+    }
+
+    private async runPrepare (sftp: SftpSession, item: SFTPFile, isDirectory: boolean, isGestureHeld: () => boolean): Promise<void> {
         try {
             // The server's answer, not the row's — the listing is a snapshot
             // taken when the directory was last read, and a file changed on the
@@ -196,8 +215,6 @@ export class SftpDragOut {
             this.handOver(fresh, isGestureHeld)
         } catch (e) {
             this.notifications.error(`Impossible de préparer ${item.name} pour le glisser-déposer`, String(e))
-        } finally {
-            this.setPreparing(item.fullPath, false)
         }
     }
 
@@ -288,14 +305,28 @@ export class SftpDragOut {
         return weight
     }
 
-    /** Called when the browser is torn down — removes every copy made for a drag. */
+    /**
+     * Called when the browser is torn down — removes every copy made for a drag.
+     *
+     * Waits for whatever is still downloading before deleting anything.
+     * Removing a directory a transfer is writing into does not raise here: the
+     * removal is fire-and-forget, and Windows refuses to unlink an open file
+     * anyway — so the visible outcome was simply a temp directory left behind,
+     * silently, exactly what this class exists to avoid. The panel is already
+     * gone by then, so waiting costs nothing anyone can see.
+     */
     dispose (): void {
+        const dirs = [...this.dirs]
+        const inFlight = [...this.inFlight]
         this.ready.clear()
         this.preparing.clear()
-        for (const dir of this.dirs) {
-            void this.temp.remove(dir)
-        }
         this.dirs.clear()
+        this.inFlight.clear()
+        void Promise.allSettled(inFlight).then(() => {
+            for (const dir of dirs) {
+                void this.temp.remove(dir)
+            }
+        })
     }
 
     private async downloadFile (sftp: SftpSession, remotePath: string, localPath: string, item: SFTPFile): Promise<void> {

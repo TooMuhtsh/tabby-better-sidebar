@@ -196,4 +196,17 @@ sidebar-plus-transfers {
         opacity: .55;
         text-decoration: line-through;
     }
+
+    // Not struck through, unlike a cancelled one: part of the file did arrive,
+    // and the line says how much. The colour is what distinguishes something
+    // the user did from something that happened to them.
+    .transfer-failed {
+        .transfer-name {
+            opacity: .8;
+        }
+
+        .transfer-figure {
+            color: var(--bs-danger);
+        }
+    }
 }

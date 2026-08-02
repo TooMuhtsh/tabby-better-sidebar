@@ -38,7 +38,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
 <tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Volet 1 fait (2026-08-02) — volets 2 et 3 restants</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
-<tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill progress">🚧 Points 1 et 2 faits (2026-08-02) — points 3 et 4 restants</span></td><td>Haute</td></tr>
+<tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill progress">🚧 Points 1 et 2 faits, 3 sans objet (2026-08-02) — point 4 restant</span></td><td>Haute</td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -565,8 +565,9 @@ mis au jour. Les quatre points ci-dessous partagent la même mécanique — savo
 encore un SFTP utilisable — et se traitent donc ensemble. <strong>Options tranchées avec l'utilisateur
 le 2026-08-02</strong>. <strong>Points 1 et 2 livrés, testés et validés le 2026-08-02</strong>
 (branche <code>fix/sftp-session-perdue</code>, 4 commits, détail dans
-<a href="AI-HISTORY.html">AI-HISTORY</a>) ; les points 3 et 4 restent à faire, le chantier reste
-donc ouvert.</p>
+<a href="AI-HISTORY.html">AI-HISTORY</a>). <strong>Point 3 sans objet</strong> — sa prémisse était
+fausse, et ce qui a été livré à la place l'a été sur <code>fix/transferts-interrompus</code>. Seul
+le point 4 reste à faire, le chantier reste donc ouvert.</p>
 
 <h4>1. Bug : après une perte de connexion, le panneau reste mort jusqu'au kill de l'onglet</h4>
 <p>Deux causes cumulées, l'une chez nous, l'autre chez Tabby :</p>
@@ -649,6 +650,28 @@ transfert</strong> — brutal sur plusieurs Go entamés. <strong>Tranché : dema
 (la recommandation était d'attendre la fin en silence ; l'utilisateur préfère être consulté).
 Réutiliser <code>ConfirmModalComponent</code>, jamais un dialogue OS
 (<a href="#confirmations-html">invariant</a>).</p>
+<div class="callout warning"><span class="callout-title">Sans objet — la prémisse ci-dessus est fausse (vérifiée le 2026-08-02)</span>
+<p>Retirer le panneau <strong>ne libère pas</strong> le canal et <strong>n'annule pas</strong> le
+transfert. <code>ngOnDestroy</code> ne touche pas <code>this.sftp</code> ;
+<code>SFTPSession</code> n'expose aucun <code>close()</code>, le canal ne meurt qu'avec la session
+SSH ; <code>sftp.download()</code> est une promesse portée par <code>tabby-ssh</code> et le registre
+des transferts vit dans <code>root</code> — aucun des deux ne dépend du composant. De plus, la seule
+bascule automatique est celle d'une <em>session perdue</em>, où le transfert est déjà condamné : la
+confirmation s'afficherait après la mort de ce qu'elle prétend protéger.</p>
+<p><strong>Ce que la vérification a trouvé à la place</strong>, et qui est le besoin réel derrière la
+demande : un transfert tué par la perte du transport restait affiché « en cours » à vie. Livré,
+testé et validé le 2026-08-02 (branche <code>fix/transferts-interrompus</code>, 4 commits, détail
+dans <a href="AI-HISTORY.html">AI-HISTORY</a>) : état <code>failed</code> et ligne « interrompu à
+N % », <code>dispose()</code> qui n'efface plus un temporaire en cours d'écriture, téléchargement du
+menu contextuel servi par notre offre HTTP pour que son échec soit visible, et arrêt réel du
+transfert quand le client s'en va.</p>
+<p>Deux écarts connus à ne pas retraiter comme des manques : la voie Chromium
+<strong>transfère pendant que la boîte « Enregistrer sous » est ouverte</strong> (les octets d'une
+annulation sont perdus, rien ne s'écrit chez l'utilisateur) — comportement constaté en test et
+assumé, l'alternative ayant été proposée puis écartée ; et
+<code>downloadFolder</code> reste sur la voie héritée, donc « Download directory » affiche encore
+« annulé » sur une coupure.</p>
+</div>
 
 <h4>4. Ne plus annoncer « terminé » pour un glisser sortant</h4>
 <p>Mesuré : 22 s d'écart entre notre « terminé » et l'écriture réelle du fichier

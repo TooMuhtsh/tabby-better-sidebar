@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #60.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #62.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -41,7 +41,7 @@ Tabby.</p>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58 + 5 points de veille</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58 + 6 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8</li>
@@ -465,6 +465,43 @@ impossible sur ce chemin — <code>will-download</code> d'Electron ne rendrait q
 menu contextuel, où c'est nous qui imposons le chemin à
 <code>platform.startDownload()</code> : ne pas confondre les deux, c'est ce que font les plugins SFTP
 qui affichent cette vérification.</p></div>
+
+<h3 id="piege-61">#61 — <code>SFTPSession.download()</code> ne consulte jamais l'annulation : seule
+une exception arrête la boucle</h3>
+<p>La boucle du composant natif est un <code>while (true)</code> de <code>handle.read()</code> puis
+<code>await transfer.write(chunk)</code>, sans un seul <code>isCancelled()</code>. Appeler
+<code>cancel()</code> sur le <code>FileTransfer</code> <strong>ne l'interrompt pas</strong> : elle
+continue de lire le fichier entier depuis le serveur. Le seul levier d'arrêt est une exception levée
+depuis <code>write()</code>, c'est-à-dire depuis notre propre code.</p>
+<p>Corollaire rencontré le 2026-08-02, en servant un téléchargement par HTTP : attendre
+<code>response.once('drain')</code> sur une réponse dont le client est parti <strong>ne se résout
+jamais</strong> — l'événement ne viendra plus. La boucle restait suspendue indéfiniment, la ligne du
+panneau affichait « en cours » pour le reste de la session, et le canal SFTP restait ouvert dessus.
+Symptôme observé : annuler la boîte « Enregistrer sous » laissait un téléchargement qui n'avait
+jamais réellement commencé. → Toute attente sur un flux réseau doit écouter <code>close</code> et
+<code>error</code> en plus de l'événement attendu, et un <code>write()</code> doit refuser d'écrire
+sur un flux mort au lieu de le tenter.</p>
+<p>À distinguer dans l'affichage : un client qui s'en va est une <strong>annulation</strong>
+(<code>writableFinished</code> faux sur <code>close</code>), un transport qui meurt est une
+<strong>interruption</strong> — même exception, deux causes, et les confondre fait dire « annulé » à
+ce que personne n'a annulé.</p>
+
+<h3 id="piege-60">#60 — une case à cocher nue est <em>invisible</em> sur le thème de Tabby :
+utiliser <code>&lt;toggle&gt;</code></h3>
+<p>Un <code>input.form-check-input</code> écrit à la main dans un onglet de réglages ne se voit
+<strong>pas du tout</strong> une fois décoché : Bootstrap ne dessine son interrupteur que dans un
+conteneur <code>.form-check.form-switch</code>, et sans lui l'élément est un carré transparent dont
+la bordure se confond avec le fond sombre. Coché, il redevient visible — d'où un défaut qui ne se
+manifeste que sur la moitié des états, et qui se lit comme un <em>contrôle manquant</em> plutôt que
+comme un contrôle non coché.</p>
+<p><code>ToggleComponent</code> de <code>tabby-core</code> apporte ce conteneur et l'apparence des
+réglages natifs. Il porte <code>/** @hidden */</code>, qui ne prouve rien
+(<a href="#piege-13">#13</a>) : il figure bien dans les <code>exports</code> du module dans le bundle
+installé, et <code>TabbyCoreModule</code> étant importé par ce plugin, le sélecteur
+<code>toggle</code> est disponible dans nos templates. Il étend <code>CheckboxComponent</code> et
+fournit <code>NG_VALUE_ACCESSOR</code>, donc <code>[ngModel]</code>/<code>(ngModelChange)</code>
+fonctionnent tels quels. Les typings npm ne l'exportent pas — sans conséquence, un sélecteur de
+template n'est pas typé.</p>
 
 <h3 id="piege-59">#59 — <code>SSHSession.open</code> n'est <em>jamais</em> remis à
 <code>false</code>, et un onglet qui se reconnecte garde son identité</h3>
@@ -1021,6 +1058,25 @@ sauvegarde avant de considérer l'opération terminée : le dégât est totaleme
 <p>Utilisées uniquement selon la discipline du piège #12. Si le format de stockage des groupes dans
 <code>config.yaml</code> change, retester le re-parentage sur des groupes jetables avant de faire
 confiance au comportement existant.</p>
+
+<h4 id="fragile-8">Téléchargements servis par nous, et non par <code>platform.startDownload()</code></h4>
+<p>Depuis le 2026-08-02, l'entrée « Download » du menu contextuel passe par
+<code>downloadItem()</code> surchargé : le fichier est servi par notre serveur HTTP local et écrit
+par Chromium (voir <a href="ROADMAP.html#transferts">#transferts</a>). Trois appuis non contractuels
+à revérifier après une montée de version :</p>
+<ul>
+<li>l'entrée du menu appelle bien <code>panel.downloadItem(item)</code> — si Tabby la rebranche sur
+  <code>download()</code>, la surcharge devient inopérante <em>sans erreur</em>, et le seul symptôme
+  sera le retour du libellé « annulé » sur un transfert coupé ;</li>
+<li>Tabby n'installe <strong>aucun</strong> gestionnaire <code>will-download</code> : c'est ce qui
+  laisse Electron ouvrir sa boîte « Enregistrer sous ». S'il en ajoutait un, la destination pourrait
+  être imposée sans que rien ne le signale ;</li>
+<li><code>Content-Disposition: attachment</code> reste ce qui fait télécharger plutôt que naviguer.</li>
+</ul>
+<p>Choix assumé de l'utilisateur le 2026-08-02, en connaissance de ce qu'il coûte : on renonce à la
+progression du menu de transferts natif (masqué par défaut de toute façon) pour gagner un échec
+visible — la voie native appelle <code>sftp.download()</code> <strong>sans l'attendre</strong>, donc
+sa rupture n'est observable nulle part.</p>
 
 <h4 id="fragile-5">Clone non garanti de <code>getProfileGroups()</code>/<code>buildGroupTree()</code></h4>
 <p>Le <code>structuredClone()</code> défensif (piège #12) part du principe que l'API peut renvoyer

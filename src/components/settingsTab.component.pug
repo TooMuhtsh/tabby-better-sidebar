@@ -60,9 +60,14 @@
           | Un dossier est aspiré en entier avant de pouvoir être déposé. Au-delà
           | de 25 fichiers ou 20 Mo, une confirmation est demandée avec le volume
           | constaté.
+      //- `toggle`, Tabby's own component, and not a bare
+      //- `input.form-check-input`: Bootstrap only draws a check *inside* a
+      //- `.form-check.form-switch` wrapper, so a lone input rendered as a
+      //- transparent square — invisible on the dark theme once unticked, which
+      //- read as a missing control rather than an unticked one. `toggle` brings
+      //- that wrapper and matches the switches of Tabby's own settings pages.
       .control
-        input#sidebar-plus-dragout-folders.form-check-input(
-          type='checkbox',
+        toggle(
           [ngModel]='dragOutFolders',
           (ngModelChange)='setDragOutFolders($event)'
         )
@@ -80,8 +85,7 @@
           | lui-même</strong> à chaque transfert et recouvre les onglets, et ses
           | lignes ne s'effacent qu'une par une, à la main.
       .control
-        input#sidebar-plus-hide-native-transfers.form-check-input(
-          type='checkbox',
+        toggle(
           [ngModel]='hideNativeTransfersMenu',
           (ngModelChange)='setHideNativeTransfersMenu($event)'
         )

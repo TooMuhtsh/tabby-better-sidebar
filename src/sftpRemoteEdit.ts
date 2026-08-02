@@ -75,6 +75,8 @@ interface EditSession {
  */
 export class SftpRemoteEditor {
     private sessions = new Map<string, EditSession>()
+    /** Sends still in flight — see `track()`. */
+    private uploads = new Set<Promise<void>>()
 
     constructor (
         private notifications: SidebarPlusNoticesService,
@@ -232,8 +234,20 @@ export class SftpRemoteEditor {
         }
         session.debounce = setTimeout(() => {
             session.debounce = null
-            void this.uploadIfChanged(sftp, item)
+            this.track(this.uploadIfChanged(sftp, item))
         }, 400)
+    }
+
+    /**
+     * Keeps a handle on a send in flight, so `dispose()` can wait for it.
+     *
+     * `session.uploading` already says one is running, but a flag cannot be
+     * awaited, and the temp directory must not be deleted from under a file
+     * still being read out of it.
+     */
+    private track (run: Promise<void>): void {
+        this.uploads.add(run)
+        void run.finally(() => this.uploads.delete(run))
     }
 
     private async uploadIfChanged (sftp: SftpSession, item: SFTPFile): Promise<void> {
@@ -295,15 +309,32 @@ export class SftpRemoteEditor {
         }
     }
 
-    /** Called when the browser is torn down — stops watching and removes the temp copies. */
+    /**
+     * Called when the browser is torn down — stops watching and removes the
+     * temp copies.
+     *
+     * Watching stops at once: a save made after the panel is gone has nowhere
+     * to be sent. The copies, on the other hand, wait for any send still in
+     * flight — deleting the directory a file is being read out of is how a
+     * save silently fails to reach the server, and it would happen precisely
+     * when a connection drop tears the panel down mid-save.
+     */
     dispose (): void {
+        const dirs: string[] = []
         for (const session of this.sessions.values()) {
             if (session.debounce) {
                 clearTimeout(session.debounce)
             }
             session.watcher.close()
-            void this.temp.remove(session.localDir)
+            dirs.push(session.localDir)
         }
         this.sessions.clear()
+        const inFlight = [...this.uploads]
+        this.uploads.clear()
+        void Promise.allSettled(inFlight).then(() => {
+            for (const dir of dirs) {
+                void this.temp.remove(dir)
+            }
+        })
     }
 }
