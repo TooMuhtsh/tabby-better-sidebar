@@ -21,9 +21,11 @@ La charte qui régit ce projet est `.AIRules/GOUVERNANCE-IA.md`, version
 `20260731-204511` ; **les réponses de cadrage propres à ce projet sont dans
 `.AIRules/PROFIL.md`** — s'y reporter plutôt que de redécider une convention au
 coup par coup. `.AIRules/GABARITS.md` ne s'ouvre qu'au moment de créer ou de
-restructurer un document. Le pied de page de `.AIRules/README.html` porte encore
-une mention datée : c'est voulu, la remise à niveau n'est pas terminée (voir le
-chantier « Conformité de la gouvernance » de la roadmap).
+restructurer un document. Le pied de page de `.AIRules/README.html` porte le même
+identifiant : la remise à niveau vers cette version est terminée (voir le chantier
+« Conformité de la gouvernance » de la roadmap). En début de session, comparer
+malgré tout les deux identifiants — c'est l'écart, pas leur égalité d'aujourd'hui,
+qui est le signal.
 
 ## Mots déclencheurs
 
@@ -166,9 +168,12 @@ de chargement de plugin.
   bien en mémoire mais ne persiste jamais dans `config.yaml` — silencieux,
   aucune erreur (.AIRules/AI-CONTEXT.html, piège #16).
 - **Un `cdkDropList` vide a une hauteur CSS de 0px**, donc une cible de
-  glisser-déposer quasi inatteignable — tous les `div[id^='profiles-']` et
-  `div[id^='groups-']` ont un `min-height: 8px` pour rester des cibles
-  fiables même vides (.AIRules/AI-CONTEXT.html, piège #19).
+  glisser-déposer quasi inatteignable. Le correctif n'est pas un rembourrage
+  inconditionnel — il ajoutait de l'espace mort sous chaque dossier — mais un
+  agrandissement réservé aux listes `:empty` : `min-height: 16px` +
+  `margin-top: -16px` + `pointer-events: none` au repos, la marge négative
+  annulant la hauteur dans le flux pendant que la boîte recouvre la moitié basse
+  de la ligne au-dessus (.AIRules/AI-CONTEXT.html, pièges #19 et #26).
 
 ## Git
 
