@@ -66,7 +66,8 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
     <td><span class="pill done">✅ Revue faite (2026-07-31)</span></td>
     <td>Entretien récurrent</td></tr>
 <tr><td><a href="#menage-release">Ménage avant release soignée</a></td>
-    <td><span class="pill planned">📋 Proposé</span></td><td>Avant toute publication npm</td></tr>
+    <td><span class="pill progress">🚧 Trois points sur six clos (2026-08-03)</span></td>
+    <td>Avant toute publication npm</td></tr>
 </table>
 
 <h2>Phase 1 — priorité absolue</h2>
@@ -2038,21 +2039,26 @@ seul, et ces mentions nommaient la règle telle qu'elle existait à la date de l
 
 <h3 id="menage-release">Ménage avant release soignée</h3>
 <ul>
-<li>Corriger le placeholder de copyright dans <code>LICENSE</code> (voir
-  <a href="AI-CONTEXT.html">AI-CONTEXT §1</a>) — il porte aujourd'hui
-  <code>Copyright (c) 2026 tabby-better-sidebar contributors</code>, formule valable en soi : reste à
-  décider si c'est la forme voulue ou un reste à nommer.</li>
-<li><strong>Construire en mode production pour publier.</strong> <code>npm run build</code> ne pose
-  pas <code>NODE_ENV</code>, donc webpack reste en <code>development</code> : le paquet publié
-  embarque un bundle non minifié et sa source-map. Mesuré le 2026-08-02 sur l'état de
-  <code>master</code> : 6,9 Mo décompressés, dont 5,8 Mo de <code>dist/index.js</code> et 886 Ko de
-  <code>index.js.map</code>. <code>prepublishOnly</code> appelant ce même script, la correction tient
-  dans un script de build dédié.</li>
-<li><strong><code>filesize</code> est déclaré en <code>dependencies</code></strong> alors que webpack
-  le bundle (il n'est pas dans <code>externals</code>) : chaque installation du plugin télécharge un
-  paquet qui ne sert à rien à l'exécution. Sa place est en <code>devDependencies</code>, avec
-  <code>dompurify</code> et <code>fuzzy-search</code>, qui sont dans le même cas et correctement
-  classés.</li>
+<li><s>Corriger le placeholder de copyright dans <code>LICENSE</code></s> —
+  ✅ <strong>Tranché le 2026-08-03 : rien à changer.</strong>
+  <code>Copyright (c) 2026 tabby-better-sidebar contributors</code> est la forme voulue, pas un
+  reste de gabarit. Ne pas rouvrir la question.</li>
+<li><s><strong>Construire en mode production pour publier.</strong></s> — ✅
+  <strong>Fait (<code>9cf21dc</code>, 2026-08-03)</strong>, en deux temps et pour deux raisons
+  différentes. <code>build:prod</code> et son appel par <code>prepublishOnly</code> existaient
+  depuis le <code>d9d291b</code> (2026-08-02) sans que cette fiche le dise. Restait un défaut que
+  cette fiche ne décrivait pas : <code>--mode production</code> est passé en <em>ligne de
+  commande</em>, que webpack-cli fusionne par-dessus la config — <code>mode</code> était donc juste,
+  mais <code>devtool</code> et <code>pathinfo</code> gardaient leur valeur de développement, et le
+  paquet publié restait accompagné de sa source-map. La config s'exporte en fonction et lit
+  <code>argv.mode</code>. <code>dist/</code> de publication : 6,3 → 5,4 Mo.
+  <strong>Piège à ne pas retenter</strong> : <code>output.clean</code> supprimerait les
+  <code>.d.ts</code> de <code>typings</code>, écrits dans <code>dist/</code> par TypeScript et non
+  émis comme assets webpack.</li>
+<li><s><strong><code>filesize</code> est déclaré en <code>dependencies</code></strong></s> — ✅
+  <strong>Fait le 2026-08-02</strong> (<code>d9d291b</code>), dans le même geste que
+  <code>build:prod</code> : il est en <code>devDependencies</code> avec <code>dompurify</code> et
+  <code>fuzzy-search</code>, et le bloc <code>dependencies</code> a disparu.</li>
 <li><strong>Le <code>README.md</code> public et la <code>description</code> de
   <code>package.json</code></strong> décrivent le plugin d'avant le SFTP — c'est ce que lisent GitHub
   et npm. Repris le 2026-08-02.</li>

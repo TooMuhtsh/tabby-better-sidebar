@@ -24,6 +24,36 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Le build de publication n'embarque plus de source-map (2026-08-03)</h2>
+<p>Premier des points de <a href="ROADMAP.html#menage-release">Ménage avant release soignée</a> à
+être traité. Deux des trois y étaient déjà faits sans que la fiche le dise :
+<code>build:prod</code> existe et <code>prepublishOnly</code> l'appelle depuis le
+<code>d9d291b</code> (2026-08-02), et <code>filesize</code> y a rejoint les
+<code>devDependencies</code> dans le même commit. La fiche décrivait donc un état périmé de deux
+jours — <strong>même travers que le bloc des trois défauts mineurs</strong> : un chantier corrige
+en passant ce qu'une autre fiche décrit, et la fiche ne suit pas.</p>
+<p><strong>Ce qui restait, et que personne n'avait vu</strong> : <code>--mode production</code> est
+passé en <em>ligne de commande</em>, et webpack-cli le fusionne par-dessus la configuration. La clé
+<code>mode</code> était donc bien corrigée, mais le fichier de config, lui, continuait de se croire
+en développement : <code>devtool: 'source-map'</code> et <code>pathinfo: true</code> gardaient leur
+valeur. Le paquet publié était minifié <em>et</em> embarquait sa source-map. La configuration
+s'exporte désormais en fonction, seule forme qui voit <code>argv.mode</code>.</p>
+<p><strong>Pourquoi pas <code>output.clean</code></strong>, qui aurait été la réponse évidente au
+fichier résiduel : les <code>.d.ts</code> que désigne <code>typings</code> sont écrits directement
+dans <code>dist/</code> par TypeScript (<code>declarationDir</code> du <code>tsconfig</code>), et
+<strong>ne passent pas par les assets webpack</strong> — vérifié en construisant vers un autre
+<code>--output-path</code>, qui n'a produit qu'<code>index.js</code>. Les nettoyer aurait publié un
+paquet sans typings. Le script de build retire la source-map lui-même.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>9cf21dc</code></td>
+<td><strong><code>devtool</code> et <code>pathinfo</code> suivent enfin le mode réel.</strong>
+<code>dist/</code> de publication passe de 6,3 à 5,4 Mo, <code>.d.ts</code> compris. Aucun test
+dans Tabby : rien de ce commit n'atteint le build de développement, qui garde sa source-map.</td></tr>
+</table>
+
 <h2>Purge des données réelles de l'utilisateur dans le dépôt public (2026-08-03)</h2>
 <p>Demande de l'utilisateur, née d'une vérification d'attribution : la documentation de ce dépôt
 public citait le <strong>nom de l'employeur de l'utilisateur</strong>, un <strong>nom d'hôte de son
