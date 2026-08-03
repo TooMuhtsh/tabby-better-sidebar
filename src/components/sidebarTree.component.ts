@@ -2,12 +2,13 @@ import './sidebarTree.component.scss'
 import FuzzySearch from 'fuzzy-search'
 import { merge, Subscription, timer } from 'rxjs'
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop'
-import { AfterViewChecked, Component, HostBinding, HostListener, Inject, Input, NgZone, OnDestroy, OnInit } from '@angular/core'
+import { AfterViewChecked, Component, ElementRef, HostBinding, HostListener, Inject, Input, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import {
     AppService,
     BaseTabComponent,
     ConfigService,
+    HotkeysService,
     NotificationsService,
     PartialProfile,
     PlatformService,
@@ -23,6 +24,7 @@ import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh
 import { ICON_ENTRIES, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
+import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
 import { focusTab, getAllOpenTabs, isLiveSSHTab } from '../tabs'
 import { clampInViewport } from '../viewport'
 
@@ -88,6 +90,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     rootGroups: PartialProfileGroup<ProfileGroup>[] = []
 
     @Input() filter = ''
+
+    /**
+     * The filter field itself, so the hotkey can put the cursor in it.
+     *
+     * Optional on purpose: it lives under `*ngIf='!sftpMode'`, so it is simply
+     * absent while the sidebar shows the SFTP view.
+     */
+    @ViewChild('filterInput') filterInput?: ElementRef<HTMLInputElement>
+    private hotkeySubscription: Subscription|null = null
 
     ////// WORKSPACES //////
     workspaces: SidebarWorkspace[] = []
@@ -274,6 +285,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private ngbModal: NgbModal,
         private zone: NgZone,
         private platform: PlatformService,
+        private hotkeys: HotkeysService,
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
     ) { }
 
@@ -285,6 +297,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // still rebuilding the whole tree on every config.save() of the
         // application, twice cloned, for as long as the window lives.
         this.configSubscription = this.config.changed$.subscribe(() => this.loadTreeItems())
+
+        // hotkey$, not unfilteredHotkey$: the filtered stream stays quiet while
+        // a text field holds the focus, which is what keeps this from firing
+        // while the user is typing in the filter field it would focus.
+        this.hotkeySubscription = this.hotkeys.hotkey$.subscribe(id => {
+            if (id === FOCUS_FILTER_HOTKEY) {
+                this.focusFilter()
+            }
+        })
 
         this.refreshProfileStatuses()
         this.refreshActiveSessions()
@@ -314,6 +335,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     ngOnDestroy (): void {
         this.statusSubscription?.unsubscribe()
         this.configSubscription?.unsubscribe()
+        this.hotkeySubscription?.unsubscribe()
         this.splitFocusSubscription?.unsubscribe()
         if (this.modalWatchInterval) {
             clearInterval(this.modalWatchInterval)
@@ -594,6 +616,48 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         await Promise.all(profiles.map(profile => this.launchProfile(profile)))
     }
 
+    /**
+     * Puts the cursor in the filter field, selecting whatever is already in it
+     * so a second search overwrites the first instead of appending to it.
+     *
+     * Switches back to the profile tree first when the sidebar is showing SFTP:
+     * the field does not exist in that view, and doing nothing at all would
+     * make the hotkey look broken. The focus is deferred one turn because the
+     * field is only rendered on the change detection pass that follows.
+     */
+    focusFilter (): void {
+        this.zone.run(() => {
+            this.sftpMode = false
+            this.showHiddenPanel = false
+        })
+        setTimeout(() => {
+            const input = this.filterInput?.nativeElement
+            input?.focus()
+            input?.select()
+        })
+    }
+
+    /**
+     * Whether the tree currently shows search results rather than itself.
+     *
+     * Drag and drop is switched off while it does, and that is a fix, not a
+     * restriction: the results are a flat rearrangement of the real tree, so
+     * dropping inside them writes an order nobody asked for. On "Tous" it goes
+     * straight to the profiles' native `weight` — the search order becoming the
+     * real order — and inside a workspace it files a `profileOrder` under the
+     * fake `search` group id, which nothing ever reads again.
+     */
+    get filtering (): boolean {
+        return this.filter.trim().length > 0
+    }
+
+    /** `Échap` in the field: drop the filter and hand the focus back, rather than leave a filter nobody can see the cause of. */
+    clearFilter (): void {
+        this.filter = ''
+        this.filterInput?.nativeElement.blur()
+        void this.onFilterChange()
+    }
+
     async onFilterChange (): Promise<void> {
         const q = this.filter.trim().toLowerCase()
 
@@ -610,13 +674,19 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // Deliberately searches everywhere, ignoring the active workspace's
         // visibility filter — a workspace only controls what the *tree*
         // shows by default, it shouldn't make something unfindable by name.
+        //
+        // `options.host`/`options.user` alongside the name: fuzzy-search walks
+        // a dotted key, and a server one only remembers by address would
+        // otherwise be unreachable from here. Absent on a non-SSH profile,
+        // which the search simply skips.
         const matches = new FuzzySearch(
             profiles.filter(p => !p.isTemplate),
-            ['name', 'description'],
+            ['name', 'description', 'options.host', 'options.user'],
             { sort: false },
         ).search(q)
 
         this.rootGroups = [
+            ...this.matchingGroups(q),
             {
                 id: 'search',
                 editable: false,
@@ -625,6 +695,45 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 profiles: matches,
             },
         ]
+    }
+
+    /**
+     * Folders whose own name matches, rendered above the profile results with
+     * their contents — searching for a folder and being shown only the profiles
+     * inside it was the gap here.
+     *
+     * Built from `rawGroupsSnapshot` for the same reason the profile search
+     * uses the full profile list: a workspace hides things from the tree, it
+     * does not make them unfindable. Collapsed state is forced open, since a
+     * folder returned by a search that renders shut says nothing at all.
+     */
+    private matchingGroups (q: string): PartialProfileGroup<ProfileGroup>[] {
+        const matches = new FuzzySearch(this.rawGroupsSnapshot, ['name'], { sort: false }).search(q)
+        if (!matches.length) {
+            return []
+        }
+        // `buildGroupTree` over the *whole* snapshot, then pick the matching
+        // nodes out of the result: run over the matches alone, it would drop
+        // the children of a matching folder whose parent did not match.
+        const tree = this.profilesService.buildGroupTree(
+            structuredClone(this.rawGroupsSnapshot).map(g => SidebarPlusTreeComponent.intoCollapsable(g, false)),
+        )
+        const matchedIds = new Set(matches.map(g => g.id))
+        const found: PartialProfileGroup<ProfileGroup>[] = []
+        const walk = (groups: PartialProfileGroup<ProfileGroup>[]): void => {
+            for (const group of groups) {
+                if (matchedIds.has(group.id)) {
+                    found.push(group)
+                    // No recursion into a folder already returned: its subtree
+                    // is rendered under it, and listing a matching child a
+                    // second time at top level would show it twice.
+                    continue
+                }
+                walk((group as PartialProfileGroup<CollapsableProfileGroup>).children ?? [])
+            }
+        }
+        walk(tree)
+        return found
     }
 
     ////// WORKSPACES //////

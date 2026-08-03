@@ -6,6 +6,16 @@ import { BaseTerminalTabComponent } from 'tabby-terminal'
 export const INSERT_NEWLINE_HOTKEY = 'sidebar-plus-insert-newline'
 
 /**
+ * Puts the cursor in the sidebar's filter field.
+ *
+ * Handled by the tree component itself rather than by the service below: the
+ * field is its own, one per window, and reaching it from a root-provided
+ * service would mean holding a reference to a component that is mounted and
+ * unmounted at will.
+ */
+export const FOCUS_FILTER_HOTKEY = 'sidebar-plus-focus-filter'
+
+/**
  * A hotkey that inserts a line break in the focused terminal.
  *
  * Why this exists at all: `Ctrl`+`Entrée` and `Entrée` are *indistinguishable*
@@ -61,6 +71,9 @@ export class SidebarPlusHotkeyProvider extends HotkeyProvider {
         return [{
             id: INSERT_NEWLINE_HOTKEY,
             name: 'Insérer un saut de ligne (Better Sidebar)',
+        }, {
+            id: FOCUS_FILTER_HOTKEY,
+            name: 'Filtrer les profils (Better Sidebar)',
         }]
     }
 }

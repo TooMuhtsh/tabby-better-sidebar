@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #68.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #69.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -42,7 +42,7 @@ Tabby.</p>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64, #67 + 6 points de veille</li>
-<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62 + 2 points de veille</li>
+<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62, #68 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8, #63</li>
 <li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20</li>
@@ -1124,6 +1124,26 @@ composant appelle
 <code>getProfileGroups({ includeNonUserGroup: true, includeProfiles: true })</code> ; un harnais qui
 reprend le nom de la méthode sans ses options observe un faux négatif — constaté le 2026-08-02, il
 avait fait conclure à tort que les profils ne suivaient pas leur dossier.</p></div>
+
+<h3 id="piege-68">#68 — Un glisser-déposer dans l'arbre filtré persiste l'ordre de la recherche
+comme ordre réel</h3>
+<p>Quand la barre de filtre est active, <code>onFilterChange()</code> remplace <code>rootGroups</code>
+par un pseudo-groupe <code>search</code> (et, depuis le 2026-08-03, par les dossiers dont le nom
+correspond). Ce n'est pas l'arbre : c'est un aplatissement, dans l'ordre des résultats. Or les
+directives CDK de la template ne savent rien de cette distinction — <code>onProfileDrop()</code>
+appelle <code>persistProfileOrder()</code> comme pour n'importe quel dossier.</p>
+<p>Les deux dégâts sont de gravité inégale, et c'est le premier qui compte :</p>
+<ul>
+<li>sur le workspace <strong>« Tous »</strong>, <code>persistProfileOrder()</code> tombe sur
+  <code>persistProfileWeights()</code> et écrit les <code>weight</code> <em>natifs</em> des profils —
+  l'ordre de la recherche devient l'ordre réel du dossier, dans <code>config.yaml</code>, sans un
+  mot ;</li>
+<li>dans un workspace, il range un <code>profileOrder</code> sous l'id <code>search</code>, qui ne
+  correspond à aucun dossier et que plus rien ne relit — une clé morte, sans dégât.</li>
+</ul>
+<p>→ <code>[cdkDragDisabled]='filtering'</code> sur les lignes de profil et de dossier. Ne pas traiter
+ce garde-fou comme une restriction d'ergonomie qu'on pourrait lever : tant que l'arbre affiché n'est
+pas l'arbre réel, aucun ordre déposé dedans n'est interprétable.</p>
 
 <h3 id="piege-27">#27 — <code>Get-Content</code>/<code>Set-Content -Encoding utf8</code> (PS 5.1) corrompt les accents de <code>config.yaml</code></h3>
 <div class="callout warning"><span class="callout-title">A réellement abîmé la config utilisateur</span>

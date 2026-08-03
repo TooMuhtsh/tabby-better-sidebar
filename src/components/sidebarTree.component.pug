@@ -153,11 +153,16 @@
             .fa.fa-fw.fas.fa-plus
 
     .d-flex.align-items-center.gap-1.mb-1(*ngIf='!sftpMode')
+        //- `#filterInput=''`, not `#filterInput`: in pug a leading `#` is id
+            syntax, so an Angular template reference has to be written as a
+            quoted attribute to survive compilation. Read by @ViewChild.
         input.form-control.form-control-sm(
+            #filterInput='',
             type='text',
             [(ngModel)]='filter',
-            placeholder='Filter',
-            (ngModelChange)='onFilterChange()'
+            placeholder='Filtrer (Ctrl+F)',
+            (ngModelChange)='onFilterChange()',
+            (keydown.escape)='clearFilter()'
         )
         button.btn.btn-sm.btn-hidden-toggle(
             *ngIf='activeWorkspace',
@@ -208,7 +213,7 @@
                 div(
                     cdkDrag,
                     [cdkDragData]='group',
-                    [cdkDragDisabled]='!group.editable',
+                    [cdkDragDisabled]='!group.editable || filtering',
                     (cdkDragStarted)='onGroupDragStarted(group)',
                     (cdkDragEnded)='onGroupDragEnded()'
                 )
@@ -245,6 +250,7 @@
                             a.tree-item(
                                 cdkDrag,
                                 [cdkDragData]='profile',
+                                [cdkDragDisabled]='filtering',
                                 [class.selected]='isProfileSelected(profile)',
                                 [class.drag-hidden]='isHiddenWhileDragging(profile)',
                                 data-profile-row='1',
