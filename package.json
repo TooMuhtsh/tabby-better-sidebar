@@ -17,7 +17,7 @@
   },
   "scripts": {
     "build": "webpack --progress --color",
-    "build:prod": "webpack --progress --color --mode production && node -e \"require('fs').rmSync('dist/index.js.map', { force: true })\"",
+    "build:prod": "webpack --progress --color --mode production && node scripts/strip-source-maps.js",
     "watch": "webpack --progress --color --watch",
     "lint:airules": "html-validate \".AIRules/**/*.html\"",
     "prepublishOnly": "npm run build:prod"

@@ -3,8 +3,6 @@
 // Tabby's own monorepo/installed source, so it has to be embedded as a static
 // asset here rather than imported at runtime.
 import faIconsData from './icons.json'
-import mdiIconsData from '@iconify-json/mdi/icons.json'
-import tablerIconsData from '@iconify-json/tabler/icons.json'
 
 /** Style codes as used by icons.json: 's' = solid, 'r' = regular, 'b' = brand. */
 const STYLE_PREFIX: Record<string, string> = { s: 'fas', r: 'far', b: 'fab' }
@@ -45,8 +43,33 @@ const faEntries: PickerIcon[] = Object.entries(faIconsData as Record<string, str
         return { name: value, value }
     }))
 
-export const ICON_ENTRIES: PickerIcon[] = [
-    ...faEntries,
-    ...iconifyEntries(mdiIconsData as IconifyIconSet),
-    ...iconifyEntries(tablerIconsData as IconifyIconSet),
-].sort((a, b) => a.name.localeCompare(b.name))
+let entriesPromise: Promise<PickerIcon[]>|null = null
+
+/**
+ * The two Iconify collections are 5 MB of JSON — 97% of the built package —
+ * for a picker most sessions never open. Imported dynamically so webpack emits
+ * them as a separate chunk instead of inlining them in the bundle Tabby parses
+ * at every startup; they still travel *inside* the package, which they must:
+ * `@iconify-json/*` are devDependencies, absent from a user's install.
+ *
+ * The chunk is fetched, decoded and sorted once, on the first icon search, and
+ * the promise itself is the cache — concurrent callers share one load rather
+ * than racing to build the list twice.
+ */
+export function loadIconEntries (): Promise<PickerIcon[]> {
+    entriesPromise ??= (async () => {
+        const [mdi, tabler] = await Promise.all([
+            import(/* webpackChunkName: "icon-sets" */ '@iconify-json/mdi/icons.json'),
+            import(/* webpackChunkName: "icon-sets" */ '@iconify-json/tabler/icons.json'),
+        ])
+        // A JSON module reaches us as `{ default: … }` under webpack, but as
+        // the object itself if anything ever loads this through plain CommonJS.
+        const unwrap = (mod: any): IconifyIconSet => mod.default ?? mod
+        return [
+            ...faEntries,
+            ...iconifyEntries(unwrap(mdi)),
+            ...iconifyEntries(unwrap(tabler)),
+        ].sort((a, b) => a.name.localeCompare(b.name))
+    })()
+    return entriesPromise
+}

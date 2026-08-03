@@ -448,19 +448,18 @@ sidebar-plus-tree .active-sessions {
     }
 }
 
-// CDK moves the drag preview/placeholder into a global overlay appended to
-// <body>, outside .sidebar-plus-tree's DOM subtree — these rules must NOT be
-// nested under .sidebar-plus-tree (an ancestor-scoped selector would never
-// match the relocated element).
+// CDK moves the drag *preview* into an overlay appended to <body>, outside
+// this component's DOM subtree — so this rule cannot be nested under
+// `sidebar-plus-tree`, an ancestor-scoped selector would never match it.
 //
-// The consequence is that they are global, and Tabby's own tab bar uses CDK
-// drag-drop too: reordering tabs picks up the preview styling below, and the
-// `!important` height/margin collapse of `.cdk-drag-placeholder`. The template
-// already puts a dedicated class on each preview (`.profile-drag-preview`,
-// `.group-drag-preview`), so narrowing these selectors is possible — see the
-// "Ménage avant release soignée" entry of the roadmap. Not done blind: the
-// placeholder carries no class of ours.
-.cdk-drag-preview {
+// It is not left on the bare `.cdk-drag-preview` class either: this stylesheet
+// is global CSS and Tabby's own tab bar uses CDK drag-drop, so reordering tabs
+// used to pick up the background, radius and shadow below. `cdkDragPreviewClass`
+// is CDK's own input for exactly this — it adds the class to the preview
+// wrapper, the element CDK creates and styles inline, which no template of
+// ours can otherwise reach (the `*cdkDragPreview` content sits *inside* it).
+// Set on all three draggables in the template.
+.sidebar-plus-drag-preview {
     box-sizing: border-box;
     border-radius: .3rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, .4);
@@ -472,9 +471,10 @@ sidebar-plus-tree .active-sessions {
     }
 }
 
-// Lives outside .sidebar-plus-tree for the same reason as .cdk-drag-preview
+// Lives outside `sidebar-plus-tree` for the same reason as the preview rule
 // above: CDK relocates the preview into a body-level overlay, so an
-// ancestor-scoped selector would never match it.
+// ancestor-scoped selector would never match it. These two class names are
+// ours and appear nowhere else in Tabby, so they need no further narrowing.
 .profile-drag-preview {
     display: flex;
     align-items: center;
@@ -511,26 +511,45 @@ sidebar-plus-tree .active-sessions {
     }
 }
 
-.cdk-drag-placeholder {
-    // Zero height rather than `display: none`: CDK animates the preview onto
-    // the placeholder's box when the drag ends, and a display:none placeholder
-    // has no box at all — the drop event then never fires. Collapsing it
-    // instead keeps the box measurable while stopping it from reserving a
-    // row's worth of space, which is what makes the tree shift under the
-    // pointer every time the item enters or leaves a folder.
-    height: 0 !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden;
-    opacity: 0;
+// Scoped to the component's tag, unlike the preview above: the placeholder is
+// *not* relocated. `DragRef._startDragSequence()` does
+// `parent.replaceChild(placeholder, element)` — it takes the dragged row's
+// place inside the drop list it came from, and moves between lists as the
+// pointer does, so it never leaves this subtree (checked in the CDK 15.2
+// source, not assumed from the preview's behaviour).
+//
+// That matters because Tabby's own tab bar is a CDK drop list too: left
+// global, the `!important` collapse below applied to a tab being reordered.
+sidebar-plus-tree {
+    .cdk-drag-placeholder {
+        // Zero height rather than `display: none`: CDK animates the preview onto
+        // the placeholder's box when the drag ends, and a display:none placeholder
+        // has no box at all — the drop event then never fires. Collapsing it
+        // instead keeps the box measurable while stopping it from reserving a
+        // row's worth of space, which is what makes the tree shift under the
+        // pointer every time the item enters or leaves a folder.
+        height: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden;
+        opacity: 0;
+    }
 }
 
-.cdk-drag-animating {
+// Not scoped to the tag, and not on the bare `.cdk-drag-animating` either:
+// CDK puts that class on the *preview* (`_animatePreviewToPlaceholder`), which
+// lives in the body-level overlay, so the tag cannot reach it — and left bare
+// it gave Tabby's tab bar this transition too. Combined with our own preview
+// class, it applies to this sidebar's drags and nothing else.
+.sidebar-plus-drag-preview.cdk-drag-animating {
     transition: transform 200ms cubic-bezier(0, 0, .2, 1);
 }
 
-.grabber {
+// `.grabber` is a class Tabby's native sidebar uses as well, and this file is
+// global CSS — qualified by the tag so the resize handle drawn here cannot
+// restyle a handle elsewhere in the app.
+sidebar-plus-tree .grabber {
     position: absolute;
     z-index: 10;
     width: 6px;
@@ -720,8 +739,12 @@ sidebar-plus-tree .active-sessions {
 // two live-state sections read as one family. Scoped to the plugin's tag —
 // left unscoped it was global CSS matching any `.active-tunnels` elsewhere in
 // Tabby. Note that most rules in this file are *not* scoped that way: only this
-// one, `sidebar-plus-tree`, `… input`, `… .view-mode-bar` and
-// `… .active-sessions` are. See the note above `.cdk-drag-preview`.
+// one, `sidebar-plus-tree`, `… input`, `… .view-mode-bar`, `… .active-sessions`,
+// `… .grabber` and `… .cdk-drag-placeholder` are. The rest carry class names
+// that appear nowhere in Tabby — checked against the installed app's
+// builtin-plugins, which is how `.grabber` was found to collide in the first
+// place. See the note above `.sidebar-plus-drag-preview` for the two rules that
+// cannot be scoped at all.
 sidebar-plus-tree .active-tunnels {
     flex: 0 0 auto;
     margin-bottom: .35rem;

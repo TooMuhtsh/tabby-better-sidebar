@@ -66,7 +66,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
     <td><span class="pill done">✅ Revue faite (2026-07-31)</span></td>
     <td>Entretien récurrent</td></tr>
 <tr><td><a href="#menage-release">Ménage avant release soignée</a></td>
-    <td><span class="pill progress">🚧 Trois points sur six clos (2026-08-03)</span></td>
+    <td><span class="pill done">✅ Clos (2026-08-03)</span></td>
     <td>Avant toute publication npm</td></tr>
 </table>
 
@@ -2054,7 +2054,8 @@ seul, et ces mentions nommaient la règle telle qu'elle existait à la date de l
   se contredisaient à l'intérieur d'une même page.</li>
 </ul>
 
-<h3 id="menage-release">Ménage avant release soignée</h3>
+<h3 id="menage-release">Ménage avant release soignée
+<span class="pill done">✅ Clos (2026-08-03)</span></h3>
 <ul>
 <li><s>Corriger le placeholder de copyright dans <code>LICENSE</code></s> —
   ✅ <strong>Tranché le 2026-08-03 : rien à changer.</strong>
@@ -2079,27 +2080,33 @@ seul, et ces mentions nommaient la règle telle qu'elle existait à la date de l
 <li><strong>Le <code>README.md</code> public et la <code>description</code> de
   <code>package.json</code></strong> décrivent le plugin d'avant le SFTP — c'est ce que lisent GitHub
   et npm. Repris le 2026-08-02.</li>
-<li><strong>Le SCSS de la sidebar déborde sur Tabby.</strong> Constaté le 2026-08-02 : cinq règles
-  seulement de <code>sidebarTree.component.scss</code> sont préfixées par le tag du composant, tout
-  le reste est de la CSS globale — le style étant injecté en side-effect, il n'y a aucune
-  encapsulation (<a href="AI-CONTEXT.html#piege-14">piège #14</a>). Deux débordements identifiés
-  dans le bundle de Tabby installé : <code>.cdk-drag-preview</code> et surtout
-  <code>.cdk-drag-placeholder</code>, qui impose <code>height: 0 !important</code> et ses voisins —
-  or <strong>la barre d'onglets de Tabby utilise elle aussi CDK drag-drop</strong>, donc réordonner
-  des onglets passe par nos règles. Et <code>.grabber</code>, qui existe dans la sidebar native.
-  Les aperçus portent déjà des classes à nous (<code>.profile-drag-preview</code>,
-  <code>.group-drag-preview</code>) et se resserrent sans risque ; le <em>placeholder</em>, lui, n'en
-  porte aucune — c'est le point à concevoir. Aucun symptôme rapporté à ce jour : à traiter comme une
-  fuite à refermer, pas comme un bug ouvert.</li>
-<li><strong>97 % du paquet, ce sont des icônes.</strong> Mesuré le 2026-08-02 : le bundle de
-  production fait 5,1 Mo, dont ~0,6 Mo seulement de code et de dépendances réelles — le reste vient
-  de <code>@iconify-json/mdi</code> (2,95 Mo) et <code>@iconify-json/tabler</code> (2,02 Mo),
-  importés en entier par <code>src/icons.ts</code> pour alimenter le sélecteur d'icônes. Passer en
-  mode production n'y change presque rien : c'est de la donnée, pas du code à minifier. Trois pistes,
-  aucune tranchée : n'embarquer qu'un sous-ensemble des deux collections, les charger à la demande à
-  la première ouverture du sélecteur, ou les laisser telles quelles en assumant le poids. À décider
-  avant de publier, pas après.</li>
+<li><s><strong>Le SCSS de la sidebar déborde sur Tabby.</strong></s> — ✅
+  <strong>Fait (<code>551d241</code>, testé et validé le 2026-08-03)</strong>. La fiche annonçait
+  deux débordements et un <em>placeholder</em> hors d'atteinte : il y en avait trois, et deux se
+  cadrent très bien. Le placeholder <strong>ne quitte pas la liste</strong>
+  (<code>parent.replaceChild()</code>), il se cadre par le tag ; l'aperçu sort réellement et se
+  nomme par <code>cdkDragPreviewClass</code>, l'entrée que CDK expose pour ce cas ; et
+  <code>.cdk-drag-animating</code>, absente de cette fiche, est du côté de l'aperçu — la cadrer par
+  le tag l'aurait supprimée au lieu de la restreindre. <code>.grabber</code> est cadrée aussi. Le
+  reste du fichier a été confronté classe par classe aux <code>builtin-plugins/</code> de l'app
+  installée : aucune autre n'y apparaît. Détail en
+  <a href="AI-CONTEXT.html#piege-71">piège #71</a>.</li>
+<li><s><strong>97 % du paquet, ce sont des icônes.</strong></s> — ✅
+  <strong>Fait (<code>fb4b719</code>, testé et validé le 2026-08-03)</strong> : c'est le
+  <em>chargement à la demande</em> qui a été retenu des trois pistes. Un <code>import()</code>
+  dynamique sort les deux collections du bundle de démarrage, qui passe de 5,33 à 0,26 Mo en
+  production. <strong>Le paquet publié, lui, ne maigrit pas</strong> — les
+  <code>@iconify-json/*</code> sont des <code>devDependencies</code>, absentes d'une installation
+  utilisateur, donc le chunk doit voyager avec ; seule la piste du sous-ensemble aurait réduit le
+  poids, au prix d'un sélecteur amputé. Ce qui tombe est le coût payé à chaque lancement de Tabby.
+  Deux conditions non évidentes en <a href="AI-CONTEXT.html#piege-72">#72</a> et
+  <a href="AI-CONTEXT.html#piege-73">#73</a>.</li>
 </ul>
+<div class="callout note"><span class="callout-title">Chantier clos le 2026-08-03</span>
+<p>Les six points ont trouvé leur réponse — quatre corrigés, un tranché sans changement
+(<code>LICENSE</code>), un déjà fait avant que la fiche ne le dise. Rien ici ne bloque plus une
+publication npm. <strong>Ce qui reste à faire avant de publier n'appartient plus à ce chantier</strong> :
+c'est la passe de test d'une release, pas du ménage.</p></div>
 
 <h2>Hors périmètre</h2>
 

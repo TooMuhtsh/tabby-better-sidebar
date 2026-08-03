@@ -24,6 +24,51 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Le SCSS ne déborde plus sur Tabby, et les icônes ne sont plus chargées au démarrage
+(2026-08-03)</h2>
+<div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
+2026-08-03</span>
+<p>Branche <code>fix/scss-global-et-icones</code>. Les deux derniers points de code du
+<a href="ROADMAP.html#menage-release">ménage avant release</a>, qui clôt le chantier.</p></div>
+<p><strong>La fuite de style s'est révélée à la fois plus large et plus étroite que décrite.</strong>
+La fiche annonçait deux débordements et une classe <em>impossible</em> à cadrer ; il y en avait
+trois, dont deux se cadrent très bien, chacun d'une façon différente. Ce qui a permis de trancher,
+c'est d'avoir lu la source de <code>@angular/cdk</code> installée plutôt que de raisonner par
+analogie : le placeholder <strong>ne quitte pas</strong> la liste
+(<code>parent.replaceChild()</code>), l'aperçu si — et se nomme par
+<code>cdkDragPreviewClass</code>, l'entrée que CDK expose pour ce cas exact —, et
+<code>.cdk-drag-animating</code>, absente de la fiche, est du côté de l'aperçu : la cadrer par le
+tag ne l'aurait pas restreinte, elle l'aurait supprimée. Détail en
+<a href="AI-CONTEXT.html#piege-71">piège #71</a>.</p>
+<p><strong>Un commentaire du code affirmait le contraire</strong>, et se recopiait de proche en
+proche vers les règles voisines. C'est le genre d'erreur qui ne se voit pas à la relecture : elle
+décrit un comportement plausible et cohérent avec ce que fait l'aperçu juste à côté.</p>
+<p><strong>Le reste du fichier a été confronté aux <code>builtin-plugins/</code> de l'app
+installée</strong>, classe par classe — la méthode qui avait fait trouver <code>.grabber</code>.
+Aucune autre n'y apparaît : elles restent globales en connaissance de cause, pas par omission.</p>
+<p><strong>Les icônes passent en chargement à la demande.</strong> Les deux collections Iconify
+sont 97 % du paquet et étaient importées en entier, donc décodées à chaque lancement de Tabby, pour
+un sélecteur que la plupart des sessions n'ouvrent jamais. Un <code>import()</code> dynamique les
+sort du bundle de démarrage — <strong>sans réduire le paquet publié</strong>, ce qui est voulu et
+inévitable : les <code>@iconify-json/*</code> sont des <code>devDependencies</code>, absentes d'une
+installation utilisateur, donc le chunk doit voyager avec. Ce qui tombe, c'est le coût de
+démarrage. Deux conditions non évidentes, consignées en
+<a href="AI-CONTEXT.html#piege-72">#72</a> et <a href="AI-CONTEXT.html#piege-73">#73</a>.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>fb4b719</code></td>
+<td><strong>Collections Iconify en <code>import()</code> dynamique.</strong> Bundle chargé au
+démarrage : 5,33 → 0,26 Mo en production, 5,94 → 0,88 Mo en développement ; le chunk fait 5,07 Mo.
+<code>chunkIds: 'named'</code> forcé en production, sans quoi le nom du chunk change avec le mode et
+<code>files: ["dist"]</code> en publie deux.</td></tr>
+
+<tr><td>2026-08-03</td><td><code>551d241</code></td>
+<td><strong>Trois classes CDK et <code>.grabber</code> cessent de déborder sur Tabby.</strong>
+Vérifié dans les sélecteurs réellement émis par le bundle, pas dans le SCSS source.</td></tr>
+</table>
+
 <h2>Cadrage relu, et <code>seuil</code> passe à <code>roadmap-libre</code> (2026-08-03)</h2>
 <p>Entretien complet rouvert à la demande de l'utilisateur, sous la charte
 <code>20260731-204511</code>. Les vingt-deux clés de la charte et les vingt-deux lignes de

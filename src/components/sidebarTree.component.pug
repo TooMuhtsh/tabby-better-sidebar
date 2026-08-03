@@ -224,6 +224,7 @@
             ng-container(*ngFor='let group of rootGroups')
                 div(
                     cdkDrag,
+                    cdkDragPreviewClass='sidebar-plus-drag-preview',
                     [cdkDragData]='group',
                     [cdkDragDisabled]='!group.editable || filtering',
                     (cdkDragStarted)='onGroupDragStarted(group)',
@@ -261,6 +262,7 @@
                         ng-container(*ngFor='let profile of group.profiles')
                             a.tree-item(
                                 cdkDrag,
+                                cdkDragPreviewClass='sidebar-plus-drag-preview',
                                 [cdkDragData]='profile',
                                 [cdkDragDisabled]='filtering',
                                 [class.selected]='isProfileSelected(profile)',
@@ -334,6 +336,7 @@
                         ng-container(*ngFor='let child of group.children')
                             div(
                                 cdkDrag,
+                                cdkDragPreviewClass='sidebar-plus-drag-preview',
                                 [cdkDragData]='child',
                                 [cdkDragDisabled]='!child.editable',
                                 (cdkDragStarted)='onGroupDragStarted(child)',
