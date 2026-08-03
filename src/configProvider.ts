@@ -69,6 +69,12 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // refresh is a full readdir, which is not free on a large
             // directory.
             sftpAutoRefreshSeconds: 0,
+            // Seconds between two latency probes of each live SSH session, 0 to
+            // disable. Off by default, like the SFTP auto-refresh above and for
+            // a comparable reason: a probe is a real request sent to a real
+            // server, so it is opt-in rather than something the plugin starts
+            // doing on its own. See ping.service.ts for what is measured.
+            pingIntervalSeconds: 0,
             // Display toggles of the SFTP browser's header menu.
             sftpFoldersFirst: true,
             sftpShowHidden: true,

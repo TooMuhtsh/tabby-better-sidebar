@@ -25,6 +25,7 @@ import { ICON_ENTRIES, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
 import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
+import { PingState, SidebarPlusPingService } from '../ping.service'
 import { focusTab, getAllOpenTabs, isLiveSSHTab } from '../tabs'
 import { clampInViewport } from '../viewport'
 
@@ -156,6 +157,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * lose track of it.
      */
     activeSessions: ActiveSession[] = []
+    /** tab → when it was first seen live, the only record of a session's age there is (see sessionUptime()). */
+    private sessionOpenedAt = new Map<SSHTabComponent, number>()
+    /** The row under the pointer and the tooltip text held still for it — see sessionTooltip(). */
+    private hoveredSessionTab: SSHTabComponent|null = null
+    private hoveredSessionTooltip = ''
     /** Per-machine UI state (localStorage, like sftpMode) rather than a `sidebarPlus.*` config key — nothing worth syncing across machines, and it sidesteps piège #16 entirely. */
     activeSessionsCollapsed = window.localStorage.sidebarPlusActiveSessionsCollapsed === 'true'
 
@@ -286,6 +292,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private zone: NgZone,
         private platform: PlatformService,
         private hotkeys: HotkeysService,
+        private ping: SidebarPlusPingService,
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
     ) { }
 
@@ -1300,6 +1307,178 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!SidebarPlusTreeComponent.sameSessions(this.activeSessions, sessions)) {
             this.activeSessions = sessions
         }
+
+        // Uptime is stamped here, on first sighting, and forgotten as soon as
+        // the tab leaves the list — see sessionUptime() for what that implies.
+        // Kept out of the ActiveSession rows for the same reason as the
+        // latency: a value that changes every tick would fail sameSessions().
+        const now = Date.now()
+        const live = new Set(sessions.map(session => session.tab))
+        for (const tab of this.sessionOpenedAt.keys()) {
+            if (!live.has(tab)) {
+                this.sessionOpenedAt.delete(tab)
+            }
+        }
+        for (const tab of live) {
+            if (!this.sessionOpenedAt.has(tab)) {
+                this.sessionOpenedAt.set(tab, now)
+            }
+        }
+
+        // Rides this same 2s pass rather than bringing its own timer; the
+        // service decides which sessions are actually due a probe, and does
+        // nothing at all while the interval is 0. Deliberately *not* part of
+        // the ActiveSession rows above: a latency that changes every few
+        // seconds would fail `sameSessions()` and rebuild every row's DOM,
+        // dropping the `:hover` the action buttons live in. The template reads
+        // it through pingState()/pingLabel() instead.
+        this.ping.poll(sessions.map(session => session.tab))
+    }
+
+    /**
+     * The colour of the row's one dot.
+     *
+     * There is no second dot for latency, on purpose: every row in this section
+     * is a live session by construction, so a dot that was always green said
+     * nothing at all. With the probe off it stays green — the state it has
+     * always shown — and with it on, it says how fast the session answers.
+     */
+    sessionDotClass (session: ActiveSession): string {
+        if (this.ping.intervalMs <= 0) {
+            return 'status-dot-connected'
+        }
+        const state: PingState = this.ping.state(session.tab)
+        if (state === 'good') {
+            return 'status-dot-connected'
+        }
+        if (state === 'fair') {
+            return 'status-dot-fair'
+        }
+        if (state === 'poor') {
+            return 'status-dot-poor'
+        }
+        // 'unknown' (not measured yet) and 'unavailable' (no SFTP subsystem)
+        // both fall through to the dimmed base style, which is the honest
+        // rendering of "no figure to show".
+        return ''
+    }
+
+    /**
+     * The row's tooltip, carried by the whole row rather than by the dot: a 6px
+     * dot is not something one aims at to read a figure (user request,
+     * 2026-08-03).
+     *
+     * Form settled by the user the same day: `app.exemple.fr | 13 ms | 1m 47s`,
+     * three fields and no prose. The tab's live title (`user@host: cwd`), which
+     * this tooltip used to carry, is dropped with it — the row already shows
+     * the name, and a title that moves with the working directory was the
+     * verbose part. The latency field disappears entirely when there is no
+     * figure, rather than showing a placeholder.
+     */
+    sessionTooltip (session: ActiveSession): string {
+        // Frozen for as long as the pointer stays on the row. A native tooltip
+        // is torn down and rebuilt whenever its `title` attribute is rewritten,
+        // and this one would be rewritten on every 2s pass as the seconds move
+        // — which read as a flicker while trying to read it. Off the row the
+        // value keeps updating: nothing is on screen to flicker.
+        if (this.hoveredSessionTab === session.tab) {
+            return this.hoveredSessionTooltip
+        }
+        return this.buildSessionTooltip(session)
+    }
+
+    /**
+     * Takes the snapshot the tooltip will show, and drops it on the way out.
+     *
+     * Consequence to accept: hover a row for two minutes and the figures are
+     * those of the moment the pointer arrived. Leaving and coming back is what
+     * refreshes them — and that is the gesture anyone makes to re-read a
+     * tooltip anyway.
+     */
+    onSessionHover (session: ActiveSession, hovering: boolean): void {
+        if (hovering) {
+            this.hoveredSessionTab = session.tab
+            this.hoveredSessionTooltip = this.buildSessionTooltip(session)
+        } else if (this.hoveredSessionTab === session.tab) {
+            this.hoveredSessionTab = null
+        }
+    }
+
+    private buildSessionTooltip (session: ActiveSession): string {
+        const latency = this.ping.latencyMs(session.tab)
+        return [
+            session.name,
+            latency === null ? null : `${latency} ms`,
+            SidebarPlusTreeComponent.formatUptimePrecise(this.uptimeMs(session)),
+        ].filter(Boolean).join(' | ')
+    }
+
+    /**
+     * How long the session has been up, stamped by this component the first
+     * time the tab shows up in the list.
+     *
+     * Nothing in Tabby or `tabby-ssh` records when a session opened — checked
+     * on the installed source — so it has to be observed. Two consequences,
+     * both benign: a session that was already open when this component mounted
+     * is dated from the mount (only reachable by disabling and re-enabling the
+     * plugin, the sidebar being mounted at startup), and a session that drops
+     * and reconnects restarts from zero, since it leaves the list in between.
+     * The second one is arguably the right answer anyway.
+     */
+    sessionUptime (session: ActiveSession): string {
+        const elapsed = this.uptimeMs(session)
+        return elapsed === null ? '' : SidebarPlusTreeComponent.formatUptime(elapsed)
+    }
+
+    /** Milliseconds since the tab was first seen live, or null while it has not been stamped yet. */
+    private uptimeMs (session: ActiveSession): number|null {
+        const startedAt = this.sessionOpenedAt.get(session.tab)
+        return startedAt === undefined ? null : Date.now() - startedAt
+    }
+
+    /**
+     * `1m 47s`, `3h 05m`, `2j 04h` — the tooltip's own form, precise to the
+     * second under a minute.
+     *
+     * Deliberately not the same rendering as the row's: this one is only read
+     * while hovering, whereas the row is permanently in view, and seconds
+     * ticking on every open session would keep the sidebar moving in the
+     * corner of the eye for no gain.
+     */
+    private static formatUptimePrecise (ms: number|null): string {
+        if (ms === null) {
+            return ''
+        }
+        const seconds = Math.max(0, Math.floor(ms / 1000))
+        if (seconds < 60) {
+            return `${seconds}s`
+        }
+        const minutes = Math.floor(seconds / 60)
+        if (minutes < 60) {
+            return `${minutes}m ${String(seconds % 60).padStart(2, '0')}s`
+        }
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24) {
+            return `${hours}h ${String(minutes % 60).padStart(2, '0')}m`
+        }
+        return `${Math.floor(hours / 24)}j ${String(hours % 24).padStart(2, '0')}h`
+    }
+
+    /** `42 s`, `12 min`, `3 h 05`, `2 j 4 h` — coarser as it gets longer, since a session's age is read at a glance. */
+    private static formatUptime (ms: number): string {
+        const seconds = Math.max(0, Math.floor(ms / 1000))
+        if (seconds < 60) {
+            return `${seconds} s`
+        }
+        const minutes = Math.floor(seconds / 60)
+        if (minutes < 60) {
+            return `${minutes} min`
+        }
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24) {
+            return `${hours} h ${String(minutes % 60).padStart(2, '0')}`
+        }
+        return `${Math.floor(hours / 24)} j ${hours % 24} h`
     }
 
     private static sameSessions (a: ActiveSession[], b: ActiveSession[]): boolean {

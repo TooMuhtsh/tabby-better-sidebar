@@ -166,7 +166,11 @@ de chargement de plugin.
   parent. Il ne reste aucun `stat()` d'observation dans `src/` — ne pas en
   réintroduire, y compris pour la question apparemment anodine « ce nom est-il
   libre ? » (`stat()` suit les liens, donc un lien cassé du même nom répond que
-  le nom est libre).
+  le nom est libre). La seule occurrence restante est la sonde de latence de
+  `src/ping.service.ts`, qui s'en sert comme **chronomètre** : rien de la
+  réponse n'est lu, seul le temps d'aller-retour compte. Ce n'est pas une
+  exception à l'invariant, c'est un autre usage — et le distinguer évite d'y
+  voir une régression à la relecture.
 - **Un lien symbolique se résout, et c'est la cible qu'on manipule** — chemin
   compris. Travailler sur le chemin du lien faisait tout échouer à la fois :
   copie locale en lecture seule, `chmod 0777` sur la cible au renvoi (le mode

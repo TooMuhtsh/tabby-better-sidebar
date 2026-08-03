@@ -149,7 +149,36 @@ sidebar-plus-tree .active-sessions {
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background-color: #3fb950;
+            // Grey is the base, i.e. "no figure to show": latency not measured
+            // yet, or a server that opens no SFTP channel. The colours below
+            // override it.
+            background-color: var(--theme-secondary-fg);
+            opacity: .35;
+
+            // Green keeps its meaning — a session that answers promptly. The
+            // amber and red are latency, never connection state: a row is only
+            // in this list while its session is live.
+            &.status-dot-connected {
+                background-color: #3fb950;
+                opacity: 1;
+            }
+
+            &.status-dot-fair {
+                background-color: #d29922;
+                opacity: 1;
+            }
+
+            &.status-dot-poor {
+                background-color: #e5534b;
+                opacity: 1;
+            }
+        }
+
+        .session-uptime {
+            flex: 0 0 auto;
+            margin-left: .4rem;
+            font-size: .65rem;
+            opacity: .5;
         }
 
         .fw-20 {

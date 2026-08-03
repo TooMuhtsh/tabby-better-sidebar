@@ -49,13 +49,25 @@
                 *ngFor='let session of activeSessions',
                 [class.focused]='session.focused',
                 (click)='focusSession(session, $event)',
-                [title]='session.title',
+                (mouseenter)='onSessionHover(session, true)',
+                (mouseleave)='onSessionHover(session, false)',
+                [title]='sessionTooltip(session)',
                 href='#'
             )
-                span.status-dot.status-dot-connected.ms-1
+                //- The row's one dot, carrying the latency colour: in this
+                //- section every row is a live session by construction, so a
+                //- permanently green "connected" dot said nothing. It carries
+                //- no tooltip of its own — the figures are in the row's, which
+                //- is reachable from anywhere along it.
+                span.status-dot.ms-1([ngClass]='sessionDotClass(session)')
                 .fw-20
                     profile-icon.ms-1([icon]='session.icon', [color]='session.color')
                 span.ms-2.me-auto.no-wrap {{ session.name }}
+                //- Uptime on the row rather than in the tooltip only: it is the
+                //- kind of thing one reads by scanning the list, not by aiming
+                //- at a dot. Covered by .actions on hover, which is fine — the
+                //- tooltip repeats it.
+                span.session-uptime.no-wrap {{ sessionUptime(session) }}
                 .actions
                     .action(
                         (click)='openSessionSftp(session, $event)',

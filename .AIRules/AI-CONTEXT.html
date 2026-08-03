@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #69.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #70.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -40,7 +40,7 @@ Tabby.</p>
 <ul>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
-<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
+<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56, #69</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64, #67 + 6 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62, #68 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
@@ -305,6 +305,23 @@ sélective — « la notification marche, pas mon bandeau » — et oriente à t
 mutation d'état destinée à l'affichage effectuée <em>après</em> un <code>await</code> sur une API
 Tabby. Bonus : les <code>setTimeout</code> créés à l'intérieur redeviennent patchés, donc leur
 expiration repeint toute seule.</p>
+
+<h3 id="piege-69">#69 — Réécrire un <code>title</code> détruit l'infobulle native affichée : une valeur
+qui se rafraîchit scintille sous le curseur</h3>
+<p>Constaté le 2026-08-03 sur l'infobulle des sessions actives, qui porte une latence et une durée.
+Le navigateur ne met pas à jour une infobulle ouverte : il la <strong>ferme et la rouvre</strong> dès
+que l'attribut change. Une valeur liée à un état rafraîchi périodiquement — ici le sondage de 2 s de
+la sidebar, dont les secondes bougent à chaque passage — clignote donc précisément pendant qu'on
+essaie de la lire. Aucune erreur, et le symptôme ne ressemble pas à sa cause : on cherche du côté du
+rendu de la ligne, alors que le coupable est la fraîcheur de la donnée.</p>
+<p>→ <strong>Figer la valeur tant que le pointeur est sur l'élément</strong>
+(<code>mouseenter</code>/<code>mouseleave</code> + champ mémorisé), et la laisser se rafraîchir en
+dehors : hors survol, aucune infobulle n'est à l'écran, donc rien ne peut scintiller. Angular ne
+touche au DOM que si la valeur change, donc rendre la même chaîne suffit — nul besoin de détacher
+quoi que ce soit de la détection de changement.</p>
+<p>Le prix à connaître : l'infobulle montre l'instant où le pointeur est arrivé. Sortir et revenir la
+rafraîchit, ce qui est le geste naturel pour relire une bulle. La même précaution vaudra pour toute
+infobulle branchée sur une donnée vivante — transfert en cours, compteur, état de session.</p>
 
 <h3 id="piege-52">#52 — Un service <code>providedIn: 'root'</code> que personne n'injecte n'est
 jamais construit</h3>

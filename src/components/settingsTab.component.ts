@@ -70,6 +70,17 @@ export class SidebarPlusSettingsTabComponent {
         await this.config.save()
     }
 
+    get pingIntervalSeconds (): number {
+        return Number(this.config.store.sidebarPlus?.pingIntervalSeconds ?? 0)
+    }
+
+    /** Same clamping as the auto-refresh above: whole seconds, never negative, 0 being the documented "off". */
+    async setPingIntervalSeconds (value: unknown): Promise<void> {
+        const seconds = Math.max(0, Math.round(Number(value) || 0))
+        this.config.store.sidebarPlus.pingIntervalSeconds = seconds
+        await this.config.save()
+    }
+
     async save (): Promise<void> {
         await this.editors.setEditorPath(this.editorPath.trim())
     }

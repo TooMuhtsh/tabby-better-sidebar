@@ -115,6 +115,36 @@
         )
 
   .settings-section
+    h3 Latence des sessions actives
+    .section-intro
+      | La pastille de chaque ligne de la section « Sessions actives » prend la
+      | couleur de la latence : verte sous 80 ms, orange sous 250 ms, rouge
+      | au-delà, grise tant qu'il n'y a pas de mesure. Sa bulle d'aide donne la
+      | valeur, et l'ancienneté de la session. La mesure est un aller-retour
+      | SFTP sur la session elle-même — donc le délai réellement ressenti à la
+      | frappe, et non un ping ICMP vers l'hôte, que bien des pare-feux
+      | bloquent.
+
+    .form-line
+      .header
+        .title Intervalle, en secondes
+        .description
+          | 0 désactive : la pastille redevient simplement verte, et plus rien
+          | n'est envoyé. Chaque mesure étant une vraie requête adressée au
+          | serveur, le réglage est désactivé par défaut. Un serveur qui n'ouvre
+          | pas de canal SFTP n'est pas mesurable — sa pastille reste grise, et
+          | il n'est plus sollicité. Le temps écoulé depuis l'ouverture,
+          | affiché sur la ligne, ne dépend pas de ce réglage.
+      .control
+        input#sidebar-plus-ping-interval.form-control(
+          type='number',
+          min='0',
+          step='1',
+          [ngModel]='pingIntervalSeconds',
+          (ngModelChange)='setPingIntervalSeconds($event)'
+        )
+
+  .settings-section
     h3 Suppression dans le panneau SFTP
 
     .form-line
