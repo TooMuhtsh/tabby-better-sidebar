@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #71.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #74.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -40,12 +40,12 @@ Tabby.</p>
 <ul>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
-<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56, #69</li>
+<li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56, #69, #71</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64, #67 + 6 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62, #68 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47, #70</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8, #63</li>
-<li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20</li>
+<li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20, #72, #73</li>
 </ul>
 
 <h2 id="cat-identite">Identité du projet</h2>
@@ -382,6 +382,36 @@ retirée — <code>CommonSFTPContextMenu</code> étant l'unique provider natif, 
 <strong>dernière</strong> de la liste, avec un contrôle sur son libellé en filet de sécurité — puis
 remplacée par une entrée maison ouvrant <code>ConfirmModalComponent</code> (HTML/<code>NgbModal</code>
 maison) avant de supprimer.</p>
+
+<h3 id="piege-71">#71 — Une classe posée par CDK n'est pas forcément hors de portée : vérifier qui
+la porte avant de renoncer à la cadrer</h3>
+<p>Le SCSS de ce plugin est de la CSS globale (<a href="#piege-14">#14</a>), et Tabby utilise le
+même <code>@angular/cdk/drag-drop</code> que nous — sa barre d'onglets comprise. Une règle écrite
+sur une classe <code>cdk-*</code> nue s'applique donc <strong>aussi à l'application hôte</strong>.
+Les trois classes en jeu ne se traitent pas de la même façon, et le raccourci « CDK déplace tout
+dans un calque, donc rien n'est cadrable » est faux :</p>
+<ul>
+<li><code>.cdk-drag-placeholder</code> <strong>ne sort pas</strong> :
+  <code>DragRef._startDragSequence()</code> fait
+  <code>parent.replaceChild(placeholder, element)</code> — il prend la place de la ligne dans sa
+  liste et suit le pointeur d'une liste à l'autre, sans jamais quitter le sous-arbre. Il se cadre
+  donc par le tag du composant, comme n'importe quelle règle.</li>
+<li><code>.cdk-drag-preview</code> sort réellement, dans un calque au niveau du
+  <code>body</code> : aucun sélecteur ancêtre ne l'atteint. La réponse n'est pas d'abandonner mais
+  <code>cdkDragPreviewClass</code>, l'entrée que CDK expose exactement pour ça — elle pose une
+  classe à nous sur <em>l'enveloppe</em> que CDK crée, seul élément qu'aucun template ne peut
+  nommer (le contenu <code>*cdkDragPreview</code> est <em>dedans</em>).</li>
+<li><code>.cdk-drag-animating</code> est du côté de l'aperçu, pas de la ligne : CDK la pose sur le
+  preview dans <code>_animatePreviewToPlaceholder()</code>. La cadrer par le tag ne la restreint
+  pas, elle la <strong>tue</strong> — il faut la combiner à la classe d'aperçu.</li>
+</ul>
+<p><strong>La méthode, plus que le verdict</strong> : chacun de ces trois points a été lu dans la
+source de <code>@angular/cdk</code> installée, pas déduit du comportement d'un voisin. Un
+commentaire de notre propre code affirmait le contraire pour le placeholder et se recopiait de
+proche en proche. Et pour savoir si une classe déborde, la confronter aux
+<code>builtin-plugins/</code> de l'app installée : c'est ainsi que <code>.grabber</code> a été
+trouvée dans la sidebar native, et que les autres classes du fichier ont pu être laissées telles
+quelles en connaissance de cause.</p>
 
 <h2 id="cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</h2>
 <p class="muted">La plus grosse source de pièges de ce projet : ce plugin s'appuie par endroits sur
@@ -1395,6 +1425,39 @@ Pour dépister : <code>grep -c "n_importe_quoi" fichier.ts</code> répondant
 <code>Binary file … matches</code> est le symptôme.</p>
 
 <h2 id="cat-npm">Publication &amp; distribution npm</h2>
+
+<h3 id="piege-72">#72 — Un chunk dynamique dans un plugin Tabby : ce qui le fait marcher, et ce qui
+le fait publier en double</h3>
+<p><code>src/icons.ts</code> charge les collections Iconify par <code>import()</code>, donc webpack
+émet un second fichier à côté d'<code>index.js</code>. Trois conditions, dont deux ne se voient pas
+avant qu'il soit trop tard :</p>
+<ul>
+<li><strong>Le chargement passe par <code>require("./&lt;chunk&gt;.js")</code></strong>, relatif au
+  bundle (cible <code>node</code>). Cela fonctionne parce que le chargeur de plugins de Tabby fait
+  <code>nodeRequire = global['require']</code> puis <code>nodeRequire(chemin_du_plugin)</code> —
+  un <code>require</code> CommonJS ordinaire, résolu depuis <code>dist/</code>. À revérifier si ce
+  chargeur change : un chargement par <code>vm</code> ou par lecture de fichier casserait le chemin
+  relatif, et le symptôme n'apparaîtrait qu'à la première ouverture du sélecteur d'icônes.</li>
+<li><strong><code>chunkIds: 'named'</code> est forcé, y compris en production</strong>, où webpack
+  numérote les chunks par défaut. Le nom changeant alors avec le mode, <code>dist/</code> — qui
+  n'est pas nettoyé entre deux builds (<a href="#piege-73">voir ci-dessous</a>) — garde les deux, et
+  <code>files: ["dist"]</code> publie 5 Mo d'icônes en double sans un mot.</li>
+<li><strong>Les collections restent des <code>devDependencies</code></strong> et doivent le rester :
+  le chunk les embarque, et une installation utilisateur n'a pas de
+  <code>node_modules/@iconify-json/*</code>. Le poids du paquet ne change donc pas — ce qui tombe,
+  c'est le coût de démarrage, le bundle que Tabby parse à chaque lancement (5,33 → 0,26 Mo en
+  production).</li>
+</ul>
+
+<h3 id="piege-73">#73 — <code>output.clean</code> emporterait les typings du paquet</h3>
+<p>Tentant pour régler le point précédent, et à ne pas faire : les <code>.d.ts</code> que
+<code>typings</code> désigne sont écrits directement dans <code>dist/</code> par TypeScript
+(<code>declarationDir</code> du <code>tsconfig</code>) et <strong>ne passent pas par les assets
+webpack</strong> — vérifiable en construisant vers un autre <code>--output-path</code>, qui ne
+produit qu'<code>index.js</code>. Un nettoyage les prendrait pour des résidus et publierait un
+paquet sans typings. Ce que <code>build:prod</code> doit retirer — les source-maps d'un build de
+développement antérieur — l'est par <code>scripts/strip-source-maps.js</code>, qui ne touche que
+les <code>.map</code>.</p>
 
 <h3 id="piege-20">#20 — Classement npm search très bas pour un paquet neuf</h3>
 <p>Constaté quelques heures après la publication de <code>tabby-better-sidebar@0.2.0</code> :
