@@ -80,10 +80,16 @@ export class SidebarPlusMountService {
         } else {
             this.unmount()
         }
-        // Conditioned on `enabled` too, not on the setting alone: a plugin that
-        // is switched off has no business still hiding a piece of the host's UI,
-        // and its own transfer panel is gone at that point anyway.
-        const hide = enabled && (this.config.store.sidebarPlus?.hideNativeTransfersMenu ?? true)
+        // Hiding Tabby's own transfers menu is only defensible while we show
+        // those transfers ourselves. Three ways that stops being true — the
+        // plugin switched off, the SFTP view switched off, the panel switched
+        // off — and in each of them hiding it would leave the user with *no*
+        // readout of a transfer at all, including transfers started by the
+        // native panel or another plugin, which our registry only ever
+        // mirrored. The setting keeps its value; only its effect is suspended.
+        const sp = this.config.store.sidebarPlus
+        const panelShown = (sp?.showSftp ?? true) && (sp?.showTransfers ?? true)
+        const hide = enabled && panelShown && (sp?.hideNativeTransfersMenu ?? true)
         document.body.classList.toggle(HIDE_NATIVE_TRANSFERS_CLASS, hide)
     }
 

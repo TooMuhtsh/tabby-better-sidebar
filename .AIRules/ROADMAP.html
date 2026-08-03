@@ -2279,7 +2279,9 @@ favoris, sans rien retirer à qui veut tout. Branche <code>feat/interrupteurs-pa
 <div class="callout note"><span class="callout-title">Fait — 46 contrôles CDP verts le 2026-08-03</span>
 <p>Six clés plates sous <code>sidebarPlus</code> (<code>showActiveSessions</code>,
 <code>showTunnels</code>, <code>showSftp</code>, <code>showTransfers</code>,
-<code>showWorkspaces</code>, <code>showFilter</code>), toutes à <code>true</code> par défaut.</p>
+<code>showWorkspaces</code>, <code>showFilter</code>), toutes à <code>true</code> par défaut.
+<strong>Cinq blocs de premier rang</strong> : <code>showTransfers</code> est subordonné à
+<code>showSftp</code> — voir l'encadré sur le gestionnaire de transferts plus bas.</p>
 <p><strong>Éteindre coupe la source, pas seulement la vue</strong> — c'est tout le chantier :</p>
 <ul>
 <li>Sessions et tunnels éteints : le balayage de tous les onglets de tous les splits, toutes les
@@ -2342,6 +2344,28 @@ que l'utilisateur l'a laissée, et la page affiche « indisponible sur cette ver
 Réécrire le réglage pour refléter un hôte cassé perdrait le choix le jour où l'hôte le fournit à
 nouveau. C'est le point de jonction annoncé entre les deux chantiers, réalisé par
 <code>hostSupports()</code>.</p></div>
+
+<h4>Le gestionnaire de transferts est une option de la vue SFTP
+<span class="pill done">✅ Fait (2026-08-03)</span></h4>
+<p>Demandé par l'utilisateur après une première passe où c'était un bloc de premier rang : les
+transferts viennent du SFTP, les deux vont donc ensemble. <code>showTransfers</code> n'a plus d'effet
+que si <code>showSftp</code> est allumé, et son interrupteur vit dans les options de ce bloc.</p>
+<div class="callout important"><span class="callout-title">Le corollaire, qui n'était pas dans la demande</span>
+<p>Le registre reflète <strong>tous</strong> les transferts de l'application, y compris ceux du
+panneau SFTP natif et des autres plugins. Éteindre la vue SFTP les rend donc invisibles dans la
+sidebar — et comme <code>hideNativeTransfersMenu</code> est coché par défaut, l'utilisateur se
+retrouvait sans <em>aucun</em> affichage de transfert.</p>
+<p>Corrigé du même geste : le masquage du menu natif est suspendu dès que notre panneau ne s'affiche
+plus, pour l'une des trois raisons possibles (plugin éteint, vue SFTP éteinte, panneau éteint). Le
+réglage garde sa valeur, seul son effet est suspendu. C'est le prolongement d'un principe déjà posé
+au montage : <strong>un plugin n'a pas à masquer un morceau de l'interface de l'hôte qu'il ne
+remplace plus</strong>.</p></div>
+
+<h4>Disposition de la page : les blocs sans réglage en tête</h4>
+<p>Demandé par l'utilisateur. Tunnels, workspaces et barre de filtrage n'ont pas d'options propres :
+ils sont groupés et resserrés en haut de la page, avant les deux blocs qui déplient une liste
+— sessions actives et vue SFTP. Les espacer comme ces derniers laissait croire qu'ils avaient aussi
+des réglages à déplier.</p>
 <p>Un interrupteur par bloc, dans l'onglet de réglages : <a href="#sessions-actives">sessions
 actives</a>, <a href="#tunnels-ssh">tunnels actifs</a>, <a href="#sftp">bascule SFTP</a>,
 <a href="#transferts">gestionnaire de transferts</a>, <a href="#workspaces">workspaces</a>,
