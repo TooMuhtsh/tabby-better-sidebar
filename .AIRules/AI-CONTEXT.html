@@ -746,7 +746,15 @@ locale, la résolution retombe sur <code>builtin-plugins/</code>. Le bug ne se m
 jamais conclure d'un « ça marchera en prod » que le dev est sain, ni l'inverse.</p>
 <p class="muted">S'applique à l'identique à tout futur <code>tabby-*</code> hors des quatre
 listés (<code>tabby-electron</code>, <code>tabby-plugin-manager</code>, <code>tabby-serial</code>,
-<code>tabby-telnet</code>…).</p></div>
+<code>tabby-telnet</code>…).</p>
+<p>→ <strong>Une sonde le dit désormais, au lieu de le laisser deviner</strong> (2026-08-03) :
+<code>isSSHTab()</code> dans <code>src/tabs.ts</code> est le point unique par lequel passent tous les
+rétrécissements <code>instanceof SSHTabComponent</code>, et il compare le
+<code>constructor.name</code> quand le test échoue — exactement la signature ci-dessus. Un
+avertissement console part alors, une seule fois. À savoir avant de s'y fier : la sonde ne peut rien
+voir tant qu'aucun onglet SSH n'est ouvert, et le contrôle de préconditions au démarrage
+(<code>src/hostCompat.ts</code>) ne l'attrape pas — dans cet état les classes existent, ce sont
+simplement les mauvaises.</p></div>
 
 <h3 id="piege-35">#35 — <code>SFTPPanelComponent.getModeString()</code> est faux sous Windows : hériter d'un composant, c'est hériter de ses bugs</h3>
 <div class="callout warning"><span class="callout-title">Un rendu plausible mais faux</span>

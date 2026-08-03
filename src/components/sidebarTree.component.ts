@@ -26,7 +26,7 @@ import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
 import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
 import { PingState, SidebarPlusPingService } from '../ping.service'
-import { focusTab, getAllOpenTabs, isLiveSSHTab } from '../tabs'
+import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { clampInViewport } from '../viewport'
 
 interface CollapsableProfileGroup extends ProfileGroup {
@@ -1228,10 +1228,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const tunnelCounts = new Map<string, number>()
         const liveTunnelKeys = new Map<string, Set<string>>()
         for (const tab of getAllOpenTabs(this.app)) {
-            // Same caveat as the SFTP panel's own instanceof: this narrowing
+            // Same narrowing as the SFTP panel, through the same helper: it
             // only holds while `tabby-ssh` stays out of node_modules
-            // (src/types/tabby-ssh/PROVENANCE.md, piège #34).
-            if (!(tab instanceof SSHTabComponent)) {
+            // (src/types/tabby-ssh/PROVENANCE.md, piège #34), and isSSHTab()
+            // is where that assumption is checked rather than assumed.
+            if (!isSSHTab(tab)) {
                 continue
             }
             // Both halves of the test matter — see isLiveSSHTab and piège #37.
@@ -1622,7 +1623,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return null
         }
         for (const tab of getAllOpenTabs(this.app)) {
-            if (!(tab instanceof SSHTabComponent)) {
+            if (!isSSHTab(tab)) {
                 continue
             }
             const backing = tab as unknown as ProfileBackedTab
