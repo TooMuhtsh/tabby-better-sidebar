@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #76.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #79.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -41,8 +41,8 @@ Tabby.</p>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56, #69, #71</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64, #67 + 6 points de veille</li>
-<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62, #68, #74 + 2 points de veille</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64, #67, #78 + 6 points de veille</li>
+<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62, #68, #74, #76, #77 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47, #70</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8, #63</li>
 <li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20, #72, #73</li>
@@ -1031,6 +1031,31 @@ un renommage s'y verrait à la compilation.</p>
 création et l'édition de profils exactement comme avant — la seule différence est qu'elle le
 <em>dit</em>. Relire cette fiche comme un point supprimé serait un contresens.</p></div>
 
+<h3 id="piege-78">#78 — Un profil ne porte <em>aucune</em> référence au coffre-fort : c'est le
+coffre qui est indexé par les coordonnées de connexion</h3>
+<p>L'intuition naturelle — et ce que supposait la fiche de roadmap du partage de groupe — est qu'un
+profil garde un pointeur vers son secret, à purger avec soin avant de l'exporter. C'est l'inverse.
+<code>PasswordStorageService</code> range le secret sous une clé <em>dérivée du profil</em> :
+<code>{user, host, port}</code> pour un mot de passe, <code>{hash: id}</code> pour une phrase de
+passe de clé. Sans coffre-fort activé, ces mêmes secrets vont au trousseau de l'OS par
+<code>keytar</code> — hors du profil également.</p>
+<ul>
+<li><strong>Il n'y a donc rien à « dé-référencer »</strong>, et le champ qui compte est
+  <code>options.password</code>, un mot de passe réellement stocké dans le profil et lu par
+  <code>ssh.ts</code>. Chiffré au repos quand le coffre est actif, mais bien présent dans l'objet.</li>
+<li><strong>Ce qui retrouve l'entrée du coffre est le triplet de connexion lui-même</strong> —
+  c'est-à-dire ce sans quoi un profil ne sert à rien. Un profil recopié sur une machine dont le
+  coffre porte un secret pour le même <code>{user, host, port}</code> s'authentifie donc tout seul.
+  Rien ne fuit, mais un profil « purgé » n'est pas muet pour autant.</li>
+<li><strong><code>VaultService.getSecret()</code> retente sans le <code>host</code></strong> quand la
+  clé complète ne donne rien (commentaire d'origine : un mot de passe par défaut partagé entre
+  serveurs). Un secret enregistré pour un utilisateur couvre alors n'importe quel hôte.</li>
+<li><strong>La seule vraie référence est <code>privateKeys[]</code></strong>, qui peut contenir
+  <code>vault://&lt;id&gt;</code> (<code>VaultFileProvider</code>). Opaque et inutile ailleurs, y
+  compris sur une autre machine du même utilisateur : la garder donne un profil qui échoue à trouver
+  sa clé sans rien dire.</li>
+</ul>
+
 <h2 id="cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</h2>
 <p class="muted">La catégorie la plus critique du projet — a réellement corrompu des données de
 production une fois.</p>
@@ -1380,6 +1405,46 @@ de <code>migrateWorkspaceGroupId()</code> (<a href="#piege-62">#62</a>), qui les
 quand l'id change, et la même liste est en jeu des deux côtés. Le re-parentage n'appelle donc pas
 le premier : il a déjà appelé le second, et l'ordre — migrer, puis supprimer — est ce qui garantit
 qu'il ne reste rien à collecter.</p>
+
+<h3 id="piege-76">#76 — Un commentaire écrit dans <code>config.yaml</code> ne survit pas au premier
+<code>config.save()</code></h3>
+<p>Tabby ne <em>modifie</em> jamais le fichier : il sérialise son état mémoire et réécrit tout. Tout
+ce qui n'existe que dans le texte — commentaires, ordre des clés, mise en forme — disparaît au
+premier enregistrement venu, et n'importe quoi déclenche un enregistrement (un favori, un pli de
+dossier, la fermeture de l'application).</p>
+<p><strong>Conséquence pratique, apprise en posant des entrées de test.</strong> Encadrer un bloc
+jetable par deux marqueurs de commentaire pour le retirer d'un geste ensuite <em>paraît</em>
+raisonnable et ne marche pas : à la fin de la passe, les marqueurs ne sont plus là et le script de
+retrait ne trouve rien. Un nettoyage doit cibler les entrées <strong>par nom ou par id</strong>, et
+purger leurs traces comme le fait <code>forgetDeletedId()</code> — sinon des ids morts restent dans
+<code>groupOrder</code>, <code>hiddenGroupIds</code> et <code>favoriteGroups</code>.</p>
+<p>Le corollaire vaut pour toute écriture directe : <strong>Tabby doit être fermé</strong>. Ouvert,
+il écrase la modification au premier save, et peut même réintroduire ce qu'on venait de retirer,
+puisque son état mémoire fait foi.</p>
+
+<h3 id="piege-77">#77 — <code>defaults</code> d'un dossier est un bloc <em>par fournisseur</em> :
+ses champs sont un cran plus bas qu'on ne les cherche</h3>
+<p>Sa forme est <code>{ ssh: { user, password, scripts… }, local: { … } }</code> —
+<code>getConfigProxyForProfile()</code> lit <code>defaults?.[provider.id]</code>. Un traitement
+écrit contre un bloc d'options ordinaire ne voit donc <strong>rien</strong> de ce qu'il contient :
+il inspecte le niveau des <em>noms de fournisseurs</em>, où aucun champ attendu ne se trouve.</p>
+<p><strong>Ce que ça a réellement coûté</strong> : la purge du partage de groupe
+(<code>src/groupShare.ts</code>) laissait passer <code>defaults.ssh.scripts</code> en entier — c'est-à-dire
+un script de login de dossier, que Tabby fusionne dans <em>chaque profil du dossier</em>, et où un
+mot de passe sudo se met couramment en dur. Le mot de passe voisin, lui, n'était rattrapé que par un
+filet heuristique sur les noms de champs. D'où <code>purgeDefaults()</code>, qui traite chaque bloc
+de fournisseur comme le bloc de niveau supérieur qu'il est.</p>
+<div class="callout note"><span class="callout-title">Comment il a été trouvé, ce qui vaut plus que
+le cas</span>
+<p>Non par relecture : l'export <em>paraissait</em> correct, le mot de passe avait bien disparu. Ce
+qui l'a révélé est un contrôle sur la <strong>catégorie du décompte</strong> — un mot de passe
+compté comme « champ sensible » au lieu de « mot de passe », donc retiré par le filet et non par la
+règle qui aurait dû s'en charger. <strong>Vérifier qu'un secret est parti ne suffit pas ; il faut
+vérifier par quelle règle il est parti.</strong> Le voisin qu'aucune règle ne couvrait, lui, ne
+partait pas.</p></div>
+<p>Ce champ est aussi le plus facile à perdre en recopiant un dossier —
+voir <a href="#piege-62">#62</a>, où son oubli dépouillait les profils de tout ce dont ils
+héritaient.</p>
 
 <h2 id="cat-git">Git &amp; GitHub</h2>
 
