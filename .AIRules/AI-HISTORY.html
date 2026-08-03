@@ -24,6 +24,44 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Un id supprimé ne laisse plus de trace derrière lui (2026-08-03)</h2>
+<div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
+2026-08-03</span>
+<p>Branche <code>fix/ids-morts</code>. Dernier point ouvert du voisinage
+<code>config.store</code>, laissé de côté le 2026-08-02 comme « cosmétique, à traiter quand on y
+repassera ».</p></div>
+<p><code>favorites</code>, <code>favoriteGroups</code>, <code>hiddenProfileIds</code> et
+<code>hiddenGroupIds</code> gardaient l'id d'une entrée supprimée, dans chaque workspace, sans que
+rien ne les ramasse. Aucune perte de données — une accumulation qui ne se vide jamais.</p>
+<p><strong>Ce qui a décidé de la forme du correctif</strong>, et qui n'était pas prévu : la
+solution évidente était d'élargir <code>pruneDeadOrderIds()</code> aux quatre listes. Elle est
+fausse. Un balayage doit répondre « cet id existe-t-il encore ? », et
+<code>config.store.profiles</code>/<code>.groups</code> ne portent que les entrées de
+l'utilisateur : l'arbre affiche aussi les profils fournis par les <em>providers</em> et les groupes
+synthétiques qui les portent, absents de <code>config.store</code>. Le balayage aurait donc
+<strong>supprimé les favoris de ces profils-là</strong> — soit exactement l'inverse du but. Le
+nettoyage se fait au point de suppression, où l'id est connu d'emblée et où rien n'a à être
+déduit. Voir <a href="AI-CONTEXT.html#piege-74">piège #74</a>.</p>
+<p><strong>Un défaut latent est tombé au passage</strong>, absent de la fiche :
+<code>pruneDeadOrderIds()</code> jugeait déjà la vie d'un id sur <code>config.store</code> seul,
+donc la position d'un profil builtin comptait pour morte et retombait à son défaut au prochain
+réordonnancement. Il consulte désormais aussi <code>rawGroupsSnapshot</code>. C'est en cherchant
+pourquoi la solution évidente était dangereuse qu'il est apparu.</p>
+<p><strong>Ce que le re-parentage ne fait pas, et ne doit pas faire</strong> : il n'appelle pas ce
+nettoyage. <code>migrateWorkspaceGroupId()</code> a déjà renommé toutes les traces de l'ancien id
+avant que le groupe ne soit supprimé — migrer, puis supprimer. Inverser les deux, ou ajouter le
+nettoyage « par symétrie », effacerait ce qui vient d'être migré. Écrit dans le code à l'endroit
+même où la question se pose.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>3884789</code></td>
+<td><strong><code>forgetDeletedId()</code> appelée depuis <code>deleteProfile()</code> et
+<code>deleteGroup()</code></strong>, sur tous les workspaces, l'état replié du dossier compris.
+<code>pruneDeadOrderIds()</code> consulte désormais l'instantané non filtré.</td></tr>
+</table>
+
 <h2>Le SCSS ne déborde plus sur Tabby, et les icônes ne sont plus chargées au démarrage
 (2026-08-03)</h2>
 <div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
