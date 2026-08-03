@@ -889,12 +889,31 @@ pas, chaque <code>\</code> serait cherché comme <code>\\</code>.</p>
 
 <h3>Points de veille — <span class="pill warn">⚠️ à revérifier après update Tabby</span></h3>
 
-<h4 id="fragile-1">Édition de profil (clic droit → "Éditer...") — le plus fragile de tous</h4>
-<p>Pilote du DOM interne non versionné de <code>tabby-settings</code> : chaque ligne est un
-<code>.collapse-item</code>, cliquer dessus ouvre directement la modale (pas de bouton dédié) ;
-<code>.modal-content</code>/<code>.modal-header h3</code>/<code>.modal-footer button</code> pour
-détecter la fermeture. Si ça casse : la modale ne s'ouvre plus, ou pire une mauvaise ligne s'ouvre.
-Pas destructeur si seule la détection de fermeture casse (l'utilisateur ferme l'onglet à la main).</p>
+<h4 id="fragile-1">Édition de profil (clic droit → « Éditer… ») <span class="pill done">✅ Point de veille supprimé (2026-08-03)</span></h4>
+<p>Ce point décrivait le pilotage du DOM interne non versionné de <code>tabby-settings</code>
+(<code>.collapse-item</code> cliqués un à un, ligne retrouvée par le texte d'un <code>span</code>,
+<code>.modal-content</code> sondé pour détecter la fermeture) — le plus fragile du plugin. <strong>Ce
+chemin n'existe plus</strong> : <code>editProfile()</code> ouvre
+<code>EditProfileModalComponent</code> directement, comme <code>tabby-settings</code> le fait pour sa
+propre liste, puis écrit par <code>writeProfile()</code>.</p>
+<div class="callout warning"><span class="callout-title">Ce qu'il faut en retenir, et qui n'est pas
+propre à ce cas</span>
+<p>Le commentaire qui justifiait le pilotage DOM affirmait qu'aucune API publique n'existait, alors
+que le <em>même fichier</em> ouvrait déjà cette modale quelques centaines de lignes plus haut pour
+« Nouveau profil… », et que <code>src/tabby-settings-augment.d.ts</code> la déclarait. Un contournement
+survit à la raison qui l'a fait naître, et son commentaire devient l'argument qui empêche de le
+rouvrir. Quand un contournement pilote le DOM de l'hôte, revérifier son motif avant de bâtir dessus —
+la méthode du <a href="#piege-13">piège #13</a> répond en quelques minutes.</p></div>
+<p><strong>Ce qui reste à surveiller</strong>, bien plus étroit : les deux <code>@Input()</code> passés
+à la modale (<code>partialProfile</code>, <code>profileProvider</code>) et le contrat de
+<code>providerForProfile()</code>/<code>writeProfile()</code>. Tous quatre sont dans les typings npm
+ou dans l'augmentation dédiée, donc un renommage se voit à la compilation — sauf pour
+<code>partialProfile</code>, dont l'augmentation « ment » à TypeScript par construction
+(<a href="#piege-17">piège #17</a>).</p>
+<p><strong>Une limite héritée de Tabby, ni corrigée ni aggravée</strong> : <code>writeProfile()</code>
+ne fait rien si le profil n'est pas dans <code>config.store.profiles</code> — le cas d'un profil fourni
+par un provider (<a href="#piege-74">#74</a>). L'édition d'un tel profil se perd en silence, chez nous
+comme dans l'onglet Profils natif.</p>
 
 <h4 id="fragile-2"><code>SettingsTabComponent.activeTab</code></h4>
 <p>Vrai <code>@Input()</code> documenté mais toujours <code>@hidden</code> donc non contractuel.

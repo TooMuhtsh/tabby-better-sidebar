@@ -36,6 +36,7 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
 <tr><td><a href="#robustesse">Robustesse : vérifier le couplage à l'hôte au démarrage</a></td><td><span class="pill planned">📋 Proposé (élargi le 2026-08-03)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#edition-profil">Édition de profil par l'API plutôt que par le DOM</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Haute</td></tr>
 <tr><td><a href="#feature-flags">Interrupteurs par bloc de la sidebar</a></td><td><span class="pill planned">📋 Proposé (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
@@ -2069,14 +2070,13 @@ inégalement risquées — les traiter ensemble reviendrait à sur-protéger les
 <table>
 <tr><th>Nature</th><th>Où</th><th>Ce qui casse, et comment ça se voit</th></tr>
 <tr><td><strong>DOM non versionné de l'hôte</strong></td>
-    <td><code>mount.service.ts</code> : <code>.window.h-100.d-flex</code> ;
-        <code>sidebarTree.component.ts</code> : <code>.collapse-item</code>,
-        <code>.modal-content</code> et le <code>span</code> qui porte le nom du profil</td>
-    <td>Le plus dur, et <strong>déjà muet aujourd'hui</strong> : <code>mount()</code> fait un
+    <td><code>mount.service.ts</code> : <code>.window.h-100.d-flex</code></td>
+    <td>Le plus dur, et <strong>toujours muet</strong> : <code>mount()</code> fait un
         <code>return</code> nu si le conteneur est introuvable, donc la sidebar n'apparaît pas et
-        rien ne le dit ; <code>clickNativeProfileRow()</code> rend <code>false</code> et laisse
-        l'utilisateur sur Paramètres → Profils sans explication.
-        (<a href="AI-CONTEXT.html#fragile-1">§ fragile-1</a>)</td></tr>
+        rien ne le dit. <strong>C'est désormais le seul point de cette nature</strong> — l'édition de
+        profil, qui pilotait le DOM de <code>tabby-settings</code>, est passée par l'API le
+        2026-08-03 (<a href="#edition-profil">fiche</a>,
+        <a href="AI-CONTEXT.html#fragile-1">§ fragile-1</a>).</td></tr>
 <tr><td><strong>Classes empruntées à <code>tabby-ssh</code></strong></td>
     <td>Sous-classement de <code>SFTPPanelComponent</code>, <code>instanceof SSHTabComponent</code>,
         <code>SFTPSession</code></td>
@@ -2146,14 +2146,70 @@ de préconditions nommées — que la fiche d'AI-CONTEXT <em>désigne</em> au li
   qu'il tente le geste concerné.</li>
 </ul>
 
-<h4>Le cas d'origine : édition de profil</h4>
-<p>Conservé tel quel, comme premier client du mécanisme ci-dessus. Envelopper la séquence
-<code>clickNativeProfileRow()</code> (édition de profil par clic droit — le point le plus fragile du
-plugin, voir <a href="AI-CONTEXT.html#fragile-1">AI-CONTEXT § points de veille</a>) pour qu'un futur
-changement de DOM dans <code>tabby-settings</code> affiche un message clair (« Impossible d'ouvrir
-automatiquement la modale d'édition, redirection vers Paramètres → Profils ») plutôt que d'échouer
-silencieusement. La fonction rend déjà <code>false</code> dans ce cas : <strong>l'information existe,
-elle n'est simplement pas remontée</strong>.</p>
+<h4>Le cas d'origine : édition de profil <span class="pill done">✅ Sans objet (2026-08-03)</span></h4>
+<p>Cette fiche demandait à l'origine d'envelopper <code>clickNativeProfileRow()</code> pour qu'un
+changement de DOM dans <code>tabby-settings</code> affiche un message clair plutôt que d'échouer en
+silence. <strong>Le pilotage DOM a été supprimé au lieu d'être instrumenté</strong> — voir
+<a href="#edition-profil">Édition de profil par l'API</a>. Il n'y a plus rien à durcir ici.</p>
+<div class="callout note"><span class="callout-title">Ce que ça enseigne au reste du chantier</span>
+<p>Le premier réflexe devant un couplage fragile a été de mieux <em>surveiller</em> la casse. La bonne
+réponse, dans ce cas-là, était de <strong>retirer le couplage</strong> — et elle a coûté moins cher
+que le garde-fou qu'on s'apprêtait à construire. Avant d'instrumenter un point de contact, poser la
+question dans cet ordre : peut-il disparaître ? Sinon seulement, comment le rendre bruyant.</p></div>
+
+<h3 id="edition-profil">Édition de profil par l'API plutôt que par le DOM
+<span class="pill done">✅ Fait (2026-08-03)</span></h3>
+<p class="muted">Issu du chantier <a href="#robustesse">robustesse</a> ci-dessus : en inventoriant le
+couplage à l'hôte, le point présenté comme le plus fragile du plugin s'est révélé être un
+contournement inutile. Branche <code>refactor/edition-profil-modale-directe</code>.</p>
+
+<p>« Éditer… » du menu contextuel ouvrait l'onglet Paramètres → Profils, dépliait tous les dossiers
+par des clics successifs, retrouvait la ligne du profil en comparant le texte d'un <code>span</code>,
+la cliquait, puis sondait <code>.modal-content</code> toutes les 300 ms pour savoir quand refermer
+l'onglet. Le commentaire qui portait ce code affirmait qu'aucune API publique n'existait.
+<strong>C'était faux, et contredit par le même fichier</strong> : « Nouveau profil… » ouvrait déjà
+<code>EditProfileModalComponent</code> par <code>ngbModal.open()</code>.</p>
+<ul>
+<li><strong>Repris de <code>tabby-settings</code>, pas réinventé</strong> : son
+  <code>editProfile()</code>/<code>showProfileEditModal()</code> tient en huit lignes —
+  <code>providerForProfile()</code>, un clone dans <code>partialProfile</code>, le provider dans
+  <code>profileProvider</code>, puis <code>writeProfile()</code> du résultat. Les sources
+  TypeScript d'origine sont livrées dans <code>resources/builtin-plugins/*/src/</code> de l'app
+  installée — à préférer à la lecture du bundle compilé quand elles sont là.</li>
+<li><strong>Le clone n'est pas une précaution</strong> : la modale mute l'objet qu'elle reçoit, donc
+  lui passer le profil vivant ferait survivre les modifications d'une édition <em>annulée</em>
+  (<a href="AI-CONTEXT.html#piege-12">piège #12</a>). <code>structuredClone()</code> ici, là où Tabby
+  emploie <code>clone-deep</code>.</li>
+<li><strong>Ce qui disparaît</strong> : <code>clickNativeProfileRow()</code>,
+  <code>watchForNativeModalClose()</code>, le champ <code>modalWatchInterval</code> et son nettoyage,
+  l'utilitaire <code>wait()</code>, les temporisations de 400/150/300 ms, et l'ouverture-fermeture
+  d'un onglet Paramètres sous les yeux de l'utilisateur.</li>
+<li><strong>Ce qui reste de l'ancien chemin</strong> : l'ouverture de Paramètres → Profils, devenue
+  le <em>repli</em> du seul cas d'échec réel — un profil dont <code>providerForProfile()</code> ne
+  résout pas le fournisseur. Tabby lève une exception dans ce cas ; le plugin notifie et envoie
+  l'utilisateur là où il peut finir à la main.</li>
+</ul>
+<div class="callout note"><span class="callout-title">Testé par pilotage CDP le 2026-08-03 — 15 contrôles verts</span>
+<p>Passe autonome par l'injecteur Angular (jamais de clic simulé), sur un groupe et un profil
+jetables <code>zzz-test</code> créés puis retirés dans le même geste — <code>config.store</code>
+revenu à son compte exact, aucun résidu, et aucune erreur ni avertissement dans la console du
+renderer.</p>
+<p>Couvert : la modale ouverte est bien <code>EditProfileModalComponent</code> et rendue dans le DOM ;
+elle reçoit un clone et non l'objet vivant ; le provider est résolu et transmis ; <strong>aucun onglet
+Paramètres n'est ouvert au passage</strong> ; une annulation n'écrit rien ; un enregistrement persiste
+le nom et le port sans perdre les champs non touchés, sans dupliquer le profil, en préservant type et
+groupe ; et le cas « provider introuvable » ne montre aucune modale, notifie, et retombe sur
+Paramètres → Profils.</p>
+<p><strong>Non couvert par l'automatisation</strong>, à voir à l'œil : le rendu de la modale et le
+clic réel sur « Enregistrer ». Le test appelle <code>save()</code>, qui est exactement ce que le
+bouton déclenche, mais il ne dit rien de l'apparence.</p></div>
+<div class="callout warning"><span class="callout-title">Une limite héritée, ni corrigée ni aggravée</span>
+<p><code>writeProfile()</code> ne fait rien quand le profil n'est pas dans
+<code>config.store.profiles</code> — le cas d'un profil fourni par un provider
+(<a href="AI-CONTEXT.html#piege-74">piège #74</a>). Éditer un tel profil se perd donc en silence,
+exactement comme dans l'onglet Profils natif. Ce n'est pas une régression de ce chantier et ça n'a
+pas été traité ici : le corriger demanderait de décider ce que « modifier un profil que Tabby
+regénère » veut dire, ce qui est un autre sujet.</p></div>
 
 <h3 id="feature-flags">Interrupteurs par bloc de la sidebar</h3>
 <p class="muted">Proposé par l'utilisateur le 2026-08-03. Motif : garder la puissance du
@@ -2196,7 +2252,7 @@ actives</a>, <a href="#tunnels-ssh">tunnels actifs</a>, <a href="#sftp">bascule 
 <a href="AI-HISTORY.html">AI-HISTORY</a>, commit <code>df8ef82</code>. Ce n'est pas un état acquis :
 la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre.</p>
 
-<h4>Remise à niveau vers la charte <code>20260731-204511</code></h4>
+<h4 id="remise-a-niveau">Remise à niveau vers la charte <code>20260731-204511</code></h4>
 <p>Engagée le 2026-07-31. Trois révisions traversées depuis la dernière conformité du projet :
 <code>20260731-150737</code> et <code>20260731-203812</code> <em>touchent le noyau</em> — elles ne
 s'appliquent jamais d'office (<code>A-7</code>) —, <code>20260731-204511</code> est <em>purement
