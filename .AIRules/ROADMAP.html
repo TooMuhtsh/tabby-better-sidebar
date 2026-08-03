@@ -178,7 +178,7 @@ masquage. Traité avant le SFTP (initialement prévu après) — choix explicite
 restauration, comportement de la barre de filtre, favoris cloisonnés, ordre cloisonné, imbrication
 depuis un workspace, survie à un redémarrage complet). Cinq correctifs livrés à cette occasion, voir
 <a href="AI-HISTORY.html">AI-HISTORY</a> (2026-07-29) et les pièges #30/#31. Commit
-<code>962207e</code>. Restent différés et non implémentés : icône par workspace, sélecteur adaptatif,
+<code>42dcb09</code>. Restent différés et non implémentés : icône par workspace, sélecteur adaptatif,
 couleurs contextuelles, export/import JSON — détaillés ci-dessous.</p></div>
 
 <ul>
@@ -350,7 +350,7 @@ ouvertes en arrière-plan.</p>
 il est donc impératif de s'appuyer sur SFTP pour garantir la stabilité globale.</p></div>
 
 <div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-29</span>
-<p>Commits <code>95b8809</code> (socle partagé) et <code>0ad778a</code> (la section), détail dans
+<p>Commits <code>a652f0f</code> (socle partagé) et <code>8b3dcfa</code> (la section), détail dans
 <a href="AI-HISTORY.html">AI-HISTORY</a>. Une ligne <strong>par pane</strong>, pas par onglet ; clic
 = focus (y compris à l'intérieur d'un split) ; action de survol pour sauter à la session et basculer
 la sidebar sur son SFTP. Deux pièges consignés (#37, #38) et un bug préexistant du panneau SFTP
@@ -736,7 +736,7 @@ try/catch du composant natif, donc son échec laissait un panneau vide et muet.<
 </ul>
 <div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-02</span>
 <p><strong>Une troisième cause manquait, et elle annulait les deux autres.</strong> Le premier
-correctif (<code>fe449a5</code>) reconstruisait bien le panneau sur changement d'identité de session,
+correctif (<code>477b7e5</code>) reconstruisait bien le panneau sur changement d'identité de session,
 mais <code>sync()</code> sortait avant de l'appeler, sur <code>tab === this.boundTab</code> : un
 onglet reconnecté est le <em>même objet</em>, seul <code>tab.sshSession</code> change. Et le
 garde-fou censé forcer un passage par le placeholder testait <code>sshSession?.open</code>, drapeau
@@ -901,7 +901,7 @@ retirer la condition <code>!sftpMode</code> de ce <code>*ngIf</code>, et vérifi
 façon si c'est le cas).</p>
 
 <div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-30</span>
-<p>Commits <code>fe8304f</code> (la condition retirée) puis <code>4a97972</code> (tout le reste),
+<p>Commits <code>efcf3f8</code> (la condition retirée) puis <code>e054ae6</code> (tout le reste),
 détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>. <strong>Retirer le
 <code>!sftpMode</code> ne suffisait pas</strong> : les blocs étaient placés <em>après</em>
 <code>&lt;sidebar-plus-sftp&gt;</code>, qui est <code>flex-grow-1</code> dans la colonne flex, donc
@@ -942,7 +942,7 @@ dossier, via l'API SFTP existante) — à confirmer que <code>deleteItem()</code
 </ul>
 
 <div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-30</span>
-<p>Commits <code>fe8304f</code> (le geste et la modale) et <code>f1459da</code> (garde-fous),
+<p>Commits <code>efcf3f8</code> (le geste et la modale) et <code>dcabce7</code> (garde-fous),
 détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>. <code>SFTPDeleteModalComponent</code> n'a pas
 été retenu : un <code>ConfirmModalComponent</code> maison (NgbModal) sert à la fois la touche
 <kbd>Suppr</kbd> et l'entrée « Delete » du clic droit, ce qui referme du même geste l'écart
@@ -980,7 +980,7 @@ utilisé côté renderer dans <code>tabby-electron/src/services/electron.service
 depuis le plugin sans plomberie IPC supplémentaire.</p>
 
 <div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-30</span>
-<p>Commit <code>f08ae3b</code>, détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>, trois pièges
+<p>Commit <code>1419073</code>, détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>, trois pièges
 consignés (<a href="AI-CONTEXT.html#piege-44">#44</a>, <a href="AI-CONTEXT.html#piege-45">#45</a>,
 <a href="AI-CONTEXT.html#piege-46">#46</a>). Livré conforme au plan ci-dessus sur l'essentiel —
 plus de <code>openPath()</code>, <code>spawn</code> explicite, « Ouvrir avec... » en échappatoire de
@@ -1091,7 +1091,7 @@ elle-même) — s'assurer qu'aucun fichier temporaire ne reste orphelin indéfin
 </ul>
 
 <div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-01</span>
-<p>Écrit le 2026-07-30 (<code>73f9b94</code>), testé le 2026-08-01 seulement : le commit était
+<p>Écrit le 2026-07-30 (<code>8a89787</code>), testé le 2026-08-01 seulement : le commit était
 resté sans passe de test et a été poussé entre-temps par la campagne de gouvernance, donc
 <strong>du code non exécuté a séjourné sur <code>master</code> public</strong>. C'est exactement ce
 que l'option <code>branches</code> du <code>PROFIL.md</code> évite depuis : un chantier non abouti
@@ -1387,7 +1387,7 @@ onglet divisé, c'est bien le volet focalisé qui reçoit.</p></div>
 <h3 id="integrite-donnees">Intégrité des données au re-parentage et à la suppression
 <span class="pill done">✅ Fait (2026-08-02)</span></h3>
 <div class="callout note"><span class="callout-title">Livré et testé le 2026-08-02</span>
-<p>Branche <code>fix/integrite-donnees</code>, commit <code>990387a</code>. Passe de test pilotée
+<p>Branche <code>fix/integrite-donnees</code>, commit <code>3128e55</code>. Passe de test pilotée
 dans Tabby sur des entrées <code>grp-zzz-test-*</code>, détaillée dans
 <a href="AI-HISTORY.html">AI-HISTORY</a> : les quatre scénarios passent, la non-régression aussi, et
 la configuration réelle a été retrouvée identique champ à champ après coup.</p>
@@ -1613,8 +1613,8 @@ natif, <code>CommonSFTPContextMenu</code>) confirme via <code>platform.showMessa
 <a href="#suppr-sftp">suppression SFTP par Suppr</a> ci-dessous : <code>showContextMenu()</code> à
 surcharger pour remplacer cette entrée par une ouvrant une modale HTML/NgbModal maison, partagée avec
 le geste Suppr.</p>
-<p><strong>Corrigé et validé le 2026-07-30</strong> (<code>fe8304f</code>, garde-fous
-<code>f1459da</code>) : les deux chemins de suppression SFTP — touche <kbd>Suppr</kbd> et entrée du
+<p><strong>Corrigé et validé le 2026-07-30</strong> (<code>efcf3f8</code>, garde-fous
+<code>dcabce7</code>) : les deux chemins de suppression SFTP — touche <kbd>Suppr</kbd> et entrée du
 clic droit — ouvrent la même modale HTML maison. Le retrait de l'entrée native se fait
 <strong>par position</strong> et non par libellé traduit : l'app installée n'a pas de catalogue
 français pour cette clé, un test de texte y était donc inopérant.</p></div>
@@ -1754,7 +1754,7 @@ fréquence d'usage — contrairement à « Récentes » qui s'use avec le temps 
 finit par en sortir), une icône favorite reste tant qu'on ne la retire pas explicitement.</p>
 
 <div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-07-29</span>
-<p>Commit <code>37bb0ac</code>. Deux écarts au design d'origine ci-dessous, tous deux issus du test
+<p>Commit <code>76085d5</code>. Deux écarts au design d'origine ci-dessous, tous deux issus du test
 manuel :</p>
 <ul>
 <li><strong>Clic droit sur la tuile plutôt que bouton étoile</strong> (« c'est plus naturel »). La
@@ -1936,7 +1936,7 @@ vers Paramètres → Profils") plutôt que d'échouer silencieusement.</p>
 <h3 id="gouvernance">Conformité de la gouvernance à la charte
 <span class="pill done">✅ Revue faite (2026-07-31)</span></h3>
 <p>Revue faite le 2026-07-29 (<code>A-15</code>, Cas B) — écarts constatés et corrigés détaillés dans
-<a href="AI-HISTORY.html">AI-HISTORY</a>, commit <code>0591ba8</code>. Ce n'est pas un état acquis :
+<a href="AI-HISTORY.html">AI-HISTORY</a>, commit <code>df8ef82</code>. Ce n'est pas un état acquis :
 la <a href="GOUVERNANCE-IA.md">charte</a> évolue, ce projet doit suivre.</p>
 
 <h4>Remise à niveau vers la charte <code>20260731-204511</code></h4>
@@ -1981,7 +1981,7 @@ rappelée plus bas.</p>
 <tr><td><strong>Roadmap</strong> — 16 statuts « Fait » confrontés au dépôt</td>
     <td>Aucun à faire redescendre : chacun porte une trace de code <em>et</em> de validation ou de
     mise en service. Le <a href="#drag-out">glisser-déposer sortant</a> était le cas d'école tenu
-    correctement — code commité (<code>73f9b94</code>), statut maintenu à « Proposé » faute de test
+    correctement — code commité (<code>8a89787</code>), statut maintenu à « Proposé » faute de test
     <em>à cette date</em> ; il est passé à « Fait » le lendemain, une fois testé.</td></tr>
 <tr><td><strong>Journal</strong> — conformité <code>A-4</code></td>
     <td>Conforme, rien à corriger : aucun <code>(commit en cours)</code> survivant, aucune formule
