@@ -144,41 +144,48 @@ sidebar-plus-tree .active-sessions {
             box-shadow: inset 2px 0 0 var(--theme-primary);
         }
 
+        // Still a 6px dot, but hoverable over 14: it carries the latency
+        // tooltip now, and a 6px target cannot be aimed at. `content-box` +
+        // `background-clip` grow the box without growing the dot, and the
+        // negative margins give the padding back to the layout — `margin-left`
+        // stays at 0 so the visible dot lands where `.ms-1` used to put it.
         .status-dot {
             flex: 0 0 auto;
+            box-sizing: content-box;
             width: 6px;
             height: 6px;
+            padding: 4px;
+            margin: -4px;
+            margin-left: 0;
             border-radius: 50%;
-            background-color: #3fb950;
-        }
-
-        // Latency, at the far end of the row and kept smaller than the
-        // connection dot on the left: it qualifies the session, it does not
-        // announce its state. Same colours as the status dots so the two read
-        // as one family, plus an amber that has no equivalent there.
-        .ping-dot {
-            flex: 0 0 auto;
-            width: 5px;
-            height: 5px;
-            margin-right: .25rem;
-            border-radius: 50%;
+            background-clip: content-box;
             background-color: var(--theme-secondary-fg);
             opacity: .35;
 
-            &.ping-dot-good {
+            // Green keeps its meaning — a session that answers promptly. The
+            // amber and red are latency, never connection state: a row is only
+            // in this list while its session is live.
+            &.status-dot-connected {
                 background-color: #3fb950;
                 opacity: 1;
             }
 
-            &.ping-dot-fair {
+            &.status-dot-fair {
                 background-color: #d29922;
                 opacity: 1;
             }
 
-            &.ping-dot-poor {
+            &.status-dot-poor {
                 background-color: #e5534b;
                 opacity: 1;
             }
+        }
+
+        .session-uptime {
+            flex: 0 0 auto;
+            margin-left: .4rem;
+            font-size: .65rem;
+            opacity: .5;
         }
 
         .fw-20 {

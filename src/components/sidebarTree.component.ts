@@ -146,6 +146,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * lose track of it.
      */
     activeSessions: ActiveSession[] = []
+    /** tab → when it was first seen live, the only record of a session's age there is (see sessionUptime()). */
+    private sessionOpenedAt = new Map<SSHTabComponent, number>()
     /** Per-machine UI state (localStorage, like sftpMode) rather than a `sidebarPlus.*` config key — nothing worth syncing across machines, and it sidesteps piège #16 entirely. */
     activeSessionsCollapsed = window.localStorage.sidebarPlusActiveSessionsCollapsed === 'true'
 
@@ -1194,6 +1196,23 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             this.activeSessions = sessions
         }
 
+        // Uptime is stamped here, on first sighting, and forgotten as soon as
+        // the tab leaves the list — see sessionUptime() for what that implies.
+        // Kept out of the ActiveSession rows for the same reason as the
+        // latency: a value that changes every tick would fail sameSessions().
+        const now = Date.now()
+        const live = new Set(sessions.map(session => session.tab))
+        for (const tab of this.sessionOpenedAt.keys()) {
+            if (!live.has(tab)) {
+                this.sessionOpenedAt.delete(tab)
+            }
+        }
+        for (const tab of live) {
+            if (!this.sessionOpenedAt.has(tab)) {
+                this.sessionOpenedAt.set(tab, now)
+            }
+        }
+
         // Rides this same 2s pass rather than bringing its own timer; the
         // service decides which sessions are actually due a probe, and does
         // nothing at all while the interval is 0. Deliberately *not* part of
@@ -1204,17 +1223,75 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.ping.poll(sessions.map(session => session.tab))
     }
 
-    pingState (session: ActiveSession): PingState {
-        return this.ping.state(session.tab)
+    /**
+     * The colour of the row's one dot.
+     *
+     * There is no second dot for latency, on purpose: every row in this section
+     * is a live session by construction, so a dot that was always green said
+     * nothing at all. With the probe off it stays green — the state it has
+     * always shown — and with it on, it says how fast the session answers.
+     */
+    sessionDotClass (session: ActiveSession): string {
+        if (this.ping.intervalMs <= 0) {
+            return 'status-dot-connected'
+        }
+        const state: PingState = this.ping.state(session.tab)
+        if (state === 'good') {
+            return 'status-dot-connected'
+        }
+        if (state === 'fair') {
+            return 'status-dot-fair'
+        }
+        if (state === 'poor') {
+            return 'status-dot-poor'
+        }
+        // 'unknown' (not measured yet) and 'unavailable' (no SFTP subsystem)
+        // both fall through to the dimmed base style, which is the honest
+        // rendering of "no figure to show".
+        return ''
     }
 
-    pingLabel (session: ActiveSession): string {
-        return this.ping.label(session.tab)
+    /** Everything the dot knows, in one tooltip: latency when it is being measured, uptime always. */
+    sessionDotLabel (session: ActiveSession): string {
+        const uptime = `ouverte depuis ${this.sessionUptime(session)}`
+        if (this.ping.intervalMs <= 0) {
+            return `Session ${uptime}`
+        }
+        return `${this.ping.label(session.tab)} — session ${uptime}`
     }
 
-    /** Hidden entirely when the feature is off, rather than shown as a grey "unknown" dot on every row. */
-    get pingEnabled (): boolean {
-        return this.ping.intervalMs > 0
+    /**
+     * How long the session has been up, stamped by this component the first
+     * time the tab shows up in the list.
+     *
+     * Nothing in Tabby or `tabby-ssh` records when a session opened — checked
+     * on the installed source — so it has to be observed. Two consequences,
+     * both benign: a session that was already open when this component mounted
+     * is dated from the mount (only reachable by disabling and re-enabling the
+     * plugin, the sidebar being mounted at startup), and a session that drops
+     * and reconnects restarts from zero, since it leaves the list in between.
+     * The second one is arguably the right answer anyway.
+     */
+    sessionUptime (session: ActiveSession): string {
+        const startedAt = this.sessionOpenedAt.get(session.tab)
+        return startedAt ? SidebarPlusTreeComponent.formatUptime(Date.now() - startedAt) : ''
+    }
+
+    /** `42 s`, `12 min`, `3 h 05`, `2 j 4 h` — coarser as it gets longer, since a session's age is read at a glance. */
+    private static formatUptime (ms: number): string {
+        const seconds = Math.max(0, Math.floor(ms / 1000))
+        if (seconds < 60) {
+            return `${seconds} s`
+        }
+        const minutes = Math.floor(seconds / 60)
+        if (minutes < 60) {
+            return `${minutes} min`
+        }
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24) {
+            return `${hours} h ${String(minutes % 60).padStart(2, '0')}`
+        }
+        return `${Math.floor(hours / 24)} j ${hours % 24} h`
     }
 
     private static sameSessions (a: ActiveSession[], b: ActiveSession[]): boolean {
