@@ -194,7 +194,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     private configSubscription: Subscription|null = null
     /** Focus moves *between panes* of the active split emit nothing on AppService — see watchSplitFocus(). */
     private splitFocusSubscription: Subscription|null = null
-    private modalWatchInterval: ReturnType<typeof setInterval>|null = null
 
     contextMenuGroup: PartialProfileGroup<CollapsableProfileGroup>|null = null
     contextMenuProfile: PartialProfile<Profile>|null = null
@@ -344,9 +343,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.configSubscription?.unsubscribe()
         this.hotkeySubscription?.unsubscribe()
         this.splitFocusSubscription?.unsubscribe()
-        if (this.modalWatchInterval) {
-            clearInterval(this.modalWatchInterval)
-        }
         if (this.selectionNoticeTimer) {
             clearTimeout(this.selectionNoticeTimer)
         }
@@ -3156,102 +3152,65 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     /**
-     * There is no public API to open the profile edit modal directly (it's
-     * EditProfileModalComponent, marked @hidden and not exported by
-     * tabby-settings — same situation as the native profile-tree component).
-     * Falls back to: open Settings > Profiles (SettingsTabComponent IS
-     * exported, takes an `activeTab` input for this), then drive the native
-     * DOM to expand every collapsed group and click the target profile's
-     * row directly — which is what actually opens the native edit modal
-     * (there's no separate "Edit" button; the dropdown only has
-     * Duplicate/Hide/Delete). If we're the ones who opened a brand-new
-     * Settings tab for this (as opposed to reusing one the user already had
-     * open), automatically close it and return to the previous tab once the
-     * modal closes, with a toast confirming. This last part depends on
-     * tabby-settings' internal, unversioned DOM structure — see roadmap
-     * "Points fragiles à revérifier après une mise à jour de Tabby".
+     * Opens Tabby's own profile edit modal directly, exactly the way
+     * `tabby-settings` opens it for its own list: `ngbModal.open()`, hand it a
+     * clone and the profile's provider, then `writeProfile()` the result.
+     *
+     * This used to drive tabby-settings' DOM instead — open Settings >
+     * Profiles, click every collapsed group open, find the row whose `span`
+     * carries the profile name, click it, then poll for `.modal-content` to
+     * learn when to close the tab again. That was the single most fragile
+     * point of the plugin, and it was never necessary: the comment justifying
+     * it claimed no public API existed, while `pickProfileTemplate()` opened
+     * the very same modal a few hundred lines above. `EditProfileModalComponent`
+     * is `@hidden`, which proves nothing about what is exported at runtime
+     * (piège #13), and `src/tabby-settings-augment.d.ts` already declared it.
+     *
+     * Opening a Settings tab was the *vehicle*, never the intent. It survives
+     * only as the fallback below, for a profile whose provider cannot be
+     * resolved — where Tabby itself throws.
      */
-    async openProfileSettings (profile?: PartialProfile<Profile>): Promise<void> {
-        const previousTab = this.app.activeTab
-        const existingSettingsTab = this.app.tabs.find(t => t instanceof SettingsTabComponent) as SettingsTabComponent|undefined
-        let settingsTab: BaseTabComponent
-        let weOpenedTab = false
-        if (existingSettingsTab) {
-            existingSettingsTab.activeTab = 'profiles'
-            this.app.selectTab(existingSettingsTab)
-            settingsTab = existingSettingsTab
-        } else {
-            settingsTab = this.app.openNewTabRaw({ type: SettingsTabComponent, inputs: { activeTab: 'profiles' } })
-            weOpenedTab = true
-        }
+    async editProfile (profile?: PartialProfile<Profile>): Promise<void> {
         this.closeContextMenu()
-
         if (!profile) {
             return
         }
-        const modalOpened = await this.clickNativeProfileRow(profile.name)
-        if (modalOpened && weOpenedTab) {
-            this.watchForNativeModalClose(settingsTab, previousTab)
+
+        const provider = this.profilesService.providerForProfile(profile)
+        if (!provider) {
+            // tabby-settings throws here. Sending the user somewhere they can
+            // finish the job by hand beats a stack trace they never see.
+            this.notifications.error(`Aucun fournisseur ne gère « ${profile.name} » — ouverture des paramètres`)
+            this.openProfilesSettingsTab()
+            return
         }
+
+        const modal = this.ngbModal.open(EditProfileModalComponent, { size: 'lg' })
+        // Never the live object: the modal mutates what it is handed, so a
+        // cancelled edit would otherwise keep its changes — in the displayed
+        // tree, and in `config.store` for anything reachable from it (piège
+        // #12). tabby-settings clones here too, for the same reason.
+        modal.componentInstance.partialProfile = structuredClone(profile)
+        modal.componentInstance.profileProvider = provider
+
+        const result = await modal.result.catch(() => null) as PartialProfile<Profile>|null
+        if (!result) {
+            return
+        }
+        result.type = provider.id
+        await this.profilesService.writeProfile(result)
+        await this.config.save()
     }
 
-    /** Expands every collapsed group in the native profiles list (`fa-folder` = collapsed, `fa-folder-open` = expanded), then clicks the target profile's row. Returns whether the edit modal actually opened. */
-    private async clickNativeProfileRow (profileName: string): Promise<boolean> {
-        await this.wait(400)
-
-        for (let pass = 0; pass < 10; pass++) {
-            const collapsed = Array.from(document.querySelectorAll<HTMLElement>('.collapse-item'))
-                .filter(row => row.querySelector('.fa-folder:not(.fa-folder-open)'))
-            if (!collapsed.length) {
-                break
-            }
-            collapsed.forEach(row => row.click())
-            await this.wait(150)
+    /** Settings > Profiles, reusing a Settings tab the user already had open. Only reached when a profile has no resolvable provider. */
+    private openProfilesSettingsTab (): void {
+        const existing = this.app.tabs.find(t => t instanceof SettingsTabComponent) as SettingsTabComponent|undefined
+        if (existing) {
+            existing.activeTab = 'profiles'
+            this.app.selectTab(existing)
+            return
         }
-
-        const row = Array.from(document.querySelectorAll<HTMLElement>('.collapse-item'))
-            .find(r => r.querySelector('span')?.textContent?.trim() === profileName)
-        row?.click()
-        if (!row) {
-            return false
-        }
-        await this.wait(300)
-        return !!document.querySelector('.modal-content')
-    }
-
-    /** Polls for the native edit modal to close, then closes the Settings tab we opened and returns to the previously active one. */
-    private watchForNativeModalClose (settingsTab: BaseTabComponent, previousTab: BaseTabComponent|null): void {
-        if (this.modalWatchInterval) {
-            clearInterval(this.modalWatchInterval)
-        }
-        let sawModal = false
-        let elapsedMs = 0
-        this.modalWatchInterval = setInterval(() => {
-            elapsedMs += 300
-            const modalPresent = !!document.querySelector('.modal-content')
-            if (modalPresent) {
-                sawModal = true
-                return
-            }
-            if (sawModal || elapsedMs > 10 * 60 * 1000) {
-                if (this.modalWatchInterval) {
-                    clearInterval(this.modalWatchInterval)
-                    this.modalWatchInterval = null
-                }
-                if (!sawModal) {
-                    return
-                }
-                this.app.closeTab(settingsTab)
-                if (previousTab) {
-                    this.app.selectTab(previousTab)
-                }
-                this.notifications.notice('Retour à votre session précédente')
-            }
-        }, 300)
-    }
-
-    private wait (ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms))
+        this.app.openNewTabRaw({ type: SettingsTabComponent, inputs: { activeTab: 'profiles' } })
     }
 
     /**
