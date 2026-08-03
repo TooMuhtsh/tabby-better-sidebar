@@ -66,9 +66,17 @@ npm run lint:airules           # valide la syntaxe des documents HTML de .AIRule
 `build` reste le build de **développement** — c'est celui qu'on veut pour tester
 dans Tabby (non minifié, source-map exploitable). `build:prod` n'est là que pour
 la publication, où `prepublishOnly` l'appelle tout seul : ne pas publier un
-bundle de dev. Le gain de poids est modeste (5,8 → 5,1 Mo), l'essentiel du
-paquet étant les collections d'icônes Iconify — voir le chantier « Ménage avant
-release soignée » de la roadmap.
+bundle de dev. Il minifie, n'émet **ni source-map ni `pathinfo`**, et retire les
+maps qu'un build de dev antérieur aurait laissées dans `dist/`. L'essentiel du
+poids restant est les collections d'icônes Iconify — voir le chantier « Ménage
+avant release soignée » de la roadmap.
+
+La config webpack **s'exporte en fonction**, et pas en objet : `--mode` arrive
+par la ligne de commande, où webpack-cli le fusionne par-dessus la config, si
+bien qu'un objet ne peut pas savoir dans quel mode il est construit. Ne pas y
+ajouter `output.clean` : les `.d.ts` que `typings` désigne sont écrits dans
+`dist/` par TypeScript (`declarationDir`), hors des assets webpack, et un
+nettoyage les emporterait.
 
 `lint:airules` est le validateur imposé par `A-14` (option `validateur` du
 `PROFIL.md`) : **à lancer après toute modification d'un document `.AIRules/` qui
