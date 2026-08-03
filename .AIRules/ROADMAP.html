@@ -37,7 +37,7 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
 <tr><td><a href="#robustesse">Robustesse : vérifier le couplage à l'hôte au démarrage</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#edition-profil">Édition de profil par l'API plutôt que par le DOM</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Haute</td></tr>
-<tr><td><a href="#feature-flags">Interrupteurs par bloc de la sidebar</a></td><td><span class="pill planned">📋 Proposé (2026-08-03)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#feature-flags">Interrupteurs par bloc de la sidebar</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
@@ -1928,9 +1928,20 @@ portée de main même avant d'implémenter ce chantier des favoris.</p>
 <div class="callout note"><span class="callout-title">Ce chantier s'est vidé par le bas</span>
 <p>Aucun de ses items n'a jamais été construit « pour lui-même » : chacun est arrivé en dépendance
 d'un autre chantier, et le statut global n'a pas suivi. État repris item par item ci-dessous. Ce qui
-reste ouvert tient en trois points : l'agencement de la page de paramètres en quatre sections,
-l'icône d'engrenage en bas de sidebar, et le gel de la vue.</p></div>
-<h4>Agencement de la page de paramètres (Settings Layout)</h4>
+reste ouvert tient en <strong>deux</strong> points depuis le 2026-08-03 : l'icône d'engrenage en bas
+de sidebar, et le gel de la vue. L'agencement de la page de paramètres est arrivé avec les
+<a href="#feature-flags">interrupteurs par bloc</a>.</p></div>
+<h4>Agencement de la page de paramètres (Settings Layout)
+<span class="pill done">✅ Fait (2026-08-03)</span></h4>
+<div class="callout note"><span class="callout-title">Livré autrement que par le découpage prévu</span>
+<p>Les quatre sections décrites ci-dessous supposaient un classement <em>par sujet</em>. La page est
+finalement organisée <em>par appartenance</em>, sur la règle posée par l'utilisateur : une option vit
+avec l'interrupteur de la fonctionnalité dont elle dépend et disparaît avec elle ; seul ce qui régit
+le plugin entier ou Tabby reste en « Général ». Deux onglets suffisent alors — « Général » et
+« Fonctionnalités » — là où le plan en prévoyait quatre, parce que trois des quatre rubriques
+n'étaient que des regroupements thématiques de réglages qui appartiennent chacun à un bloc. Détail
+dans <a href="#feature-flags">Interrupteurs par bloc</a>.</p></div>
+<p class="muted">Plan d'origine, conservé pour la trace :</p>
 <p>Structurer l'interface de configuration du plugin en 4 sections distinctes :</p>
 <ol>
 <li><strong>Général &amp; Affichage</strong> : options de masquage de l'UI native redondante,
@@ -2259,10 +2270,78 @@ exactement comme dans l'onglet Profils natif. Ce n'est pas une régression de ce
 pas été traité ici : le corriger demanderait de décider ce que « modifier un profil que Tabby
 regénère » veut dire, ce qui est un autre sujet.</p></div>
 
-<h3 id="feature-flags">Interrupteurs par bloc de la sidebar</h3>
+<h3 id="feature-flags">Interrupteurs par bloc de la sidebar
+<span class="pill done">✅ Fait (2026-08-03)</span></h3>
 <p class="muted">Proposé par l'utilisateur le 2026-08-03. Motif : garder la puissance du
 « tout-en-un » sans l'imposer — une interface épurée à qui n'a besoin que des workspaces et des
-favoris, sans rien retirer à qui veut tout.</p>
+favoris, sans rien retirer à qui veut tout. Branche <code>feat/interrupteurs-par-bloc</code>.</p>
+
+<div class="callout note"><span class="callout-title">Fait — 46 contrôles CDP verts le 2026-08-03</span>
+<p>Six clés plates sous <code>sidebarPlus</code> (<code>showActiveSessions</code>,
+<code>showTunnels</code>, <code>showSftp</code>, <code>showTransfers</code>,
+<code>showWorkspaces</code>, <code>showFilter</code>), toutes à <code>true</code> par défaut.</p>
+<p><strong>Éteindre coupe la source, pas seulement la vue</strong> — c'est tout le chantier :</p>
+<ul>
+<li>Sessions et tunnels éteints : le balayage de tous les onglets de tous les splits, toutes les
+  2 s, <strong>ne s'exécute plus du tout</strong>, et les listes déjà collectées sont vidées. La
+  sonde de latence reçoit une liste vide et oublie ses échantillons — plus une seule requête
+  n'atteint un serveur.</li>
+<li>SFTP éteint : le composant est <strong>détruit</strong> (<code>*ngIf</code>) et non caché,
+  libérant les panneaux en cache. C'est l'inverse du choix fait pour la bascule de <em>mode</em>,
+  qui reste en <code>[hidden]</code> — et les deux ont raison, parce que ce ne sont pas les mêmes
+  questions.</li>
+<li>Transferts éteints : <code>track()</code> refuse toute inscription, en un point unique qui
+  couvre le flux <code>fileTransferStarted$</code> comme nos propres appels. Ni historique, ni
+  minuterie de 500 ms.</li>
+</ul>
+<p><strong>Retombées quand un bloc s'éteint</strong>, réunies dans
+<code>reconcileHiddenBlocks()</code>, appelé <em>avant</em> le rechargement de l'arbre : la vue SFTP
+revient aux profils, le workspace actif retombe sur « Tous », le filtre en cours est vidé. Chacune
+évite un état à la fois inatteignable et inexplicable — un workspace qui filtre sans barre pour en
+sortir, un filtre qui masque sans champ qui dise pourquoi.</p>
+</div>
+
+<div class="callout important"><span class="callout-title">Garde-fou posé par l'utilisateur :
+désactiver n'écrase jamais une configuration</span>
+<p>Demandé en cours de chantier, et <strong>il y avait bien un cas</strong> — trouvé par le test
+écrit pour le vérifier, pas par relecture. Éteindre les workspaces fait retomber l'affichage sur
+« Tous », et <code>loadTreeItems()</code> persistait cette valeur dans
+<code>localStorage.sidebarPlusActiveWorkspace</code> en fin de course : le workspace réellement
+choisi était perdu, et rallumer le bloc ne le rendait pas.</p>
+<p>Corrigé en deux endroits — la retombée assigne <code>activeWorkspaceId</code> en mémoire au lieu
+de passer par <code>selectWorkspace()</code>, et la persistance de <code>loadTreeItems()</code> est
+conditionnée au bloc actif. Le rallumage relit la valeur mémorisée. <strong>La règle générale à
+retenir</strong> : un interrupteur ne persiste que sa propre valeur ; tout état qu'il se contente de
+cesser d'afficher lui survit intact.</p>
+<p>Vérifié par empreinte : toute la configuration hors interrupteurs — profils, groupes, workspaces
+avec leurs masquages, favoris et ordres, tunnels configurés d'un profil, états de repli —
+<strong>bit à bit identique</strong> pendant l'extinction des six blocs et après leur rallumage.</p></div>
+
+<div class="callout note"><span class="callout-title">Page de réglages refondue dans le même geste</span>
+<p>Trois règles posées par l'utilisateur en cours de route, qui avancent au passage l'agencement
+demandé par <a href="#ui-polish">Options &amp; polissage UI</a> :</p>
+<ul>
+<li><strong>Deux onglets, « Général » et « Fonctionnalités »</strong>, au lieu d'un seul long
+  déroulé.</li>
+<li><strong>Une option vit avec l'interrupteur de la fonctionnalité dont elle dépend</strong>, et
+  disparaît avec elle. Ne reste en « Général » que ce qui régit le plugin entier ou Tabby lui-même —
+  l'affichage de la sidebar, et le masquage du menu de transferts natif. Le motif : un réglage qui
+  survit à sa fonctionnalité se lit comme cassé, pas comme sans objet.</li>
+<li><strong>Descriptions d'une à deux lignes</strong>, le détail passant dans une infobulle portée
+  par une icône <code>(i)</code> à côté du libellé. Même raisonnement que l'infobulle du
+  <a href="#ping-live">ping live</a> : le texte long a sa place, mais pas devant quelqu'un qui vient
+  actionner un interrupteur.</li>
+</ul>
+<p>Les options d'un bloc sont indentées sous son interrupteur, reliées par un filet vertical — sans
+quoi les six blocs et leurs réglages se lisaient comme une liste plate de réglages sans lien.</p></div>
+
+<div class="callout warning"><span class="callout-title">Ce que l'interrupteur ne fait pas</span>
+<p>Un bloc que <em>l'hôte</em> ne peut plus porter (<a href="#robustesse">contrôle de
+compatibilité</a>) s'éteint aussi, mais <strong>sans toucher à la case</strong> : elle reste telle
+que l'utilisateur l'a laissée, et la page affiche « indisponible sur cette version de Tabby ».
+Réécrire le réglage pour refléter un hôte cassé perdrait le choix le jour où l'hôte le fournit à
+nouveau. C'est le point de jonction annoncé entre les deux chantiers, réalisé par
+<code>hostSupports()</code>.</p></div>
 <p>Un interrupteur par bloc, dans l'onglet de réglages : <a href="#sessions-actives">sessions
 actives</a>, <a href="#tunnels-ssh">tunnels actifs</a>, <a href="#sftp">bascule SFTP</a>,
 <a href="#transferts">gestionnaire de transferts</a>, <a href="#workspaces">workspaces</a>,

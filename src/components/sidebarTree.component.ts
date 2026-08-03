@@ -27,6 +27,7 @@ import { SidebarWorkspace } from '../configProvider'
 import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
 import { PingState, SidebarPlusPingService } from '../ping.service'
 import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
+import { hostSupports } from '../hostCompat'
 import { clampInViewport } from '../viewport'
 
 interface CollapsableProfileGroup extends ProfileGroup {
@@ -302,7 +303,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // false — and an orphaned subscription here means a dead component
         // still rebuilding the whole tree on every config.save() of the
         // application, twice cloned, for as long as the window lives.
-        this.configSubscription = this.config.changed$.subscribe(() => this.loadTreeItems())
+        this.configSubscription = this.config.changed$.subscribe(() => {
+            // Before the reload, not after: switching a block off can change
+            // the active workspace or drop the filter, both of which decide
+            // what loadTreeItems() is supposed to build.
+            this.reconcileHiddenBlocks()
+            void this.loadTreeItems()
+        })
 
         // hotkey$, not unfilteredHotkey$: the filtered stream stays quiet while
         // a text field holds the focus, which is what keeps this from firing
@@ -546,7 +553,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
         this.workspaces = workspaces
         this.activeWorkspaceId = activeWorkspaceId
-        window.localStorage.sidebarPlusActiveWorkspace = activeWorkspaceId
+        // Persisted only while the workspaces block is on. With it off, the
+        // active workspace is forced to "Tous" for display, and writing that
+        // here would erase the user's real selection — a switch must never
+        // overwrite a choice it merely stops showing. The one case that still
+        // has to be written is a workspace that no longer exists, handled above
+        // by the same fallback and legitimately persistent.
+        if (this.showWorkspaces) {
+            window.localStorage.sidebarPlusActiveWorkspace = activeWorkspaceId
+        }
         this.rawGroupsSnapshot = rawGroupsSnapshot
         this.profileGroups = profileGroups
         this.rootGroups = rootGroups
@@ -629,6 +644,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * field is only rendered on the change detection pass that follows.
      */
     focusFilter (): void {
+        if (!this.showFilter) {
+            // Switching the view to the profiles for a field that is not there
+            // would be worse than doing nothing: the hotkey would appear to
+            // work, and take the user out of SFTP for nothing.
+            return
+        }
         this.zone.run(() => {
             this.sftpMode = false
             this.showHiddenPanel = false
@@ -929,8 +950,95 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         await this.config.save()
     }
 
+    ////// PER-BLOCK SWITCHES //////
+    /**
+     * Whether each block of the sidebar is on.
+     *
+     * Two independent reasons a block can be off, deliberately combined here
+     * rather than at each call site: the user unticked it, or the host no
+     * longer carries it (`hostSupports`, see hostCompat.ts). Callers only ever
+     * want the conjunction, and splitting it would guarantee that one of the
+     * twenty-odd usages eventually forgets the second half.
+     *
+     * These are getters, not fields: `config.store` is the single source of
+     * truth and `config.changed$` already rebuilds the view, so caching them
+     * would only add a way for the two to disagree. They are read from the
+     * template on every change detection pass, which is fine — each is a
+     * property lookup, not the method call of piège #54.
+     */
+    get showActiveSessions (): boolean {
+        return (this.config.store.sidebarPlus?.showActiveSessions ?? true) && hostSupports('ssh-tab')
+    }
+
+    get showTunnels (): boolean {
+        return (this.config.store.sidebarPlus?.showTunnels ?? true) && hostSupports('ssh-tab')
+    }
+
+    get showSftp (): boolean {
+        return (this.config.store.sidebarPlus?.showSftp ?? true) && hostSupports('sftp-panel')
+    }
+
+    get showTransfers (): boolean {
+        return this.config.store.sidebarPlus?.showTransfers ?? true
+    }
+
+    get showWorkspaces (): boolean {
+        return this.config.store.sidebarPlus?.showWorkspaces ?? true
+    }
+
+    get showFilter (): boolean {
+        return this.config.store.sidebarPlus?.showFilter ?? true
+    }
+
+    /**
+     * Puts the sidebar back into a coherent state after a block is switched
+     * off, so that nothing keeps acting through a control that is gone.
+     *
+     * Called from the `config.changed$` path. Each case is a state that would
+     * otherwise be unreachable *and* unexplainable: a workspace still filtering
+     * the tree with no tab bar to switch away from it, a filter still hiding
+     * rows with no field showing why, an SFTP view with no way back to the
+     * profiles.
+     */
+    private reconcileHiddenBlocks (): void {
+        if (!this.showSftp && this.sftpMode) {
+            this.sftpMode = false
+        }
+        if (this.showWorkspaces) {
+            // Coming back on: restore the selection the user last made, which
+            // the branch below deliberately left in localStorage.
+            const remembered = window.localStorage.sidebarPlusActiveWorkspace ?? 'all'
+            if (this.activeWorkspaceId !== remembered) {
+                this.activeWorkspaceId = remembered
+            }
+        } else {
+            // Falling back to "Tous" — the zero-exclusion case, so this reveals
+            // everything rather than hiding more.
+            //
+            // Assigned directly and *not* through selectWorkspace(), which
+            // would write 'all' to localStorage: switching a block off must
+            // never overwrite a choice the user made. The stored workspaces are
+            // untouched either way, but their selection is a choice too, and
+            // losing it on a round trip through the switch would be exactly the
+            // silent overwrite this must not do.
+            if (this.activeWorkspaceId !== 'all') {
+                this.activeWorkspaceId = 'all'
+            }
+            if (this.showHiddenPanel) {
+                this.showHiddenPanel = false
+            }
+        }
+        if (!this.showFilter && this.filter) {
+            this.filter = ''
+            void this.onFilterChange()
+        }
+    }
+
     ////// SFTP VIEW //////
     setSftpMode (on: boolean): void {
+        if (on && !this.showSftp) {
+            return
+        }
         this.sftpMode = on
         if (on) {
             // Leaving this on would put the sidebar back into the hidden-items
@@ -1222,6 +1330,24 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * off `session` instead of `sshSession`.
      */
     private refreshActiveSessions (): void {
+        const wantSessions = this.showActiveSessions
+        const wantTunnels = this.showTunnels
+        if (!wantSessions && !wantTunnels) {
+            // Neither block is on: this whole scan — every tab of every split,
+            // twice a second — produces nothing anybody can see. Drop what was
+            // already collected so switching a block back on starts from a
+            // clean slate rather than from a stale snapshot.
+            if (this.activeSessions.length) {
+                this.activeSessions = []
+            }
+            if (this.activeTunnels.length) {
+                this.activeTunnels = []
+            }
+            this.tunnelCounts = new Map()
+            this.liveTunnelKeys = new Map()
+            return
+        }
+
         const focused = this.resolveFocusedTab()
         const sessions: ActiveSession[] = []
         const tunnels: ActiveTunnel[] = []
@@ -1257,15 +1383,25 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // is exactly what their tab header shows.
             const renamedTitle = tab.customTitle || tab.topmostParent?.customTitle
             const sessionName = renamedTitle || profile?.name || tab.title || 'Session SSH'
-            sessions.push({
-                tab,
-                name: sessionName,
-                icon: profile?.icon || tab.icon || 'fas fa-terminal',
-                color: profile?.color ?? tab.color ?? null,
-                title: tab.title,
-                focused: tab === focused,
-            })
+            // Computed above regardless because the tunnel rows label
+            // themselves with it, but only collected when the sessions block is
+            // on: `sessions` is also what the latency probe is handed below, so
+            // filling it for a hidden block would keep sending real requests to
+            // real servers for a list nobody can see.
+            if (wantSessions) {
+                sessions.push({
+                    tab,
+                    name: sessionName,
+                    icon: profile?.icon || tab.icon || 'fas fa-terminal',
+                    color: profile?.color ?? tab.color ?? null,
+                    title: tab.title,
+                    focused: tab === focused,
+                })
+            }
 
+            if (!wantTunnels) {
+                continue
+            }
             // Read straight off the live transport. Tabby owns the forwarding
             // engine entirely — this plugin only mirrors its state, per the
             // roadmap's "surcouche visuelle" framing.

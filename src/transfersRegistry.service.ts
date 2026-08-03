@@ -1,6 +1,6 @@
 import { filesize } from 'filesize'
 import { Injectable, NgZone } from '@angular/core'
-import { FileDownload, FileTransfer, PlatformService } from 'tabby-core'
+import { ConfigService, FileDownload, FileTransfer, PlatformService } from 'tabby-core'
 
 export type TransferDirection = 'up'|'down'
 /**
@@ -120,9 +120,15 @@ export class SidebarPlusTransfersService {
 
     constructor (
         platform: PlatformService,
+        private config: ConfigService,
         private zone: NgZone,
     ) {
         platform.fileTransferStarted$.subscribe(transfer => this.track(transfer))
+    }
+
+    /** Whether the transfers panel is on. Off means this service does nothing at all — no history, no tick. */
+    get enabled (): boolean {
+        return this.config.store.sidebarPlus?.showTransfers ?? true
     }
 
     get activeCount (): number {
@@ -155,6 +161,14 @@ export class SidebarPlusTransfersService {
      * accumulate entries nobody can reach.
      */
     track (transfer: FileTransfer, handsOver = false): void {
+        // The single gate for both feeds — `fileTransferStarted$` above and our
+        // own callers here. Placed on the way in rather than at the panel: an
+        // entry recorded for a switched-off panel would grow a list nobody can
+        // reach and keep the 500 ms tick running for it. The transfer itself is
+        // untouched; only its bookkeeping is declined.
+        if (!this.enabled) {
+            return
+        }
         this.zone.run(() => {
             const size = transfer.getSize()
             const now = Date.now()

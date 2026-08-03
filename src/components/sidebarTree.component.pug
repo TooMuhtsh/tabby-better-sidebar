@@ -11,6 +11,7 @@
             .fa.fa-fw.fas.fa-list.me-1
             span Profils
         a.view-mode-tab(
+            *ngIf='showSftp',
             [class.active]='sftpMode',
             (click)='setSftpMode(true)',
             title='SFTP de la session active',
@@ -30,7 +31,7 @@
     //- `flex-grow-1` in this flex column, so anything following it gets pushed
     //- to the very bottom of the sidebar in SFTP mode. The section is meant to
     //- sit at the top in both tabs.
-    .active-sessions(*ngIf='activeSessions.length')
+    .active-sessions(*ngIf='showActiveSessions && activeSessions.length')
         a.active-sessions-header((click)='toggleActiveSessions()', href='#')
             .fa.fa-fw.fas.me-1(
                 [class.fa-chevron-down]='!activeSessionsCollapsed',
@@ -83,7 +84,7 @@
     //- sessions block above, this one is hidden in SFTP mode: the user asked
     //- for it explicitly (2026-07-30), the SFTP tab having no use for the
     //- forwarding state.
-    .active-tunnels(*ngIf='!sftpMode && activeTunnels.length')
+    .active-tunnels(*ngIf='showTunnels && !sftpMode && activeTunnels.length')
         a.active-sessions-header((click)='toggleActiveTunnels()', href='#')
             .fa.fa-fw.fas.me-1(
                 [class.fa-chevron-down]='!activeTunnelsCollapsed',
@@ -122,12 +123,19 @@
                 .tunnel-details(*ngIf='expandedTunnelIndex === i')
                     .no-wrap {{ tunnel.detail }}
 
-    //- Deliberately [hidden] and not *ngIf: destroying this component would
-    //- destroy its cached SFTP panels too, and rebuilding one opens a fresh
-    //- SFTP channel that nothing closes (SFTPSession has no close(); the
+    //- [hidden] and not *ngIf for the *mode* toggle: destroying this component
+    //- would destroy its cached SFTP panels too, and rebuilding one opens a
+    //- fresh SFTP channel that nothing closes (SFTPSession has no close(); the
     //- channel only dies with the SSH session). [active] is what keeps it
     //- idle while the tree is showing — see the component's `active` input.
+    //-
+    //- The *ngIf below is the other question, and the answer is the opposite
+    //- one: switching the SFTP block off is meant to release those panels, not
+    //- to park them. Toggling the setting back on rebuilds from nothing, which
+    //- costs one channel per session actually browsed again — the price of the
+    //- block genuinely being off rather than merely invisible.
     sidebar-plus-sftp.flex-grow-1(
+        *ngIf='showSftp',
         [hidden]='!sftpMode',
         [active]='sftpMode',
         (closed)='setSftpMode(false)'
@@ -141,9 +149,9 @@
     //- Shown in both views, not only in SFTP: a transfer started from the SFTP
     //- panel keeps running after switching back to the profiles, and losing
     //- sight of it there would be the one moment it matters.
-    sidebar-plus-transfers
+    sidebar-plus-transfers(*ngIf='showTransfers')
 
-    .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='!sftpMode')
+    .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='showWorkspaces && !sftpMode')
         a.workspace-tab(
             [class.active]='activeWorkspaceId === "all"',
             (click)='selectWorkspace("all")',
@@ -164,7 +172,7 @@
         )
             .fa.fa-fw.fas.fa-plus
 
-    .d-flex.align-items-center.gap-1.mb-1(*ngIf='!sftpMode')
+    .d-flex.align-items-center.gap-1.mb-1(*ngIf='showFilter && !sftpMode')
         //- `#filterInput=''`, not `#filterInput`: in pug a leading `#` is id
             syntax, so an Angular template reference has to be written as a
             quoted attribute to survive compilation. Read by @ViewChild.

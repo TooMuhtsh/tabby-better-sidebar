@@ -2,14 +2,15 @@ import './settingsTab.component.scss'
 import { Component, HostBinding, NgZone } from '@angular/core'
 import { ConfigService } from 'tabby-core'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
+import { hostSupports } from '../hostCompat'
 
 /**
  * The plugin's page in Tabby's settings.
  *
- * Holds the remote-file editor for now — the roadmap asks for the path to be
- * reviewable without waiting for a double-click to raise the picker. Any future
- * plugin-wide option belongs here rather than in the SFTP header menu, which is
- * scoped to that panel's display.
+ * Two pages, split by *ownership* rather than by subject (user's rule): every
+ * setting sits under the switch of the feature it belongs to, so switching that
+ * feature off takes its options away with it. Only what governs the whole
+ * plugin — or Tabby itself — stays on the general page.
  */
 @Component({
     template: require('./settingsTab.component.pug'),
@@ -17,6 +18,9 @@ import { SidebarPlusEditorService } from '../editorLauncher.service'
 export class SidebarPlusSettingsTabComponent {
     /** Tabby's own settings pages carry it — it is what gives the page its padding and max width. */
     @HostBinding('class.content-box') contentBox = true
+
+    /** Which page of this tab is showing. Deliberately not persisted: a reading position, not a preference. */
+    section: 'general'|'features' = 'general'
 
     editorPath: string
 
@@ -26,6 +30,55 @@ export class SidebarPlusSettingsTabComponent {
         private zone: NgZone,
     ) {
         this.editorPath = this.editors.editorPath
+    }
+
+    /** `href='#'` is what gives the tabs their pointer and focus behaviour; without this the page would jump to the top on every click. */
+    setSection (section: 'general'|'features', event: Event): void {
+        event.preventDefault()
+        this.section = section
+    }
+
+    get enabled (): boolean {
+        return this.config.store.sidebarPlus?.enabled ?? true
+    }
+
+    async setEnabled (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.enabled = value
+        await this.config.save()
+    }
+
+    /**
+     * Whether a block is on — its switch ticked *and* the host still able to
+     * carry it.
+     *
+     * Both halves in one call because the template needs the conjunction
+     * everywhere: it drives the toggle's state and the `*ngIf` on the options
+     * the block owns. `requires` is the precondition id of hostCompat.ts, absent
+     * for blocks that depend on nothing beyond the plugin itself.
+     */
+    blockOn (key: string, requires?: string): boolean {
+        return (this.config.store.sidebarPlus?.[key] ?? true) && this.hostHas(requires)
+    }
+
+    /** Whether the host still provides a precondition. No id means nothing to require. */
+    hostHas (id?: string): boolean {
+        return !id || hostSupports(id)
+    }
+
+    /**
+     * Stores the user's own answer, and only that.
+     *
+     * A block the host can no longer carry is shown unavailable with its switch
+     * left as it was, never rewritten to false: that setting is the user's
+     * choice, and overwriting it would lose it the day the host provides the
+     * component again.
+     */
+    async setBlock (key: string, value: boolean): Promise<void> {
+        this.config.store.sidebarPlus[key] = value
+        // Nothing else to poke: the sidebar and the mount service both listen
+        // to `config.changed$`, which is where the block is reconciled (an
+        // active workspace dropped, a filter cleared, the SFTP view left).
+        await this.config.save()
     }
 
     get dragOutFolders (): boolean {
