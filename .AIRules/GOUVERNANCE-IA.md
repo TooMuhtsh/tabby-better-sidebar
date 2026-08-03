@@ -611,6 +611,7 @@ Chaque défaut porte son motif : un défaut sans motif ne se conteste pas, il se
 | `validation` | Ce que « conditions réelles » veut dire ici | texte libre | **sans défaut** |
 | `jetables` | Convention de nommage des données de test | texte libre · `sans objet` | **sans défaut** |
 | `test-manuel` | Test manuel d'abord, automatisation en dernier recours | `oui` · `non` | `oui` |
+| `support-test` | À partir de combien de vérifications une passe se déroule sur un document dédié | nombre · `prose` · `fichier` | `8` |
 | `dépendances` | Politique de dépendances | `ordinaire` · `minimales` | `ordinaire` |
 | `discipline-test` | Comment teste-t-on, et qu'est-ce qui ne doit jamais être touché en test | texte libre | **sans défaut** |
 | `validateur` | Outil de validation de syntaxe des documents | texte libre | **sans défaut** |
@@ -880,6 +881,113 @@ instrumentation temporaire, capture d'état :
 Dans ces cas l'investissement est décisif : il révèle les bugs à causes multiples, qu'une
 série de correctifs partiels ne peut par construction jamais valider.
 
+## `support-test` — sur quel support se mène une passe
+
+Une passe de vérifications manuelles peut s'énoncer **dans le fil de la conversation**, ou
+se dérouler sur un **document autonome** que l'utilisateur remplit à mesure et dont il
+renvoie un rapport en un geste.
+
+| Valeur | Effet |
+|---|---|
+| **un nombre** (défaut : `8`) | Seuil indicatif : au-delà de tant de vérifications, le document se propose. |
+| `prose` | Toujours dans le fil, quelle que soit la longueur. |
+| `fichier` | Toujours un document, même pour trois vérifications. |
+
+*Pourquoi un seuil plutôt qu'un choix binaire* : le point de bascule dépend du projet et
+de la nature des tests — six vérifications longues et fragiles pèsent plus que douze
+gestes triviaux. Le seuil se fixe au cadrage pour ne pas se rediscuter à chaque chantier,
+mais **l'arbitrage autour de lui reste au jugement** : c'est une valeur de référence, pas
+une règle de calcul. En dessous, des lignes écrites suffisent et le document coûte plus
+qu'il ne rapporte.
+
+**Ce que le support résout est une question d'endurance, pas de précision.** Sur une
+longue passe, trois choses usent, et aucune n'est la qualité du compte rendu :
+
+- **ne pas voir la fin** — sans repère, on ignore s'il reste cinq vérifications ou
+  quarante ;
+- **le va-et-vient** permanent entre l'application testée et la conversation ;
+- **la reprise** : retrouver, après une interruption, où l'on en était et ce qui restait.
+
+Une passe qu'on abandonne aux deux tiers ne vaut pas une passe courte bien rapportée : ce
+qui n'a pas été vérifié ne se sait pas. Le reste — la qualité du rapport — vient
+par-dessus, une fois qu'on est allé au bout.
+
+C'est un **outil, pas une discipline** : il ne change rien à ce qui vaut validation
+(A-12), il évite seulement de reconstruire à la main, à chaque passe, ce qui a déjà une
+forme connue.
+
+**Il ne sert pas qu'à valider un chantier**, et pas qu'aux projets à interface graphique.
+Trois autres emplois, avec la même forme : la **recette avant publication** d'une version,
+le **contrôle de non-régression** après une montée de version d'une dépendance, et les
+projets **sans interface à cliquer** — vérifications en ligne de commande, contrôles de
+configuration, procédures d'installation. C'est pourquoi cette option ne dépend pas de
+`test-manuel` : elle porte le support, pas la décision de tester à la main.
+
+Quand le document est retenu, huit propriétés le distinguent d'une liste de cases à
+cocher :
+
+1. **La progression reste visible en permanence** — combien de vérifications restent, quelle
+   proportion du chemin est faite, et lesquelles sont déjà répondues. Ces repères se
+   complètent : un chiffre dit l'effort restant, une proportion dit la fin approcher, et
+   l'état de chaque ligne montre le chemin parcouru en faisant défiler. C'est la propriété
+   qui décide qu'une longue passe se termine au lieu de s'interrompre : elle est
+   fonctionnelle, pas décorative.
+2. **La passe survit à une interruption.** Sur plusieurs dizaines de vérifications, elle se
+   mène en plusieurs fois ; ce qui a déjà été répondu doit se retrouver tel quel à la
+   réouverture, sans quoi la reprise coûte plus cher que l'abandon.
+3. **Un test = une action et un attendu, écrit avant la passe.** Formulé pour être
+   vérifiable sans interprétation, et disant si possible ce que l'observation
+   *discrimine* — c'est ce qui distingue un attendu d'une intention.
+4. **Les préconditions en tête** : version installée, état de départ, redémarrage
+   nécessaire. Une passe menée sur une version périmée produit des résultats faux, et
+   cette erreur-là est invisible dans le rapport.
+5. **Quatre résultats, mais trois choix seulement** : réussi, échoué, sans réponse. Le
+   quatrième — **non applicable** : environnement absent, cas devenu sans objet — ne
+   demande pas de bouton supplémentaire, il **se déduit** d'une vérification laissée sans
+   réponse *et* commentée, le commentaire servant de raison. La distinction compte, parce
+   qu'un état unique rendrait un oubli indiscernable d'un choix — c'est ce qu'A-4 interdit
+   à la colonne `Hash`, pour la même raison. Mais elle ne vaut pas d'alourdir chaque ligne
+   d'un choix de plus.
+6. **Un commentaire par test, atteignable même quand il réussit.** C'est le mécanisme
+   central : « réussi, mais le libellé est ambigu » est l'information la plus utile d'une
+   passe, et la seule qu'aucune case ne capture. Il peut vivre derrière un bouton — ce qui
+   compte est qu'il existe sur un test vert, pas qu'il soit déplié d'avance.
+7. **Des numéros stables d'une passe à l'autre** (A-6) : c'est ce qui permet de dire
+   « 86 repasse » sans redécrire le test.
+8. **Un ordre par vagues**, des fondations vers ce qui en dépend, et un marquage explicite
+   des tests dont l'échec invalide la suite — avec la raison, en une ligne.
+
+**Le rapport est la seule partie qui quitte le poste de travail** : ce qui n'y figure pas
+n'existe pas pour qui le lit. Il porte donc, au minimum, la **date** et la **version
+testée**, les échecs avec leur attendu, **la vague et la criticité** de chacun, les
+commentaires, et les numéros restés sans réponse. Un rapport qui affiche une criticité à
+l'écran mais l'omet en sortie fait perdre précisément l'information qui devait arriver en
+premier.
+
+Il ne liste pas ce qui a réussi : **le silence vaut réussite**, et l'énumération des tests
+verts noierait les trois lignes qui comptent. C'est la contrepartie de l'en-tête — sans la
+version testée ni la date, un rapport muet sur les réussites ne prouverait plus rien du
+tout.
+
+Le squelette et le contrat de sortie exact sont dans [`GABARITS.md`](./GABARITS.md), § 8.
+
+**Règles d'emploi**, dès que le document est retenu :
+
+- **Il vit hors du dépôt** — dans l'espace de brouillons du projet concerné si celui-ci en
+  a un (option `tempfiles`).
+- **Il n'est pas jetable entre deux passes du même chantier.** Une passe s'enchaîne sur la
+  précédente : le document se réédite, ses numéros restent (A-6), et ce qui a déjà été
+  répondu ne se ressaisit pas. C'est **à la consignation du chantier** qu'il se supprime,
+  pas à la fin de chaque passe.
+- **Aucune donnée réelle** : les entrées de test suivent la convention de l'option
+  `jetables`, comme le reste du projet.
+- **Il ne remplace pas la validation.** « Livré » repose sur le mot de l'utilisateur, pas
+  sur des cases cochées (A-12).
+- **Le rapport, lui, n'est pas jetable** dans ce qu'il prouve : c'est la trace de
+  validation que la remise à niveau ira chercher (A-15, cas B). Ce qu'il établit se résume
+  dans l'entrée de journal qui acte le chantier ; s'il mérite d'être conservé en entier,
+  c'est une annexe (A-8).
+
 ## `dépendances` — politique de dépendances
 
 **`ordinaire`** (défaut) : A-12 s'applique tel quel. **`minimales`** : plugin distribué, code
@@ -971,7 +1079,7 @@ Quatre déclencheurs :
 
 ## Profils de départ
 
-Poser vingt-deux questions à chaque SETUP garantit qu'il ne sera jamais mené jusqu'au bout.
+Poser vingt-trois questions à chaque SETUP garantit qu'il ne sera jamais mené jusqu'au bout.
 L'entretien commence donc par **un mot**, puis se poursuit en écrasant les points qu'on veut.
 
 | Profil | Pour quel projet |
@@ -1109,6 +1217,7 @@ migrées. Une table de compatibilité sans date de péremption reste éternellem
 
 | Version | Régime |
 |---|---|
+| `20260803-182826` | purement additive |
 | `20260731-204511` | purement additive |
 | `20260731-203812` | touche le noyau |
 | `20260731-150737` | touche le noyau |
@@ -1125,6 +1234,6 @@ se propose (A-7). Le récit détaillé, lui, ne se lit qu'au moment de réviser,
 révise.
 
 ---
-*Version de cette charte : **`20260731-204511`**. C'est cet identifiant que reprend la
+*Version de cette charte : **`20260803-182826`**. C'est cet identifiant que reprend la
 mention « Conforme à la charte de gouvernance, version {{id}} » dans le pied de page de
 l'index de gouvernance de chaque projet.*

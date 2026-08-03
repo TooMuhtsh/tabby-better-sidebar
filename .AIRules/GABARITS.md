@@ -444,6 +444,7 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 | `validation` | {{ce que « conditions réelles » veut dire ici}} | — |
 | `jetables` | {{convention de nommage}} | — |
 | `test-manuel` | `oui` | défaut appliqué, non tranché |
+| `support-test` | `8` | au-delà de 8 vérifications, passe sur document dédié |
 | `dépendances` | `ordinaire` | défaut appliqué, non tranché |
 | `discipline-test` | {{comment on teste, ce qui ne doit jamais être touché}} | — |
 | `validateur` | {{outil et commande}} | commande exacte dans le fichier d'instructions |
@@ -478,6 +479,7 @@ Point de départ seulement — chaque ligne reste écrasable.
 | `seuil` | `tout-libre` | `strict` | `strict` |
 | `roadmap-avant-code` | `non` | `oui` | `oui` |
 | `test-manuel` | `oui` | `oui` | `oui` |
+| `support-test` | `prose` | `8` | `8` |
 | `dépendances` | `ordinaire` | `ordinaire` | `ordinaire` |
 | `veille-conformité` | `non` | `non` | `oui` |
 
@@ -489,5 +491,142 @@ Les deux mots, en particulier, ne peuvent pas avoir de défaut : un mot qu'on n'
 ne se retient pas, et un mot imposé finirait par se déclencher au fil d'une phrase.
 
 ---
-*Version de ce fichier : **`20260731-204511`**. Il suit l'identifiant de
+
+# 8. Support de passe de test (option `support-test`)
+
+Un document autonome, ouvert dans un navigateur, que l'utilisateur remplit à mesure qu'il
+teste et dont il renvoie le rapport. Il vit **hors du dépôt** — dans l'espace de brouillons
+du projet concerné si celui-ci en a un (option `tempfiles`) — se **réédite d'une passe à
+la suivante**, et ne se supprime qu'à la consignation du chantier.
+
+**À quoi il sert d'abord** : à ce qu'une longue passe soit menée jusqu'au bout. Au-delà
+de quelques vérifications, l'obstacle n'est pas la précision mais l'endurance — plusieurs
+dizaines de contrôles, étalés sur plusieurs séances, s'abandonnent en cours de route quand
+rien ne montre le chemin parcouru. Tout ce qui suit découle de là ; le rapport n'est que
+ce qu'on récolte une fois arrivé au bout.
+
+Il ne suppose pas une interface graphique : une passe de vérifications en ligne de
+commande, de contrôles de configuration ou d'étapes d'installation prend la même forme.
+
+Ce gabarit existe pour une seconde raison : les oublis d'un support de passe sont
+**invisibles depuis l'écran**. Une criticité affichée mais absente du rapport, une passe
+sans version testée, un état qui confond « pas encore fait » et « sans objet » ne se
+constatent qu'à la lecture du rapport, une fois la passe terminée et l'occasion passée.
+C'est ce que le contrat de sortie verrouille.
+
+## Ossature obligatoire
+
+- **Trois repères de progression, qui se complètent** et ne se remplacent pas : le
+  **nombre restant** (l'effort qui reste, en chiffres), une **proportion visuelle** (la
+  fin qui approche), et l'**état visible de chaque ligne** (le chemin parcouru, en faisant
+  défiler). Les trois **restent atteignables quelle que soit la position dans la page** :
+  sur une passe longue, c'est ce qui distingue un effort borné d'un effort sans fin
+  apparente.
+- **Reprise sans perte** : les réponses déjà données se retrouvent à la réouverture,
+  automatiquement. Une passe qui se mène en trois séances ne redemande rien.
+- **En-tête de passe** : titre, **version ou révision testée**, date, et la liste des
+  **préalables** (état de départ, redémarrage nécessaire, jeu de données jetables à
+  employer — option `jetables`).
+- **Tests groupés par vagues**, des fondations vers ce qui en dépend.
+- **Un test = un numéro stable, une action, un attendu.** Les numéros ne se réattribuent
+  jamais d'une passe à l'autre (A-6) : un test repris garde le sien.
+- **Trois choix de résultat** : `ok`, `ko`, et le retour à l'absence de réponse. Le
+  quatrième état, **non applicable**, ne prend pas de bouton : il **se déduit** d'un test
+  sans réponse *et* commenté, le commentaire tenant lieu de raison. La distinction se paie
+  au rapport, pas sur chaque ligne.
+- **Un champ de commentaire par test**, atteignable même quand le test réussit. Derrière
+  un bouton convient ; ce qui compte est qu'il existe sur un test vert.
+- **Rapport copiable en un geste**, conforme au contrat ci-dessous.
+
+Le reste de la présentation est libre — elle doit seulement rester lisible en thème clair
+comme en thème sombre, et l'état de chaque test doit se voir sans le lire.
+
+## Structure des données
+
+Tout ce qui change d'une passe à l'autre tient dans ces deux déclarations, en tête du
+script : c'est ce qu'on réécrit, le reste ne bouge pas.
+
+```js
+const PASSE = {
+  titre:     "{{ce que cette passe couvre}}",
+  version:   "{{révision, build ou commit testé}}",   // sans lui, le rapport ne prouve rien
+  date:      "{{AAAA-MM-JJ}}",
+  prealables: [
+    "{{état de départ attendu}}",
+    "{{redémarrage ou réinstallation nécessaire}}",
+    "{{convention de données jetables — option jetables}}"
+  ]
+}
+
+const VAGUES = [
+  { titre: "{{fondations}}", tests: [
+    { n: 1, action: "{{ce qu'on fait, sans ambiguïté}}",
+             attendu: "{{ce qu'on doit voir — et si possible ce que ça discrimine}}",
+             cle: "{{pourquoi son échec invalide la suite}}" },   // `cle` facultatif
+    { n: 2, action: "{{…}}", attendu: "{{…}}" }
+  ]},
+  { titre: "{{ce qui en dépend}}", tests: [ /* … */ ] }
+]
+```
+
+## Contrat de sortie du rapport
+
+C'est la seule partie qui quitte le poste de travail. Ce qui n'y figure pas n'existe pas
+pour qui le lit — d'où la forme imposée :
+
+```
+{{titre}} — {{date}} · version {{version}}
+{{n}} ok · {{n}} échecs · {{n}} non applicables · {{n}} non testés
+
+/!\ Test clé en échec : la suite de la passe ne conclut rien.   (ligne présente seulement si c'est le cas)
+
+## Échecs
+- [12] (vague « {{titre}} ») [CLÉ] {{action}}
+       attendu : {{attendu}}
+       {{commentaire, si présent}}
+
+## Remarques
+- [15] {{action}}
+       {{commentaire}}
+
+## Non applicables
+- [18] {{raison}}
+
+## Non testés
+20, 21, 22
+```
+
+Cinq exigences derrière cette forme :
+
+1. **La vague et la marque `[CLÉ]` accompagnent chaque échec.** Sans elles, un échec qui
+   invalide tout le reste se lit comme un échec mineur.
+2. **La ligne d'avertissement en tête** quand un test clé a échoué : elle dit que les
+   résultats suivants ne concluent rien, ce que le lecteur ne peut pas deviner.
+3. **Les remarques sortent même quand le test réussit.** C'est la raison d'être du champ
+   de commentaire ; les omettre revient à n'avoir que des cases.
+4. **Non testé et non applicable sont deux rubriques distinctes**, la seconde portant
+   toujours une raison — celle qu'a saisie le commentaire, puisque l'état s'en déduit. Les
+   fondre rend un oubli indiscernable d'un choix, ce qu'A-4 tranche déjà pour la colonne
+   `Hash`.
+5. **Ce qui a réussi ne se liste pas** : le silence vaut réussite. Énumérer les tests
+   verts noierait les quelques lignes qui comptent — et c'est l'en-tête, avec sa date et sa
+   version testée, qui empêche ce silence d'être ambigu.
+
+## Deux pièges d'implémentation
+
+> **⚠️ La clé de sauvegarde locale doit changer avec la passe**
+>
+> Une clé fixe fait ressurgir les réponses de la passe précédente sur les tests qui gardent
+> leur numéro — et elles s'affichent comme des réponses de la passe en cours. La dériver de
+> la date et de la liste des numéros plutôt que de l'incrémenter à la main : un compteur
+> qu'on oublie d'incrémenter ne prévient pas.
+
+> **⚠️ Le presse-papier asynchrone est souvent refusé depuis un fichier local**
+>
+> Prévoir un repli : sélectionner le contenu du rapport et le laisser copiable au clavier,
+> avec un message qui dit lequel des deux chemins a fonctionné. Un bouton « copier » qui
+> échoue en silence fait croire à un rapport copié.
+
+---
+*Version de ce fichier : **`20260803-182826`**. Il suit l'identifiant de
 [`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md) et se propage avec elle.*
