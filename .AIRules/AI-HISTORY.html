@@ -24,6 +24,20 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>L'éditeur par type de fichier est écarté (2026-08-03)</h2>
+<p>Chantier <a href="ROADMAP.html#editeur-par-type">Éditeur par type de fichier</a>, construit puis
+retiré le même jour. Décision de l'utilisateur à l'essai : « Ouvrir avec » du clic droit fait le
+travail plus directement, et la table extension → programme n'apportait rien qui vaille son coût.
+Branche non conservée, aucun code sur <code>master</code> — la fiche de roadmap porte la trace et le
+motif.</p>
+<p>Ce que l'essai a établi, et qui manquait au cadrage : la règle retenue — un type inconnu demande
+plutôt que d'emprunter l'éditeur d'un autre type — pose une question à chaque nouvelle extension
+rencontrée, et son alternative (repli silencieux sur le défaut) revient au comportement d'avant. Aucune
+des deux positions ne justifiait la table.</p>
+<p>Un reste à connaître : les configurations ayant servi au test portent une clé
+<code>sidebarPlus.sftpEditors</code> orpheline et un <code>sftpEditorPath</code> vidé par la migration.
+Le code revenu en arrière ignore la première ; l'éditeur se re-règle en un clic.</p>
+
 <h2>Latence et âge des sessions actives (2026-08-03)</h2>
 <p>Chantier <a href="ROADMAP.html#ping-live">Ping live</a>, branche <code>feat/ping-live</code>, testé
 et validé par l'utilisateur le 2026-08-03.</p>

@@ -42,7 +42,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
+<tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill out">⛔ Écarté (2026-08-03)</span></td><td>—</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01, refondu le 2026-08-02)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#marqueur-depot">Marqueur de dépôt : dossier en un geste, destination connue</a></td><td><span class="pill planned">📋 Proposé (2026-08-03)</span></td><td>Haute — conditionne le point 4 du <a href="#panneau-etat-session">panneau d'état</a> et les deux retours du volet 3</td></tr>
 <tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
@@ -1007,6 +1007,22 @@ lien symbolique vers un dossier partait au téléchargement au lieu d'être parc
 que le protocole SFTP v3 ne transporte pas (piège #45).</p></div>
 
 <h3 id="editeur-par-type">Éditeur par type de fichier (notamment les images)</h3>
+<div class="callout important"><span class="callout-title">Écarté le 2026-08-03, après construction et
+essai</span>
+<p>Décision de l'utilisateur à l'usage : <strong>« Ouvrir avec » du clic droit fait le travail plus
+directement</strong>, et la table par extension n'apportait rien qui vaille son coût. Le chantier a
+été construit puis retiré le même jour ; la branche n'a pas été conservée, cette fiche est la trace.</p>
+<p><strong>Ce que l'essai a montré</strong>, et qui vaut pour quiconque rouvrirait la question : la
+règle retenue au cadrage — un type inconnu <em>demande</em> plutôt que d'emprunter l'éditeur d'un autre
+type — est cohérente sur le papier et pénible à l'usage, puisqu'elle pose une question à chaque
+nouvelle extension rencontrée. L'alternative, un repli silencieux sur l'éditeur par défaut, revient
+exactement au comportement d'aujourd'hui pour tout ce qui n'a pas été renseigné à la main. Entre les
+deux, il n'y avait pas de position qui justifie la table.</p>
+<p><strong>Reste de l'essai</strong> : les configurations ayant servi au test portent une clé
+<code>sidebarPlus.sftpEditors</code> orpheline, que le code revenu en arrière ignore, et un
+<code>sftpEditorPath</code> vidé par la migration — l'éditeur se re-règle en un clic dans l'onglet de
+réglages. Ne pas conclure d'une clé inconnue dans un <code>config.yaml</code> qu'il s'agit d'un bug.</p>
+<p>Le design ci-dessous est conservé tel quel, sans être transporté ailleurs.</p></div>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30, en constatant à l'usage que l'éditeur
 retenu par <a href="#editeur-force">l'éditeur forcé</a> est <strong>global</strong> : une seule clé
 <code>sidebarPlus.sftpEditorPath</code>, appliquée à tous les fichiers. Un éditeur de texte convient
