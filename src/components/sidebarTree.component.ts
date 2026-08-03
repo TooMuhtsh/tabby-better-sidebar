@@ -20,15 +20,23 @@ import {
     SplitTabComponent,
 } from 'tabby-core'
 import { SettingsTabComponent } from 'tabby-settings'
+import { BaseTerminalTabComponent } from 'tabby-terminal'
+import { SidebarPlusSettingsTabComponent } from './settingsTab.component'
+import { SnippetsModalComponent, SnippetsModalResult } from './snippetsModal.component'
+import { NoteModalComponent } from './noteModal.component'
+import { PasteGroupModalComponent, PasteResolution } from './pasteGroupModal.component'
 import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh'
 import { loadIconEntries, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
-import { SidebarWorkspace } from '../configProvider'
+import { SidebarSnippet, SidebarWorkspace } from '../configProvider'
+import { SidebarPlusSnippetsService } from '../snippets.service'
+import { SidebarPlusNoticesService } from '../notices.service'
 import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
 import { PingState, SidebarPlusPingService } from '../ping.service'
 import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { hostSupports } from '../hostCompat'
 import { readProfileGroups } from '../profileGroups'
+import { buildPayload, countPayload, describePurge, isEmptyReport, parsePayload, PurgeLevel, SharedGroup } from '../groupShare'
 import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
 import { clampInViewport } from '../viewport'
 
@@ -295,6 +303,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private platform: PlatformService,
         private hotkeys: HotkeysService,
         private ping: SidebarPlusPingService,
+        private snippets: SidebarPlusSnippetsService,
+        // Not `notifications` for anything the user has to read: Tabby's
+        // `notice()` hard-codes a one-second timeout, which is gone before it
+        // is seen. See notices.service.ts.
+        private notices: SidebarPlusNoticesService,
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
     ) { }
 
@@ -562,6 +575,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             window.localStorage.sidebarPlusActiveWorkspace = activeWorkspaceId
         }
         this.rawGroupsSnapshot = rawGroupsSnapshot
+        // The snippet service walks a profile up to the root and has no
+        // snapshot of its own — see `useGroups()` for why it is handed one
+        // rather than fetching it.
+        this.snippets.useGroups(rawGroupsSnapshot)
         this.profileGroups = profileGroups
         this.rootGroups = rootGroups
         return true
@@ -609,8 +626,54 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     async launchProfile<P extends Profile> (profile: PartialProfile<P>): Promise<any> {
+        this.noticeUnansweredVariables(profile)
         return this.profilesService.launchProfile(profile)
     }
+
+    /**
+     * Says, when a session opens, that snippets of this profile are waiting on
+     * a value.
+     *
+     * The one moment worth saying it: a snippet edited in the settings tab can
+     * introduce a placeholder that every profile already attached to it now
+     * needs, and nothing else would surface that until someone clicked the
+     * snippet and got a refusal. Here it arrives while the user is looking at
+     * the profile.
+     *
+     * Keyed on the *set of missing names*, not on the profile: the same profile
+     * has to speak up again when a snippet changes what it asks for, and stay
+     * quiet when nothing has changed. That is also what keeps a folder-wide
+     * launch from stacking one toast per session.
+     */
+    private noticeUnansweredVariables (profile: PartialProfile<Profile>): void {
+        // Switched off means gone, not merely hidden: no menu entry, and no
+        // work done on every launch for a feature nobody is using.
+        if (!this.showSnippets) {
+            return
+        }
+        const missing = this.snippets.unansweredFor(profile)
+        if (!missing.length) {
+            return
+        }
+        // Named per snippet, never merged into one list: the same placeholder
+        // can be asked by two commands and mean two different things, so a bare
+        // "{{path}} manque" would point at the wrong field.
+        const detail = missing
+            .map(entry => `${entry.snippet} : ${entry.names.map(name => `{{${name}}}`).join(', ')}`)
+            .join(' · ')
+        const key = `${profile.id ?? ''}|${detail}`
+        if (this.variableNoticesShown.has(key)) {
+            return
+        }
+        this.variableNoticesShown.add(key)
+        this.notices.notice(
+            `Variables à renseigner sur « ${profile.name} »`,
+            `${detail} — clic droit sur le profil, « Snippets… », puis le bouton de réglages du snippet.`,
+        )
+    }
+
+    /** What noticeUnansweredVariables() has already said this session — see there for why the key is the missing set and not the profile. */
+    private readonly variableNoticesShown = new Set<string>()
 
     async launchProfileFromMenu (profile: PartialProfile<Profile>): Promise<void> {
         this.closeContextMenu()
@@ -618,10 +681,17 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     /**
-     * Minimal version: launches the group's direct profiles only, each in
-     * its own tab, no split panes, no recursion into sub-groups. The richer
-     * behaviour (layout choice, synced multi-input) is deliberately left to
-     * the separate "Group Exec" roadmap item — see ROADMAP.html.
+     * Launches the group's direct profiles, each in its own tab.
+     *
+     * No recursion into sub-groups, no split panes, no synced multi-input —
+     * and none of the three is a gap left for later. They were the whole of
+     * the "Group Exec" roadmap item, and all three were declined on 2026-08-03
+     * once put as a question: recursion because forty sessions leave as easily
+     * as four, splits because they only read well on the few servers one would
+     * not have targeted a whole folder for, and broadcast because typing into
+     * twelve production machines must not be a side effect of "open
+     * everything". Tabby's own multi-input remains reachable by its hotkeys,
+     * which is where it belongs.
      */
     async launchGroupSessions (group: PartialProfileGroup<CollapsableProfileGroup>): Promise<void> {
         this.closeContextMenu()
@@ -702,11 +772,27 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // a dotted key, and a server one only remembers by address would
         // otherwise be unreachable from here. Absent on a non-SSH profile,
         // which the search simply skips.
-        const matches = new FuzzySearch(
-            profiles.filter(p => !p.isTemplate),
+        const searchable = profiles.filter(p => !p.isTemplate)
+        const matches: PartialProfile<Profile>[] = new FuzzySearch(
+            searchable,
             ['name', 'description', 'options.host', 'options.user'],
             { sort: false },
         ).search(q)
+
+        // Notes are searched in a second pass rather than as one more key of
+        // the fuzzy search, which would have meant grafting the text onto each
+        // profile: those very objects are what the tree renders and what
+        // launch/duplicate are handed, so a computed field riding along into
+        // `config.store` is piège #12's exact shape.
+        //
+        // A plain substring match, not fuzzy: what one looks for in a memo is a
+        // ticket number or a hostname, where an approximate hit is noise.
+        if (this.showNotes) {
+            const needle = q.toLowerCase()
+            const alreadyFound = new Set(matches.map(p => p.id))
+            matches.push(...searchable.filter(p =>
+                !alreadyFound.has(p.id) && this.noteFor(p.id).toLowerCase().includes(needle)))
+        }
 
         this.rootGroups = [
             ...this.matchingGroups(q),
@@ -1000,6 +1086,14 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     get showFilter (): boolean {
         return this.config.store.sidebarPlus?.showFilter ?? true
+    }
+
+    get showSnippets (): boolean {
+        return this.config.store.sidebarPlus?.showSnippets ?? true
+    }
+
+    get showNotes (): boolean {
+        return this.config.store.sidebarPlus?.showNotes ?? true
     }
 
     /**
@@ -2762,6 +2856,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         sidebarPlus.workspaces = workspaces
 
+        // Attachments, variables and behaviour of that id — the library itself
+        // is deliberately untouched, see the service.
+        this.snippets.forget(id)
+        this.moveNote(id, null)
+
         if (kind === 'group') {
             // Collapsed state lives in localStorage, not in config.yaml — same
             // reasoning as in migrateWorkspaceGroupId(), and unreadable storage
@@ -2917,6 +3016,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
         this.config.store.sidebarPlus.groupOrder ??= {}
         SidebarPlusTreeComponent.renameOrderKey(this.config.store.sidebarPlus.groupOrder, oldId, newId)
+
+        // Snippet attachments, variables and behaviour, keyed by the folder's
+        // id. Forgotten here, dragging a folder into another would silently
+        // strip it of its snippets — and of every snippet its profiles
+        // inherited from it.
+        this.snippets.migrate(oldId, newId)
+        this.moveNote(oldId, newId)
 
         // Collapsed state lives in localStorage, not in config.yaml — same
         // reasoning, same consequence if forgotten: the folder came back
@@ -3359,15 +3465,507 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         await this.config.save()
     }
 
-    /** Settings > Profiles, reusing a Settings tab the user already had open. Only reached when a profile has no resolvable provider. */
+    ////// PROFILE DUPLICATION (context menu) //////
+    /**
+     * "Dupliquer" — a copy of the profile, in the same folder, named
+     * "<name> - Copie".
+     *
+     * `structuredClone()` first, always: `newProfile()` pushes the very object
+     * it is handed into `config.store.profiles`, so a shallow copy would leave
+     * both entries sharing one `options` object — editing either would silently
+     * edit the other. `contextMenuProfile` happens to be detached already
+     * (`readProfileGroups()` clones the whole tree), and relying on that is
+     * exactly the kind of assumption piège #12 is made of.
+     *
+     * `isBuiltin`/`isTemplate` are dropped like `pickProfileTemplate()` does: a
+     * copy of a provider-contributed profile belongs to the user, and keeping
+     * the flag would file it back under the synthetic "built-in" group, which
+     * is not editable. Their `group` is a provider-declared *name*, not a real
+     * group id, so it goes too — the copy lands in "Ungrouped", where the user
+     * can pick it up.
+     *
+     * `weight` is kept on purpose: same rank as the original, and `sort()`
+     * being stable, the copy lands right underneath it rather than at the end
+     * of the folder. `id` is left alone — `newProfile()` overwrites it with a
+     * fresh uuid derived from the new name.
+     */
+    async duplicateProfile (profile: PartialProfile<Profile>): Promise<void> {
+        this.closeContextMenu()
+        const copy = structuredClone(profile) as PartialProfile<Profile> & { isTemplate?: boolean, isBuiltin?: boolean }
+        if (copy.isBuiltin) {
+            delete copy.group
+        }
+        delete copy.isTemplate
+        delete copy.isBuiltin
+        copy.name = this.copyNameFor(profile)
+        await this.profilesService.newProfile(copy)
+        // The memo travels with the copy. Nothing carries it on its own — a
+        // note is keyed by profile id, and `newProfile()` has just minted a new
+        // one — yet duplicating a server to make a variant of it and losing
+        // what one had written about it is the wrong default.
+        this.copyNote(profile.id, copy.id)
+        await this.config.save()
+    }
+
+    /**
+     * "X" → "X - Copie", then "X - Copie 2", "X - Copie 3"… against the names
+     * already in the same folder.
+     *
+     * The bare suffix is what the roadmap asked for, and it is enough right up
+     * until the gesture is repeated: duplicating the same profile twice would
+     * otherwise put two identically named rows in the tree, with nothing on
+     * screen telling them apart.
+     *
+     * Duplicating a *copy* is a different case and keeps stacking —
+     * "X - Copie - Copie" — because that name is genuinely free. Worth knowing
+     * before reading it as a bug: it looked like one during the test of
+     * 2026-08-03, until the gesture was retraced.
+     *
+     * Read off `rawGroupsSnapshot` rather than `config.store.profiles`: the
+     * latter does not hold provider-contributed profiles, and this only has to
+     * be right about what the folder *displays* (piège #74).
+     */
+    private copyNameFor (profile: PartialProfile<Profile>): string {
+        const siblings = new Set(
+            (this.rawGroupsSnapshot.find(g => g.id === (profile.group ?? 'ungrouped'))?.profiles ?? [])
+                .map(p => p.name),
+        )
+        const base = `${profile.name ?? ''} - Copie`
+        if (!siblings.has(base)) {
+            return base
+        }
+        let n = 2
+        while (siblings.has(`${base} ${n}`)) {
+            n++
+        }
+        return `${base} ${n}`
+    }
+
+    ////// NOTES //////
+    /**
+     * The memo of a profile or folder, empty when there is none.
+     *
+     * Not inherited, unlike the snippet maps that sit beside it in the config:
+     * a folder's note repeated on each of its profiles would be noise, so a
+     * folder's note belongs to the folder and shows on its own row.
+     */
+    noteFor (id: string|undefined): string {
+        return id ? (this.config.store.sidebarPlus?.profileNotes?.[id] ?? '') : ''
+    }
+
+    /**
+     * Whether a badge is due on this row.
+     *
+     * Gated on the block rather than on the text alone: switching notes off has
+     * to take the badges with it, and the note itself survives untouched for
+     * when it comes back on.
+     */
+    hasNote (id: string|undefined): boolean {
+        return this.showNotes && !!this.noteFor(id)
+    }
+
+    async openNoteModal (): Promise<void> {
+        const id = this.contextMenuProfile?.id ?? this.contextMenuGroup?.id
+        const name = this.contextMenuProfile?.name ?? this.contextMenuGroup?.name ?? ''
+        this.closeContextMenu()
+        if (!id) {
+            return
+        }
+        const modal = this.ngbModal.open(NoteModalComponent, { size: 'lg' })
+        modal.componentInstance.targetName = name
+        modal.componentInstance.text = this.noteFor(id)
+        const text = await modal.result.catch(() => null) as string|null
+        if (text === null) {
+            return
+        }
+        this.config.store.sidebarPlus ??= {}
+        // Rebuilt and reassigned rather than mutated in place (piège #23), and
+        // an emptied note leaves no key behind rather than an empty string
+        // nobody can tell from "never written".
+        const all: Record<string, string> = { ...(this.config.store.sidebarPlus.profileNotes ?? {}) }
+        if (text.trim()) {
+            all[id] = text
+        } else {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+            delete all[id]
+        }
+        this.config.store.sidebarPlus.profileNotes = all
+        await this.config.save()
+    }
+
+    /** Puts the same note on a second id, leaving the first alone — used when a profile is duplicated. */
+    private copyNote (fromId: string|undefined, toId: string|undefined): void {
+        const text = this.noteFor(fromId)
+        if (!text || !toId) {
+            return
+        }
+        this.config.store.sidebarPlus ??= {}
+        this.config.store.sidebarPlus.profileNotes = {
+            ...(this.config.store.sidebarPlus.profileNotes ?? {}),
+            [toId]: text,
+        }
+    }
+
+    /** Carries a note over when a folder is given a new id, or drops it when an entry is deleted. */
+    private moveNote (oldId: string, newId: string|null): void {
+        this.config.store.sidebarPlus ??= {}
+        const all: Record<string, string> = { ...(this.config.store.sidebarPlus.profileNotes ?? {}) }
+        if (!(oldId in all)) {
+            return
+        }
+        if (newId) {
+            all[newId] = all[oldId]
+        }
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete all[oldId]
+        this.config.store.sidebarPlus.profileNotes = all
+    }
+
+    ////// GROUP SHARING (context menu) //////
+    /**
+     * "Copier la structure (JSON)" and "Copier sans les identifiants".
+     *
+     * Two entries rather than one setting: the level belongs to the gesture,
+     * not to a preference — the same folder goes to one's other machine whole
+     * and to a colleague stripped, and there is no reason to walk to the
+     * settings between the two.
+     *
+     * Reads `rawGroupsSnapshot`, the workspace-*unfiltered* tree, for the same
+     * reason `reparentGroup()` does: a folder half-hidden in the active
+     * workspace would otherwise export as half a folder, silently.
+     */
+    async copyGroupStructure (level: PurgeLevel): Promise<void> {
+        const group = this.contextMenuGroup
+        this.closeContextMenu()
+        if (!group) {
+            return
+        }
+        const payload = buildPayload(group, this.rawGroupsSnapshot, level)
+        this.platform.setClipboard({ text: JSON.stringify(payload, null, 2) })
+
+        const { folders, profiles } = countPayload(payload.group)
+        const purged = describePurge(payload.removed)
+        this.notices.notice(
+            `Dossier « ${group.name ?? ''} » copié — ${folders} dossier${folders > 1 ? 's' : ''}, ${profiles} profil${profiles > 1 ? 's' : ''}.`,
+            purged ? `Retiré : ${purged}.` : undefined,
+        )
+    }
+
+    /**
+     * "Coller le groupe", from the right-click on empty sidebar space.
+     *
+     * At the root only, which is where the roadmap put it. Pasting *into* a
+     * folder is the same code with a different parent, but the folder menu
+     * already carries eleven entries and nobody has asked.
+     *
+     * Nothing here trusts the payload: `parsePayload()` re-runs the purge on
+     * the way in, because the JSON is text off the clipboard — hand-editable,
+     * possibly written elsewhere — and its own account of what it had removed
+     * is worth nothing.
+     */
+    async pasteGroup (): Promise<void> {
+        this.closeContextMenu()
+        const { payload, error } = parsePayload(this.platform.readClipboard())
+        if (!payload) {
+            this.notices.error(error ?? 'Le presse-papiers ne contient pas un dossier partagé.')
+            return
+        }
+
+        const name = payload.group.name?.trim() || 'Dossier collé'
+        const { folders, profiles } = countPayload(payload.group)
+        const purged = describePurge(payload.removed)
+
+        // Against the root folders as *displayed*, from the unfiltered
+        // snapshot: a folder hidden in the active workspace still occupies its
+        // name, and colliding with something invisible is worse than colliding
+        // with something one can see (piège #74).
+        const collision = this.rawGroupsSnapshot.find(g => !g.parentGroupId && g.name === name)
+        let target: string|null = null
+        let finalName = name
+
+        if (collision) {
+            const modal = this.ngbModal.open(PasteGroupModalComponent)
+            modal.componentInstance.groupName = name
+            modal.componentInstance.folders = folders
+            modal.componentInstance.profiles = profiles
+            modal.componentInstance.suffixedName = this.rootGroupCopyName(name)
+            modal.componentInstance.purged = purged
+            const resolution = await modal.result.catch(() => null) as PasteResolution|null
+            if (!resolution) {
+                return
+            }
+            if (resolution === 'merge') {
+                target = collision.id
+            } else {
+                finalName = this.rootGroupCopyName(name)
+            }
+        }
+
+        const created = await this.applySharedGroup(payload.group, finalName, target, undefined)
+        await this.config.save()
+
+        // A profile whose provider is not installed is not an error — it is
+        // stored fine and does nothing when launched. Said once, here, because
+        // the row looks exactly like any other and the failure would only show
+        // on a double-click much later.
+        const unknown = created.types.filter(t => !this.profileProviders.some(p => p.id === t))
+        this.notices.notice(
+            `Dossier « ${finalName} » collé — ${created.folders} dossier${created.folders > 1 ? 's' : ''}, ${created.profiles} profil${created.profiles > 1 ? 's' : ''}.`,
+            [
+                purged ? `Retiré à l'export : ${purged} — à ressaisir.` : '',
+                unknown.length ? `Type${unknown.length > 1 ? 's' : ''} de profil non installé${unknown.length > 1 ? 's' : ''} : ${[...new Set(unknown)].join(', ')}.` : '',
+            ].filter(Boolean).join(' ') || undefined,
+        )
+
+        // Said separately, and as an error: a payload that still carried what
+        // its own header called removed was not written by this plugin, or was
+        // edited afterwards. The paste itself is fine — the second purge caught
+        // it — but the user is entitled to know the JSON they pasted was not
+        // what it claimed.
+        if (!isEmptyReport(payload.strippedOnImport)) {
+            this.notices.error(
+                'Ce JSON contenait encore des secrets que son en-tête déclarait retirés.',
+                `Retiré au collage : ${describePurge(payload.strippedOnImport!)}.`,
+            )
+        }
+    }
+
+    /**
+     * Writes one shared folder and everything under it into the config.
+     *
+     * `target` is set only when merging: the folder already exists, so nothing
+     * is created for this level and the contents land inside it. A sub-folder
+     * colliding *inside* a merge is not asked about again — it is created
+     * alongside, which the modal says out loud.
+     *
+     * `newProfileGroup({ genId: true })` mints the id and writes it back onto
+     * the object handed over, exactly as `reparentGroup()` relies on.
+     */
+    private async applySharedGroup (
+        shared: SharedGroup,
+        name: string,
+        target: string|null,
+        parentGroupId: string|undefined,
+    ): Promise<{ folders: number, profiles: number, types: string[] }> {
+        let groupId = target
+        let folders = 0
+        if (!groupId) {
+            const group = {
+                id: '',
+                name,
+                icon: shared.icon,
+                color: shared.color,
+                defaults: shared.defaults,
+                parentGroupId,
+            } as PartialProfileGroup<ProfileGroup>
+            await this.profilesService.newProfileGroup(group, { genId: true })
+            groupId = group.id
+            folders = 1
+        }
+
+        let profiles = 0
+        const types: string[] = []
+        for (const shape of shared.profiles) {
+            // Rebuilt rather than spread from the payload: what goes into
+            // `config.store.profiles` is the plugin's own object, never one
+            // parsed off the clipboard. `newProfile()` mints the id.
+            const profile = {
+                name: shape.name || 'Profil',
+                type: shape.type,
+                icon: shape.icon,
+                color: shape.color,
+                weight: shape.weight,
+                options: shape.options ?? {},
+                group: groupId,
+            } as PartialProfile<Profile>
+            await this.profilesService.newProfile(profile)
+            profiles++
+            if (shape.type) {
+                types.push(shape.type)
+            }
+        }
+
+        for (const child of shared.children) {
+            const sub = await this.applySharedGroup(child, child.name?.trim() || 'Dossier', null, groupId)
+            folders += sub.folders
+            profiles += sub.profiles
+            types.push(...sub.types)
+        }
+
+        return { folders, profiles, types }
+    }
+
+    /**
+     * "Prod" → "Prod - Copie", then "Prod - Copie 2", among the root folders.
+     *
+     * Same shape as `copyNameFor()` for profiles, deliberately: two gestures
+     * that produce a near-duplicate should name it the same way, and the user
+     * has already read that suffix once.
+     */
+    private rootGroupCopyName (name: string): string {
+        const taken = new Set(this.rawGroupsSnapshot.filter(g => !g.parentGroupId).map(g => g.name))
+        const base = `${name} - Copie`
+        if (!taken.has(base)) {
+            return base
+        }
+        let n = 2
+        while (taken.has(`${base} ${n}`)) {
+            n++
+        }
+        return `${base} ${n}`
+    }
+
+    ////// SNIPPETS //////
+    /** How long a snippet waits for a session it asked to be launched, and how often it looks. */
+    private static readonly SNIPPET_LAUNCH_POLL_MS = 250
+    private static readonly SNIPPET_LAUNCH_ATTEMPTS = 80
+
+    /**
+     * Opens the snippets modal on the right-clicked profile or folder.
+     *
+     * Everything it shows and writes lives in `SidebarPlusSnippetsService`.
+     * What stays here is what needs the sidebar's own reach: running a snippet
+     * into a session, and opening the settings tab.
+     */
+    async openSnippetsModal (): Promise<void> {
+        const profile = this.contextMenuProfile
+        const group = this.contextMenuGroup
+        this.closeContextMenu()
+        const modal = this.ngbModal.open(SnippetsModalComponent, { size: 'lg' })
+        modal.componentInstance.profile = profile
+        modal.componentInstance.group = group
+        const result = await modal.result.catch(() => null) as SnippetsModalResult|null
+        if (!result) {
+            return
+        }
+        if (result.action === 'library') {
+            SidebarPlusSettingsTabComponent.requestedSection = 'snippets'
+            this.openSettingsTab('better-sidebar')
+            return
+        }
+        await this.runSnippet(result.snippet, profile)
+    }
+
+    /**
+     * Writes a snippet into the profile's session.
+     *
+     * Both behaviours are resolved from the chain, so the answer may come from
+     * the profile, from its folder, or from one further up.
+     */
+    private async runSnippet (snippet: SidebarSnippet, profile: PartialProfile<Profile>|null): Promise<void> {
+        if (!profile) {
+            return
+        }
+        const chain = this.snippets.chainForProfile(profile)
+        // The snippet is passed along: its own answer overrides the profile and
+        // its folders, so a destructive command cannot be made self-running by
+        // a permissive folder.
+        const execute = this.snippets.resolveSetting('execute', chain, snippet.id)
+        const autoLaunch = this.snippets.resolveSetting('autoLaunch', chain, snippet.id)
+        const { text, missing } = this.snippets.expand(snippet, chain, profile)
+        if (missing.length) {
+            this.notices.error(
+                `« ${snippet.name} » attend une valeur`,
+                `${missing.map(name => `{{${name}}}`).join(', ')} — à renseigner dans « Snippets… ».`,
+            )
+            return
+        }
+
+        let tab = this.terminalTabForProfile(profile)
+        if (!tab) {
+            if (!autoLaunch) {
+                this.notices.notice(`« ${profile.name} » n'a pas de session ouverte`)
+                return
+            }
+            await this.launchProfile(profile)
+            tab = await this.waitForTerminalTab(profile)
+            if (!tab) {
+                this.notices.error(`La session de « ${profile.name} » ne s'est pas ouverte`)
+                return
+            }
+            // Only on a session this click just opened: an already-open one has
+            // nothing left to settle. See `launchDelayMs` for why a plain wait
+            // is the honest answer here rather than a cleverer one.
+            const delay = this.snippets.resolveDelay(chain, snippet.id)
+            if (delay) {
+                await new Promise(resolve => setTimeout(resolve, delay))
+            }
+        }
+        // Brought to the front before anything is written: in the default
+        // "type it, don't run it" mode the command sits at the prompt waiting
+        // for the user's Entrée, and a prompt they cannot see is worse than no
+        // snippet at all.
+        focusTab(this.app, tab)
+        tab.sendInput(execute ? `${text}\n` : text)
+    }
+
+    /**
+     * Any terminal tab currently backed by this profile — SSH or not.
+     *
+     * Deliberately wider than `connectedTabForProfile()`, which answers the
+     * same question for tunnels and has to stay SSH-only. What a snippet needs
+     * is something that can be typed into, i.e. a `BaseTerminalTabComponent`,
+     * so a local profile gets snippets too.
+     *
+     * `instanceof` is safe on this class where it is not on `SSHTabComponent`:
+     * Tabby's plugin loader caches `tabby-terminal`, so only one copy of it is
+     * ever loaded (piège #34 is about `tabby-ssh`, which it does not cache).
+     * `hotkeys.ts` already leans on the same test.
+     */
+    private terminalTabForProfile (profile: PartialProfile<Profile>): BaseTerminalTabComponent<any>|null {
+        if (!profile.id) {
+            return null
+        }
+        for (const tab of getAllOpenTabs(this.app)) {
+            if (!(tab instanceof BaseTerminalTabComponent)) {
+                continue
+            }
+            const backing = tab as unknown as ProfileBackedTab
+            // A non-null `session` is the honest "still live" test — see
+            // isLiveSSHTab() for why the transport's own flag is not.
+            if (backing.profile?.id === profile.id && backing.session) {
+                return tab
+            }
+        }
+        return null
+    }
+
+    /**
+     * Polls for the session a launch is bringing up.
+     *
+     * There is no "the remote shell is ready" signal to await: `launchProfile()`
+     * resolves once the tab exists, and the transport comes up some time later.
+     * So the tab is polled for, and what the snippet then hits is whatever the
+     * prompt is at that moment — on a server with a long MOTD the text can land
+     * mid-banner. Survivable because the default is to *type* the command
+     * rather than run it. The optional wait is for the servers where it is not
+     * enough.
+     */
+    private async waitForTerminalTab (profile: PartialProfile<Profile>): Promise<BaseTerminalTabComponent<any>|null> {
+        for (let attempt = 0; attempt < SidebarPlusTreeComponent.SNIPPET_LAUNCH_ATTEMPTS; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, SidebarPlusTreeComponent.SNIPPET_LAUNCH_POLL_MS))
+            const tab = this.terminalTabForProfile(profile)
+            if (tab) {
+                return tab
+            }
+        }
+        return null
+    }
+
+    /** Settings > Profiles. Only reached when a profile has no resolvable provider. */
     private openProfilesSettingsTab (): void {
+        this.openSettingsTab('profiles')
+    }
+
+    /** Reuses a Settings tab the user already had open rather than stacking a second one. */
+    private openSettingsTab (activeTab: string): void {
         const existing = this.app.tabs.find(t => t instanceof SettingsTabComponent) as SettingsTabComponent|undefined
         if (existing) {
-            existing.activeTab = 'profiles'
+            existing.activeTab = activeTab
             this.app.selectTab(existing)
             return
         }
-        this.app.openNewTabRaw({ type: SettingsTabComponent, inputs: { activeTab: 'profiles' } })
+        this.app.openNewTabRaw({ type: SettingsTabComponent, inputs: { activeTab } })
     }
 
     /**

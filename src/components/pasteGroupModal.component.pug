@@ -1,0 +1,30 @@
+.modal-header
+    h5.modal-title.no-wrap Coller le groupe — {{ groupName }}
+    button.btn-close((click)='cancel()')
+
+.modal-body.paste-group-modal
+    p Un dossier nommé <strong>{{ groupName }}</strong> existe déjà à la racine.
+    p.paste-group-count
+        | À coller : {{ folders }} dossier{{ folders > 1 ? 's' : '' }},
+        |  {{ profiles }} profil{{ profiles > 1 ? 's' : '' }}.
+    //- The purge is stated here and not only in the notice afterwards: it says
+    //- what will have to be re-entered, which is part of deciding whether to
+    //- merge into a folder that already works.
+    .paste-group-purge(*ngIf='purged')
+        .fa.fa-fw.fas.fa-shield-halved.me-2
+        span Retiré à l'export : {{ purged }}. À ressaisir après le collage.
+
+    .paste-group-choice
+        button.btn.btn-primary.w-100(#suffixButton, (click)='choose("suffix")')
+            .fa.fa-fw.fas.fa-plus.me-2
+            | Coller à côté
+        .paste-group-hint Un nouveau dossier « {{ suffixedName }} ». Rien de ce qui existe n'est touché.
+
+    .paste-group-choice
+        button.btn.btn-secondary.w-100((click)='choose("merge")')
+            .fa.fa-fw.fas.fa-code-merge.me-2
+            | Fusionner dans le dossier existant
+        .paste-group-hint Profils et sous-dossiers ajoutés à « {{ groupName }} ». Les doublons ne sont pas détectés.
+
+.modal-footer
+    button.btn.btn-secondary((click)='cancel()') Annuler

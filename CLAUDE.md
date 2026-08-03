@@ -53,8 +53,10 @@ ne se consigne au fil de l'eau** — ni `.AIRules/`, ni journal, ni commit par
 chantier : tout est consigné **en une seule fois à la fin de la phase**.
 
 L'état vit dans [`.AIRules/currentwork_roadmap.html`](./.AIRules/currentwork_roadmap.html) :
-les 24 items restants, leur difficulté, leur jauge, et un journal de phase qui
-sert de matière à la consignation finale.
+les **19 items restants** (G1 est clos depuis le 2026-08-03), leur difficulté,
+leur jauge, et un journal de phase. **Le détail de ce qui est fait n'y est pas** :
+il part dans la roadmap et le journal à chaque lot consigné, pour qu'il n'y ait
+jamais deux endroits où lire le même fait.
 
 Le travail de cette phase vit sur une **branche unique** — l'option `branches`
 n'est pas suspendue, elle est ce qui rend le reste possible : `master` ne porte
@@ -316,6 +318,32 @@ de chargement de plugin.
   clic pour empêcher ce HostListener de se déclencher — vérifier plutôt
   explicitement `(event.target as HTMLElement).closest('.ma-popup, ...')`
   dans le handler lui-même (.AIRules/AI-CONTEXT.html, piège #15).
+- **Le `defaults` d'un dossier est un bloc *par fournisseur*** — sa forme est
+  `{ ssh: { user, password, scripts… }, local: { … } }`, et Tabby lit
+  `defaults?.[provider.id]`. Un traitement écrit contre un bloc d'options
+  ordinaire ne voit donc **rien** de ce qu'il contient : il inspecte le niveau
+  des *noms de fournisseurs*. C'est ce qui a laissé `defaults.ssh.scripts` — un
+  script de login fusionné par Tabby dans **chaque profil du dossier** — sortir
+  entier d'une purge d'export (.AIRules/AI-CONTEXT.html, piège #77). Ce champ est
+  aussi le plus facile à perdre en recopiant un dossier (piège #62).
+- **Un profil ne porte aucune référence au coffre-fort** : c'est le coffre qui
+  est indexé par les coordonnées de connexion — `{user, host, port}` pour un mot
+  de passe, `{hash: id}` pour une phrase de passe. Il n'y a donc rien à
+  « dé-référencer » ; le champ qui porte un secret est `options.password`, dans
+  le profil. Seule vraie référence : `privateKeys[]` peut contenir
+  `vault://<id>`, opaque et inutile sur toute autre machine
+  (.AIRules/AI-CONTEXT.html, piège #78).
+- **Le modèle d'une fonctionnalité à état vit hors du composant.**
+  `src/snippets.service.ts` et `src/groupShare.ts` portent chacun tout le leur —
+  résolution, validation, cycle de vie des ids — et les vues n'en sont que des
+  façades. `sidebarTree.component.ts` dépasse 3 800 lignes : le premier jet des
+  snippets y gardait tout, avec l'expression régulière des variables déjà
+  dupliquée dans l'onglet de réglages, ce qui a décidé de l'extraction.
+- **Ce qui entre par le presse-papiers n'est jamais cru sur parole.** Le JSON de
+  partage de groupe est repurgé et revalidé champ par champ à la lecture, même
+  quand son en-tête déclare l'avoir déjà été : il est éditable à la main. Deux
+  décomptes sont gardés — ce que l'export annonce (le seul qui puisse dire « il y
+  avait un mot de passe ici »), et ce que la relecture a dû retirer elle-même.
 - **Toute nouvelle clé sous `config.store.sidebarPlus` doit être déclarée
   dans les `defaults` de `SidebarPlusConfigProvider`
   (`src/configProvider.ts`), même vide.** Une clé non déclarée se mute très

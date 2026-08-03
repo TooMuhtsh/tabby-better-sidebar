@@ -33,7 +33,7 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Absolue</td></tr>
 <tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill done">✅ Clos sans code (2026-08-03)</span></td><td>—</td></tr>
 <tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
 <tr><td><a href="#robustesse">Robustesse : vérifier le couplage à l'hôte au démarrage</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#edition-profil">Édition de profil par l'API plutôt que par le DOM</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Haute</td></tr>
@@ -60,12 +60,14 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill out">⛔ Hors périmètre (2026-08-03)</span></td><td>Utilité à établir avant tout portage</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#menu-contextuel-long">Menu contextuel du dossier trop long</a></td><td><span class="pill planned">📋 À cadrer</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#popups-en-modales">Popups riches → modales centrées</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#historique-profils">Historique des Profils Récents</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#quick-snippets">Quick Snippets (Macros de Sidebar)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#quick-snippets">Quick Snippets (Macros de Sidebar)</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#icon-favorites">Favoris d'icônes (distincts des « Récentes »)</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#partage-groupe">Partage rapide de groupe (Presse-papiers)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
-<tr><td><a href="#notes-profil">Notes de profil (Mémento contextuel)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#partage-groupe">Partage rapide de groupe (Presse-papiers)</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Basse</td></tr>
+<tr><td><a href="#notes-profil">Notes de profil (Mémento contextuel)</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Basse</td></tr>
 <tr><td><a href="#ping-live">Indicateur de latence / Ping live</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Basse</td></tr>
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
     <td><span class="pill done">✅ Revue faite (2026-07-31)</span></td>
@@ -1850,34 +1852,248 @@ l'autre bout, un Dynamic est un proxy SOCKS), et <code>https</code> n'est dédui
 usuels.</p>
 <p><strong>Non traité</strong> : l'affichage de l'état de reprise sur micro-coupure réseau.</p></div>
 
-<h3 id="group-exec">Ouverture groupée d'un dossier ("Group Exec")</h3>
+<h3 id="group-exec">Ouverture groupée d'un dossier ("Group Exec")
+<span class="pill done">✅ Clos (2026-08-03)</span></h3>
 <p>Clic droit sur un dossier → "Ouvrir tout" : lance une session pour chaque profil du dossier, en
 onglets séparés ou en split panes. Intérêt renforcé si couplé à la saisie synchronisée déjà native
-de Tabby (multi-input) pour exécuter la même commande sur plusieurs serveurs en parallèle. Priorité
-basse — pas demandée en premier par l'utilisateur.</p>
+de Tabby (multi-input) pour exécuter la même commande sur plusieurs serveurs en parallèle.</p>
 
-<h3 id="clone-express">Clone Express de profil</h3>
+<div class="callout note"><span class="callout-title">Clos sans écrire une ligne — 2026-08-03</span>
+<p><strong>Ce n'était pas un item neuf.</strong> « Lancer toutes les sessions » existait déjà
+(<code>launchGroupSessions()</code>) ; seuls les trois enrichissements ci-dessus restaient, et
+l'utilisateur les a <strong>refusés</strong>, chacun pour un motif tenant à l'usage réel :</p>
+<ul>
+<li><strong>Récursion dans les sous-dossiers</strong> — non : quarante sessions partent aussi
+  facilement que quatre, et viser un dossier parent ne doit pas être un geste à conséquence
+  imprévisible.</li>
+<li><strong>Ouverture en split panes</strong> — non : les panneaux ne se lisent que sur trois ou
+  quatre machines, c'est-à-dire précisément le cas où l'on n'aurait pas visé un dossier entier.</li>
+<li><strong>Saisie synchronisée</strong> — non : taper une commande sur douze serveurs de production
+  ne doit pas être l'effet de bord d'un « ouvrir tout ». Le multi-input natif
+  (<code>MultifocusService</code>, vérifié exporté aux deux niveaux du
+  <a href="AI-CONTEXT.html#piege-13">#13</a>) reste accessible par ses propres raccourcis.</li>
+</ul>
+<p><strong>Ce qui existait devient donc l'état final</strong>, et le commentaire de
+<code>launchGroupSessions()</code> a été réécrit dans le même geste : il annonçait une « version
+minimale » et renvoyait le reste à cette fiche. Le laisser aurait fait lire un reste à faire là où il
+n'y en a plus — la règle de détection de dérive appliquée dans le sens où c'est le <em>code</em>, et
+non la doc, qui portait l'hypothèse périmée.</p></div>
+
+<h3 id="clone-express">Clone Express de profil <span class="pill done">✅ Fait (2026-08-03)</span></h3>
 <p>Clic droit sur un profil → action "Dupliquer le profil". Génère instantanément une copie
 parfaite du profil sous le même groupe (avec suffixe " - Copie").</p>
-<p class="muted">Contrainte technique : pour éviter toute corruption ou pollution de
-<code>config.yaml</code> (<a href="AI-CONTEXT.html#piege-12">piège #12</a>), la duplication doit
-s'exécuter via un <code>structuredClone()</code> profond en mémoire de l'objet profil avant l'appel
-à l'API de persistance de Tabby.</p>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le
+2026-08-03</span>
+<p>Commit <code>e2cea77</code>. <code>structuredClone()</code> avant <code>newProfile()</code>, comme
+la fiche l'exigeait et pour la raison exacte qu'elle donnait : <code>newProfile()</code> pousse dans
+<code>config.store.profiles</code> l'objet qu'on lui donne, donc une copie de surface laisserait les
+deux entrées partager un même <code>options</code> — éditer l'une éditerait l'autre.</p>
+<ul>
+<li><strong><code>isBuiltin</code>/<code>isTemplate</code> sont retirés</strong> (et <code>group</code>
+  avec, qui n'est qu'un nom de fournisseur) : la copie d'un profil natif appartient à l'utilisateur,
+  et garder le drapeau la reclasserait sous le groupe synthétique « built-in », non modifiable.</li>
+<li><strong><code>weight</code> est gardé</strong> : <code>sort()</code> étant stable, la copie se
+  range sous son original plutôt qu'en fin de dossier.</li>
+<li><strong>La note du profil suit la copie.</strong> Rien ne l'y emmène tout seul — une note est
+  rangée par id, et <code>newProfile()</code> vient d'en forger un neuf — mais dupliquer un serveur
+  pour en faire une variante et perdre ce qu'on avait écrit dessus est le mauvais défaut.</li>
+<li>Les noms évitent la collision : « X - Copie », puis « X - Copie 2 », comptés sur
+  <code>rawGroupsSnapshot</code> et non sur <code>config.store.profiles</code>, qui ne porte pas les
+  profils des fournisseurs (<a href="AI-CONTEXT.html#piege-74">#74</a>).</li>
+</ul>
+<p><strong>« X - Copie - Copie » n'est pas un défaut</strong>, et a été lu deux fois comme tel pendant
+la passe de test : c'est la <em>copie</em> qui avait été dupliquée, et ce nom-là est libre. À retenir
+davantage que le cas : du code fonctionnel avait été supprimé sur la foi du rapport avant d'être
+rétabli. <strong>Un résultat inattendu se confronte au geste exact qui l'a produit avant de conclure
+que le code se trompe.</strong></p></div>
+
+<h3 id="popups-en-modales">Passer les popups riches en modales centrées</h3>
+<p>Constaté en construisant la modale des snippets, et non demandé : <strong>les tunnels et le
+sélecteur d'icônes souffrent du même mal</strong> — un formulaire dans une boîte ancrée au curseur,
+large de 300 px — et portent chacun leur propre positionnement, leur propre recadrage à l'écran et
+leur propre exception au clic extérieur. Trois mécaniques dupliquées pour un motif qui a désormais un
+patron éprouvé (<code>snippetsModal</code>, <code>noteModal</code>,
+<code>pasteGroupModal</code>).</p>
+<p class="muted"><strong>Les menus contextuels, eux, restent des menus</strong> : ils sont courts et
+doivent s'ouvrir sous la souris. Ce chantier vise les popups qui contiennent un <em>formulaire</em>,
+pas ceux qui contiennent une <em>liste d'actions</em> — la distinction est ce qui l'empêche de
+déborder sur <a href="#menu-contextuel-long">le chantier voisin</a>.</p>
+<p class="muted">Non ouvert pendant la phase 0.3.0 : la pile de code non testé était déjà large.</p>
+
+<h3 id="menu-contextuel-long">Le menu contextuel du dossier est devenu trop long</h3>
+<p>Relevé par l'utilisateur le 2026-08-03, au premier test de la passe du partage de groupe : « il
+s'étend vers l'infini et devient de moins en moins utilisable ». <strong>À cadrer avec lui avant d'y
+toucher.</strong></p>
+<p>Le menu du dossier porte <strong>treize entrées</strong> : déplacer la sélection, lancer les
+sessions, snippets, note, favori, renommer, nouveau dossier, nouveau profil, icône, les <em>deux</em>
+copies, cacher dans le workspace, supprimer. Les deux dernières arrivées sont celles du
+<a href="#partage-groupe">partage de groupe</a>, ce qui rend la remarque d'autant plus juste.</p>
+<p>Piste évoquée par l'utilisateur : un « afficher plus » ou équivalent.</p>
+<div class="callout note"><span class="callout-title">Ce qui est à trancher n'est pas la
+mécanique</span>
+<p>C'est le <strong>critère de partage</strong> — ce qui mérite le premier niveau. Deux angles
+possibles, et ils ne donnent pas la même liste : la <em>fréquence d'usage</em>, ou la <em>nature du
+geste</em> (agir sur le dossier / créer dedans / le partager / le retirer de la vue). À poser comme
+une question, pas à deviner : trois des cinq items de G1 se sont révélés autres qu'annoncés faute de
+l'avoir fait.</p>
+<p>Noter aussi que le menu du <strong>profil</strong> grossit en parallèle, et qu'un choix fait ici le
+concerne. Et que le clic droit doit rester court et s'ouvrir sous la souris : c'est une raison de
+plus de ne pas y régler ce qui relève de l'onglet de réglages.</p></div>
 
 <h3 id="historique-profils">Historique des Profils Récents</h3>
 <p>Liste dynamique et pliable affichant les 5 derniers profils de connexion utilisés, positionnée
 juste en dessous de la zone des sessions actives pour un réengagement ultra-rapide sans navigation
 dans l'arborescence.</p>
 
-<h3 id="quick-snippets">Quick Snippets (Macros de Sidebar)</h3>
+<h3 id="quick-snippets">Quick Snippets (Macros de Sidebar)
+<span class="pill done">✅ Fait (2026-08-03)</span></h3>
 <p>Permet d'associer des commandes textuelles récurrentes (ex. redémarrage de service, consultation
 de logs) à un profil ou un groupe.</p>
+
+<div class="callout warning"><span class="callout-title">La fiche d'origine ne décrit pas ce qui a
+été construit</span>
+<p>Elle attachait des commandes <em>à</em> un profil ou <em>à</em> un dossier, et faisait tout tenir
+dans un sous-menu du clic droit. Quatre demandes successives de l'utilisateur, pendant
+l'implémentation, en ont fait autre chose. Le paragraphe ci-dessus est conservé pour mémoire ; ce qui
+suit fait foi.</p></div>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le
+2026-08-03, au terme de cinq passes (46 + 20 + 10 + 10 + 10 points)</span>
+<p>Commit <code>e2cea77</code>.</p>
+<h4>Ce qui a changé de nature, et pourquoi</h4>
 <ul>
-<li><strong>Interaction</strong> : un clic droit sur l'élément dans la sidebar déploie un sous-menu
-  listant ces macros personnalisées. Cliquer sur une macro l'envoie et l'exécute instantanément dans
-  le terminal actif de la session correspondante, évitant les allers-retours avec un gestionnaire
-  externe.</li>
+<li><strong>Une bibliothèque, pas des listes par profil.</strong> Une commande est écrite une fois et
+  <em>rattachée</em> là où elle sert. Motif donné par l'utilisateur : « un seul endroit en config
+  plutôt que devoir les réécrire pour chaque profil », et la corriger la corrige partout. Un snippet
+  écrit depuis un profil part donc dans la bibliothèque et devient disponible pour les autres.</li>
+<li><strong>L'écriture vit dans l'onglet de réglages</strong>, pas dans le menu contextuel : « éditer
+  des commandes / du code dans une modale rikiki c'est compliqué ». Le clic droit ne fait plus que
+  rattacher, détacher, exécuter — et renseigner les variables, qui elles dépendent du profil.</li>
+<li><strong>Le reste est passé en modale centrée</strong> plutôt qu'en popup ancré au curseur. Une
+  modale à nous, pas un onglet de celle de Tabby : <code>EditProfileModalComponent</code> reçoit
+  <strong>un seul</strong> <code>settingsComponent</code>, fourni par le fournisseur du profil et
+  instancié dans un <code>ViewContainerRef</code> unique. Aucun point d'extension — il faudrait
+  détourner le composant de réglages du fournisseur SSH, soit exactement le genre de contournement
+  que ce projet a déjà payé cher.</li>
+<li><strong>Des variables, résolues par héritage.</strong> Un snippet de dossier s'adapte au profil et
+  jamais l'inverse : <code>{{logdir}}</code> est écrit une fois, chaque serveur répond pour lui-même.
+  L'écran des variables est <em>dérivé</em> : il ne montre que celles réellement lues par les
+  snippets rattachés là.</li>
 </ul>
+
+<h4>Où vit le code</h4>
+<p><code>src/snippets.service.ts</code> porte <strong>tout le modèle</strong> — bibliothèque,
+rattachements, variables, réglages, résolution, expansion, cycle de vie des ids. Les trois vues n'en
+sont que des façades : la sidebar (qui exécute), <code>snippetsModal.component</code> (qui rattache et
+renseigne) et l'onglet de réglages (qui écrit les commandes).</p>
+<p>Le premier jet gardait tout dans <code>sidebarTree.component.ts</code>, et l'onglet de réglages
+avait <em>déjà</em> sa propre copie de l'expression régulière des variables, avec un commentaire qui
+l'assumait. C'est ce signal qui a décidé de l'extraction : le composant perd ~25 000 caractères et la
+duplication disparaît. Le service ne va pas chercher les groupes lui-même — la sidebar lui passe son
+instantané non filtré à chaque chargement, <code>getProfileGroups()</code> étant asynchrone alors que
+l'arbre le tient déjà.</p>
+
+<h4>Modèle de données</h4>
+<p>Quatre clés sous <code>sidebarPlus</code>, déclarées dans les <code>defaults</code> du
+<code>ConfigProvider</code> (<a href="AI-CONTEXT.html#piege-16">#16</a>) :
+<code>snippetLibrary</code> (les commandes, une fois chacune), <code>snippetAttachments</code>,
+<code>snippetVariables</code>, <code>snippetSettings</code>, plus <code>snippetOverrides</code> et
+<code>snippetMuted</code> venus de la passe de test.</p>
+<div class="callout warning"><span class="callout-title">Tout sauf la bibliothèque est rangé par id —
+donc soumis au <a href="AI-CONTEXT.html#piege-62">#62</a></span>
+<p>Un dossier re-parenté reçoit un <strong>nouvel id</strong> :
+<code>migrateWorkspaceGroupId()</code> reporte les maps, <code>forgetDeletedId()</code> les collecte à
+la suppression. Oubliés, un dossier glissé ailleurs perdrait en silence ses snippets — et tous ceux
+que ses profils en héritaient. <strong>La bibliothèque, elle, n'est touchée par aucun des deux</strong> :
+rien n'y est rangé par id de profil ou de dossier, et c'est précisément ce que gagne la séparation.</p></div>
+
+<h4>Héritage — une seule chaîne, quatre usages</h4>
+<p>Du plus précis au plus général : <em>le profil → le dossier qui le contient → son parent → la
+racine</em>. Elle sert aux snippets (on cumule) et aux variables comme aux deux réglages (la première
+réponse rencontrée gagne). Bornée contre un cycle de parents, et lue sur
+<code>rawGroupsSnapshot</code> : un dossier masqué dans le workspace courant porte quand même les
+snippets dont ses profils héritent — un workspace règle ce qui s'<em>affiche</em>, jamais ce qu'un
+profil <em>est</em>.</p>
+
+<h4>Variables</h4>
+<ul>
+<li><strong>Propres à chaque snippet, pas au profil</strong> (corrigé à la 3<sup>e</sup> passe) : deux
+  commandes peuvent lire <code>{{path}}</code> et entendre deux choses différentes. Les valeurs sont
+  rangées par <em>(élément, snippet, nom)</em>. Contrepartie assumée : un nom partagé par trois
+  snippets se renseigne trois fois.</li>
+<li><strong>Syntaxe</strong> : <code>{{nom}}</code> est obligatoire, <code>{{nom=valeur}}</code> porte
+  un défaut et devient facultative, <code>{{nom=}}</code> vaut « facultative, défaut vide ».
+  <em>Pas</em> <code>${nom}</code> : c'est du shell valide, et un snippet utilisant une vraie variable
+  shell serait mangé par la substitution.</li>
+<li><strong>Ordre de résolution</strong> : profil → dossiers en remontant → ce que le profil sait déjà
+  (<code>name</code>, <code>host</code>, <code>user</code>, <code>port</code>) → défaut du snippet.</li>
+<li><strong>Une obligatoire sans réponse fait refuser le snippet</strong>, avec son nom : il n'est
+  jamais envoyé à moitié substitué — <code>rm -rf {{dir}}/*</code> arrivant au shell avec ses
+  accolades n'est pas un défaut cosmétique.</li>
+<li><strong>Une valeur à espace dans une commande sans guillemets est signalée</strong>, à l'endroit
+  où la valeur se saisit — le seul où les deux moitiés sont connues. Heuristique assumée, fausse dans
+  le sens qui coûte un avertissement de trop plutôt qu'une commande de trop.</li>
+<li><strong>Garde-fou au lancement d'un profil</strong> : c'est le seul moment où l'on peut voir qu'un
+  snippet <em>modifié depuis les réglages</em> réclame désormais quelque chose que les profils déjà
+  rattachés n'ont pas. Le message est mémorisé sur l'ensemble des noms manquants et non sur le
+  profil, pour qu'un lancement groupé n'empile pas une notification par session.</li>
+</ul>
+
+<h4>Les réglages, tri-état</h4>
+<p>Tous répondables <strong>au profil comme au dossier</strong> — « un dossier de prod et un dossier
+de sandbox ne doivent pas avoir les mêmes possibilités » — et par snippet <em>et</em> par élément :
+la résolution demande, à chaque maillon, la réponse propre au snippet avant la réponse générale de
+l'élément (<code>snippetOverrides</code>).</p>
+<ul>
+<li><strong>Au clic</strong> — écrire sans valider (défaut) ou écrire et exécuter. Le défaut prudent
+  est un choix : la commande attend l'<kbd>Entrée</kbd>, si bien qu'un clic dans le mauvais menu ne
+  redémarre rien sur un serveur de production.</li>
+<li><strong>Sans session ouverte</strong> — ne rien faire (défaut) ou lancer la session puis écrire.</li>
+<li><strong>Attente après lancement</strong>, 0 par défaut, plafonnée à 60 s, visible seulement si le
+  lancement automatique est actif.</li>
+</ul>
+<p><code>undefined</code> = « hérite », et l'option le dit à l'écran (« Hériter (écrire) ») pour que
+le choix ne soit jamais aveugle.</p>
+
+<h4>Limites assumées</h4>
+<ul>
+<li><strong>Aucun signal « le shell distant est prêt » n'existe en SSH</strong> : après un lancement
+  automatique, l'onglet est <em>sondé</em> et la commande arrive à ce que le prompt est à cet instant
+  — sur un serveur au long MOTD, elle peut tomber en pleine bannière. Supportable parce que le défaut
+  est d'écrire sans valider. Le réglage d'attente est la rustine ; il ne <em>résout</em> rien, il
+  remplace la chance par un nombre que l'on choisit.</li>
+<li><strong>Détacher et supprimer sont deux gestes distincts</strong>, volontairement pas au même
+  endroit. Contrepartie : la bibliothèque s'engorge d'essais détachés — d'où la mention « rattaché
+  nulle part » sur chaque ligne et le décompte en tête.</li>
+<li><strong>Un snippet ne s'exécute que depuis un profil.</strong> Sur un dossier, la liste définit ce
+  dont héritent ses profils — il n'a pas de session où écrire.</li>
+</ul>
+
+<h4>Deux défauts trouvés en test, à ne pas redécouvrir</h4>
+<ul>
+<li><strong>Un snippet rattaché au profil <em>et</em> à son dossier s'affichait deux fois</strong>,
+  les deux listes étant calculées séparément. Les hérités excluent désormais ce que l'élément porte
+  déjà. Un hérité se <em>désactive</em> localement (<code>snippetMuted</code>) plutôt que se détacher :
+  l'attachement appartient au dossier, le retirer le prendrait à tous ses profils.</li>
+<li><strong>Les toasts duraient une seconde</strong> : le code neuf appelait le
+  <code>NotificationsService</code> de Tabby, dont <code>notice()</code> fige
+  <code>timeOut: 1000</code> (<a href="AI-CONTEXT.html#piege-51">#51</a>). Le projet a
+  <code>SidebarPlusNoticesService</code> depuis longtemps, écrit pour cette raison exacte — il n'avait
+  pas été branché. <strong>Avant d'appeler une API de l'hôte, vérifier que le projet n'a pas déjà son
+  enveloppe.</strong></li>
+</ul></div>
+
+<h4 id="snippets-suite">Suite ouverte — raccourcis clavier par snippet et boutons au survol</h4>
+<p>Demandé pendant la passe de test, reporté après stabilisation. Le design tel qu'il a été posé : un
+raccourci appartient au <em>snippet</em> et vaut partout où il est rattaché (pas un raccourci par
+rattachement) ; il faut détecter les conflits avec les raccourcis de Tabby comme avec ceux du plugin ;
+et deux ou trois snippets doivent être atteignables au survol d'une session dans la sidebar, pour
+partir « à l'aveugle » dans cette session-là.</p>
+<p class="muted">Point technique à lever avant de s'y mettre : <code>HotkeyProvider</code> ne déclare
+aujourd'hui que deux entrées fixes (<code>src/hotkeys.ts</code>). Des raccourcis dynamiques, redéclarés
+à chaque changement de la bibliothèque, n'ont aucun précédent dans ce plugin — c'est là qu'est le
+risque, pas dans l'interface.</p>
 
 <h3 id="icon-favorites">Favoris d'icônes (distincts des « Récentes »)</h3>
 <p>Demandé directement par l'utilisateur (2026-07-28) après usage du picker d'icônes existant.
@@ -2016,15 +2232,135 @@ plus facile à déclencher. Le glisser est désormais coupé tant qu'un filtre e
 (<a href="AI-CONTEXT.html#piege-68">piège #68</a>) : ce n'est pas une restriction d'ergonomie à lever
 un jour, mais la conséquence de ce que l'arbre affiché n'est alors pas l'arbre réel.</p></div></div>
 
-<h3 id="partage-groupe">Partage rapide de groupe (Presse-papiers)</h3>
+<h3 id="partage-groupe">Partage rapide de groupe (Presse-papiers)
+<span class="pill done">✅ Fait (2026-08-03)</span></h3>
 <p>Clic droit sur un dossier/groupe → "Copier la structure (JSON)". Extrait l'arborescence complète
 au format JSON en purgeant obligatoirement tous les secrets, identifiants et mots de passe. L'action
 symétrique "Coller le groupe" à la racine de la sidebar permet d'importer instantanément la
 structure.</p>
 
-<h3 id="notes-profil">Notes de profil (Mémento contextuel)</h3>
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le
+2026-08-03, 36/36 sans échec</span>
+<p>Commit <code>e2cea77</code>. Le modèle vit dans <code>src/groupShare.ts</code> — fonctions pures,
+hors du composant. <strong>La purge est une question de sécurité, pas de confort</strong>, et c'est ce
+qui a classé l'item <em>L</em> : trois points ont dû être tranchés avec l'utilisateur avant d'écrire,
+et le premier l'a été après vérification, pas d'après la fiche.</p>
+
+<h4>Le coffre-fort ne marche pas comme cette fiche le supposait</h4>
+<p>Détaillé en <a href="AI-CONTEXT.html#piege-78">piège #78</a>, et l'essentiel tient en une phrase :
+<strong>un profil ne porte aucune référence au vault</strong>, c'est le vault qui est indexé par les
+coordonnées de connexion. Il n'y avait donc rien à « dé-référencer » ; ce qui compte est
+<code>options.password</code>, un mot de passe réellement stocké dans le profil. Seule vraie
+référence : <code>privateKeys[]</code> peut contenir <code>vault://&lt;id&gt;</code>, opaque et
+inutile ailleurs — retiré, car le garder donne un profil qui échoue à trouver sa clé sans rien dire.</p>
+<p class="muted">Cherché avant d'écrire, comme le veut la règle : <strong>Tabby n'a aucun
+export/import de profils</strong>. Rien à réutiliser ici.</p>
+
+<h4>Ce que le profil porte vraiment, et que la fiche n'énumérait pas</h4>
+<ul>
+<li><code>options.password</code> — lu par <code>ssh.ts</code>. Chiffré au repos quand le coffre est
+  actif, mais bien présent dans l'objet, donc dans un export.</li>
+<li><strong><code>options.scripts[].send</code></strong> — le champ libre d'un expect/send, lieu
+  classique du mot de passe sudo en dur. <strong>Aucun code ne peut le distinguer d'un script
+  anodin.</strong></li>
+<li><code>options.privateKeys[]</code> — chemins locaux, qui portent le nom de compte de l'OS.</li>
+<li>La topologie : <code>jumpHost</code>, <code>proxyCommand</code>, <code>socksProxy*</code>,
+  <code>httpProxy*</code>, <code>forwardedPorts[].targetAddress</code>.</li>
+</ul>
+
+<h4>Les trois arbitrages</h4>
+<ol>
+<li><strong>Deux niveaux, choisis au geste</strong>, et non un réglage : deux entrées au clic droit.
+  « Copier la structure (JSON) » retire les secrets et rien d'autre — celle qui se recolle à
+  l'identique entre ses propres machines. « Copier sans les identifiants » retire en plus le nom
+  d'utilisateur, les clés et la route ; <strong><code>host</code> et <code>port</code> restent</strong>,
+  une structure sans hôte ne se recollant pas utilement. <em>Le libellé dit « identifiants » et non
+  « coordonnées » précisément pour ça.</em></li>
+<li><strong>Les scripts de login sortent toujours, et l'export les compte</strong> : celui qui colle
+  apprend qu'il y en avait deux et qu'il devra les refaire, sans qu'on lui livre leur contenu. Un
+  script se réécrit vite, un secret parti ne se rattrape pas.</li>
+<li><strong>La collision se demande</strong>, et seulement quand elle a lieu. La modale offre
+  « Coller à côté » (suffixe « X - Copie », celui de <a href="#clone-express">Clone Express</a>) et
+  « Fusionner ». <kbd>Entrée</kbd> tombe sur la première : celle qui ne peut rien écraser.</li>
+</ol>
+
+<div class="callout warning"><span class="callout-title">La purge tourne aussi à l'entrée</span>
+<p>Ce que le JSON <em>dit</em> avoir retiré ne vaut rien : c'est du texte pris au presse-papiers,
+éditable à la main et peut-être écrit ailleurs. <code>parsePayload()</code> repurge donc tout ce qui
+entre, et garde <strong>deux comptes séparés</strong> — <code>removed</code>, ce que l'export annonce
+(la seule chose qui puisse dire « il y avait un mot de passe ici, à ressaisir », puisque par
+construction il n'en reste rien à compter), et <code>strippedOnImport</code>, ce que cette seconde
+passe a dû retirer elle-même. Vide sur un export maison ; non vide, une notice rouge signale que le
+JSON portait plus que son en-tête n'admettait.</p>
+<p><strong>Ce point a failli être perdu</strong> : la première version ne gardait qu'un rapport,
+re-dérivé à l'import — donc toujours vide, puisque l'export avait déjà tout retiré. Le « et le dire »
+demandé par l'utilisateur ne se serait jamais affiché, et aucun test fonctionnel ne l'aurait
+montré.</p></div>
+
+<h4>Ce que le banc a trouvé, et qu'une relecture n'aurait pas vu</h4>
+<p>La purge étant du code pur, elle a été vérifiée <strong>hors de Tabby</strong> avant toute passe
+manuelle : 59 contrôles, refus et entrées malformées compris. Elle a trouvé un trou —
+<code>defaults</code> traité au mauvais niveau, <a href="AI-CONTEXT.html#piege-77">piège #77</a> —
+par lequel un script de login de dossier sortait entier. Ce qui l'a révélé n'est pas la lecture mais
+le <em>comptage</em> : un mot de passe classé « champ sensible » au lieu de « mot de passe », donc
+retiré par le filet et non par la règle qui aurait dû s'en charger.</p>
+
+<h4>Limites assumées</h4>
+<ul>
+<li><strong>Le filet des noms suspects est un filet, pas une garantie.</strong> Les listes explicites
+  sont écrites contre <code>SSHProfileOptions</code> ; un fournisseur tiers ne peut pas l'être. Toute
+  clé dont le <em>nom</em> contient <code>password</code>, <code>passphrase</code>,
+  <code>secret</code>, <code>token</code>, <code>credential</code> ou <code>apikey</code> est retirée
+  à toute profondeur — vérifié sans faux positif contre les profils SSH, local, telnet et serial de
+  Tabby. Un fournisseur qui range son jeton sous <code>options.z</code> passe au travers.</li>
+<li><strong>Ni les snippets ni les notes ne voyagent</strong>, et c'est un choix : un snippet ne vit
+  pas dans le dossier mais dans une bibliothèque partagée par rattachement, donc l'exporter
+  demanderait d'emporter des morceaux de bibliothèque et d'arbitrer leur fusion à l'arrivée. Et comme
+  <code>scripts[].send</code>, un snippet est du texte libre où un secret peut dormir. À rouvrir si
+  l'usage le réclame.</li>
+<li><strong>Le collage se fait à la racine seulement.</strong> Coller <em>dans</em> un dossier est le
+  même code avec un parent différent ; le menu du dossier porte déjà treize entrées — voir
+  <a href="#menu-contextuel-long">le chantier ouvert sur sa longueur</a>.</li>
+<li><strong>Une collision de sous-dossier pendant une fusion n'est pas rejouée</strong> : elle crée à
+  côté, ce que la modale annonce.</li>
+<li><strong>Détail de décompte</strong> : au niveau « sans identifiants », <code>vaultKeys</code> vaut
+  0 même si une clé de coffre était présente — <code>privateKeys</code> est retiré en bloc avant que
+  le filtre <code>vault://</code> ne s'applique, et elle est comptée dans les chemins de clé. Rien ne
+  fuit, c'est le rangement du compte qui change selon le niveau.</li>
+</ul>
+<p class="muted">Le dépôt est public : aucun exemple de ce chantier ne porte de donnée réelle
+(<code>app.exemple.fr</code>).</p></div>
+
+<h3 id="notes-profil">Notes de profil (Mémento contextuel)
+<span class="pill done">✅ Fait (2026-08-03)</span></h3>
 <p>Zone de texte légère ou bulle d'aide éditable propre à chaque profil pour y consigner des notes
 d'exploitation (commandes de relance, rappels de maintenance, numéros de tickets).</p>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le
+2026-08-03</span>
+<p>Commit <code>e2cea77</code>. Clé <code>profileNotes</code>, une chaîne par id, sur un profil comme
+sur un dossier.</p>
+<ul>
+<li><strong>Pas d'héritage</strong>, contrairement à tout ce qui est rangé par id dans ce plugin —
+  décision de l'utilisateur, et le motif tient : une note de dossier répétée sur ses douze profils
+  serait du bruit, pas un rappel. Un dossier porte la sienne, affichée sur sa propre ligne.</li>
+<li><strong>Une pastille discrète sur la ligne</strong>, l'infobulle portant le texte. Une note qu'il
+  faut penser à aller ouvrir ne sert à rien ; elle est plus terne que l'étoile des favoris, qu'elle
+  n'a pas à concurrencer. Infobulle statique, donc <a href="AI-CONTEXT.html#piege-69">#69</a> sans
+  objet ici.</li>
+<li><strong>Édition en modale centrée</strong> : du texte libre sur plusieurs lignes ne s'écrit pas
+  dans une boîte de 300 px accrochée au curseur. <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> enregistre,
+  <kbd>Entrée</kbd> reste le saut de ligne — c'est de la prose. Vider le champ retire la note plutôt
+  que d'en garder une vide.</li>
+<li><strong>Cherchable par le filtre</strong> : « quel serveur, déjà, pour le ticket 4512 ? » est
+  précisément ce à quoi un mémento sert. En <em>seconde passe</em> et par sous-chaîne exacte, jamais
+  comme clé supplémentaire de la recherche floue — cela aurait demandé de greffer le texte sur chaque
+  profil, or ce sont ces objets-là qui partent dans <code>config.store</code>, soit la forme exacte du
+  <a href="AI-CONTEXT.html#piege-12">#12</a>.</li>
+<li><strong>La note suit un profil dupliqué</strong> (voir <a href="#clone-express">Clone Express</a>)
+  et un dossier re-parenté (<code>moveNote()</code>, appelé par
+  <code>migrateWorkspaceGroupId()</code>).</li>
+</ul></div>
 
 <h3 id="ping-live">Indicateur de santé (Ping live)</h3>
 <p>Option pour afficher une micro-pastille colorée (vert/orange/rouge) à côté des sessions actives

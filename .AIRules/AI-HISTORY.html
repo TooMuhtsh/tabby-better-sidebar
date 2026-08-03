@@ -24,6 +24,79 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>G1 — duplication, snippets, notes et partage de groupe (2026-08-03)</h2>
+<div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
+2026-08-03</span>
+<p>Branche <code>feat/phase-0.3.0</code>, premier groupe de la phase à roadmap figée. Cinq items
+écrits d'affilée et commités d'un seul geste — c'est le régime, pas un oubli. Détail de chaque
+design dans les fiches de la <a href="ROADMAP.html">roadmap</a>, qui font foi.</p></div>
+
+<p><strong>Le fait marquant du groupe n'est aucun des cinq items : c'est que trois d'entre eux se
+sont révélés autres que leur fiche l'annonçait.</strong> Quick Snippets décrivait des listes de
+commandes par profil et est devenu une bibliothèque partagée avec variables. Group Exec n'était pas
+un item neuf — la fonction existait, seuls ses enrichissements restaient, et ils ont été refusés.
+Partage de groupe reposait sur une idée fausse du coffre-fort. Chaque fois, ce qui a changé le
+périmètre est le même geste : <strong>lire le code, ou poser la question, avant de chiffrer.</strong>
+Une fiche de roadmap consigne une intention écrite tôt, pas un état.</p>
+
+<p><strong>Deux défauts sérieux ont été trouvés par la mesure, pas par la relecture</strong>, et les
+deux méritent d'être retenus pour la méthode plus que pour le cas.</p>
+<ul>
+<li><strong>La purge du partage laissait passer <code>defaults.ssh.scripts</code></strong>
+  (<a href="AI-CONTEXT.html#piege-77">piège #77</a>) — un script de login de dossier, que Tabby
+  fusionne dans chaque profil du dossier, et où un mot de passe sudo se met couramment en dur.
+  L'export <em>paraissait</em> correct : le mot de passe voisin avait bien disparu. Ce qui l'a révélé
+  est un contrôle sur la <strong>catégorie du décompte</strong> — un mot de passe compté comme
+  « champ sensible » au lieu de « mot de passe », donc retiré par un filet heuristique et non par la
+  règle qui aurait dû s'en charger. Vérifier qu'un secret est parti ne suffit pas ; il faut vérifier
+  <em>par quelle règle</em>.</li>
+<li><strong>Le rapport de purge affiché au collage aurait toujours été vide.</strong> Il était
+  re-dérivé en relisant le JSON — or l'export avait déjà tout retiré, donc il n'y avait plus rien à
+  compter. L'utilisateur avait explicitement demandé que les scripts retirés soient
+  <em>dits</em> ; la fonctionnalité aurait été silencieusement absente, et aucun test fonctionnel ne
+  l'aurait montré. D'où deux comptes séparés : ce que l'export annonce, et ce que la relecture a dû
+  retirer elle-même — le second non vide signalant un JSON qui portait plus que son en-tête
+  n'admettait.</li>
+</ul>
+
+<p><strong>La purge, étant du code pur, a été vérifiée hors de Tabby avant toute passe manuelle</strong> :
+59 contrôles sur <code>src/groupShare.ts</code>, refus et entrées malformées compris. C'est ce banc
+qui a trouvé le premier des deux défauts. La passe réelle a suivi, 36 points, et son contrôle le plus
+fort porte sur le résultat écrit et non sur l'export : <strong>vingt profils collés, aucun ne portant
+de secret</strong>, les quatre seules entrées encore chargées étant les originaux du banc.</p>
+
+<div class="callout warning"><span class="callout-title">Un doute de test qui n'en était pas un</span>
+<p>La hiérarchie des dossiers collés a été rapportée comme suspecte — « les dossiers se sont mis à la
+racine ». Vérification faite dans la configuration : chaque dossier collé portait bien son
+sous-dossier. Ce qui avait changé venait d'ailleurs — les trois dossiers du banc avaient un
+<strong>uuid</strong> à la place de l'id posé à la main, et un dossier <em>jamais collé</em> s'était
+retrouvé sous un autre. Or seul le re-parentage change un id
+(<a href="AI-CONTEXT.html#piege-62">#62</a>) et le collage ne touche jamais un dossier existant :
+c'était un rangement manuel au glisser-déposer. <strong>Un id qui change nomme le geste qui l'a
+changé</strong> — c'est ce qui a permis de trancher sans reproduire.</p></div>
+
+<p>Deux pièges d'environnement consignés au passage, tous deux sortis de la préparation du banc de
+test : <a href="AI-CONTEXT.html#piege-76">#76</a> — un commentaire écrit dans
+<code>config.yaml</code> ne survit pas au premier <code>config.save()</code>, Tabby réécrivant tout
+depuis son état mémoire, ce qui rend inopérant tout retrait fondé sur des marqueurs — et
+<a href="AI-CONTEXT.html#piege-78">#78</a>, le fonctionnement réel du coffre-fort.</p>
+
+<p><strong>Un chantier ouvert par l'utilisateur pendant la passe</strong>, consigné sans être traité :
+le <a href="ROADMAP.html#menu-contextuel-long">menu contextuel du dossier</a> porte désormais treize
+entrées, dont les deux dernières viennent de ce chantier.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>e2cea77</code></td>
+<td><strong>Les cinq items de G1</strong> : Clone Express, Quick Snippets (bibliothèque partagée,
+variables, comportement par couple élément/snippet), Notes de profil, Group Exec clos sans code, et
+Partage de groupe (deux niveaux de purge, collage avec arbitrage de collision, purge rejouée à
+l'entrée). Plus les interrupteurs <code>showSnippets</code> et <code>showNotes</code>, qui coupent la
+source et pas seulement la vue. 59 contrôles hors Tabby + 96 points de test manuel sur cinq passes et
+une passe finale.</td></tr>
+</table>
+
 <h2>Régime temporaire : roadmap figée, consignation en une fois (2026-08-03)</h2>
 <div class="callout note"><span class="callout-title">Décidé par l'utilisateur le 2026-08-03</span>
 <p>Ce n'est pas un chantier mais un mode de travail, noté ici parce qu'il explique une anomalie

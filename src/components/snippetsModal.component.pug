@@ -1,0 +1,152 @@
+.modal-header
+    h5.modal-title.no-wrap Snippets — {{ ownerName }}
+    button.btn-close((click)='close()')
+
+.modal-body.snippets-modal
+    //- Runnable only on a profile: a folder has no session to write into, it is
+    //- where a command is defined for everything it holds.
+    .snippets-modal-section
+        .snippets-modal-empty(*ngIf='!ownSnippets.length && !inheritedSnippets.length') Aucun snippet.
+        ng-container(*ngFor='let s of ownSnippets; trackBy: trackById')
+            .snippet-line
+                .snippet-line-main([class.runnable]='canRun', (click)='run(s)')
+                    .snippet-line-name {{ s.name }}
+                    code.snippet-line-command {{ s.command }}
+                //- The badge is the only thing saying the panel needs opening —
+                //- what it holds is required and unanswered.
+                button.btn.btn-sm.btn-secondary.snippet-tune-btn(
+                    (click)='toggleTuning(s)',
+                    [class.active]='tuning === s.id',
+                    title='Variables et comportement de ce snippet ici'
+                )
+                    .fa.fa-fw.fas.fa-sliders
+                    span.snippet-tune-badge(*ngIf='missingCount(s)') {{ missingCount(s) }}
+                button.btn.btn-sm.btn-secondary(
+                    (click)='detach(s)',
+                    title='Retirer d\'ici — reste dans la bibliothèque'
+                ) Détacher
+            //- Per snippet *and* per item: two snippets of the same profile can
+            //- behave differently, which one answer per profile cannot express.
+            .snippet-tuning(*ngIf='tuning === s.id')
+                //- Per snippet, not per profile: two commands may both read
+                //- `{{path}}` and mean different things by it.
+                ng-container(*ngIf='variablesOf(s).length')
+                    .snippets-modal-label Variables
+                    .snippet-var(
+                        *ngFor='let v of variablesOf(s); trackBy: trackByName',
+                        [class.unanswered]='v.unanswered'
+                    )
+                        label.snippet-var-label
+                            | {{ v.name }}
+                            span.snippet-var-required {{ v.required ? '*' : '' }}
+                        .snippet-var-field
+                            input.form-control.form-control-sm(
+                                type='text',
+                                [class.inherited-value]='!v.own',
+                                [value]='v.own',
+                                [placeholder]='v.resolved || "à renseigner"',
+                                (change)='setVariable(s, v.name, $event.target.value)'
+                            )
+                            .snippet-var-hint(*ngIf='v.unanswered') Obligatoire, non renseignée.
+                            .snippet-var-hint(*ngIf='!v.unanswered && !v.own') {{ v.resolved }} — {{ v.source }}
+                            .snippet-var-hint.warn(*ngIf='v.unquotedIn')
+                                | « {{ v.resolved }} » contient un espace et n'est pas entre guillemets.
+                                | Écrire "{{ '{{' }}{{ v.name }}{{ '}}' }}" dans la commande, ou entourer la valeur ici.
+                    .snippets-modal-label Comportement
+                .snippet-setting
+                    label Au clic
+                    select.form-control.form-control-sm(
+                        [ngModel]='override(s.id, "execute")',
+                        (ngModelChange)='setOverride(s.id, "execute", $event)'
+                    )
+                        option(value='inherit') Suivre {{ resolvedFor(s.id, 'execute') ? '(exécuter)' : '(écrire)' }}
+                        option(value='no') Écrire sans valider
+                        option(value='yes') Écrire et exécuter
+                .snippet-setting
+                    label Sans session
+                    select.form-control.form-control-sm(
+                        [ngModel]='override(s.id, "autoLaunch")',
+                        (ngModelChange)='setOverride(s.id, "autoLaunch", $event)'
+                    )
+                        option(value='inherit') Suivre {{ resolvedFor(s.id, 'autoLaunch') ? '(lancer)' : '(ne rien faire)' }}
+                        option(value='no') Ne rien faire
+                        option(value='yes') Lancer la session
+                .snippet-setting(*ngIf='launchesFor(s.id)')
+                    label Attente
+                    input.form-control.form-control-sm(
+                        type='number',
+                        min='0',
+                        max='60000',
+                        step='500',
+                        [value]='overrideDelay(s.id)',
+                        placeholder='suivre',
+                        (change)='setOverrideDelay(s.id, $event.target.value)'
+                    )
+
+        .snippets-modal-label(*ngIf='inheritedSnippets.length') Hérités
+        .snippet-line.inherited(
+            *ngFor='let e of inheritedSnippets; trackBy: trackByInherited',
+            [class.muted]='e.muted'
+        )
+            .snippet-line-main([class.runnable]='canRun && !e.muted', (click)='run(e.snippet, e.muted)')
+                .snippet-line-name {{ e.snippet.name }}
+                code.snippet-line-command {{ e.snippet.command }}
+            .snippet-line-source {{ e.source }}
+            //- Detaching would take it from the folder, i.e. from every other
+            //- profile it holds. Muting is the local answer.
+            button.btn.btn-sm.btn-secondary(
+                (click)='toggleMuted(e.snippet)',
+                [title]='e.muted ? "Réactiver ici" : "Ne plus proposer ici — reste rattaché au dossier"'
+            ) {{ e.muted ? 'Réactiver' : 'Désactiver ici' }}
+
+    //- Boxed and named for what they are: as plain buttons they read like
+    //- actions of the modal rather than as the snippets they stand for.
+    .snippets-modal-section.boxed(*ngIf='attachable.length')
+        .snippets-modal-label Snippets disponibles
+        //- Name only: the command sits behind the (i), which keeps a long list
+        //- readable when all that is being chosen is which one to attach.
+        .snippet-line.available(*ngFor='let s of attachable; trackBy: trackById')
+            .snippet-line-main
+                .snippet-line-name
+                    | {{ s.name }}
+                    i.fa.fa-fw.fas.fa-circle-info.snippet-line-info([title]='s.command')
+            button.btn.btn-sm.btn-secondary((click)='attach(s)', title='Rattacher ici') Rattacher
+
+    .snippets-modal-section
+        .snippets-modal-label Comportement
+        .snippet-setting
+            label Au clic
+            select.form-control.form-control-sm(
+                [ngModel]='setting("execute")',
+                (ngModelChange)='setSetting("execute", $event)'
+            )
+                option(value='inherit') Hériter ({{ inherited('execute') ? 'exécuter' : 'écrire' }})
+                option(value='no') Écrire sans valider
+                option(value='yes') Écrire et exécuter
+        .snippet-setting
+            label Sans session
+            select.form-control.form-control-sm(
+                [ngModel]='setting("autoLaunch")',
+                (ngModelChange)='setSetting("autoLaunch", $event)'
+            )
+                option(value='inherit') Hériter ({{ inherited('autoLaunch') ? 'lancer' : 'ne rien faire' }})
+                option(value='no') Ne rien faire
+                option(value='yes') Lancer la session
+        //- Nothing to wait for on a session that was already open.
+        .snippet-setting(*ngIf='autoLaunchOn')
+            label Attente
+            input.form-control.form-control-sm(
+                type='number',
+                min='0',
+                max='60000',
+                step='500',
+                [class.inherited-value]='!delay',
+                [value]='delay',
+                [placeholder]='inheritedDelay + " ms"',
+                (change)='setDelay($event.target.value)'
+            )
+        .snippets-modal-note(*ngIf='!profile') Hérités par le contenu du dossier.
+
+.modal-footer
+    button.btn.btn-secondary.me-auto((click)='openLibrary()') Gérer la bibliothèque
+    button.btn.btn-primary((click)='close()') Fermer

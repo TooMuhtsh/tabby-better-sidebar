@@ -1,0 +1,35 @@
+// Scoped under one class rather than styling `.modal-body` at large: this
+// stylesheet is injected as plain global CSS like every other one in this
+// plugin (side-effect import), so a bare `.modal-body` rule would reach every
+// modal Tabby opens. Same reason `:host` is absent — it does nothing here
+// (piège #14).
+.paste-group-modal {
+    .paste-group-count {
+        font-size: 0.85em;
+        opacity: 0.6;
+    }
+
+    .paste-group-purge {
+        display: flex;
+        align-items: baseline;
+        font-size: 0.85em;
+        // Colour rather than a border box: this is worth reading, not worth
+        // alarming — nothing has gone wrong, something is simply missing.
+        color: var(--bs-warning);
+        margin-bottom: 1.1rem;
+    }
+
+    .paste-group-choice {
+        margin-bottom: 1rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .paste-group-hint {
+        font-size: 0.85em;
+        opacity: 0.6;
+        margin-top: 0.25rem;
+    }
+}
