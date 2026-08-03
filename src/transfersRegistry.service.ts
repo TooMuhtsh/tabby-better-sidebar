@@ -126,9 +126,17 @@ export class SidebarPlusTransfersService {
         platform.fileTransferStarted$.subscribe(transfer => this.track(transfer))
     }
 
-    /** Whether the transfers panel is on. Off means this service does nothing at all — no history, no tick. */
+    /**
+     * Whether the transfers panel is on. Off means this service does nothing at
+     * all — no history, no tick.
+     *
+     * Conditioned on the SFTP view as well as on its own switch: the panel is
+     * an option *of* that view, so it goes with it. Read from the config rather
+     * than from the tree component, which is not always mounted.
+     */
     get enabled (): boolean {
-        return this.config.store.sidebarPlus?.showTransfers ?? true
+        const sp = this.config.store.sidebarPlus
+        return (sp?.showSftp ?? true) && (sp?.showTransfers ?? true)
     }
 
     get activeCount (): number {

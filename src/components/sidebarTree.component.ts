@@ -978,8 +978,21 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return (this.config.store.sidebarPlus?.showSftp ?? true) && hostSupports('sftp-panel')
     }
 
+    /**
+     * The transfers panel, which belongs to the SFTP view and is switched off
+     * with it.
+     *
+     * Subordinate rather than independent because that is where transfers come
+     * from in practice, and because the settings page groups an option with the
+     * feature it belongs to. The nuance to keep in mind: the registry also
+     * mirrors transfers *this plugin did not start* — the native SFTP panel's,
+     * another plugin's — and those become invisible here when the SFTP view is
+     * off. That is why switching it off also stops hiding Tabby's own transfers
+     * menu (see SidebarPlusMountService): the plugin must not hide the host's
+     * only remaining readout of something it no longer shows itself.
+     */
     get showTransfers (): boolean {
-        return this.config.store.sidebarPlus?.showTransfers ?? true
+        return this.showSftp && (this.config.store.sidebarPlus?.showTransfers ?? true)
     }
 
     get showWorkspaces (): boolean {

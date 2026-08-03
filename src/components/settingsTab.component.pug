@@ -51,6 +51,43 @@
         | interrupteur. Éteindre coupe aussi ce qui l'alimente — rien n'est
         | supprimé, tout revient en rallumant.
 
+
+    //- Les blocs sans réglage propre, groupés et resserrés en tête : ce sont
+        de simples interrupteurs, et les étaler comme ceux qui ouvrent une
+        liste d'options laissait croire qu'ils en avaient aussi.
+    .settings-section.compact-blocks
+      .form-line.block-switch
+        .header
+          .title Tunnels actifs #[i.fas.fa-info-circle.info-hint(title="Reflet de l état du moteur de port-forwarding de Tabby. Pastille allumée quand des tunnels sont montés, estompée quand le profil en porte seulement en configuration.")]
+          .description Le panneau des redirections de ports, et les pastilles « maillon » sur les profils.
+          .description.text-warning(*ngIf="!hostHas('ssh-tab')") Indisponible sur cette version de Tabby. Votre réglage est conservé.
+        .control
+          toggle(
+            [ngModel]="blockOn('showTunnels', 'ssh-tab')",
+            [disabled]="!hostHas('ssh-tab')",
+            (ngModelChange)="setBlock('showTunnels', $event)"
+          )
+
+      .form-line.block-switch
+        .header
+          .title Workspaces #[i.fas.fa-info-circle.info-hint(title="Les workspaces filtrent la visibilité, ils ne suppriment rien. « Tous » est le cas sans exclusion. La barre de filtrage, elle, cherche partout quoi qu il arrive.")]
+          .description La barre des espaces de travail. Éteinte, la sidebar revient sur « Tous » et tout redevient visible.
+        .control
+          toggle(
+            [ngModel]="blockOn('showWorkspaces')",
+            (ngModelChange)="setBlock('showWorkspaces', $event)"
+          )
+
+      .form-line.block-switch
+        .header
+          .title Barre de filtrage #[i.fas.fa-info-circle.info-hint(title="Cherche le nom, la description, l hôte et l utilisateur, et ignore délibérément le masquage du workspace actif. Éteinte, le raccourci reste sans effet plutôt que de paraître cassé.")]
+          .description Le champ de recherche et son raccourci #[kbd Ctrl+F].
+        .control
+          toggle(
+            [ngModel]="blockOn('showFilter')",
+            (ngModelChange)="setBlock('showFilter', $event)"
+          )
+
     //- SESSIONS ACTIVES
     .settings-section
       .form-line.block-switch
@@ -78,20 +115,6 @@
               [ngModel]='pingIntervalSeconds',
               (ngModelChange)='setPingIntervalSeconds($event)'
             )
-
-    //- TUNNELS
-    .settings-section
-      .form-line.block-switch
-        .header
-          .title Tunnels actifs #[i.fas.fa-info-circle.info-hint(title="Reflet de l état du moteur de port-forwarding de Tabby. Pastille allumée quand des tunnels sont montés, estompée quand le profil en porte seulement en configuration.")]
-          .description Le panneau des redirections de ports, et les pastilles « maillon » sur les profils.
-          .description.text-warning(*ngIf="!hostHas('ssh-tab')") Indisponible sur cette version de Tabby. Votre réglage est conservé.
-        .control
-          toggle(
-            [ngModel]="blockOn('showTunnels', 'ssh-tab')",
-            [disabled]="!hostHas('ssh-tab')",
-            (ngModelChange)="setBlock('showTunnels', $event)"
-          )
 
     //- VUE SFTP — de loin le bloc le plus outillé
     .settings-section
@@ -171,38 +194,12 @@
               option(value='cancel') Annuler — la réponse sûre (défaut)
               option(value='confirm') Supprimer — Suppr puis Entrée en un geste
 
-    //- TRANSFERTS
-    .settings-section
-      .form-line.block-switch
-        .header
-          .title Gestionnaire de transferts #[i.fas.fa-info-circle.info-hint(title="Reflète tous les transferts de l application, y compris ceux du panneau SFTP natif et des autres plugins. Éteint, ni historique ni minuterie ne tournent.")]
-          .description Le panneau en bas de sidebar. Éteint, plus rien n'est suivi, y compris les transferts des autres plugins.
-        .control
-          toggle(
-            [ngModel]="blockOn('showTransfers')",
-            (ngModelChange)="setBlock('showTransfers', $event)"
-          )
-
-    //- WORKSPACES
-    .settings-section
-      .form-line.block-switch
-        .header
-          .title Workspaces #[i.fas.fa-info-circle.info-hint(title="Les workspaces filtrent la visibilité, ils ne suppriment rien. « Tous » est le cas sans exclusion. La barre de filtrage, elle, cherche partout quoi qu il arrive.")]
-          .description La barre des espaces de travail. Éteinte, la sidebar revient sur « Tous » et tout redevient visible.
-        .control
-          toggle(
-            [ngModel]="blockOn('showWorkspaces')",
-            (ngModelChange)="setBlock('showWorkspaces', $event)"
-          )
-
-    //- FILTRE
-    .settings-section
-      .form-line.block-switch
-        .header
-          .title Barre de filtrage #[i.fas.fa-info-circle.info-hint(title="Cherche le nom, la description, l hôte et l utilisateur, et ignore délibérément le masquage du workspace actif. Éteinte, le raccourci reste sans effet plutôt que de paraître cassé.")]
-          .description Le champ de recherche et son raccourci #[kbd Ctrl+F].
-        .control
-          toggle(
-            [ngModel]="blockOn('showFilter')",
-            (ngModelChange)="setBlock('showFilter', $event)"
-          )
+        .form-line
+          .header
+            .title Gestionnaire de transferts #[i.fas.fa-info-circle.info-hint(title="Reflète tous les transferts de l application, y compris ceux du panneau SFTP natif et des autres plugins — d où sa dépendance à la vue SFTP, qui est leur source habituelle. Éteint, ni historique ni minuterie ne tournent, et le menu de transferts de Tabby cesse d être masqué pour qu il reste un affichage.")]
+            .description Le panneau en bas de sidebar. Éteint, plus rien n'est suivi.
+          .control
+            toggle(
+              [ngModel]="blockOn('showTransfers')",
+              (ngModelChange)="setBlock('showTransfers', $event)"
+            )

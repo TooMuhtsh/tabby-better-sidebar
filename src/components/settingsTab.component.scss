@@ -76,6 +76,26 @@
         }
     }
 
+    // Blocks that carry no options of their own, grouped and tightened at the
+    // top of the page: they are plain switches, and spacing them like the ones
+    // that unfold a list of settings suggested they had settings too.
+    .settings-section.compact-blocks {
+        margin-bottom: 1.75rem;
+
+        .form-line.block-switch {
+            padding: 0.35rem 0;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+
+            &:last-child {
+                border-bottom: none;
+            }
+
+            .description {
+                margin-top: 0.1rem;
+            }
+        }
+    }
+
     // The options a block owns, indented under its switch and tied to it by a
     // rule down the left. Without this they sat at the same level as the switch
     // and read as six unrelated settings rather than as one feature and its
