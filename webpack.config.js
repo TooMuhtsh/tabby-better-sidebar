@@ -20,9 +20,19 @@ module.exports = (env, argv) => {
     devtool: isProduction ? false : 'source-map',
     context: __dirname,
     mode: isProduction ? 'production' : 'development',
+    // `named` in production too, where webpack would otherwise number the
+    // chunks: dist/ is not cleaned between builds (see below), so a chunk whose
+    // filename changes with the mode leaves its other-mode twin behind — and
+    // `files: ["dist"]` would publish both, 5 MB of icon sets twice over.
+    optimization: {
+      chunkIds: 'named',
+    },
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: 'index.js',
+      // Without this, chunk names inherit `filename` and come out as
+      // `icon-sets.index.js` — readable, but it reads like an entry point.
+      chunkFilename: '[name].js',
       // Module paths inlined as comments: useful while debugging locally, pure
       // weight next to minified code.
       pathinfo: !isProduction,

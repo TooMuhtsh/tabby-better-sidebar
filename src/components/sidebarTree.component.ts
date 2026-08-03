@@ -21,7 +21,7 @@ import {
 } from 'tabby-core'
 import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
 import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh'
-import { ICON_ENTRIES, PickerIcon } from '../icons'
+import { loadIconEntries, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
 import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
@@ -3003,9 +3003,22 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.config.save()
     }
 
-    onIconQueryChange (): void {
+    async onIconQueryChange (): Promise<void> {
         const q = this.iconQuery.trim().toLowerCase()
-        this.iconMatches = q ? ICON_ENTRIES.filter(e => e.name.includes(q)).slice(0, 40) : []
+        if (!q) {
+            this.iconMatches = []
+            return
+        }
+        const entries = await loadIconEntries()
+        // The icon sets load once, so only the very first search can await
+        // anything — but that one await is long enough (5 MB of JSON to decode
+        // and sort) for the user to keep typing, or to close the picker. Drop
+        // the result if the query has moved on, otherwise a stale list would
+        // overwrite the current one.
+        if (this.iconQuery.trim().toLowerCase() !== q) {
+            return
+        }
+        this.iconMatches = entries.filter(e => e.name.includes(q)).slice(0, 40)
     }
 
     toggleCustomSvgInput (): void {
