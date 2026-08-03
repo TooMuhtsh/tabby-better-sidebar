@@ -35,7 +35,8 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
-<tr><td><a href="#robustesse">Robustesse édition de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#robustesse">Robustesse : vérifier le couplage à l'hôte au démarrage</a></td><td><span class="pill planned">📋 Proposé (élargi le 2026-08-03)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#feature-flags">Interrupteurs par bloc de la sidebar</a></td><td><span class="pill planned">📋 Proposé (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
@@ -2055,12 +2056,139 @@ mesurable du tout : sa pastille reste grise et il n'est plus sollicité.</p>
 <code>title</code> détruit l'infobulle affichée, donc une valeur qui se rafraîchit scintille sous le
 curseur.</p></div>
 
-<h3 id="robustesse">Robustesse — édition de profil</h3>
-<p>Envelopper la séquence <code>clickNativeProfileRow()</code> (édition de profil par clic droit —
-le point le plus fragile du plugin, voir <a href="AI-CONTEXT.html#fragile-1">AI-CONTEXT §3.1</a>)
-dans un bloc try/catch verbeux, pour qu'un futur changement de DOM dans <code>tabby-settings</code>
-affiche un message clair ("Impossible d'ouvrir automatiquement la modale d'édition, redirection
-vers Paramètres → Profils") plutôt que d'échouer silencieusement.</p>
+<h3 id="robustesse">Robustesse — vérifier le couplage à l'hôte au démarrage</h3>
+<p class="muted">Fiche élargie le 2026-08-03, sur une observation de l'utilisateur : le plugin tire sa
+puissance d'une intégration profonde à Tabby, et c'est la même chose qui le rend cassable par une
+mise à jour mineure de l'hôte. Elle ne portait jusque-là que sur l'édition de profil, qui n'est qu'un
+des points de contact — ce cas reste le plus fragile et est repris tel quel en fin de fiche.</p>
+
+<h4>Ce à quoi le plugin est réellement couplé</h4>
+<p>Inventaire fait sur <code>src/</code> avant d'écrire cette fiche, pour que le chantier porte sur
+des points constatés et non sur une inquiétude générale. Quatre natures de couplage, très
+inégalement risquées — les traiter ensemble reviendrait à sur-protéger les deux dernières :</p>
+<table>
+<tr><th>Nature</th><th>Où</th><th>Ce qui casse, et comment ça se voit</th></tr>
+<tr><td><strong>DOM non versionné de l'hôte</strong></td>
+    <td><code>mount.service.ts</code> : <code>.window.h-100.d-flex</code> ;
+        <code>sidebarTree.component.ts</code> : <code>.collapse-item</code>,
+        <code>.modal-content</code> et le <code>span</code> qui porte le nom du profil</td>
+    <td>Le plus dur, et <strong>déjà muet aujourd'hui</strong> : <code>mount()</code> fait un
+        <code>return</code> nu si le conteneur est introuvable, donc la sidebar n'apparaît pas et
+        rien ne le dit ; <code>clickNativeProfileRow()</code> rend <code>false</code> et laisse
+        l'utilisateur sur Paramètres → Profils sans explication.
+        (<a href="AI-CONTEXT.html#fragile-1">§ fragile-1</a>)</td></tr>
+<tr><td><strong>Classes empruntées à <code>tabby-ssh</code></strong></td>
+    <td>Sous-classement de <code>SFTPPanelComponent</code>, <code>instanceof SSHTabComponent</code>,
+        <code>SFTPSession</code></td>
+    <td>Ces classes <em>sont</em> exportées à l'exécution
+        (<a href="AI-CONTEXT.html#fragile-3">§ fragile-3</a>) — le risque n'est pas leur absence mais
+        leur <strong>dédoublement</strong> : un second <code>tabby-ssh</code> dans le
+        <code>node_modules</code> du plugin rend tout <code>instanceof</code> faux sans une erreur
+        (<a href="AI-CONTEXT.html#piege-34">#34</a>). Un typage augmenté à la main
+        (<code>tabby-ssh-augment.d.ts</code>) ment en plus au compilateur
+        (<a href="AI-CONTEXT.html#piege-17">#17</a>).</td></tr>
+<tr><td><strong>Encapsulation CSS contournée</strong></td>
+    <td>SCSS injecté en global (imposé par <a href="AI-CONTEXT.html#piege-3">#3</a>)</td>
+    <td>Débordement sur l'hôte plutôt que rupture. Traité une fois de bout en bout au
+        <a href="#menage-release">ménage avant release</a> : chaque classe confrontée aux
+        <code>builtin-plugins/</code> installés, cadrage par le tag
+        (<a href="AI-CONTEXT.html#piege-71">#71</a>). C'est une <em>discipline à tenir</em>, pas un
+        contrôle à automatiser.</td></tr>
+<tr><td><strong>API publiques de <code>tabby-core</code></strong></td>
+    <td><code>fileTransferStarted$</code>, <code>PlatformService</code>,
+        <code>ConfigProvider</code>, <code>HotkeyProvider</code></td>
+    <td>Membres publics, consommés par Tabby lui-même — <code>appRoot</code> s'abonne au même flux
+        que nous. <strong>Rien à durcir ici</strong> : le noter évite de dépenser le chantier sur ce
+        qui est déjà contractuel.</td></tr>
+</table>
+
+<h4>Ce qui manque : un échec qui se voit</h4>
+<p>Le défaut commun aux deux premières lignes n'est pas l'absence de <code>try/catch</code> — les
+chemins SFTP en sont couverts — mais le fait qu'un couplage rompu produise un <strong>non-événement</strong> :
+une sidebar qui n'apparaît pas, une modale qui ne s'ouvre pas, un panneau vide. Rien à lire dans la
+console, rien à signaler à l'utilisateur, et un diagnostic qui repart de zéro à chaque fois.</p>
+<ul>
+<li><strong>Un contrôle de compatibilité à <code>app.ready$</code></strong>, avant le montage :
+  chaque précondition est nommée, rattachée à la <em>fonctionnalité</em> qu'elle porte, et vérifiée
+  une fois. Rattacher à une fonctionnalité et non au plugin entier est le point important — le
+  conteneur de montage introuvable justifie de renoncer, un <code>.collapse-item</code> disparu ne
+  justifie que de retirer « Éditer… » du menu contextuel.</li>
+<li><strong>Une notification unique, jamais une cascade</strong> :
+  <code>NotificationsService</code>, une seule fois par démarrage, énumérant ce qui a été désactivé.
+  Attention à <a href="AI-CONTEXT.html#piege-51">#51</a> (une notice impose une seconde
+  d'affichage) et au fait que <code>app.ready$</code> peut reprendre hors zone Angular
+  (<a href="AI-CONTEXT.html#piege-41">#41</a>).</li>
+<li><strong>Ne pas confondre avec un contrôle de version de Tabby.</strong> Vérifier un numéro
+  dirait « non testé sur cette version » sur une version parfaitement compatible, et se tairait sur
+  un fork ou un build maison qui a bougé. Ce sont les <em>points de contact</em> qu'on vérifie,
+  jamais la version qui les porte.</li>
+</ul>
+<div class="callout warning"><span class="callout-title">Le contrôle ne doit pas devenir le troisième
+endroit où le couplage est décrit</span>
+<p>Les points de contact sont déjà listés dans les
+<a href="AI-CONTEXT.html#fragile-1">points de veille d'AI-CONTEXT</a>, qui existent précisément pour
+être revérifiés après une mise à jour. Une liste de préconditions dans le code en ferait une seconde
+source, qui dérivera. La forme à viser est un <strong>point unique dans le code</strong> — une table
+de préconditions nommées — que la fiche d'AI-CONTEXT <em>désigne</em> au lieu de la recopier.</p></div>
+
+<h4>Points à trancher avant de coder</h4>
+<ul>
+<li><strong>Que fait un contrôle qui échoue pendant que la fonctionnalité tourne déjà ?</strong> Le
+  contrôle est au démarrage, mais le DOM de <code>tabby-settings</code> n'existe qu'une fois l'onglet
+  Paramètres ouvert — donc ce point-là ne peut pas être vérifié à <code>ready$</code>. Soit un
+  contrôle paresseux au premier usage, soit un échec traité au moment du geste. Le second est plus
+  simple et suffit pour ce cas.</li>
+<li><strong>Jusqu'où va « se désactiver gracieusement » ?</strong> Retirer l'entrée de menu, ou la
+  laisser avec un repli (« ouvre Paramètres → Profils, à vous de cliquer ») ? Le repli est plus utile
+  et c'est ce que la fiche d'origine demandait.</li>
+<li><strong>Le cas du conteneur de montage introuvable</strong> est le seul qui justifie une
+  notification au démarrage sans que l'utilisateur ait rien demandé — les autres peuvent attendre
+  qu'il tente le geste concerné.</li>
+</ul>
+
+<h4>Le cas d'origine : édition de profil</h4>
+<p>Conservé tel quel, comme premier client du mécanisme ci-dessus. Envelopper la séquence
+<code>clickNativeProfileRow()</code> (édition de profil par clic droit — le point le plus fragile du
+plugin, voir <a href="AI-CONTEXT.html#fragile-1">AI-CONTEXT § points de veille</a>) pour qu'un futur
+changement de DOM dans <code>tabby-settings</code> affiche un message clair (« Impossible d'ouvrir
+automatiquement la modale d'édition, redirection vers Paramètres → Profils ») plutôt que d'échouer
+silencieusement. La fonction rend déjà <code>false</code> dans ce cas : <strong>l'information existe,
+elle n'est simplement pas remontée</strong>.</p>
+
+<h3 id="feature-flags">Interrupteurs par bloc de la sidebar</h3>
+<p class="muted">Proposé par l'utilisateur le 2026-08-03. Motif : garder la puissance du
+« tout-en-un » sans l'imposer — une interface épurée à qui n'a besoin que des workspaces et des
+favoris, sans rien retirer à qui veut tout.</p>
+<p>Un interrupteur par bloc, dans l'onglet de réglages : <a href="#sessions-actives">sessions
+actives</a>, <a href="#tunnels-ssh">tunnels actifs</a>, <a href="#sftp">bascule SFTP</a>,
+<a href="#transferts">gestionnaire de transferts</a>, <a href="#workspaces">workspaces</a>,
+<a href="#sidebar-search">barre de filtrage</a>.</p>
+<ul>
+<li><strong>Ce qui existe déjà, et qui n'est pas ça</strong> : <code>sidebarPlus.enabled</code> monte
+  ou démonte la sidebar <em>entière</em> (<code>SidebarPlusMountService</code>), et une poignée de
+  réglages règlent un <em>comportement</em> (<code>sftpAutoRefreshSeconds</code>,
+  <code>pingIntervalSeconds</code>, <code>sftpDragOutFolders</code>,
+  <code>hideNativeTransfersMenu</code>). Aucun ne fait disparaître un bloc. Le chantier est donc neuf,
+  même si la plomberie de réglage ne l'est pas.</li>
+<li><strong>Masquer n'est pas désactiver</strong>, et c'est le vrai contenu du chantier. Un
+  <code>*ngIf</code> sur le bloc laisse tourner ce qui l'alimente : la sonde de latence continue
+  d'interroger les serveurs, le polling des transferts continue de repeindre, l'abonnement à
+  <code>fileTransferStarted$</code> continue d'accumuler. Un interrupteur doit <strong>couper la
+  source</strong>, pas seulement la vue — sinon il ne fait qu'épurer l'écran en gardant le coût.</li>
+<li><strong>Ce que le bloc masqué emporte avec lui</strong> : couper la bascule SFTP retire aussi le
+  panneau et donc le gestionnaire de transferts qui en dépend ; couper les workspaces doit retomber
+  proprement sur « Tous » — jamais laisser un workspace actif filtrer un arbre dont plus rien
+  n'affiche le sélecteur, ce qui donnerait un arbre incomplet sans moyen de comprendre pourquoi.
+  Ces dépendances sont à poser avant de coder, pas à découvrir bloc par bloc.</li>
+<li><strong>Défaut : tout activé.</strong> Ces blocs sont ce qui a été demandé et construit ; un
+  défaut à « masqué » ferait disparaître des fonctionnalités livrées à la mise à jour du plugin.</li>
+<li><strong>Une clé par bloc sous <code>sidebarPlus</code></strong>, déclarée dans les
+  <code>defaults</code> (<a href="AI-CONTEXT.html#piege-16">#16</a>), pas un objet
+  <code>blocks: {…}</code> muté en place (<a href="AI-CONTEXT.html#piege-23">#23</a>).</li>
+<li><strong>Lien avec l'<a href="#ui-polish">agencement de la page de paramètres</a></strong> : ces
+  interrupteurs sont exactement ce qui donnerait sa matière à la section « Général &amp; Affichage »
+  encore vide. Les deux gagnent à être faits ensemble.</li>
+</ul>
 
 <h3 id="gouvernance">Conformité de la gouvernance à la charte
 <span class="pill done">✅ Revue faite (2026-07-31)</span></h3>
