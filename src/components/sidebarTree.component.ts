@@ -19,7 +19,7 @@ import {
     ProfilesService,
     SplitTabComponent,
 } from 'tabby-core'
-import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
+import { SettingsTabComponent } from 'tabby-settings'
 import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh'
 import { loadIconEntries, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
@@ -28,6 +28,8 @@ import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
 import { PingState, SidebarPlusPingService } from '../ping.service'
 import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { hostSupports } from '../hostCompat'
+import { readProfileGroups } from '../profileGroups'
+import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
 import { clampInViewport } from '../viewport'
 
 interface CollapsableProfileGroup extends ProfileGroup {
@@ -451,14 +453,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         const workspace = activeWorkspaceId === 'all' ? null : (workspaces.find(w => w.id === activeWorkspaceId) ?? null)
 
-        let groups = await this.profilesService.getProfileGroups({ includeNonUserGroup: true, includeProfiles: true })
-        // getProfileGroups() does not guarantee a deep clone. buildGroupTree()
-        // below assigns a computed `.children` array onto each group object —
-        // if those objects are live references into config.store.groups,
-        // that computed property gets serialized back into config.yaml on the
-        // next config.save(), corrupting it (see roadmap piège #12). Clone
-        // defensively so nothing we do here can ever touch Tabby's own state.
-        groups = structuredClone(groups)
+        // Cloned by readProfileGroups(), which is the only place this plugin
+        // calls getProfileGroups() — buildGroupTree() below writes a computed
+        // `.children` onto whatever it is handed, and that must never be a live
+        // config.store object (piège #12).
+        let groups = await readProfileGroups(this.profilesService, this.config)
 
         for (const group of groups) {
             if (group.profiles?.length) {
@@ -2611,8 +2610,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         orderKeyParentGroupId: string|null,
         siblingsToPersist: PartialProfileGroup<CollapsableProfileGroup>[],
     ): Promise<void> {
-        let allGroups = await this.profilesService.getProfileGroups({ includeNonUserGroup: true, includeProfiles: true })
-        allGroups = structuredClone(allGroups)
+        const allGroups = await readProfileGroups(this.profilesService, this.config)
         try {
             const newId = await this.reparentGroup(dragged.id, dragged, newParentGroupId, allGroups)
             // The folder now lives under a brand-new id, but `dragged` is the
@@ -3124,9 +3122,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         base.group = groupId
         this.closeContextMenu()
 
-        const modal = this.ngbModal.open(EditProfileModalComponent, { size: 'lg' })
-        modal.componentInstance.partialProfile = base
-        modal.componentInstance.profileProvider = entry.provider
+        const modal = openProfileModal(this.ngbModal, base, entry.provider)
+        if (!modal) {
+            this.notifications.error(PROFILE_MODAL_UNAVAILABLE)
+            return
+        }
 
         const result = await modal.result.catch(() => null) as PartialProfile<Profile>|null
         if (!result) {
@@ -3302,8 +3302,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     /**
-     * Opens Tabby's own profile edit modal directly, exactly the way
-     * `tabby-settings` opens it for its own list: `ngbModal.open()`, hand it a
+     * Opens Tabby's own profile edit modal, exactly the way `tabby-settings`
+     * opens it for its own list and `tabby-core` for the native tree: hand it a
      * clone and the profile's provider, then `writeProfile()` the result.
      *
      * This used to drive tabby-settings' DOM instead — open Settings >
@@ -3315,6 +3315,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * the very same modal a few hundred lines above. `EditProfileModalComponent`
      * is `@hidden`, which proves nothing about what is exported at runtime
      * (piège #13), and `src/tabby-settings-augment.d.ts` already declared it.
+     *
+     * That left two callers naming the modal's inputs by hand, which is what
+     * `openProfileModal()` (`src/profileModal.ts`) now holds — one place to
+     * assign them, one place to check they still exist.
      *
      * Opening a Settings tab was the *vehicle*, never the intent. It survives
      * only as the fallback below, for a profile whose provider cannot be
@@ -3335,13 +3339,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
 
-        const modal = this.ngbModal.open(EditProfileModalComponent, { size: 'lg' })
         // Never the live object: the modal mutates what it is handed, so a
         // cancelled edit would otherwise keep its changes — in the displayed
         // tree, and in `config.store` for anything reachable from it (piège
-        // #12). tabby-settings clones here too, for the same reason.
-        modal.componentInstance.partialProfile = structuredClone(profile)
-        modal.componentInstance.profileProvider = provider
+        // #12). tabby-settings and tabby-core's own tree both clone here too,
+        // for the same reason.
+        const modal = openProfileModal(this.ngbModal, structuredClone(profile), provider)
+        if (!modal) {
+            this.notifications.error(PROFILE_MODAL_UNAVAILABLE)
+            return
+        }
 
         const result = await modal.result.catch(() => null) as PartialProfile<Profile>|null
         if (!result) {

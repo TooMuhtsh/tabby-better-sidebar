@@ -37,7 +37,7 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
 <tr><td><a href="#robustesse">Robustesse : vérifier le couplage à l'hôte au démarrage</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#edition-profil">Édition de profil par l'API plutôt que par le DOM</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Haute</td></tr>
-<tr><td><a href="#points-fragiles">Combler les points de veille restants</a></td><td><span class="pill planned">📋 Proposé (2026-08-03)</span></td><td>Haute — session dédiée</td></tr>
+<tr><td><a href="#points-fragiles">Combler les points de veille restants</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>—</td></tr>
 <tr><td><a href="#feature-flags">Interrupteurs par bloc de la sidebar</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
@@ -2218,39 +2218,33 @@ que le garde-fou qu'on s'apprêtait à construire. Avant d'instrumenter un point
 question dans cet ordre : peut-il disparaître ? Sinon seulement, comment le rendre bruyant.</p></div>
 
 <h3 id="points-fragiles">Combler les points de veille restants
-<span class="pill planned">📋 Proposé (2026-08-03)</span></h3>
-<p class="muted">Ouvert le 2026-08-03 à la demande de l'utilisateur, pour une session dédiée. Suite
-directe du <a href="#robustesse">contrôle de compatibilité</a> : celui-ci a rendu bruyants les
-couplages qu'il couvre, cette fiche liste ce qu'il <strong>ne</strong> couvre pas, par ordre de ce
-qu'il en coûterait.</p>
+<span class="pill done">✅ Fait (2026-08-03)</span></h3>
+<p class="muted">Ouvert puis mené le 2026-08-03, en session dédiée, à la demande de l'utilisateur.
+Suite directe du <a href="#robustesse">contrôle de compatibilité</a> : celui-ci avait rendu bruyants
+les couplages qu'il couvre, cette fiche a traité ce qu'il <strong>ne</strong> couvrait pas.
+Branche <code>refactor/points-de-veille</code>.</p>
 
-<h4>État mesuré le 2026-08-03</h4>
+<h4>État après le chantier</h4>
 <p>Sévérité établie sur deux axes — <em>ce que la panne emporte</em> et <em>comment elle se
 manifeste</em>. Le second pèse plus lourd : une panne bruyante sur une grosse fonctionnalité coûte
-moins qu'une panne muette sur une petite.</p>
+moins qu'une panne muette sur une petite. C'est le second axe, et lui seul, que ce chantier a
+déplacé.</p>
 <table>
 <tr><th>Point</th><th>Ce qui casse</th><th>Détection</th><th>Sévérité</th></tr>
-<tr><td><a href="AI-CONTEXT.html#fragile-7"><code>EditProfileModalComponent</code></a> — l'augmentation
-    de types <strong>ment</strong> à TypeScript sur <code>partialProfile</code> /
-    <code>profileProvider</code></td>
-    <td>Création <em>et</em> édition de profil</td>
-    <td><strong>Aucune</strong> : compile, puis modale vide au runtime</td>
-    <td>🔴 Élevée</td></tr>
 <tr><td><a href="AI-CONTEXT.html#fragile-3">Classes <code>tabby-ssh</code></a> — panneau sous-classé,
     <code>SSHTabComponent</code>, <code>SFTPSession</code></td>
     <td>SFTP, sessions actives, tunnels</td>
     <td>Compilation, précondition, et sonde du <a href="AI-CONTEXT.html#piege-34">#34</a></td>
-    <td>🟠 Moyenne</td></tr>
-<tr><td><a href="AI-CONTEXT.html#fragile-8">Téléchargements servis par nous</a> — trois appuis non
-    contractuels</td>
+    <td>🟠 Moyenne — la plus haute qui reste</td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-7"><code>EditProfileModalComponent</code></a> — noms des
+    deux entrées, que l'augmentation de types <strong>affirme</strong> sans rien prouver</td>
+    <td>Création <em>et</em> édition de profil</td>
+    <td><strong>Message au démarrage, notice, et refus d'ouvrir</strong> (était : aucune)</td>
+    <td>🟡 Faible <span class="muted">(était 🔴)</span></td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-8">Téléchargements servis par nous</a></td>
     <td>« Download » du menu contextuel</td>
-    <td>Partielle : le libellé « annulé » revient, sans autre signal</td>
-    <td>🟠 Moyenne</td></tr>
-<tr><td><a href="AI-CONTEXT.html#fragile-5">Clone non garanti</a> de
-    <code>getProfileGroups()</code>/<code>buildGroupTree()</code></td>
-    <td><strong>Intégrité de <code>config.yaml</code></strong></td>
-    <td>Aucune — seule la discipline <code>structuredClone()</code> protège</td>
-    <td>🟠 Moyenne (impact critique, probabilité faible)</td></tr>
+    <td>Deux appuis sur trois retirés ; le troisième est notre propre code</td>
+    <td>🟡 Faible <span class="muted">(était 🟠)</span></td></tr>
 <tr><td><a href="AI-CONTEXT.html#fragile-4"><code>writeProfileGroup()</code> et sœurs</a></td>
     <td>Re-parentage de dossier</td>
     <td>Testable sur <code>grp-zzz-test-*</code></td>
@@ -2259,6 +2253,11 @@ moins qu'une panne muette sur une petite.</p>
     <td>La sidebar entière</td>
     <td>Fatale, notifiée et journalisée depuis le 2026-08-03</td>
     <td>🟡 Faible</td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-5">Clone non garanti</a> de
+    <code>getProfileGroups()</code>/<code>buildGroupTree()</code></td>
+    <td><strong>Intégrité de <code>config.yaml</code></strong></td>
+    <td>Point unique, plus une sonde d'identité une fois par session</td>
+    <td>🟢 Très faible <span class="muted">(était 🟠)</span></td></tr>
 <tr><td><a href="AI-CONTEXT.html#fragile-2"><code>SettingsTabComponent.activeTab</code></a></td>
     <td>Le seul repli « provider introuvable »</td>
     <td>Visible immédiatement</td>
@@ -2269,55 +2268,108 @@ moins qu'une panne muette sur une petite.</p>
     <td>⚪ Nul — une simplification manquée, pas un risque</td></tr>
 </table>
 
-<div class="callout important"><span class="callout-title">Le chantier du 2026-08-03 a déplacé le
-risque, il ne l'a pas supprimé</span>
-<p><a href="#edition-profil">Passer l'édition de profil par l'API</a> a fait <strong>chuter</strong>
-<code>fragile-2</code> — <code>activeTab</code> ne porte plus qu'un repli rare au lieu de tout le
-chemin d'édition — et <strong>monter</strong> <code>fragile-7</code>, qui a désormais
-<strong>deux</strong> appelants au lieu d'un. Le risque a été concentré sur un point mieux choisi
-(une API que <code>tabby-settings</code> emploie lui-même, contre un DOM interne que personne ne
-garantit), mais plus chargé. Bon échange, pas victoire nette : le noter évite de relire la fiche
-comme si le sujet était clos.</p></div>
+<div class="callout warning"><span class="callout-title">Ce que ce chantier n'a pas fait</span>
+<p><strong>Aucun de ces contrôles ne rend le plugin plus compatible.</strong> Une version de Tabby
+qui renomme <code>partialProfile</code> casse la création et l'édition de profils exactement comme
+avant ; la seule différence est qu'elle le dit. Ce qui a changé, c'est le <em>mode d'échec</em> —
+même réserve que pour le <a href="#robustesse">contrôle de compatibilité</a>, et elle vaut d'être
+répétée parce qu'un tableau où plus rien n'est rouge se relit facilement comme un tableau de points
+supprimés. Deux points l'ont vraiment été, et c'est dit explicitement ci-dessous ; les autres ont
+seulement appris à parler.</p></div>
 
-<h4>Le trou principal, et comment le combler</h4>
-<p>Le contrôle de compatibilité vérifie que <code>EditProfileModalComponent</code>
-<strong>existe</strong>. Il ne vérifie pas que ses champs s'appellent encore
-<code>partialProfile</code> et <code>profileProvider</code> — et cette panne-là est muette
-<em>des deux côtés</em> : TypeScript se tait parce que l'augmentation affirme ces noms, Angular se
-tait parce qu'assigner une propriété inconnue à une instance est parfaitement légal.</p>
+<h4><code>fragile-7</code> — le point rouge, et le piège de la piste qui semblait évidente</h4>
+<p>Le contrôle de compatibilité vérifiait que <code>EditProfileModalComponent</code>
+<strong>existe</strong>, jamais que ses entrées s'appellent encore <code>partialProfile</code> et
+<code>profileProvider</code>. Cette panne-là était muette <em>des deux côtés</em> : TypeScript se
+taisait parce que l'augmentation affirme ces noms, Angular parce qu'assigner une propriété inconnue
+à une instance est parfaitement légal.</p>
+<p>Deux gestes, dans l'ordre que ce projet s'impose — d'abord réduire, ensuite seulement
+surveiller :</p>
 <ul>
-<li><strong>Piste retenue à vérifier</strong> : Angular publie les entrées d'un composant dans
-  <code>ɵcmp.inputs</code>. Une cinquième précondition lisant cette table confirmerait les deux
-  entrées attendues et transformerait le seul point rouge en échec annoncé au démarrage.
-  <em>À établir avant de coder</em> : la forme exacte de la table sous Angular 15 (alias public →
-  nom de propriété, ou l'inverse), et son nom réel dans le bundle de production — un champ préfixé
-  <code>ɵ</code> n'est pas contractuel non plus, ce qui vaut d'être dit dans le code plutôt que
-  découvert.</li>
-<li><strong>Repli si la table n'est pas lisible</strong> : vérifier après coup plutôt qu'avant —
-  ouvrir la modale, relire <code>componentInstance.partialProfile</code> et signaler s'il est
-  <code>undefined</code>. Moins bon (l'utilisateur voit la modale s'ouvrir), mais robuste à la forme
-  interne d'Angular.</li>
+<li><strong>Point unique</strong> : <code>src/profileModal.ts</code>. Les deux appelants
+  (« Nouveau profil… » et « Éditer… ») nommaient chacun les deux entrées ; elles ne sont plus
+  écrites qu'une fois, et c'est exactement la liste que le contrôle confronte à la réalité. Un
+  <code>satisfies</code> l'arrime à l'augmentation de types, ce qui ne prouve rien sur Tabby mais
+  interdit que la liste vérifiée et la liste assignée divergent.</li>
+<li><strong>Contrôle</strong> : la précondition <code>edit-profile-modal</code> demande à Angular ce
+  que le composant déclare, par <code>reflectComponentType()</code>. En cas d'écart : un message
+  console nommant le champ absent <em>et</em> les entrées réellement déclarées, une notice, et un
+  refus d'ouvrir — une modale vide n'apprend rien à personne.</li>
 </ul>
+<div class="callout important"><span class="callout-title">La piste écrite dans cette fiche était
+fausse, et l'aurait été en silence</span>
+<p>Cette fiche proposait de lire <code>ɵcmp.inputs</code>, en demandant d'établir « la forme exacte
+de la table (alias public → nom de propriété, ou l'inverse) ». Bien lui en a pris : la table est
+indexée par le <strong>nom public</strong>, et la modale déclare
+<code>@Input('profile') partialProfile</code>. Une précondition qui y aurait cherché la clé
+<code>partialProfile</code> aurait échoué à <em>tous</em> les démarrages, sur un Tabby parfaitement
+sain — c'est-à-dire qu'un contrôle ajouté pour rendre une panne visible aurait fabriqué une fausse
+panne, ce qui est pire que le silence qu'il remplaçait.</p>
+<p>Deux corrections en découlent, consignées au <a href="AI-CONTEXT.html#piege-75">piège #75</a>.
+<code>reflectComponentType()</code> est <strong>API publique</strong> depuis Angular 14.1 : la
+réserve de la fiche — « un champ préfixé <code>ɵ</code> n'est pas contractuel non plus, donc le
+remède partage la nature du mal » — tombe d'elle-même, il n'y avait pas lieu de lire un champ
+interne. Et sa table se lit par <code>propName</code> et non <code>templateName</code>,
+<strong>contrairement à l'exemple de la documentation d'Angular, qui intervertit les deux</strong> :
+c'est l'implémentation qui a tranché, pas le commentaire.</p></div>
+<p>Vérifié en conditions réelles, et surtout dans les deux sens : la modale s'ouvre et porte bien le
+profil qu'on lui passe ; et avec un nom volontairement faux, recompilé pour l'occasion, le démarrage
+sort le message attendu, la notice s'affiche, l'ouverture est refusée — pendant que la sidebar et
+son arbre restent parfaitement fonctionnels, la précondition n'étant pas fatale. Un contrôle qu'on
+n'a pas vu se déclencher ne prouve rien.</p>
 
-<h4>Les autres, par ordre de valeur</h4>
+<h4><code>fragile-5</code> — la discipline devenue structure, et une supposition enfin mesurée</h4>
+<p><code>readProfileGroups()</code> (<code>src/profileGroups.ts</code>) est désormais le seul appel
+du plugin à <code>getProfileGroups()</code>, et il rend un clone par construction : les deux
+appelants recopiaient les mêmes trois lignes et le même commentaire d'avertissement, et rien
+n'obligeait un troisième à le faire. Même raisonnement qu'<code>isSSHTab()</code> — une convention
+transformée en point unique.</p>
+<p>La mesure a rapporté davantage que prévu : <strong>Tabby clone déjà</strong>.
+<code>getSyncProfileGroups()</code> rend <code>deepClone(config.store.groups)</code>, et une
+comparaison d'identité sur l'app en marche confirme qu'aucun groupe ne revient comme le même objet.
+Le <code>structuredClone()</code> du <a href="AI-CONTEXT.html#piege-12">piège #12</a> est donc, à
+ce jour, une ceinture par-dessus des bretelles — il reste, parce que les bretelles sont un détail
+d'implémentation d'une méthode que personne n'exporte et que ce qu'elles retiennent est un
+<code>config.yaml</code> corrompu. S'y ajoute une sonde qui compare cette identité une fois par
+session et le signale si la garantie disparaît : la supposition de la fiche est devenue un fait
+vérifié à chaque démarrage.</p>
+
+<h4><code>fragile-8</code> — deux appuis retirés plutôt que surveillés</h4>
 <ul>
-<li><strong><code>fragile-5</code>, l'intégrité de <code>config.yaml</code></strong> : la discipline
-  <code>structuredClone()</code> n'est vérifiée par rien. Piste : un contrôle en développement
-  seulement (gelé/comparé après lecture), ou un helper unique par lequel passeraient tous les appels
-  à <code>getProfileGroups()</code> — le même raisonnement que <code>isSSHTab()</code>, qui a
-  transformé une convention en point unique vérifiable.</li>
-<li><strong><code>fragile-8</code></strong> : les trois appuis se vérifient à l'exécution
-  (l'entrée de menu appelle-t-elle bien <code>downloadItem()</code> ?). Une précondition est possible
-  mais le gain est plus faible — la panne est déjà partiellement visible.</li>
-<li><strong><code>fragile-6</code></strong> : à revérifier à chaque montée majeure de
-  <code>tabby-core</code>, sans urgence. S'il devenait exporté, la copie locale de
-  <code>profile-tree</code> disparaîtrait.</li>
+<li>« l'entrée du menu appelle bien <code>downloadItem()</code> » : la surcharge est passée sur
+  <code>download()</code>, où <em>les deux</em> voies aboutissent. Il n'y avait rien à surveiller,
+  seulement un appui à déplacer d'un cran plus bas. <code>downloadItem()</code> redevient la méthode
+  héritée de Tabby.</li>
+<li>« Tabby n'installe aucun <code>will-download</code> » : <code>listenerCount()</code> est
+  consulté avant chaque téléchargement — méthode d'<code>EventEmitter</code>, donc réellement
+  contractuelle. S'il y en a un, la voie héritée reprend la main.</li>
+<li><code>Content-Disposition: attachment</code> n'était pas un appui sur l'hôte : c'est notre
+  propre serveur qui l'écrit.</li>
 </ul>
-<div class="callout warning"><span class="callout-title">Ce que cette fiche ne promet pas</span>
-<p>Aucun de ces contrôles ne rend le plugin plus compatible. Ils changent le <em>mode d'échec</em> —
-c'est la même réserve que pour le <a href="#robustesse">contrôle de compatibilité</a>, et elle vaut
-d'être répétée ici parce qu'une liste de points « comblés » se relit facilement comme une liste de
-points « supprimés ».</p></div>
+<p>Passe réelle sur le serveur VPN, dans <code>/tmp/zzz-test-dl/</code> supprimé après coup, sur un
+fichier au contenu déterministe (<code>seq 1 20000</code>, 108 894 octets) : le chemin part de
+<code>downloadItem()</code> — ce que Tabby appelle vraiment —, l'offre HTTP locale est émise,
+répond <code>200</code> avec le bon <code>Content-Length</code>, et les octets reçus sont
+<strong>identiques</strong> à l'attendu. Trois contre-tests dans l'autre sens : un lien symbolique
+reste sur la voie héritée, un <code>will-download</code> installé pour l'occasion y renvoie aussi,
+et son retrait rend la main à la voie HTTP.</p>
+<p class="muted">Aucune boîte native n'a été ouverte de toute la passe : le clic sur l'ancre est
+intercepté et <code>startDownload()</code> neutralisé — un dialogue natif fige le renderer, CDP
+compris (<a href="AI-CONTEXT.html#piege-65">#65</a>).</p>
+
+<h4>Ce qui reste ouvert, et pourquoi c'est raisonnable</h4>
+<ul>
+<li><strong><code>fragile-3</code></strong> — désormais le plus haut du tableau, et déjà couvert par
+  ce qui existe : compilation, préconditions <code>ssh-tab</code>/<code>sftp-panel</code>, et sonde
+  du <a href="AI-CONTEXT.html#piege-34">#34</a> dans <code>isSSHTab()</code>. Rien à ajouter tant
+  que ces trois-là n'ont pas été pris en défaut.</li>
+<li><strong><code>fragile-4</code></strong> — se teste sur <code>grp-zzz-test-*</code> quand le
+  format de stockage des groupes bouge ; un contrôle permanent ne dirait rien de plus.</li>
+<li><strong><code>fragile-2</code>, <code>fragile-6</code></strong> — inchangés. Le second est à
+  revérifier aux montées majeures de <code>tabby-core</code> : s'il devenait exporté, la copie
+  locale de <code>profile-tree</code> disparaîtrait, ce qui est un gain de simplicité et non de
+  robustesse.</li>
+</ul>
 
 <h3 id="edition-profil">Édition de profil par l'API plutôt que par le DOM
 <span class="pill done">✅ Fait (2026-08-03)</span></h3>

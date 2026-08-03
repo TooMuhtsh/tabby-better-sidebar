@@ -149,12 +149,20 @@ de chargement de plugin.
   (`buildGroupTree`, `icon`/`color`/`parentGroupId` sur les groupes) —
   augmentés dans `src/tabby-core-augment.d.ts` plutôt que de disséminer des
   `any`.
-- `profilesService.getProfileGroups()`/`getProfiles()` ne garantissent pas un
-  clone profond — toujours `structuredClone()` juste après l'appel, avant
-  toute mutation (tri, `buildGroupTree()`, etc.), sinon les objets vivants de
-  `config.store` peuvent être mutés par erreur et pollués dans `config.yaml`
-  au prochain `config.save()` (.AIRules/AI-CONTEXT.html, piège #12 — a réellement corrompu la
-  config de production de l'utilisateur une fois, réparée depuis).
+- **`getProfileGroups()` ne s'appelle que depuis `readProfileGroups()`**
+  (`src/profileGroups.ts`), qui rend un clone par construction. L'API ne
+  garantit pas un clone profond : `buildGroupTree()` écrit un `.children`
+  calculé sur les objets qu'on lui donne, et si ce sont des références vivantes
+  de `config.store.groups`, cette propriété part dans `config.yaml` au prochain
+  `config.save()`, n'importe lequel (.AIRules/AI-CONTEXT.html, piège #12 — a
+  réellement corrompu la config de production de l'utilisateur une fois). Ce
+  clone était une discipline répétée à chaque appel ; c'est désormais un point
+  unique, et il ne faut pas rouvrir un chemin direct à côté. Une sonde y
+  compare une fois par session l'identité de ce qui est rendu avec la config
+  vivante : la version installée de Tabby clone déjà de son côté, et c'est ce
+  qui le vérifie plutôt que de le supposer (§ `fragile-5`).
+  `getProfiles()` garde sa propre règle : `{ clone: true }`, ou
+  `structuredClone()` avant toute mutation.
 - `profilesService.writeProfileGroup()` ne doit **jamais** servir à
   re-parenter un groupe (recherche plate au niveau racine, silencieuse en
   cas d'échec sur un groupe imbriqué). Le re-parentage passe par
@@ -261,6 +269,25 @@ de chargement de plugin.
   pas seulement dans les typings ni le `.ts` source de l'app (.AIRules/AI-CONTEXT.html, piège
   #17 : un champ peut être nommé différemment entre les typings obsolètes et
   le composant réellement chargé).
+- **La modale de profil de Tabby s'ouvre par `openProfileModal()`**
+  (`src/profileModal.ts`), jamais par un `ngbModal.open(EditProfileModalComponent)`
+  écrit sur place. Ses deux entrées y sont nommées une seule fois, et c'est
+  cette liste que la précondition `edit-profile-modal` confronte à ce qu'Angular
+  déclare — sinon un renommage côté Tabby compile sans broncher (l'augmentation
+  de types l'affirme) et ouvre une modale vide sans rien journaliser. Pour
+  interroger un composant de l'hôte, `reflectComponentType()` est de l'API
+  publique, contrairement à `ɵcmp` : **lire `propName`, pas `templateName`** —
+  l'entrée porte l'alias public `profile` pour la propriété `partialProfile`, et
+  l'exemple de la documentation d'Angular intervertit les deux
+  (.AIRules/AI-CONTEXT.html, piège #75).
+- **Surcharger la méthode où les chemins aboutissent, pas celle que l'hôte
+  appelle.** Notre voie de téléchargement SFTP tenait sur `downloadItem()`,
+  c'est-à-dire sur le fait que l'entrée « Download » du menu de Tabby appelle
+  bien celle-là ; elle est passée sur `download()`, où `downloadItem()` comme
+  `open()` finissent, ce qui rend la question sans objet. Une surcharge qui
+  cesse d'être atteinte ne lève rien : le seul symptôme aurait été le retour du
+  libellé « annulé » sur un transfert coupé (.AIRules/AI-CONTEXT.html,
+  § `fragile-8`).
 - **`@HostListener('document:click')` ignore `$event.stopPropagation()`
   appelé par un descendant.** Ne jamais compter sur la propagation d'un
   clic pour empêcher ce HostListener de se déclencher — vérifier plutôt

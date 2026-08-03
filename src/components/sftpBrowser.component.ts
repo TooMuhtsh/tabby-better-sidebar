@@ -6,6 +6,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService, HTMLFileUpload, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
+import { electronRemote } from '../electronRemote'
 import { EmptyFileUpload } from '../sftpLocalTransfer'
 import { DirectoryWeight, SftpDragOut } from '../sftpDragOut'
 import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
@@ -271,24 +272,39 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * in a catch we own, which is what tells a dead transfer apart from a
      * cancelled one.
      *
-     * Chromium does the writing. Tabby installs no `will-download` handler
-     * (checked in its bundle), so Electron falls back to its own "Save as"
-     * dialog — the same path prompt the inherited version raised. What is given
-     * up is the native transfers menu's progress bar, which this plugin hides
-     * by default and whose own panel says more (percentage, speed, ETA).
+     * **Overriding `download()` and not `downloadItem()` is the point.** This
+     * used to hook the latter, which left the whole thing resting on an
+     * unwritten assumption: that the context menu entry calls
+     * `panel.downloadItem(item)` (it does, in `sftpContextMenu.ts`). If Tabby
+     * ever pointed that entry at `download()` instead, the override would have
+     * stopped being reached — no error, no sign, just the "annulé" label
+     * quietly back. `download()` is where both routes end up, `open()`
+     * included, so which one the host picks stops mattering. That is one
+     * unverifiable assumption removed rather than watched.
      *
-     * Directories and symlinks stay on the inherited path: a `DownloadURL`
-     * offer serves exactly one file, and resolving a link needs the `stat()`
-     * that piège #50 warns against.
+     * Chromium does the writing, so what is given up is the native transfers
+     * menu's progress bar — a trade the user made knowingly on 2026-08-02, this
+     * plugin hiding that menu by default and its own panel saying more
+     * (percentage, speed, ETA).
+     *
+     * Directories and symlinks stay on the inherited path, as before: a
+     * `DownloadURL` offer serves exactly one file, and a link is only ever
+     * resolved through the `stat()` piège #50 warns against — its `size` is
+     * sound but its mode is not, and there is nothing here worth that risk.
+     * `downloadFolder()` never comes through here at all.
      */
-    override async downloadItem (item: SFTPFile): Promise<void> {
-        if (item.isDirectory || item.isSymlink || !this.dragServer.ready) {
-            await super.downloadItem(item)
+    override async download (itemPath: string, mode: number, size: number): Promise<void> {
+        // The listing, never `stat()` (piège #50): it comes from `readdir`, so
+        // its size and mode are the real ones. An entry that is not in it —
+        // nothing reaches this method today with such a path — falls back.
+        const item = this.fileList?.find(f => f.fullPath === itemPath)
+        if (!item || item.isDirectory || item.isSymlink || !this.dragServer.ready || this.downloadsAreIntercepted()) {
+            await super.download(itemPath, mode, size)
             return
         }
         const url = this.dragServer.offer(this.sftp, item)
         if (!url) {
-            await super.downloadItem(item)
+            await super.download(itemPath, mode, size)
             return
         }
         // A detached anchor is enough — the offer answers with
@@ -298,6 +314,33 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         link.href = url
         link.download = item.name
         link.click()
+    }
+
+    /**
+     * Whether something now decides where downloads land.
+     *
+     * The second thing our route rests on: Tabby installs **no**
+     * `will-download` handler, which is what leaves Electron free to raise its
+     * own "Save as" dialog — the same prompt the inherited path used to raise.
+     * A handler appearing there would silently change what the user gets, and
+     * could cancel the download outright, which would be a click that does
+     * nothing at all.
+     *
+     * Rather than document that as a thing to re-check after a Tabby update,
+     * it is asked. `listenerCount` is an EventEmitter method, i.e. actually
+     * contractual, unlike everything else in this file's neighbourhood.
+     * Measured at 0 on the installed app. When it is not, the inherited route
+     * is the honest answer: `platform.startDownload()` is what Tabby would
+     * expect to be handling.
+     */
+    private downloadsAreIntercepted (): boolean {
+        try {
+            return (electronRemote()?.session?.defaultSession?.listenerCount('will-download') ?? 0) > 0
+        } catch {
+            // Unreachable remote is not evidence of interception, and this is a
+            // fallback, not a gate: keep the route that works.
+            return false
+        }
     }
 
     ////// AUTO REFRESH //////
