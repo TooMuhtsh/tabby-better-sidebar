@@ -1,16 +1,42 @@
 import * as crypto from 'crypto'
+import * as fs from 'fs'
 import * as http from 'http'
-import { Injectable } from '@angular/core'
-import { FileDownload } from 'tabby-core'
+import * as path from 'path'
+import { Injectable, NgZone } from '@angular/core'
+import { FileDownload, PlatformService } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
+import { SidebarPlusDropLocator } from './dropLocator.service'
+import { SidebarPlusNoticesService } from './notices.service'
 import { readRemoteEntry } from './remoteEntry'
+import { downloadRemoteTree } from './remoteTree'
+import { SftpTransfers } from './transfers'
 import { SidebarPlusTransfersService } from './transfersRegistry.service'
 
 /** The live SFTP transport, borrowed from the one member that publicly exposes its type. */
 type SftpSession = SFTPPanelComponent['sftp']
 
-/** A file announced to the system, waiting to be claimed by a drop. */
+/**
+ * Extension of the empty file the shell writes at the drop site.
+ *
+ * Visible to the user for the fraction of a second between the drop and the
+ * sweep that removes it, so it says whose it is rather than looking like litter.
+ */
+const MARKER_EXTENSION = '.tabbydrop'
+
+/**
+ * An entry announced to the system, waiting to be claimed by a drop.
+ *
+ * Two shapes, because a `DownloadURL` carries exactly one file:
+ *
+ *   - `file` serves the real bytes, and the shell writes them wherever the drop
+ *     landed. One gesture, nothing on disk beforehand, no idea where it went.
+ *   - `marker` serves nothing at all — an empty body under a unique name. The
+ *     shell writes *that* at the drop site, which is what lets the folder be
+ *     found (see `SidebarPlusDropLocator`) and the payload delivered into it.
+ *     This is how a directory leaves, since it cannot be a `DownloadURL` itself.
+ */
 interface Offer {
+    kind: 'file'|'marker'
     sftp: SftpSession
     item: SFTPFile
     expiresAt: number
@@ -149,10 +175,20 @@ export class SidebarPlusDragOutServer {
     private server: http.Server|null = null
     private port = 0
     private offers = new Map<string, Offer>()
+    /** Transfers of the marker route, reported like every other transfer of the panel. */
+    private fileTransfers: SftpTransfers
 
     constructor (
         private transfers: SidebarPlusTransfersService,
+        private locator: SidebarPlusDropLocator,
+        private notifications: SidebarPlusNoticesService,
+        private zone: NgZone,
+        platform: PlatformService,
     ) {
+        // Built here rather than injected: `SftpTransfers` is a plain class the
+        // SFTP panel constructs for itself, and the marker route needs the same
+        // reporting — imposed path, progress in Tabby's own transfer list.
+        this.fileTransfers = new SftpTransfers(platform, this.notifications, this.transfers)
         // Started eagerly: `dragstart` is synchronous and cannot wait for a
         // listening socket, so the port has to be known before the first
         // gesture. Failing to start is not fatal — the caller falls back to the
@@ -204,13 +240,34 @@ export class SidebarPlusDragOutServer {
      * would let the gesture start without the announcement.
      */
     offer (sftp: SftpSession, item: SFTPFile): string|null {
+        const announced = this.announce('file', sftp, item)
+        return announced?.url ?? null
+    }
+
+    /**
+     * Announces an empty marker standing in for an entry that cannot be served
+     * as bytes, and returns both the URL and the name to announce it under.
+     *
+     * The name matters as much as the URL here: it is what the shell writes at
+     * the drop site, and therefore what the sweep looks for. Unique per gesture,
+     * so two drags in flight cannot be confused for one another.
+     */
+    offerMarker (sftp: SftpSession, item: SFTPFile): { url: string, markerName: string }|null {
+        const announced = this.announce('marker', sftp, item)
+        if (!announced) {
+            return null
+        }
+        return { url: announced.url, markerName: announced.token + MARKER_EXTENSION }
+    }
+
+    private announce (kind: Offer['kind'], sftp: SftpSession, item: SFTPFile): { url: string, token: string }|null {
         if (!this.ready) {
             return null
         }
         this.pruneExpired()
         const token = crypto.randomBytes(24).toString('hex')
-        this.offers.set(token, { sftp, item, expiresAt: Date.now() + OFFER_TTL_MS })
-        return `http://127.0.0.1:${this.port}/${token}`
+        this.offers.set(token, { kind, sftp, item, expiresAt: Date.now() + OFFER_TTL_MS })
+        return { url: `http://127.0.0.1:${this.port}/${token}`, token }
     }
 
     private pruneExpired (): void {
@@ -235,6 +292,11 @@ export class SidebarPlusDragOutServer {
         if (!offer || offer.expiresAt < Date.now()) {
             res.writeHead(404)
             res.end()
+            return
+        }
+
+        if (offer.kind === 'marker') {
+            await this.serveMarker(token, offer, res)
             return
         }
 
@@ -283,6 +345,102 @@ export class SidebarPlusDragOutServer {
             // completes it.
             this.transfers.markFailed(transfer, String((error as Error)?.message ?? error))
         }
+    }
+
+    /**
+     * Answers a marker request, then goes looking for where it landed.
+     *
+     * The request *is* the drop: the shell only fetches the URL once it has a
+     * destination to write into. That is the signal no API gives — until this
+     * moment nothing distinguishes a drag that was dropped from one that was
+     * abandoned. The response is deliberately empty and answered at once; the
+     * search and the delivery come after, because the shell is waiting on this
+     * socket to finish writing the marker we are about to look for.
+     */
+    private async serveMarker (token: string, offer: Offer, res: http.ServerResponse): Promise<void> {
+        res.writeHead(200, {
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': '0',
+        })
+        res.end()
+
+        const markerName = token + MARKER_EXTENSION
+        const destination = await this.locator.locate(markerName)
+        // Not found is not a failure to deliver: the drop happened, only its
+        // folder is unknown — a target outside the swept places, or a shell that
+        // took longer than the search allowed. Falling back is what makes the
+        // entry arrive somewhere the user can find it rather than nowhere.
+        const folder = destination ?? this.locator.fallbackFolder()
+        if (!destination) {
+            this.notify(`${offer.item.name} : dossier de dépôt introuvable, livré dans ${folder}`)
+        }
+        await this.deliver(offer, folder)
+    }
+
+    /**
+     * Writes the announced entry into the folder the drop landed in.
+     *
+     * Collisions are not overwritten: this is a copy the user asked for by
+     * dropping, and the panel's rule everywhere else is to refuse rather than
+     * arbitrate — here refusing outright would leave the gesture with nothing to
+     * show, so the copy is renamed the way Explorer does it.
+     */
+    private async deliver (offer: Offer, folder: string): Promise<void> {
+        const target = this.freeName(folder, offer.item.name)
+        try {
+            if (offer.item.isDirectory) {
+                await downloadRemoteTree(
+                    offer.sftp,
+                    offer.item.fullPath,
+                    target,
+                    (remote, local, item) => this.fileTransfers.download(offer.sftp, remote, local, item.name, item.size, item.mode),
+                )
+            } else {
+                await this.fileTransfers.download(
+                    offer.sftp, offer.item.fullPath, target,
+                    offer.item.name, offer.item.size, offer.item.mode,
+                )
+            }
+            this.notify(`${offer.item.name} déposé dans ${folder}`)
+        } catch (error) {
+            this.notifyError(`${offer.item.name} n'a pas pu être déposé dans ${folder}`, String((error as Error)?.message ?? error))
+        }
+    }
+
+    /**
+     * A path in `folder` that nothing occupies, suffixed the way Explorer does.
+     *
+     * Checked with `fs` rather than remembered: the folder belongs to the user,
+     * and anything may have appeared in it between the drop and this call.
+     */
+    private freeName (folder: string, name: string): string {
+        let candidate = path.join(folder, name)
+        if (!fs.existsSync(candidate)) {
+            return candidate
+        }
+        const extension = path.extname(name)
+        const base = name.slice(0, name.length - extension.length)
+        for (let n = 2; ; n++) {
+            candidate = path.join(folder, `${base} (${n})${extension}`)
+            if (!fs.existsSync(candidate)) {
+                return candidate
+            }
+        }
+    }
+
+    /**
+     * Everything here resumes outside the Angular zone.
+     *
+     * The HTTP request is a Node callback and the SFTP promises are native
+     * bindings zone.js never patched, so a notice raised from this code would
+     * mutate state nothing repaints (piège #41).
+     */
+    private notify (message: string): void {
+        this.zone.run(() => this.notifications.notice(message))
+    }
+
+    private notifyError (message: string, detail: string): void {
+        this.zone.run(() => this.notifications.error(message, detail))
     }
 
     /**

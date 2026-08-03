@@ -24,7 +24,45 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
-<h2>Étude des plugins SFTP existants (2026-08-03)</h2>
+<h2>Marqueur de dépôt : un dossier sort en un seul geste (2026-08-03)</h2>
+<p>Chantier <a href="ROADMAP.html#marqueur-depot">Marqueur de dépôt</a>, sur la branche
+<code>feat/marqueur-depot</code>, ouvert par l'<a href="#etude-plugins-sftp">étude</a> du même jour.
+Le design est dans la roadmap ; ce qui suit est ce que la construction et le test ont appris.</p>
+<p><strong>L'inversion tient en une phrase</strong> : ne plus annoncer la charge utile, mais un
+fichier vide au nom unique. Le shell l'écrit à l'endroit du dépôt, et le retrouver donne la
+destination — que Windows ne communique jamais à l'application source
+(<a href="AI-CONTEXT.html#piege-58">#58</a>). Ce qui n'était pas prévu et qui compte autant : le
+geste redevient un glisser HTML5 ordinaire, donc <strong>le déplacement interne et la sortie vers l'OS
+cessent de se disputer le même geste</strong>. Tout l'échafaudage du glisser en deux temps — intention
+retenue d'un geste sur l'autre, surveillance de la sortie de fenêtre, notice « glissez-le à nouveau »
+— devient un repli, plus un chemin ordinaire.</p>
+<p><strong>Le socle a été mesuré avant d'être écrit</strong> : énumérer les fenêtres de l'Explorateur
+par <code>Shell.Application</code> en COM répond en ~50 ms et voit bien une fenêtre ouverte. C'est le
+point unique de rupture du mécanisme, et il ne valait pas d'écrire trois cents lignes avant de le
+savoir.</p>
+<p><strong>Ce que le test a établi</strong> (cinq cas au geste réel, tous validés) : dépôt dans une
+fenêtre, sur le Bureau, sur l'icône d'un dossier, déplacement interne inchangé, glisser d'un fichier
+inchangé. Et un cas que le design n'avait pas prévu — déposer sur le Terminal Windows ou MobaXterm ne
+produit <em>rien</em>, ces cibles ne réclamant jamais l'URL. Le repli n'a donc pas à se déclencher, et
+c'est bien ce qu'on veut (<a href="AI-CONTEXT.html#piege-67">#67</a>). Le repli lui-même reste
+<strong>non exercé</strong>.</p>
+<p>La traversée d'arborescence a été sortie de <code>sftpDragOut</code> vers
+<code>remoteTree.ts</code> pour être partagée avec la livraison du marqueur, symlinks compris —
+deux copies auraient été deux occasions de n'en corriger qu'une.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>9ccb6c1</code></td>
+<td><strong>Un dossier sort en un seul geste, et on sait où il est allé.</strong> Offre
+<code>DownloadURL</code> servant un marqueur vide au nom unique ; sa requête HTTP est le signal du
+dépôt ; le marqueur est cherché dans le Bureau, les Téléchargements, les fenêtres de l'Explorateur
+ouvertes et un niveau de sous-dossiers, puis effacé, et l'entrée livrée là par SFTP. Collision
+renommée à la façon de l'Explorateur. Repli sur <code>~/Downloads</code> si la destination est
+introuvable, et sur l'ancien <code>startDrag()</code> si le serveur local ne démarre pas.</td></tr>
+</table>
+
+<h2 id="etude-plugins-sftp">Étude des plugins SFTP existants (2026-08-03)</h2>
 <p>Préalable posé par l'utilisateur au moment de valider le volet 3 : savoir ce qui est déjà résolu
 ailleurs avant d'écrire davantage de mécanique de glisser. Aucun code produit — le résultat est
 consigné dans la <a href="ROADMAP.html#transferts">roadmap</a> et a rouvert deux points qui y étaient

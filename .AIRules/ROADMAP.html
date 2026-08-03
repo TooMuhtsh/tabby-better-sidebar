@@ -37,7 +37,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
-<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill progress">🚧 Les trois volets faits (2026-08-02) — deux retours de test à traiter</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
+<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill done">✅ Fait (2026-08-02) — les deux retours de test rendus sans objet par le marqueur (2026-08-03)</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
 <tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill progress">🚧 Points 1 et 2 faits, 3 sans objet (2026-08-02) — point 4 restant</span></td><td>Haute</td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -633,7 +633,13 @@ tard :</p>
 <li><strong>La notice « glissez-le à nouveau » doit tenir</strong> : plus grande, plus visible, et
   affichée <em>jusqu'à ce que le second geste ait eu lieu</em> plutôt que sur une minuterie. C'est le
   seul repère qui dit pourquoi le premier geste n'a rien donné.</li>
-</ul></div>
+</ul>
+<p><strong>Sans objet depuis le 2026-08-03</strong> : les deux tiennent au geste en deux temps, que le
+<a href="#marqueur-depot">marqueur de dépôt</a> a supprimé. Un dossier part au premier geste, donc il
+n'y a plus de notice à faire tenir, et l'offre étant annoncée d'emblée la cible n'affiche plus de
+refus. Le chemin en deux temps ne subsiste qu'en repli, si le serveur local ne démarre pas — les deux
+réserves ne valent que pour lui, et ne seront rouvertes que s'il redevient le chemin ordinaire.</p>
+</div>
 <div class="callout note"><span class="callout-title">Instruit le 2026-08-03 — trois plugins lus, deux
 conclusions de cette roadmap invalidées</span>
 <p>Demandé par l'utilisateur le 2026-08-02 : vérifier ce que les plugins SFTP graphiques existants
@@ -848,7 +854,14 @@ conséquences pour ce point 4 : la fin du dépôt cesse d'être à estimer, puis
 marqueur la signale ; et le contrôle « le fichier est-il bien arrivé ? », déclaré ici impossible sur
 ce chemin, redevient faisable — c'est même le plugin qui écrit le fichier, donc le contrôle est
 entier. <strong>Ce point ne se code donc pas avant que le marqueur soit tranché</strong> : le faire
-d'abord reviendrait à construire l'approximation que le marqueur rend inutile.</p></div>
+d'abord reviendrait à construire l'approximation que le marqueur rend inutile.</p>
+<p><strong>Réduit au fichier seul depuis le 2026-08-03.</strong> Le <a href="#marqueur-depot">marqueur
+de dépôt</a> est livré, mais il ne sert que le <em>dossier</em> : un fichier reste annoncé en
+<code>DownloadURL</code> portant ses vrais octets, donc c'est encore le shell qui l'écrit et l'écart
+mesuré de 22 s subsiste pour lui. Deux issues, à arbitrer : passer aussi les fichiers par le marqueur
+— une seule voie, fin réelle et destination connue, au prix d'une heuristique sur un cas qui marche
+aujourd'hui sans elle — ou garder la voie directe et se contenter d'un état transitoire approximatif,
+que l'utilisateur avait déjà accepté comme tel.</p></div>
 
 <h3 id="sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30, avec trois autres axes UX/sécurité —
@@ -1078,7 +1091,7 @@ décrit plus haut <strong>subsiste comme repli</strong> — il sert encore aux d
 démarre pas.</p></div>
 
 <h4 id="marqueur-depot">Marqueur de dépôt : un dossier en un seul geste, et la destination connue
-📋 Proposé (2026-08-03) — à prototyper</h4>
+✅ Fait (2026-08-03)</h4>
 <p>Issu de l'<a href="#transferts">étude des plugins existants</a> :
 <code>tabby-sftp-panel</code> contourne ce que le <a href="AI-CONTEXT.html#piege-58">piège #58</a>
 donnait pour indépassable. Le principe tient en une inversion — puisque l'offre
@@ -1109,6 +1122,28 @@ apprendre cette destination et y livrer soi-même le contenu par SFTP.</p>
   laisse deux chemins à maintenir, l'unifier fait passer un cas qui marche par une heuristique. Et le
   sort du repli <code>startDrag()</code> une fois le marqueur en place.</li>
 </ul>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le
+2026-08-03</span>
+<p>Branche <code>feat/marqueur-depot</code>, détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>.
+Cinq cas validés au geste réel : dépôt dans une fenêtre de l'Explorateur, sur le Bureau, sur l'icône
+d'un dossier (le niveau de sous-dossiers que le balayage couvre), déplacement interne d'un dossier
+inchangé, et glisser d'un fichier inchangé. <strong>La cohabitation était l'enjeu</strong> — le
+glisser reste un glisser HTML5 ordinaire, donc le déplacement interne et la sortie vers l'OS ne se
+disputent plus le même geste.</p>
+<p><strong>Ce que le test a établi et que le design n'avait pas prévu</strong> : une cible qui ne
+comprend pas l'offre — Terminal Windows, MobaXterm — ne réclame jamais l'URL, donc <em>rien</em> ne se
+produit, pas même le repli (<a href="AI-CONTEXT.html#piege-67">piège #67</a>). C'est le bon
+comportement : le repli ne doit couvrir que la cible qui a accepté sans qu'on retrouve où. Écart
+assumé par l'utilisateur, aucun avertissement n'étant possible depuis la source.</p>
+<p><strong>Non exercé</strong> : le repli lui-même — livraison dans <code>~/Downloads</code> quand le
+marqueur n'est pas retrouvé. Le code est en place, aucun geste ne l'a parcouru, et le cas ci-dessus
+n'est pas celui-là. Il s'exercerait en déposant sur un nœud du volet de navigation pointant à deux
+niveaux sous une fenêtre ouverte.</p>
+<p><strong>Sans garde-fou de poids</strong>, contrairement à l'ancien chemin : le téléchargement
+démarre au dépôt, sans question sur un dossier volumineux. Retenu tel quel — le transfert est
+désormais visible dans la liste de Tabby et annulable, ce que la préparation silencieuse d'avant
+n'offrait pas.</p></div>
 
 <h3 id="transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</h3>
 <p>Demandé par l'utilisateur le 2026-08-01, en réponse à la lenteur du drag-out sur un dossier et à

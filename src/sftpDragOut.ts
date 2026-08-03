@@ -1,10 +1,10 @@
-import * as fs from 'fs'
 import * as path from 'path'
 import { NgZone } from '@angular/core'
 import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { electronRemote } from './electronRemote'
 import { readRemoteEntry } from './remoteEntry'
+import { downloadRemoteTree } from './remoteTree'
 import { SidebarPlusTempFilesService } from './tempFiles.service'
 import { SftpTransfers } from './transfers'
 
@@ -33,9 +33,6 @@ export interface DirectoryWeight {
     /** True when counting stopped at the threshold instead of reaching the end — the totals are lower bounds. */
     truncated: boolean
 }
-
-/** How many files of a directory are fetched at once. See `downloadAll()`. */
-const DOWNLOAD_CONCURRENCY = 4
 
 /**
  * A 32×32 sheet-of-paper PNG, inlined as a data URL.
@@ -347,89 +344,17 @@ export class SftpDragOut {
     /**
      * Depth-first copy of a remote directory.
      *
-     * A symlink to a *directory* is skipped, not followed: following it invites
-     * a cycle (a link back to any ancestor would recurse forever), and there is
-     * no realpath in `SFTPSession` to detect one with. A symlink to a file is
-     * downloaded normally — the server resolves it, so the copy is the target's
-     * content.
-     *
-     * Skipping is not cosmetic. Downloading a link-to-directory as a file makes
-     * the server answer `Failure` (EISDIR), which would throw and fail the whole
-     * directory: one link would make a perfectly ordinary tree undraggable. And
-     * the entry's own flags cannot tell the two apart — `isDirectory` is false
-     * for any symlink, and its `mode` describes the link. Only reading the
-     * *target* answers, and only through its mode (piège #45) — read from the
-     * parent's listing, never through `stat()`, see `targetIsDirectory()`.
+     * The walk itself lives in `remoteTree.ts`: the marker route of the
+     * drag-out server delivers the same trees to a folder of the user's
+     * choosing, and two copies of the symlink handling would be two chances to
+     * fix only one of them.
      */
     private async downloadDirectory (sftp: SftpSession, remotePath: string, localPath: string): Promise<void> {
-        const files: { remote: string, local: string, item: SFTPFile }[] = []
-
-        const walk = async (remote: string, local: string): Promise<void> => {
-            await fs.promises.mkdir(local, { recursive: true })
-            for (const entry of await sftp.readdir(remote)) {
-                const childLocal = path.join(local, entry.name)
-                if (entry.isDirectory) {
-                    await walk(entry.fullPath, childLocal)
-                    continue
-                }
-                if (entry.isSymlink && await this.targetIsDirectory(sftp, entry.fullPath)) {
-                    continue
-                }
-                files.push({ remote: entry.fullPath, local: childLocal, item: entry })
-            }
-        }
-
-        // The whole tree is walked before anything is fetched: the directories
-        // have to exist before their files land, and knowing the full list is
-        // what allows the transfers to overlap at all.
-        await walk(remotePath, localPath)
-        await this.downloadAll(files.map(f => () => this.downloadFile(sftp, f.remote, f.local, f.item)))
-    }
-
-    /**
-     * Runs the transfers a few at a time.
-     *
-     * Measured on 26 files totalling 11 MB: over a minute, while the same
-     * directory through Tabby's own download is near-instant, and a single
-     * 10 MB file through this very code path is too. So the cost is per *file*,
-     * not per byte — round trips to open, read and close each one, which
-     * overlap perfectly well. Strictly sequential, they simply queued.
-     *
-     * Bounded rather than unbounded: every transfer shares one SFTP channel,
-     * and a hundred concurrent opens would trade one queue for another while
-     * making a failure much harder to attribute.
-     */
-    private async downloadAll (tasks: (() => Promise<void>)[]): Promise<void> {
-        let next = 0
-        const workers = Array.from(
-            { length: Math.min(DOWNLOAD_CONCURRENCY, tasks.length) },
-            async () => {
-                while (next < tasks.length) {
-                    await tasks[next++]()
-                }
-            },
+        await downloadRemoteTree(
+            sftp,
+            remotePath,
+            localPath,
+            (remote, local, item) => this.downloadFile(sftp, remote, local, item),
         )
-        await Promise.all(workers)
-    }
-
-    /**
-     * Whether a symlink points at a directory. A failure counts as "yes": the
-     * entry is skipped rather than risking the whole copy on it.
-     *
-     * Resolved through the link and read from the *listing*, not from `stat()`
-     * — whose mode is always 0 here, which left the mode test of piège #45
-     * permanently false and the guard rail resting on `isDirectory` alone.
-     */
-    private async targetIsDirectory (sftp: SftpSession, remotePath: string): Promise<boolean> {
-        try {
-            const target = await sftp.readlink(remotePath)
-            const entry = await readRemoteEntry(sftp, path.posix.resolve(path.posix.dirname(remotePath), target))
-            if (!entry) {
-                return true
-            }
-            return entry.isDirectory || (entry.mode & 0o170000) === 0o040000
-        } catch {
-            return true
-        }
     }
 }
