@@ -677,6 +677,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      */
     private gestureHeld = false
 
+    /** Whether a directory may leave for the OS at all. Off by default; files are always draggable. */
+    private get canDragOutFolders (): boolean {
+        return !!this.config.store.sidebarPlus?.sftpDragOutFolders
+    }
+
     onDragStart (item: SFTPFile, event: DragEvent): void {
         const isDirectory = this.isDirectoryEntry(item)
 
@@ -712,6 +717,24 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
                 // engine veto the move rather than merely mislabel it.
                 event.dataTransfer.effectAllowed = 'copyMove'
                 event.dataTransfer.setData('DownloadURL', `application/octet-stream:${item.name}:${url}`)
+                return
+            }
+        }
+
+        // A directory leaves through a *marker*: an empty file under a unique
+        // name, announced in its place. The shell writes it at the drop site,
+        // which is what reveals where the drop landed — and the entry is then
+        // delivered there by us (see `SidebarPlusDragOutServer.serveMarker`).
+        //
+        // What this buys over `startDrag()`, beyond knowing the destination: the
+        // gesture stays a plain HTML drag, so the internal move keeps working on
+        // the same drag and the copy no longer takes a gesture of its own. The
+        // two-step shape below is only reached when the server never started.
+        if (isDirectory && this.canDragOutFolders && this.dragServer.ready && event.dataTransfer) {
+            const marker = this.dragServer.offerMarker(this.sftp, item)
+            if (marker) {
+                event.dataTransfer.effectAllowed = 'copyMove'
+                event.dataTransfer.setData('DownloadURL', `application/octet-stream:${marker.markerName}:${marker.url}`)
                 return
             }
         }
