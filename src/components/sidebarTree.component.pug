@@ -49,6 +49,8 @@
                 *ngFor='let session of activeSessions',
                 [class.focused]='session.focused',
                 (click)='focusSession(session, $event)',
+                (mouseenter)='onSessionHover(session, true)',
+                (mouseleave)='onSessionHover(session, false)',
                 [title]='sessionTooltip(session)',
                 href='#'
             )

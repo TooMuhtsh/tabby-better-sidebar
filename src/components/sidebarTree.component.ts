@@ -148,6 +148,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     activeSessions: ActiveSession[] = []
     /** tab → when it was first seen live, the only record of a session's age there is (see sessionUptime()). */
     private sessionOpenedAt = new Map<SSHTabComponent, number>()
+    /** The row under the pointer and the tooltip text held still for it — see sessionTooltip(). */
+    private hoveredSessionTab: SSHTabComponent|null = null
+    private hoveredSessionTooltip = ''
     /** Per-machine UI state (localStorage, like sftpMode) rather than a `sidebarPlus.*` config key — nothing worth syncing across machines, and it sidesteps piège #16 entirely. */
     activeSessionsCollapsed = window.localStorage.sidebarPlusActiveSessionsCollapsed === 'true'
 
@@ -1264,6 +1267,35 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * figure, rather than showing a placeholder.
      */
     sessionTooltip (session: ActiveSession): string {
+        // Frozen for as long as the pointer stays on the row. A native tooltip
+        // is torn down and rebuilt whenever its `title` attribute is rewritten,
+        // and this one would be rewritten on every 2s pass as the seconds move
+        // — which read as a flicker while trying to read it. Off the row the
+        // value keeps updating: nothing is on screen to flicker.
+        if (this.hoveredSessionTab === session.tab) {
+            return this.hoveredSessionTooltip
+        }
+        return this.buildSessionTooltip(session)
+    }
+
+    /**
+     * Takes the snapshot the tooltip will show, and drops it on the way out.
+     *
+     * Consequence to accept: hover a row for two minutes and the figures are
+     * those of the moment the pointer arrived. Leaving and coming back is what
+     * refreshes them — and that is the gesture anyone makes to re-read a
+     * tooltip anyway.
+     */
+    onSessionHover (session: ActiveSession, hovering: boolean): void {
+        if (hovering) {
+            this.hoveredSessionTab = session.tab
+            this.hoveredSessionTooltip = this.buildSessionTooltip(session)
+        } else if (this.hoveredSessionTab === session.tab) {
+            this.hoveredSessionTab = null
+        }
+    }
+
+    private buildSessionTooltip (session: ActiveSession): string {
         const latency = this.ping.latencyMs(session.tab)
         return [
             session.name,
