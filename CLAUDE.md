@@ -45,6 +45,29 @@ faut faire la MAJ du README », « MAJ des dépendances ». Ce sont des demandes
 travail, pas le mot de clôture. Seul un message qui **se réduit** à `MAJ`
 déclenche la chaîne.
 
+## Phase en cours — roadmap figée (depuis le 2026-08-03)
+
+**Régime temporaire, décidé par l'utilisateur.** La roadmap est figée : ce qui est
+demandé et réalisable de suite se fait de suite, sans ouvrir de fiche. Et **rien
+ne se consigne au fil de l'eau** — ni `.AIRules/`, ni journal, ni commit par
+chantier : tout est consigné **en une seule fois à la fin de la phase**.
+
+L'état vit dans [`.AIRules/currentwork_roadmap.html`](./.AIRules/currentwork_roadmap.html) :
+les 24 items restants, leur difficulté, leur jauge, et un journal de phase qui
+sert de matière à la consignation finale.
+
+Le travail de cette phase vit sur une **branche unique** — l'option `branches`
+n'est pas suspendue, elle est ce qui rend le reste possible : `master` ne porte
+jamais de code que la gouvernance ne décrit pas, et la fusion finale amène le
+code et sa documentation d'un seul geste.
+
+**Condition de sortie, à ne pas laisser se perdre** : à la consignation finale,
+`currentwork_roadmap.html` est **supprimé**, la roadmap et le journal reprennent
+tout, et **cette section disparaît de ce fichier**. Un régime dérogatoire qui
+survit à la raison qui l'a fait naître devient une règle par simple oubli — c'est
+le même piège que le contournement décrit plus bas, à propos de l'édition de
+profil.
+
 ## Contexte
 
 Tabby a une sidebar de profils native (`profile-tree`, activable dans

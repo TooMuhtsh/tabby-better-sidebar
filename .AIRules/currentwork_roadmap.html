@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>tabby-better-sidebar — Travail en cours</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.board td:nth-child(2), .board td:nth-child(3), .board td:nth-child(4) { white-space: nowrap; }
+.board th:nth-child(2), .board th:nth-child(3), .board th:nth-child(4) { width: 1%; }
+.diff { font-weight: 600; font-family: ui-monospace, monospace; }
+.count { font-size: 1.6rem; font-weight: 600; }
+.grp { color: var(--muted); font-weight: normal; }
+</style>
+</head>
+<body>
+
+<nav class="tabbar">
+<a href="README.html">Accueil</a>
+<a href="AI-CONTEXT.html">Contexte</a>
+<a href="AI-HISTORY.html">Historique</a>
+<a href="ROADMAP.html">Roadmap</a>
+<a href="currentwork_roadmap.html" class="current">Travail en cours</a>
+</nav>
+
+<h1>Travail en cours</h1>
+<p class="muted">État des lieux du reste à faire, sans détail — le détail vit dans
+<a href="ROADMAP.html">ROADMAP.html</a>. Mis à jour au fil de l'eau.
+<strong>Dernière mise à jour : 2026-08-03.</strong></p>
+
+<div class="callout note"><span class="callout-title">Fichier temporaire</span>
+<p>Ouvert pendant une phase où la roadmap est <strong>figée</strong> : ce qui est réalisable de
+suite est fait de suite, et tout est consigné en une fois à la fin — pas de mise à jour des
+documents de gouvernance ni de commit à chaque geste. <strong>Ce fichier disparaît à la
+consignation finale</strong> ; il ne fait pas partie du corpus permanent.</p></div>
+
+<p><span class="count">0 / 24</span> — aucun item traité pour l'instant.</p>
+
+<h2>Légende</h2>
+<p><strong>Difficulté</strong> — <span class="diff">S</span> un fichier, aucun état nouveau ·
+<span class="diff">M</span> plusieurs fichiers, ou une clé de config, ou une passe de test réelle ·
+<span class="diff">L</span> nouvelle mécanique, ou une décision à trancher avant de coder.</p>
+<p><strong>Jauge</strong> — <span class="pill warn">Fiabilité</span> évite une perte ou un message
+faux · <span class="pill adopted">Utile</span> fait gagner du temps sur un geste fréquent ·
+<span class="pill">Confort</span> rend agréable un geste déjà possible ·
+<span class="pill out">Cosmétique</span> visible, sans effet sur ce qu'on peut faire.</p>
+<p class="muted">Deux items ne sont pas du code : ceux marqués <em>Décision</em> se tranchent, ceux
+marqués <em>Test</em> demandent une passe et non une ligne.</p>
+
+<h2>G1 — Menu contextuel profil/groupe <span class="grp">· un fichier, une passe de test sur <code>grp-zzz-test-*</code></span></h2>
+<table class="board">
+<tr><th>Item</th><th>Diff.</th><th>Jauge</th><th>État</th></tr>
+<tr><td>Clone Express</td><td class="diff">S</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Quick Snippets</td><td class="diff">M</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Notes de profil</td><td class="diff">M</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Group Exec</td><td class="diff">M</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Partage de groupe (JSON)</td><td class="diff">L</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+</table>
+
+<h2>G2 — Sections hautes de la sidebar</h2>
+<table class="board">
+<tr><th>Item</th><th>Diff.</th><th>Jauge</th><th>État</th></tr>
+<tr><td>Historique des profils récents</td><td class="diff">S</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Flèches d'activité ↑/↓ sur le profil</td><td class="diff">M</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>États de transfert sur la ligne de session</td><td class="diff">M</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+</table>
+
+<h2>G3 — Workspaces <span class="grp">· même modèle de données</span></h2>
+<table class="board">
+<tr><th>Item</th><th>Diff.</th><th>Jauge</th><th>État</th></tr>
+<tr><td>Les 3 propositions du test du 2026-07-29</td><td class="diff">—</td><td><em>Décision</em></td><td><span class="pill planned">À trancher</span></td></tr>
+<tr><td>Icône par workspace</td><td class="diff">S</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Export/import JSON</td><td class="diff">M</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Sélecteur adaptatif</td><td class="diff">M</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Couleurs contextuelles (bordure terminal)</td><td class="diff">M</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill planned">À faire</span></td></tr>
+</table>
+
+<h2>G4 — Liste SFTP <span class="grp">· passe de test sur serveur réel</span></h2>
+<table class="board">
+<tr><th>Item</th><th>Diff.</th><th>Jauge</th><th>État</th></tr>
+<tr><td>Gel de la vue</td><td class="diff">S</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Multi-sélection distante</td><td class="diff">L</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Chargement par blocs</td><td class="diff">L</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+</table>
+
+<h2>G5 — Transferts <span class="grp">· fiabilité, passe sur serveur réel</span></h2>
+<table class="board">
+<tr><th>Item</th><th>Diff.</th><th>Jauge</th><th>État</th></tr>
+<tr><td><code>downloadFolder</code> sur la voie moderne</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Contrôle « le fichier est-il arrivé ? »</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>État de reprise tunnel (micro-coupure)</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Chemin distant + session sur la ligne</td><td class="diff">S</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill planned">À faire</span></td></tr>
+</table>
+
+<h2>G6 — Sortie de version</h2>
+<table class="board">
+<tr><th>Item</th><th>Diff.</th><th>Jauge</th><th>État</th></tr>
+<tr><td>Icône d'engrenage en bas de sidebar</td><td class="diff">S</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Bascule sur <code>exit</code> — jamais exercée</td><td class="diff">—</td><td><em>Test</em></td><td><span class="pill planned">À exercer</span></td></tr>
+<tr><td>Repli du marqueur vers <code>~/Downloads</code> — jamais exercé</td><td class="diff">—</td><td><em>Test</em></td><td><span class="pill planned">À exercer</span></td></tr>
+<tr><td>Passe de test de release, puis publication 0.3.0</td><td class="diff">M</td><td><em>Jalon</em></td><td><span class="pill planned">À faire</span></td></tr>
+</table>
+
+<h2>Journal de la phase</h2>
+<p class="muted">Une ligne par item traité, pour la consignation finale. Vide pour l'instant.</p>
+<table class="board">
+<tr><th scope="col">Date</th><th scope="col">Item</th><th scope="col">Ce qui a été fait</th></tr>
+<tr><td colspan="3" class="muted">—</td></tr>
+</table>
+
+<h2>Hors périmètre de cette liste</h2>
+<ul>
+<li>Comparaison des deux identifiants de charte en début de session — entretien récurrent, pas un
+  chantier.</li>
+<li>Ce que <a href="ROADMAP.html#points-fragiles">la roadmap</a> range sous « ce qui ressemble à un
+  reste et n'en est pas un » : points tranchés, vérifiés faux ou rendus sans objet.</li>
+</ul>
+
+</body>
+</html>
