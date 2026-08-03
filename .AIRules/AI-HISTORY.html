@@ -24,6 +24,41 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Étude des plugins SFTP existants (2026-08-03)</h2>
+<p>Préalable posé par l'utilisateur au moment de valider le volet 3 : savoir ce qui est déjà résolu
+ailleurs avant d'écrire davantage de mécanique de glisser. Aucun code produit — le résultat est
+consigné dans la <a href="ROADMAP.html#transferts">roadmap</a> et a rouvert deux points qui y étaient
+donnés pour clos.</p>
+<p><strong>Trois plugins lus dans leurs sources d'origine</strong> : <code>tabby-sftp-plus</code>
+2.0.0 (installé sur le poste), <code>tabby-sftp-panel</code> 0.3.0 et <code>tabby-sftp-ui</code>
+0.2.7, récupérés depuis npm hors du dépôt. Tous trois publient leur <code>index.js.map</code> avec
+<code>sourcesContent</code> : les sources TypeScript s'en extraient en entier, commentaires
+d'implémentation compris. C'est bien plus sûr que la lecture de bundle compilé pratiquée jusqu'ici, et
+c'est ce qui a permis de lire les raisons de leurs choix, pas seulement leurs effets.</p>
+<p><strong>Ce que l'étude a confirmé</strong> : notre glisser sortant par <code>DownloadURL</code> +
+serveur HTTP local est exactement celui de <code>tabby-sftp-panel</code>, jusqu'à l'impératif de
+<code>Content-Length</code> exact — convergence indépendante, choix à ne pas rejuger. Et le geste en
+deux temps de <code>tabby-sftp-plus</code>, qui pré-copie avant de pouvoir annoncer quoi que ce soit,
+montre que notre « glissez-le à nouveau » décrivait une propriété du mécanisme.</p>
+<p><strong>Ce qu'elle a invalidé</strong> : le <a href="AI-CONTEXT.html#piege-58">piège #58</a>
+concluait qu'un contrôle « le fichier est-il bien arrivé ? » était impossible pour un glisser sortant.
+Vrai de l'API, faux en pratique — <code>tabby-sftp-panel</code> fait écrire par le shell un marqueur
+de 0 octet au nom unique, puis le retrouve pour apprendre la destination. Le piège est corrigé et le
+<a href="ROADMAP.html#marqueur-depot">chantier correspondant</a> ouvert ; il rend sans objet les deux
+retours de test du volet 3 et fournit au point 4 du panneau d'état le signal de fin qui lui manquait.
+Relevé au passage : <code>tabby-sftp-ui</code> déplace lui aussi une entrée par dépôt sur une ligne de
+dossier, avec nos deux garde-fous mais sans regarder la collision, et il porte la troncature du
+<a href="AI-CONTEXT.html#piege-64">piège #64</a> que notre traversée évite déjà.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>(hash à inscrire)</code></td>
+<td><strong>Étude consignée</strong> : bilan des trois plugins en tête du chantier Transferts,
+chantier <em>Marqueur de dépôt</em> ouvert en proposition, point 4 du panneau d'état rouvert et
+suspendu à cet arbitrage, piège #58 corrigé sur son point le plus large.</td></tr>
+</table>
+
 <h2>Déplacer une entrée distante au glisser-déposer (2026-08-02)</h2>
 <p>Volet 3 du chantier <a href="ROADMAP.html#transferts">Transferts SFTP</a>, sur la branche
 <code>feat/deplacement-interne-sftp</code>. Le design est dans la roadmap ; ce qui suit est ce que la

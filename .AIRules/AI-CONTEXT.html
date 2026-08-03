@@ -476,15 +476,23 @@ ce chemin au shell, qui <strong>copie</strong> vers l'endroit du dépôt (250 Mo
 pas un renommage, donc volumes distincts). Cette fenêtre appartient à <code>explorer.exe</code> :
 <strong>elle n'est pas masquable depuis le plugin</strong>, et Tabby n'y est pour rien (aucun dialogue
 de ce genre dans son bundle).</p>
-<div class="callout warning"><span class="callout-title">La destination est inconnaissable, ne pas
-chercher à la vérifier</span>
+<div class="callout warning"><span class="callout-title">Aucune API ne donne la destination — elle se
+retrouve, elle ne se demande pas</span>
 <p>Le protocole de glisser-déposer de Windows ne communique <strong>jamais</strong> à l'application
-source l'endroit où la cible a déposé. Un contrôle « le fichier est-il bien arrivé ? » est donc
-impossible sur ce chemin — <code>will-download</code> d'Electron ne rendrait que le chemin
-<em>temporaire</em> de Chromium. Ce contrôle reste possible sur les téléchargements lancés par le
-menu contextuel, où c'est nous qui imposons le chemin à
-<code>platform.startDownload()</code> : ne pas confondre les deux, c'est ce que font les plugins SFTP
-qui affichent cette vérification.</p></div>
+source l'endroit où la cible a déposé : <code>will-download</code> d'Electron ne rendrait que le
+chemin <em>temporaire</em> de Chromium. Ce contrôle est en revanche direct sur les téléchargements
+lancés par le menu contextuel, où c'est nous qui imposons le chemin à
+<code>platform.startDownload()</code> — ne pas confondre les deux.</p>
+<p><strong>Corrigé le 2026-08-03</strong> : ce piège concluait qu'un contrôle « le fichier est-il bien
+arrivé ? » était impossible. C'est vrai de l'API, faux en pratique. Une offre
+<code>DownloadURL</code> peut servir un <strong>marqueur de 0 octet au nom unique</strong> au lieu de
+la charge utile : le shell l'écrit dans le dossier visé, et le chercher dans les emplacements
+plausibles (Bureau, Téléchargements, fenêtres de l'Explorateur ouvertes énumérées par
+<code>Shell.Application</code>, un niveau de sous-dossiers) fait apparaître la destination réelle. La
+requête HTTP du marqueur signale de surcroît que le dépôt a eu lieu. Heuristique et non garantie —
+elle échoue sur un dépôt hors de ces emplacements — mais elle transforme une impossibilité en repli.
+Relevé chez <code>tabby-sftp-panel</code> ; conception dans
+<a href="ROADMAP.html#marqueur-depot">ROADMAP § marqueur de dépôt</a>.</p></div>
 
 <h3 id="piege-61">#61 — <code>SFTPSession.download()</code> ne consulte jamais l'annulation : seule
 une exception arrête la boucle</h3>

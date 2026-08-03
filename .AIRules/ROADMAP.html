@@ -44,6 +44,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne — après l'éditeur forcé</td></tr>
 <tr><td><a href="#drag-out">Glisser-déposer sortant (téléchargement vers l'OS)</a></td><td><span class="pill done">✅ Fait (2026-08-01, refondu le 2026-08-02)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#marqueur-depot">Marqueur de dépôt : dossier en un geste, destination connue</a></td><td><span class="pill planned">📋 Proposé (2026-08-03)</span></td><td>Haute — conditionne le point 4 du <a href="#panneau-etat-session">panneau d'état</a> et les deux retours du volet 3</td></tr>
 <tr><td><a href="#transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#liste-performance">Performance de la liste SFTP et rafraîchissement automatique</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Haute</td></tr>
 <tr><td><a href="#renommer-sftp">Renommer une entrée depuis le panneau SFTP</a></td><td><span class="pill done">✅ Fait (2026-08-01)</span></td><td>Moyenne</td></tr>
@@ -633,13 +634,48 @@ tard :</p>
   affichée <em>jusqu'à ce que le second geste ait eu lieu</em> plutôt que sur une minuterie. C'est le
   seul repère qui dit pourquoi le premier geste n'a rien donné.</li>
 </ul></div>
-<div class="callout note"><span class="callout-title">À instruire avant d'aller plus loin</span>
-<p>Demandé par l'utilisateur le 2026-08-02 : <strong>vérifier ce que les plugins SFTP graphiques
-existants gèrent déjà</strong> de ces mécaniques — déplacement interne, dépôt sur une ligne de
-dossier, glisser sortant. <code>tabby-sftp-plus</code> est la référence déjà citée ailleurs dans
-cette roadmap (son <code>panel-conflict-resolver</code>). L'enjeu n'est pas d'abandonner ce qui est
-construit, mais de savoir ce qui a déjà été résolu ailleurs avant d'en écrire davantage — même
-principe que « réutiliser l'API officielle plutôt que la réinventer ».</p></div>
+<div class="callout note"><span class="callout-title">Instruit le 2026-08-03 — trois plugins lus, deux
+conclusions de cette roadmap invalidées</span>
+<p>Demandé par l'utilisateur le 2026-08-02 : vérifier ce que les plugins SFTP graphiques existants
+gèrent déjà de ces mécaniques — déplacement interne, dépôt sur une ligne de dossier, glisser sortant.
+Étudiés : <code>tabby-sftp-plus</code> 2.0.0 (déjà installé), <code>tabby-sftp-panel</code> 0.3.0 et
+<code>tabby-sftp-ui</code> 0.2.7 (récupérés depuis npm, hors du dépôt) ;
+<code>tabby-sftp-ui-next</code> est le même code republié. <strong>Les trois publient leur
+<code>index.js.map</code> avec <code>sourcesContent</code></strong> : leurs sources TypeScript
+d'origine se lisent en entier, commentaires compris — méthode à préférer à la lecture de bundle
+compilé employée jusqu'ici. Tous sous licence MIT ; rien n'a été recopié.</p>
+<ul>
+<li><strong>Dépôt sur la ligne d'un dossier et déplacement interne</strong> :
+  <code>tabby-sftp-ui</code> fait les deux, par <code>rename()</code>, avec nos deux garde-fous — pas
+  de dossier dans son propre sous-arbre, pas de destination identique à la source. Deux écarts avec
+  nous : il traite un <strong>lot</strong> (sélection multiple), et il ne regarde
+  <strong>pas</strong> la collision — le <code>rename()</code> part brut et le serveur tranche. Notre
+  refus explicite reste le comportement le plus prudent des trois.
+  <code>tabby-sftp-plus</code> <em>annule</em> au contraire tout glisser interne à un volet et ne
+  déplace que par couper/coller.</li>
+<li><strong>Glisser sortant</strong> : <code>tabby-sftp-panel</code> emploie <strong>exactement notre
+  mécanique</strong> — <code>DownloadURL</code> servi par un serveur HTTP sur <code>127.0.0.1</code>,
+  port éphémère, jeton à usage unique, et le même impératif de <code>Content-Length</code> exact sous
+  peine d'abandon du dépôt. Convergence indépendante : ce choix n'est pas à rejuger.
+  <code>tabby-sftp-plus</code> passe au contraire par une copie temporaire préalable plafonnée à
+  4 Mo, dossiers exclus — et vit alors le <strong>même « deux temps » que nous</strong>, ce qui
+  confirme que la notice décrit une propriété du mécanisme et non un défaut d'implémentation.</li>
+<li><strong>Chemin réel d'une entrée déposée</strong> : les trois emploient la même cascade —
+  <code>File.path</code>, puis <code>webUtils.getPathForFile()</code>, puis repli sur
+  <code>text/uri-list</code>. Si elle répond sous notre version d'Electron (à mesurer par
+  <code>process.versions.electron</code> ; non déterminable depuis les fichiers installés), un dossier
+  déposé livre son chemin et se passe entièrement de la traversée <code>readEntries()</code> du
+  <a href="AI-CONTEXT.html#piege-64">piège #64</a> — <code>platform.startUpload()</code> prend des
+  chemins. À noter : <code>tabby-sftp-ui</code> appelle <code>startUploadFromDragEvent()</code>, donc
+  <strong>il porte la troncature que ce piège décrit</strong>, que notre <code>readAllEntries()</code>
+  évite déjà.</li>
+<li><strong>Ce que l'étude ouvre</strong> : le <a href="#marqueur-depot">marqueur de dépôt</a>, qui
+  invalide deux conclusions posées ici comme définitives — l'impossibilité de connaître la destination
+  d'un glisser sortant, et la fatalité du geste en deux temps pour un dossier.</li>
+<li><strong>Sans réponse ailleurs</strong> : le curseur d'interdit affiché hors de Tabby au premier
+  geste. <code>tabby-sftp-plus</code> a le même symptôme sans l'avoir traité ; il disparaît de
+  lui-même si le marqueur est retenu, puisqu'il n'y a plus de premier geste à vide.</li>
+</ul></div>
 <ul>
 <li><strong>Mécanisme</strong> : déplacer une ligne sur la ligne d'un dossier (ou sur
   <code>..</code>) = <code>SFTPSession.rename(ancien, nouveau)</code> — présent dans les typings
@@ -802,6 +838,17 @@ si le besoin est confirmé.</p>
 <p>Reste donc à trancher au moment de coder : sur quoi lever l'état transitoire, puisque rien ne
 signale la fin de la copie du shell. Piste la moins mauvaise : une durée estimée d'après la taille et
 le débit observé, assumée comme approximative.</p></div>
+<div class="callout important"><span class="callout-title">Rouvert le 2026-08-03 : l'impossibilité
+énoncée ci-dessus ne vaut que pour l'API</span>
+<p>L'<a href="#transferts">étude des plugins existants</a> a trouvé un contournement chez
+<code>tabby-sftp-panel</code> — voir <a href="#marqueur-depot">marqueur de dépôt</a>. La destination
+reste effectivement hors de portée de toute API, mais elle se <em>retrouve</em> en faisant écrire par
+le shell un marqueur reconnaissable, puis en le cherchant dans les dossiers plausibles. Deux
+conséquences pour ce point 4 : la fin du dépôt cesse d'être à estimer, puisque la requête HTTP du
+marqueur la signale ; et le contrôle « le fichier est-il bien arrivé ? », déclaré ici impossible sur
+ce chemin, redevient faisable — c'est même le plugin qui écrit le fichier, donc le contrôle est
+entier. <strong>Ce point ne se code donc pas avant que le marqueur soit tranché</strong> : le faire
+d'abord reviendrait à construire l'approximation que le marqueur rend inutile.</p></div>
 
 <h3 id="sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30, avec trois autres axes UX/sécurité —
@@ -1029,6 +1076,39 @@ le transfert apparaît dans le gestionnaire au moment où les octets bougent. Le
 décrit plus haut <strong>subsiste comme repli</strong> — il sert encore aux dossiers (une offre
 <code>DownloadURL</code> ne transporte qu'un fichier) et à toute installation où le serveur local ne
 démarre pas.</p></div>
+
+<h4 id="marqueur-depot">Marqueur de dépôt : un dossier en un seul geste, et la destination connue
+📋 Proposé (2026-08-03) — à prototyper</h4>
+<p>Issu de l'<a href="#transferts">étude des plugins existants</a> :
+<code>tabby-sftp-panel</code> contourne ce que le <a href="AI-CONTEXT.html#piege-58">piège #58</a>
+donnait pour indépassable. Le principe tient en une inversion — puisque l'offre
+<code>DownloadURL</code> ne transporte qu'un fichier et que le shell ne dit jamais où il l'écrit,
+n'annoncer <strong>pas</strong> la charge utile mais un <strong>marqueur de 0 octet au nom
+unique</strong>, laisser le shell l'écrire dans le dossier visé, puis <em>l'y retrouver</em> pour
+apprendre cette destination et y livrer soi-même le contenu par SFTP.</p>
+<ul>
+<li><strong>Ce que ça règle d'un coup</strong> : un dossier sort en <strong>un seul geste</strong>,
+  sans <code>startDrag()</code> — donc sans le gel du renderer des
+  <a href="AI-CONTEXT.html#piege-49">pièges #49</a> et <a href="AI-CONTEXT.html#piege-65">#65</a> ;
+  les deux retours de test du <a href="#transferts">volet 3</a> deviennent sans objet plutôt qu'à
+  traiter (plus de premier geste à vide, donc ni notice ni curseur d'interdit) ; et la requête HTTP
+  sur le marqueur <strong>prouve que le dépôt a eu lieu</strong>, ce qui fournit au
+  <a href="#panneau-etat-session">point 4</a> le signal de fin qui lui manquait.</li>
+<li><strong>Localisation de la destination, chez eux</strong> : Bureau, Téléchargements et toutes les
+  fenêtres de l'Explorateur ouvertes (énumérées par <code>Shell.Application</code> en COM via
+  PowerShell), plus <em>un</em> niveau de sous-dossiers de chacune — un dépôt sur l'icône d'un dossier
+  atterrit dedans. Sondage toutes les 300 ms, dix secondes ; à la trouvaille, le marqueur est effacé
+  et le dossier retenu. Introuvable : livraison dans <code>~/Downloads</code>, annoncée comme telle.</li>
+<li><strong>Réserves à assumer avant de s'y engager</strong> : c'est une <strong>heuristique</strong>,
+  pas une garantie — un dépôt dans une fenêtre non ouverte, à deux niveaux de profondeur ou dans une
+  application tierce échoue et retombe sur le repli ; un processus PowerShell est lancé à chaque
+  dépôt ; et un fichier <code>.tabbydrop</code> apparaît fugitivement chez l'utilisateur avant d'être
+  effacé.</li>
+<li><strong>À trancher avant de coder</strong> : garder ou non la voie <code>DownloadURL</code>
+  actuelle pour le fichier seul, qui livre les vrais octets et n'a besoin d'aucun marqueur — la garder
+  laisse deux chemins à maintenir, l'unifier fait passer un cas qui marche par une heuristique. Et le
+  sort du repli <code>startDrag()</code> une fois le marqueur en place.</li>
+</ul>
 
 <h3 id="transferts-officiels">Transferts par l'API officielle, fraîcheur des copies et purge des temporaires</h3>
 <p>Demandé par l'utilisateur le 2026-08-01, en réponse à la lenteur du drag-out sur un dossier et à
