@@ -15,7 +15,7 @@
 </nav>
 
 <h1>Roadmap</h1>
-<p class="muted">Dernière revue : 2026-08-02</p>
+<p class="muted">Dernière revue : 2026-08-03</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
 techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
@@ -54,7 +54,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill out">⛔ Hors périmètre (2026-08-03)</span></td><td>Utilité à établir avant tout portage</td></tr>
-<tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#historique-profils">Historique des Profils Récents</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#quick-snippets">Quick Snippets (Macros de Sidebar)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -1828,6 +1828,32 @@ l'icône d'engrenage en bas de sidebar, et le gel de la vue.</p></div>
 <p>Micro-champ de recherche textuelle épinglé en haut de la liste pour filtrer instantanément les
 profils et groupes affichés sans changer de workspace. Focus via le raccourci <code>Ctrl+F</code> ou
 <code>Cmd+F</code> lorsque la sidebar est active.</p>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-03</span>
+<p>Branche <code>feat/filtre-rapide</code>, détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>.
+<strong>Cette fiche décrivait un chantier neuf pour quelque chose qui existait déjà</strong> : le champ
+est en haut de l'arbre depuis le socle, et il cherchait déjà partout, workspace ignoré. Ne manquaient
+que le raccourci, l'échappement et la portée — vérifié dans le code avant d'écrire quoi que ce soit,
+et arbitré avec l'utilisateur. À retenir pour les fiches voisines de ce bas de roadmap, écrites tôt :
+elles décrivent une intention, pas un état.</p>
+<p><strong>Livré</strong> : <code>Ctrl</code>+<code>F</code> place le curseur et sélectionne le
+contenu du champ (un second geste écrase donc la recherche précédente au lieu de s'y ajouter) ;
+<kbd>Échap</kbd> vide le filtre et rend le focus à l'arbre ; la recherche couvre
+<code>options.host</code> et <code>options.user</code> en plus du nom et de la description ; les
+dossiers dont le nom correspond sont rendus au-dessus des profils trouvés, avec leur contenu et
+dépliés.</p>
+<p>Deux points tranchés en construisant. Le raccourci <strong>bascule d'abord sur la vue
+Profils</strong> quand la sidebar montre le SFTP, le champ n'y existant pas — ne rien faire ferait
+passer le raccourci pour cassé. Et les dossiers, comme les profils, sont cherchés dans l'instantané
+<em>non filtré</em> par le workspace : un workspace règle ce que l'arbre montre, jamais ce qu'on peut
+trouver — c'est la décision de 2026-07-28, étendue aux dossiers.</p>
+<div class="callout warning"><span class="callout-title">Un bug préexistant fermé au passage</span>
+<p>Glisser un profil pendant qu'un filtre est actif <strong>persistait l'ordre des résultats comme
+ordre réel</strong> — sur « Tous », dans les <code>weight</code> natifs des profils, sans un mot. Le
+défaut est antérieur à ce chantier ; l'arrivée des dossiers dans les résultats rendait le geste bien
+plus facile à déclencher. Le glisser est désormais coupé tant qu'un filtre est actif
+(<a href="AI-CONTEXT.html#piege-68">piège #68</a>) : ce n'est pas une restriction d'ergonomie à lever
+un jour, mais la conséquence de ce que l'arbre affiché n'est alors pas l'arbre réel.</p></div></div>
 
 <h3 id="partage-groupe">Partage rapide de groupe (Presse-papiers)</h3>
 <p>Clic droit sur un dossier/groupe → "Copier la structure (JSON)". Extrait l'arborescence complète

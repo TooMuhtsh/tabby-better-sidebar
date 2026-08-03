@@ -24,6 +24,37 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Barre de filtrage : raccourci, portée, et un ordre qu'on ne persiste plus (2026-08-03)</h2>
+<p>Chantier <a href="ROADMAP.html#sidebar-search">Barre de filtrage rapide</a>, branche
+<code>feat/filtre-rapide</code>, testé et validé par l'utilisateur le 2026-08-03.</p>
+<p><strong>Le champ existait déjà</strong> — la fiche de roadmap décrivait un chantier neuf alors que
+l'essentiel était en place depuis le socle. Ce qui manquait vraiment : le raccourci, l'échappement, et
+une portée de recherche qui s'arrêtait au nom et à la description des profils. Constat fait en lisant
+le code plutôt qu'en croyant la fiche, et arbitré avec l'utilisateur avant d'écrire.</p>
+<p><code>Ctrl</code>+<code>F</code> est libre : Tabby met la recherche du terminal sur
+<code>Ctrl</code>+<code>Shift</code>+<code>F</code> hors macOS. Le raccourci passe par
+<code>hotkey$</code> et non <code>unfilteredHotkey$</code>, donc il reste muet pendant qu'on tape dans
+un champ — y compris celui qu'il sert à atteindre. Depuis la vue SFTP il bascule d'abord sur Profils :
+le champ n'y existe pas, et ne rien faire ferait passer le raccourci pour cassé.</p>
+<p><strong>Un bug préexistant est tombé avec ce chantier</strong>, et c'est le point qui compte :
+glisser un profil pendant qu'un filtre est actif persistait l'ordre des résultats comme ordre réel —
+sur « Tous », directement dans les <code>weight</code> natifs des profils, dans
+<code>config.yaml</code>, sans un mot. Les résultats ne sont pas l'arbre, mais les directives CDK de
+la template n'en savent rien. Le défaut existait avant, et l'ajout des dossiers dans les résultats
+rendait le geste bien plus facile à déclencher : le glisser est donc coupé tant qu'un filtre est actif
+(<a href="AI-CONTEXT.html#piege-68">piège #68</a>).</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>dd67f9a</code></td>
+<td><strong>Raccourci, échappement et portée de la barre de filtre.</strong>
+<code>Ctrl</code>+<code>F</code> place le curseur et sélectionne le contenu, <kbd>Échap</kbd> vide et
+rend le focus ; la recherche couvre <code>options.host</code>/<code>options.user</code> et rend les
+dossiers correspondants au-dessus des profils, avec leur contenu. Glisser-déposer désactivé pendant
+qu'un filtre est actif (piège #68).</td></tr>
+</table>
+
 <h2>Auto-Enter sort du périmètre (2026-08-03)</h2>
 <p>Décision de l'utilisateur, sans code. Le chantier
 <a href="ROADMAP.html#auto-enter">Auto-Enter</a> rejoint la section hors périmètre, son design
