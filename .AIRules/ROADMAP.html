@@ -38,7 +38,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
 <tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill done">✅ Fait (2026-08-02) — les deux retours de test rendus sans objet par le marqueur (2026-08-03)</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
-<tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill progress">🚧 Points 1 et 2 faits, 3 sans objet (2026-08-02) — point 4 restant</span></td><td>Haute</td></tr>
+<tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill done">✅ Fait — points 1, 2 et 4 livrés, 3 sans objet (2026-08-03)</span></td><td>Haute</td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#editeur-force">Double-clic force un éditeur de code (jamais exécution)</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -862,6 +862,26 @@ mesuré de 22 s subsiste pour lui. Deux issues, à arbitrer : passer aussi les f
 — une seule voie, fin réelle et destination connue, au prix d'une heuristique sur un cas qui marche
 aujourd'hui sans elle — ou garder la voie directe et se contenter d'un état transitoire approximatif,
 que l'utilisateur avait déjà accepté comme tel.</p></div>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le
+2026-08-03</span>
+<p>Branche <code>fix/etat-transitoire</code>, détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>.
+<strong>L'unification a été écartée</strong>, et pas seulement par prudence : le marqueur suppose que
+la destination est un dossier du système de fichiers. C'est vrai d'un dossier glissé, dont aucune
+autre cible ne voudrait ; ce ne l'est pas d'un fichier, dont les cibles utiles — champ d'envoi d'un
+navigateur, client de messagerie — ne sont pas des dossiers. Elles recevraient le marqueur vide
+pendant que le fichier partirait dans le dossier de repli.</p>
+<p>Retenu à la place : un état <code>handover</code> entre la fin de notre flux et la remise réelle,
+levé sur une durée estimée d'après la taille — 200 Mo/s supposés là où 250 ont été mesurés, donc la
+ligne finit <em>tard</em> plutôt que tôt, ce qui est le sens d'erreur voulu. Plancher de 400 ms pour
+qu'un petit fichier montre l'état sans clignoter, plafond de deux minutes pour qu'une mauvaise
+estimation ne fige jamais une ligne. L'infobulle dit que la durée est estimée.</p>
+<p><strong>Un état terminal peut avoir encore besoin du minuteur.</strong> « Ce qui peut être annulé »
+et « ce qui a besoin du tick » ont dû être séparés : une ligne en remise n'a plus rien d'annulable
+chez nous, mais son échéance n'est surveillée par rien d'autre — l'arrêt du minuteur au dernier
+transfert <em>actif</em> la laissait figée sur « remise au système » pour le reste de la session.
+Conséquence visible et vérifiée au test : la vider ne demande pas confirmation et ne supprime pas le
+fichier déposé.</p></div>
 
 <h3 id="sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30, avec trois autres axes UX/sécurité —

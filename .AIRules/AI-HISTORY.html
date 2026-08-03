@@ -24,6 +24,39 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Plus de « terminé » avant que le système ait fini (2026-08-03)</h2>
+<p>Point 4 du chantier <a href="ROADMAP.html#panneau-etat-session">Panneau SFTP : suivre l'état réel de
+la session</a>, sur la branche <code>fix/etat-transitoire</code> — dernier point ouvert, le chantier
+est clos avec lui.</p>
+<p><strong>L'arbitrage d'abord</strong> : le <a href="ROADMAP.html#marqueur-depot">marqueur</a> venait
+de rendre l'unification possible — passer aussi les fichiers par lui aurait donné une fin réelle et
+une destination connue. Écarté, et pour une raison de fond plutôt que par prudence : le marqueur
+suppose que la destination est un dossier du système de fichiers. Un dossier glissé n'a pas d'autre
+cible plausible ; un fichier, si — une zone d'envoi de navigateur, un client de messagerie — et
+celles-là auraient reçu le marqueur vide pendant que le fichier serait parti dans le dossier de repli.
+Le cas fichier marchait, il n'y avait pas lieu de le faire dépendre d'une heuristique.</p>
+<p><strong>Retenu</strong> : un état entre la fin de notre flux et la remise réelle, levé sur une durée
+estimée d'après la taille. Le sens de l'erreur a été choisi — 200 Mo/s supposés là où 250 avaient été
+mesurés (<a href="AI-CONTEXT.html#piege-58">#58</a>), donc la ligne finit tard plutôt que tôt, l'objet
+même de la manœuvre étant de ne plus annoncer en place un fichier qui ne peut pas l'être.</p>
+<p><strong>Un état terminal peut encore avoir besoin du minuteur</strong>, et c'est le seul vrai piège
+de ce chantier. « Ce qui peut être annulé » et « ce qui a besoin du tick » ne sont pas la même
+population : une ligne en remise n'a plus rien d'annulable de notre côté, mais son échéance n'est
+surveillée par rien d'autre, si bien qu'arrêter le minuteur au dernier transfert <em>actif</em> la
+laissait figée pour le reste de la session. Vérifié au test, avec la conséquence visible attendue :
+vider la liste pendant une remise ne demande pas confirmation et ne touche pas au fichier déposé.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>1b82f38</code></td>
+<td><strong>Une ligne n'annonce plus « terminé » tant que le système écrit encore.</strong> État
+<code>handover</code> sur la seule voie qui délègue l'écriture au shell — la voie marqueur écrit
+elle-même, à un chemin choisi, et n'est pas concernée. Durée estimée d'après la taille, plancher
+400 ms, plafond 2 min, infobulle qui dit l'approximation. <code>runningCount</code> sépare ce qui a
+besoin du tick de ce qui peut encore être annulé.</td></tr>
+</table>
+
 <h2>Marqueur de dépôt : un dossier sort en un seul geste (2026-08-03)</h2>
 <p>Chantier <a href="ROADMAP.html#marqueur-depot">Marqueur de dépôt</a>, sur la branche
 <code>feat/marqueur-depot</code>, ouvert par l'<a href="#etude-plugins-sftp">étude</a> du même jour.
