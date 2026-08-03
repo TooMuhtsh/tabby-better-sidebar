@@ -37,7 +37,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
-<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill done">✅ Fait (2026-08-02) — les deux retours de test rendus sans objet par le marqueur (2026-08-03)</span></td><td>Haute — <strong>avant Auto-Enter</strong></td></tr>
+<tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill done">✅ Fait (2026-08-02) — les deux retours de test rendus sans objet par le marqueur (2026-08-03)</span></td><td>Haute</td></tr>
 <tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill done">✅ Fait — points 1, 2 et 4 livrés, 3 sans objet (2026-08-03)</span></td><td>Haute</td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
 <tr><td><a href="#suppr-sftp">Suppression SFTP par touche Suppr</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Moyenne</td></tr>
@@ -53,7 +53,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Haute</td></tr>
 <tr><td><a href="#cycle-de-vie">Cycle de vie : démontage, fenêtres multiples, offres de glisser</a></td><td><span class="pill done">✅ Fait (2026-08-02)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#confirmations-html">Confirmations en modale HTML (audit)</a></td><td><span class="pill done">✅ Écart corrigé (2026-07-30)</span></td><td>Invariant à maintenir</td></tr>
-<tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill out">⛔ Hors périmètre (2026-08-03)</span></td><td>Utilité à établir avant tout portage</td></tr>
 <tr><td><a href="#sidebar-search">Barre de filtrage rapide (Sidebar Search)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#historique-profils">Historique des Profils Récents</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
@@ -368,7 +368,8 @@ file d'attente — mais dans son propre panneau, pas sur la session.</p></div>
 
 <h3 id="transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-29, avec une <strong>urgence relevée</strong> :
-ce chantier passe devant <a href="#auto-enter">Auto-Enter</a> et devient le prochain à construire.
+ce chantier passe devant <a href="#auto-enter">Auto-Enter</a> — depuis
+<a href="#auto-enter">sorti du périmètre</a> — et devient le prochain à construire.
 Il absorbe le « mini-gestionnaire de transferts » différé du <a href="#sftp">SFTP contextuel</a> et
 débloque au passage l'affichage des états de transfert attendu par
 <a href="#sessions-actives">Sessions actives</a>. <strong>Les trois volets sont livrés le
@@ -1705,27 +1706,6 @@ onglets séparés ou en split panes. Intérêt renforcé si couplé à la saisie
 de Tabby (multi-input) pour exécuter la même commande sur plusieurs serveurs en parallèle. Priorité
 basse — pas demandée en premier par l'utilisateur.</p>
 
-<h3 id="auto-enter">Détection et validation des sessions interactives (Auto-Enter)</h3>
-<p class="muted">N'est plus le prochain chantier : <a href="#transferts">Transferts SFTP</a> est
-passé devant le 2026-07-29 à la demande de l'utilisateur.</p>
-<p>Automatisation du login en simulant l'appui sur "Entrée" dès qu'une invite interactive
-(login/password) est détectée. Si le mot de passe est pré-rempli, cela valide ; s'il est vide, cela
-passe l'invite.</p>
-<ul>
-<li><strong>Implémentation UI</strong> : l'option ne doit PAS être globale. Un commutateur (toggle)
-  "Activer l'Auto-Enter" doit être visible dans l'interface de configuration du profil, positionné
-  directement à côté ou juste en dessous du champ natif de mot de passe enregistré.</li>
-</ul>
-<div class="callout important"><span class="callout-title">Alerte de fragilité technique</span>
-<p>L'injection de ce toggle près du champ mot de passe implique d'intervenir sur le DOM de la modale
-native <code>EditProfileModalComponent</code>. Cette zone étant critique et instable (voir
-<a href="AI-CONTEXT.html#piege-17">piège #17</a> et le
-<a href="AI-CONTEXT.html#fragile-1">point fragile associé</a> dans AI-CONTEXT.html), le hook
-d'injection Angular/DOM devra intégrer un mécanisme de repli (fallback) strict. Si le DOM de Tabby
-change lors d'une mise à jour de l'application, le toggle doit se déporter gracieusement dans le
-menu contextuel du profil ("Options Sidebar" → "Auto-Enter") ou dans les options globales, sans
-provoquer de plantage de l'interface.</p></div>
-
 <h3 id="clone-express">Clone Express de profil</h3>
 <p>Clic droit sur un profil → action "Dupliquer le profil". Génère instantanément une copie
 parfaite du profil sous le même groupe (avec suffixe " - Copie").</p>
@@ -1811,8 +1791,8 @@ l'icône d'engrenage en bas de sidebar, et le gel de la vue.</p></div>
   0 par défaut ; restent l'interrupteur de gel de la vue et l'historique de file d'attente.</li>
 <li><strong>Workspaces</strong> : liste des espaces de travail, import/export JSON sélectif,
   assignation des couleurs de bordure par défaut.</li>
-<li><strong>Automatisation &amp; Macros</strong> : gestion globale des Quick Snippets et logs du
-  moteur d'Auto-Enter.</li>
+<li><strong>Automatisation &amp; Macros</strong> : gestion globale des Quick Snippets. Les logs du
+  moteur d'Auto-Enter tombent avec sa <a href="#auto-enter">sortie du périmètre</a>.</li>
 </ol>
 <ul>
 <li><strong>Double entrée de configuration</strong> : le sous-onglet dédié dans les options globales
@@ -2016,6 +1996,45 @@ seul, et ces mentions nommaient la règle telle qu'elle existait à la date de l
 </ul>
 
 <h2>Hors périmètre</h2>
+
+<h3 id="auto-enter">Détection et validation des sessions interactives (Auto-Enter)</h3>
+<div class="callout important"><span class="callout-title">Sorti du périmètre le 2026-08-03</span>
+<p>Décision de l'utilisateur, sur deux motifs distincts qu'il vaut mieux ne pas confondre.</p>
+<p><strong>L'utilité même n'est pas établie.</strong> Le design ci-dessous prévoit d'envoyer Entrée
+dès qu'une invite interactive est détectée : valider quand le mot de passe est pré-rempli, passer
+l'invite quand il est vide. Or si l'authentification par mot de passe enregistré fonctionne de bout en
+bout, le premier cas ne sert à rien — Tabby envoie déjà le mot de passe. Ne resteraient que les
+invites qu'il ne traite pas nativement : seconde étape de <code>keyboard-interactive</code>, question
+de <code>sudo</code>, facteur supplémentaire. Ce sont précisément les cas où un faux positif enverrait
+un Entrée parasite dans un shell de production. <strong>Tant qu'aucune invite précise n'est nommée, le
+chantier n'a pas de cible</strong>, et lui en chercher une par le code serait prendre le risque avant
+d'avoir le besoin.</p>
+<p><strong>Le rattachement à ce plugin est discuté.</strong> L'utilisateur le verrait plutôt du côté
+de <code>tabby-better-vault</code>. À noter pour qui reprendra la question : le geste décrit ici est
+d'<em>écrire dans un pty distant</em>, pas de lire un secret — ce qui toucherait au coffre-fort est
+l'origine du mot de passe, pas l'action. Le rapprochement est donc moins direct qu'il n'en a l'air, et
+trancher demande de regarder ce que l'autre plugin fait réellement plutôt que de le supposer :
+<strong>la décision se prend dans une session consacrée à ce projet-là</strong>.</p>
+<p>Le design ci-dessous est conservé tel quel et n'a <em>pas</em> été transporté ailleurs —
+contrairement au <a href="#vault">Vault Auto-Unlock</a>, dont le périmètre d'accueil était acquis au
+moment de sa sortie.</p></div>
+<p>Automatisation du login en simulant l'appui sur "Entrée" dès qu'une invite interactive
+(login/password) est détectée. Si le mot de passe est pré-rempli, cela valide ; s'il est vide, cela
+passe l'invite.</p>
+<ul>
+<li><strong>Implémentation UI</strong> : l'option ne doit PAS être globale. Un commutateur (toggle)
+  "Activer l'Auto-Enter" doit être visible dans l'interface de configuration du profil, positionné
+  directement à côté ou juste en dessous du champ natif de mot de passe enregistré.</li>
+</ul>
+<div class="callout important"><span class="callout-title">Alerte de fragilité technique</span>
+<p>L'injection de ce toggle près du champ mot de passe implique d'intervenir sur le DOM de la modale
+native <code>EditProfileModalComponent</code>. Cette zone étant critique et instable (voir
+<a href="AI-CONTEXT.html#piege-17">piège #17</a> et le
+<a href="AI-CONTEXT.html#fragile-1">point fragile associé</a> dans AI-CONTEXT.html), le hook
+d'injection Angular/DOM devra intégrer un mécanisme de repli (fallback) strict. Si le DOM de Tabby
+change lors d'une mise à jour de l'application, le toggle doit se déporter gracieusement dans le
+menu contextuel du profil ("Options Sidebar" → "Auto-Enter") ou dans les options globales, sans
+provoquer de plantage de l'interface.</p></div>
 
 <h3 id="vault">Vault Auto-Unlock — plugin séparé <code>tabby-better-vault</code></h3>
 <div class="callout important"><span class="callout-title">Décision actée</span>

@@ -24,6 +24,32 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Auto-Enter sort du périmètre (2026-08-03)</h2>
+<p>Décision de l'utilisateur, sans code. Le chantier
+<a href="ROADMAP.html#auto-enter">Auto-Enter</a> rejoint la section hors périmètre, son design
+conservé tel quel.</p>
+<p>Deux motifs, à ne pas confondre. <strong>L'utilité n'est pas établie</strong> : le design valide
+une invite dont le mot de passe est pré-rempli, or Tabby envoie déjà ce mot de passe quand
+l'authentification enregistrée fonctionne — ne resteraient que les invites qu'il ne traite pas
+nativement, qui sont précisément celles où un Entrée parasite atteindrait un shell de production.
+Sans invite précise à nommer, le chantier n'a pas de cible. <strong>Le rattachement est
+discuté</strong> : l'utilisateur le verrait du côté de <code>tabby-better-vault</code> ; la roadmap
+note que le geste décrit est d'écrire dans un pty distant et non de lire un secret, donc que le
+rapprochement mérite examen plutôt que d'être supposé — et que cet examen se fait dans une session
+consacrée à l'autre projet.</p>
+<p>Écart avec le précédent du <a href="ROADMAP.html#vault">Vault Auto-Unlock</a>, qui est ce qui a
+justifié de garder le design ici : celui-là sortait vers un périmètre d'accueil déjà décidé, et son
+design a été transporté. Celui-ci sort sans destination acquise.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>(hash à inscrire)</code></td>
+<td><strong>Auto-Enter passe hors périmètre.</strong> Section déplacée avec son design, statut du
+tableau de bord mis à jour, et les trois renvois qui le traitaient comme un chantier à venir corrigés
+— dont les logs de son moteur, attendus par le futur onglet de réglages.</td></tr>
+</table>
+
 <h2>Plus de « terminé » avant que le système ait fini (2026-08-03)</h2>
 <p>Point 4 du chantier <a href="ROADMAP.html#panneau-etat-session">Panneau SFTP : suivre l'état réel de
 la session</a>, sur la branche <code>fix/etat-transitoire</code> — dernier point ouvert, le chantier
