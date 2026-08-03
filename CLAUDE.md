@@ -163,6 +163,18 @@ de chargement de plugin.
   moins `id`/`profiles`/`children` plutôt qu'une liste de champs : `defaults`
   est fusionné par Tabby dans chaque profil du dossier, le perdre les dépouille
   en silence (.AIRules/AI-CONTEXT.html, piège #62).
+- **Le pendant d'une suppression : ces mêmes états doivent être *oubliés*.**
+  `forgetDeletedId()` s'en charge depuis `deleteProfile()`/`deleteGroup()`, sur
+  **tous** les workspaces. Le re-parentage, lui, ne l'appelle pas et ne doit pas :
+  il a déjà migré les traces avant de supprimer l'ancien id.
+- **`config.store.profiles`/`.groups` ne contiennent pas tout ce que l'arbre
+  affiche** — ni les profils fournis par les providers, ni les groupes
+  synthétiques qui les portent (`built-in`, un par nom déclaré). Ne jamais leur
+  demander « cet id existe-t-il encore ? » : la réponse est *non* pour des
+  entrées vivantes, et ce qui suit est une suppression silencieuse de favori, de
+  masquage ou de position. Consulter `rawGroupsSnapshot`, ou mieux, se placer là
+  où l'id disparu est connu sans avoir à le déduire
+  (.AIRules/AI-CONTEXT.html, piège #74).
 - **Ne jamais écrire un caractère de contrôle brut dans un source** (`'\0'`, pas
   l'octet lui-même) : `rg` et `grep` classent alors tout le fichier comme
   binaire et le sautent **sans le dire**, ce qui a rendu

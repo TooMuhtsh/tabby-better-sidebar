@@ -1395,10 +1395,10 @@ la configuration réelle a été retrouvée identique champ à champ après coup
 <p>Le scénario des « Épinglés » a été rejoué avec l'ancien comportement pour vérifier que le test
 prouve quelque chose : il <strong>reclassait bien deux profils réels de l'utilisateur</strong>. Ce
 n'était donc pas un défaut théorique.</p>
-<p><strong>Reste ouvert</strong>, sans perte de données : <code>pruneDeadOrderIds()</code> ne ramasse
-que <code>groupOrder</code>/<code>profileOrder</code>, donc les ids morts s'accumulent encore dans
-<code>favorites</code>, <code>favoriteGroups</code> et <code>hiddenGroupIds</code> après une
-<em>suppression</em>. Cosmétique, à traiter quand on y repassera.</p></div>
+<p><strong>Ce reste a été traité le 2026-08-03</strong> (<code>3884789</code>) : les ids morts après
+une <em>suppression</em> sont retirés au point de suppression, par <code>forgetDeletedId()</code>.
+Détail dans la fiche des trois défauts mineurs ci-dessous, avec la raison pour laquelle ce n'est pas
+<code>pruneDeadOrderIds()</code> qui a été élargi.</p></div>
 <p class="muted">Trois défauts trouvés à la revue de code du 2026-08-02, tous dans le même domaine :
 les gestes de la sidebar qui réécrivent <code>config.store.groups</code> /
 <code>.profiles</code> — celui-là même qui a déjà corrompu la configuration de production une fois
@@ -1456,7 +1456,7 @@ non filtré que le composant tient déjà et qu'<code>isSelfOrDescendant()</code
 gagnerait à distinguer les deux cas — « contient 2 profils » et « contient 2 profils, masqués dans ce
 workspace » ne demandent pas la même action.</p>
 
-<h4>Trois défauts mineurs du même voisinage — deux corrigés, un seul encore ouvert</h4>
+<h4>Trois défauts mineurs du même voisinage — tous corrigés</h4>
 <div class="callout note"><span class="callout-title">Fiche rectifiée le 2026-08-03</span>
 <p>Elle décrivait encore les trois comme ouverts alors que le code en traite deux depuis le
 2026-08-02 : ils ont été corrigés <em>en construisant</em> le chantier ci-dessus, sans que cette
@@ -1478,14 +1478,18 @@ journal.</p></div>
 <li><s><strong>L'abonnement à <code>config.changed$</code> n'est jamais résilié</strong></s> — ✅
   <strong>corrigé</strong> : <code>ngOnDestroy()</code> libère bien les cinq abonnements, celui-ci
   compris.</li>
-<li><strong>Encore ouvert — les ids morts après une <em>suppression</em>.</strong>
-  <code>pruneDeadOrderIds()</code> ne balaie que <code>groupOrder</code> et
-  <code>profileOrder</code> : un id supprimé continue de s'accumuler dans <code>favorites</code>,
-  <code>favoriteGroups</code> et <code>hiddenGroupIds</code>. Aucune perte de données, purement
-  cosmétique — mais à traiter en même temps que le prochain passage dans ce voisinage, et pas
-  seul : toute écriture ici touche <code>config.store.groups</code>/<code>.profiles</code>, donc
-  passe par des entrées <code>grp-zzz-test-*</code> (<a href="AI-CONTEXT.html#piege-12">piège
-  #12</a>).</li>
+<li><s><strong>Les ids morts après une <em>suppression</em>.</strong></s> — ✅
+  <strong>Fait (<code>3884789</code>, testé et validé le 2026-08-03)</strong>.
+  <code>forgetDeletedId()</code> retire l'id de <code>favorites</code>,
+  <code>favoriteGroups</code>, <code>hiddenProfileIds</code> et <code>hiddenGroupIds</code> —
+  <strong>dans chaque workspace, pas seulement l'actif</strong> — depuis
+  <code>deleteProfile()</code> et <code>deleteGroup()</code>, l'état replié du dossier avec.
+  <strong>Nettoyé au point de suppression, jamais par balayage</strong> : un balayage devrait
+  demander « cet id existe-t-il encore ? » à <code>config.store</code>, qui ne contient ni les
+  profils des providers ni les groupes synthétiques qui les portent — il aurait effacé leurs
+  favoris (<a href="AI-CONTEXT.html#piege-74">piège #74</a>). Défaut latent corrigé au passage, et
+  absent de cette fiche : <code>pruneDeadOrderIds()</code> jugeait déjà la vie d'un id sur
+  <code>config.store</code> seul, donc la position d'un profil builtin comptait pour morte.</li>
 </ul>
 
 <h3 id="liens-symboliques-edition">Édition d'un fichier atteint par un lien symbolique

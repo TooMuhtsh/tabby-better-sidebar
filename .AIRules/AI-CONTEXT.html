@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #74.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #75.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -42,7 +42,7 @@ Tabby.</p>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56, #69, #71</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64, #67 + 6 points de veille</li>
-<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62, #68 + 2 points de veille</li>
+<li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62, #68, #74 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47, #70</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8, #63</li>
 <li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20, #72, #73</li>
@@ -1239,6 +1239,32 @@ sa rupture n'est observable nulle part.</p>
 <p>Le <code>structuredClone()</code> défensif (piège #12) part du principe que l'API peut renvoyer
 des références vivantes. Si une future version clone proprement en interne, il devient superflu
 mais reste inoffensif à garder par précaution.</p>
+
+<h3 id="piege-74">#74 — <code>config.store</code> ne contient pas tout ce que l'arbre affiche :
+juger de la vie d'un id sur lui seul détruit des données</h3>
+<p><code>config.store.profiles</code> et <code>.groups</code> ne portent que les entrées
+<strong>de l'utilisateur</strong>. L'arbre, lui, est construit par
+<code>getProfileGroups({ includeNonUserGroup: true, includeProfiles: true })</code>, et cet
+<code>includeNonUserGroup</code> passe <code>includeBuiltin</code> à <code>getProfiles()</code> :
+s'ajoutent donc les profils fournis par les <em>providers</em> et les groupes synthétiques qui les
+portent — <code>built-in</code>, plus un par nom de groupe déclaré par un provider. Rien de tout
+cela n'existe dans <code>config.store</code>.</p>
+<p><strong>Conséquence</strong> : tout code qui demande « cet id existe-t-il encore ? » à
+<code>config.store</code> répondra <em>non</em> pour une entrée parfaitement vivante, et ce qui
+suit cette réponse est en général une suppression silencieuse — un favori, un masquage, une
+position. Le symptôme est un réglage qui retombe à son défaut sans erreur, donc attribué à autre
+chose.</p>
+<p>L'instantané non filtré à consulter à la place est <code>rawGroupsSnapshot</code>, que
+<code>deleteGroup()</code>, <code>rescueTargetGroupId()</code> et désormais
+<code>pruneDeadOrderIds()</code> prennent tous pour référence — ses groupes portent leurs profils,
+builtin compris.</p>
+<p><strong>Mieux encore : ne pas poser la question.</strong> Un id qui disparaît est connu au
+moment où il disparaît. <code>forgetDeletedId()</code> retire ses traces depuis
+<code>deleteProfile()</code>/<code>deleteGroup()</code>, sans rien déduire — c'est le pendant exact
+de <code>migrateWorkspaceGroupId()</code> (<a href="#piege-62">#62</a>), qui les <em>renomme</em>
+quand l'id change, et la même liste est en jeu des deux côtés. Le re-parentage n'appelle donc pas
+le premier : il a déjà appelé le second, et l'ordre — migrer, puis supprimer — est ce qui garantit
+qu'il ne reste rien à collecter.</p>
 
 <h2 id="cat-git">Git &amp; GitHub</h2>
 

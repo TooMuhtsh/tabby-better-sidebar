@@ -2525,6 +2525,24 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const liveGroupIds = new Set<string>(groups.map((g: PartialProfileGroup<ProfileGroup>) => g.id))
         const liveProfileIds = new Set<string>((profiles ?? []).map((p: PartialProfile<Profile>) => p.id).filter(Boolean))
 
+        // config.store holds the *user's* entries only. The tree also shows
+        // profiles contributed by providers (getProfileGroups() is called with
+        // includeNonUserGroup, which passes includeBuiltin down to
+        // getProfiles()) and the synthetic groups they are filed under —
+        // 'built-in' plus one per provider-declared group name. None of those
+        // exist in config.store, so judging liveness on it alone would call a
+        // builtin profile's position dead and reset it without a word.
+        // rawGroupsSnapshot is the same unfiltered snapshot deleteGroup() and
+        // rescueTargetGroupId() already consult.
+        for (const group of this.rawGroupsSnapshot) {
+            liveGroupIds.add(group.id)
+            for (const profile of group.profiles ?? []) {
+                if (profile.id) {
+                    liveProfileIds.add(profile.id)
+                }
+            }
+        }
+
         // 'root' is the top level itself and 'ungrouped' is Tabby's synthetic
         // catch-all — neither is a real group, both are legitimate keys.
         const keptKey = (key: string): boolean => key === 'root' || key === 'ungrouped' || liveGroupIds.has(key)
@@ -2553,6 +2571,71 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             ws.profileOrder = prune(ws.profileOrder, liveProfileIds)
         }
         sidebarPlus.workspaces = workspaces
+    }
+
+    /**
+     * Drops every trace of an id that has just been deleted — the mirror image
+     * of migrateWorkspaceGroupId(), which carries those same traces over when
+     * an id *changes*. Same list, same consequence if one is forgotten, one
+     * difference: a leftover here costs nothing visible, it just accumulates.
+     *
+     * Done at the point of deletion rather than by sweeping the config against
+     * the live entries, which is what pruneDeadOrderIds() does for the order
+     * maps and what this deliberately does not copy. A sweep has to answer
+     * "does this id still exist?", and the honest answer needs the *unfiltered*
+     * snapshot — builtin profiles and their synthetic groups included, see the
+     * note in pruneDeadOrderIds(). Here the deleted id is known outright, so
+     * nothing has to be inferred and a favourite can never be dropped by
+     * mistake.
+     *
+     * Every workspace is visited, not only the active one: hiding and pinning
+     * are per-workspace, and the entry the user is not looking at is precisely
+     * the one nobody would clean up by hand.
+     */
+    private forgetDeletedId (kind: 'profile'|'group', id: string): void {
+        this.config.store.sidebarPlus ??= {}
+        const sidebarPlus = this.config.store.sidebarPlus
+        const without = (list: string[]|undefined): string[] => (list ?? []).filter(x => x !== id)
+
+        // Explicit reassignment on every write, here as everywhere else in this
+        // file: a nested in-place mutation is never picked up as a change to
+        // persist (piège #23).
+        if (kind === 'profile') {
+            sidebarPlus.favorites = without(sidebarPlus.favorites)
+        } else {
+            sidebarPlus.favoriteGroups = without(sidebarPlus.favoriteGroups)
+        }
+
+        const workspaces: SidebarWorkspace[] = sidebarPlus.workspaces ?? []
+        for (const ws of workspaces) {
+            if (kind === 'profile') {
+                ws.favorites = without(ws.favorites)
+                ws.hiddenProfileIds = without(ws.hiddenProfileIds)
+            } else {
+                ws.favoriteGroups = without(ws.favoriteGroups)
+                ws.hiddenGroupIds = without(ws.hiddenGroupIds)
+            }
+        }
+        sidebarPlus.workspaces = workspaces
+
+        if (kind === 'group') {
+            // Collapsed state lives in localStorage, not in config.yaml — same
+            // reasoning as in migrateWorkspaceGroupId(), and unreadable storage
+            // is not worth failing a deletion over.
+            try {
+                const collapsed = JSON.parse(window.localStorage.sidebarPlusGroupCollapsed ?? '{}')
+                if (id in collapsed) {
+                    delete collapsed[id]
+                    window.localStorage.sidebarPlusGroupCollapsed = JSON.stringify(collapsed)
+                }
+            } catch {
+                // Nothing to clean if it cannot be read.
+            }
+        }
+
+        // Called *after* the entry is gone from config.store, so the id it has
+        // to collect actually reads as dead.
+        this.pruneDeadOrderIds()
     }
 
     /** Sibling order is per-workspace — see persistProfileOrder() above for the same reasoning applied to groups. */
@@ -2645,6 +2728,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // everywhere (not just in the workspace the move was made from).
         this.migrateWorkspaceGroupId(groupId, replacement.id)
 
+        // No forgetDeletedId() after this one, unlike deleteGroup(): the
+        // migration just above renamed every trace of the old id, so there is
+        // nothing left of it to collect. Order matters — migrate, then delete.
         await this.profilesService.deleteProfileGroup((fullGroup ?? { id: groupId }) as PartialProfileGroup<ProfileGroup>)
         // Returned so the caller can persist the sibling order under the NEW
         // id — see reparentDraggedGroup().
@@ -3206,6 +3292,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
         await this.profilesService.deleteProfileGroup(group)
+        this.forgetDeletedId('group', group.id)
         this.config.save()
         this.closeContextMenu()
     }
@@ -3218,6 +3305,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     async deleteProfile (profile: PartialProfile<Profile>): Promise<void> {
         await this.profilesService.deleteProfile(profile)
+        if (profile.id) {
+            this.forgetDeletedId('profile', profile.id)
+        }
         await this.config.save()
         this.closeContextMenu()
     }
