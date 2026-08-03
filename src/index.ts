@@ -9,6 +9,9 @@ import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
 import { SidebarPlusSftpComponent } from './components/sftpPanel.component'
 import { SidebarPlusSftpBrowserComponent } from './components/sftpBrowser.component'
 import { ConfirmModalComponent } from './components/confirmModal.component'
+import { SnippetsModalComponent } from './components/snippetsModal.component'
+import { NoteModalComponent } from './components/noteModal.component'
+import { PasteGroupModalComponent } from './components/pasteGroupModal.component'
 import { SidebarPlusSettingsTabComponent } from './components/settingsTab.component'
 import { SidebarPlusTransfersComponent } from './components/transfers.component'
 import { SidebarPlusConfigProvider } from './configProvider'
@@ -34,6 +37,9 @@ import { SidebarPlusTempFilesService } from './tempFiles.service'
         SidebarPlusSftpComponent,
         SidebarPlusSftpBrowserComponent,
         ConfirmModalComponent,
+        SnippetsModalComponent,
+        NoteModalComponent,
+        PasteGroupModalComponent,
         SidebarPlusSettingsTabComponent,
         SidebarPlusTransfersComponent,
     ],

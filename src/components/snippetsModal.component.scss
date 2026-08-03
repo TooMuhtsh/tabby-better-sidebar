@@ -1,0 +1,216 @@
+// Scoped under one class rather than styling `.modal-body` at large: this
+// stylesheet is injected as plain global CSS like every other one in this
+// plugin (side-effect import), so a bare `.modal-body` rule would reach every
+// modal Tabby opens.
+.snippets-modal {
+    .snippets-modal-section {
+        margin-bottom: 1.1rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .snippets-modal-label {
+        font-size: 0.78em;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.55;
+        margin: 0.6rem 0 0.3rem;
+    }
+
+    .snippets-modal-empty,
+    .snippets-modal-note {
+        font-size: 0.85em;
+        opacity: 0.6;
+    }
+
+    .snippet-line {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.4rem 0.5rem;
+        border-radius: 0.3rem;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        margin-bottom: 0.35rem;
+
+        .snippet-line-main {
+            flex: 1 1 auto;
+            min-width: 0;
+
+            // Only a profile can be written into. Elsewhere the row is a
+            // reading, and a pointer would promise a click that does nothing.
+            &.runnable {
+                cursor: pointer;
+            }
+        }
+
+        &:hover .snippet-line-main.runnable .snippet-line-name {
+            color: var(--theme-primary);
+        }
+
+        .snippet-line-name {
+            font-weight: 500;
+        }
+
+        // One line, clipped: the full command is in the library page, this is
+        // only here to tell two similarly named snippets apart.
+        .snippet-line-command {
+            display: block;
+            font-size: 0.78em;
+            opacity: 0.6;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .snippet-line-source {
+            flex: 0 0 auto;
+            font-size: 0.78em;
+            opacity: 0.5;
+        }
+
+        &.inherited {
+            border-style: dashed;
+        }
+
+        // Switched off here: still listed, because a snippet that simply
+        // vanished would read as lost rather than as silenced.
+        &.muted {
+            opacity: 0.5;
+
+            .snippet-line-name {
+                text-decoration: line-through;
+            }
+        }
+
+        &.available {
+            border-style: none;
+            padding: 0.3rem 0;
+        }
+
+        .snippet-line-info {
+            margin-left: 0.4rem;
+            opacity: 0.45;
+            cursor: help;
+            font-size: 0.85em;
+        }
+
+        .btn.active {
+            border-color: var(--theme-primary);
+            color: var(--theme-primary);
+        }
+
+        // Carries the badge, which sits half outside it.
+        .snippet-tune-btn {
+            position: relative;
+            overflow: visible;
+        }
+
+        .snippet-tune-badge {
+            position: absolute;
+            top: -0.35rem;
+            right: -0.35rem;
+            min-width: 1rem;
+            height: 1rem;
+            padding: 0 0.2rem;
+            border-radius: 0.5rem;
+            background: #f0883e;
+            color: #16181d;
+            font-size: 0.65rem;
+            font-weight: 700;
+            line-height: 1rem;
+            text-align: center;
+        }
+    }
+
+    // Folded out under the snippet it belongs to, indented so it reads as its
+    // detail rather than as another item of the list.
+    .snippet-tuning {
+        margin: -0.15rem 0 0.5rem 1rem;
+        padding: 0.5rem 0.7rem;
+        border-left: 2px solid var(--line);
+
+        .snippet-setting label { width: 7rem; }
+    }
+
+    // What separates a snippet from a plain button of the modal — without it
+    // the two read alike, which is what the first version got wrong.
+    .snippets-modal-section.boxed {
+        border: 1px solid var(--line);
+        border-radius: 0.4rem;
+        padding: 0.5rem 0.7rem;
+        background: rgba(128, 128, 128, 0.05);
+
+        .snippets-modal-label { margin-top: 0; }
+    }
+
+    .snippet-var {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        margin-bottom: 0.45rem;
+
+        .snippet-var-label {
+            flex: 0 0 auto;
+            width: 9rem;
+            padding-top: 0.3rem;
+            margin: 0;
+            font-family: ui-monospace, Consolas, monospace;
+            font-size: 0.82em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        // Width reserved whether or not it shows anything, so a required row and
+        // an optional one line their fields up.
+        .snippet-var-required {
+            display: inline-block;
+            width: 0.5rem;
+            color: var(--theme-primary);
+        }
+
+        .snippet-var-field {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .snippet-var-hint {
+            font-size: 0.78em;
+            opacity: 0.55;
+            margin-top: 0.15rem;
+        }
+
+        &.unanswered .snippet-var-hint,
+        .snippet-var-hint.warn {
+            color: #f0883e;
+            opacity: 0.9;
+        }
+    }
+
+    .snippet-setting {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.4rem;
+
+        label {
+            flex: 0 0 auto;
+            width: 9rem;
+            margin: 0;
+            font-size: 0.85em;
+        }
+
+        .form-control {
+            flex: 0 0 auto;
+            width: 16rem;
+        }
+    }
+
+    // A field showing an inherited value holds a placeholder, not a value — the
+    // slant is what tells the two apart at a glance.
+    .inherited-value::placeholder {
+        font-style: italic;
+        opacity: 0.55;
+    }
+}

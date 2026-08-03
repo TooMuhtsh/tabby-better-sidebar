@@ -341,6 +341,14 @@ sidebar-plus-tree .active-sessions {
         color: #e8b923;
     }
 
+    // Dimmer than the star: a note is worth noticing, not worth competing with
+    // the favourite mark for attention. The tooltip carries the text.
+    .note-badge {
+        font-size: .62rem;
+        opacity: .55;
+        cursor: help;
+    }
+
     .status-dot {
         flex: 0 0 auto;
         width: 6px;

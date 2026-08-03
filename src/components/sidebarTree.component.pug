@@ -258,6 +258,10 @@
                         profile-icon.ms-1([icon]='group.icon ?? "far fa-folder"', [color]='group.color')
                     span.ms-2.me-auto {{ group.name || 'Ungrouped' }}
                     .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavoriteGroup(group)')
+                    .fa.fa-fw.fas.fa-note-sticky.ms-1.note-badge(
+                        *ngIf='hasNote(group.id)',
+                        [title]='noteFor(group.id)'
+                    )
 
                 div(
                     cdkDropList,
@@ -302,6 +306,13 @@
                                 )
                                 span.ms-2.no-wrap {{ profile.name }}
                                 .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavorite(profile)')
+                                //- The whole point of a note is to be seen
+                                //- without being looked for. Static title, so
+                                //- piège #69 does not apply.
+                                .fa.fa-fw.fas.fa-note-sticky.ms-1.note-badge(
+                                    *ngIf='hasNote(profile.id)',
+                                    [title]='noteFor(profile.id)'
+                                )
                                 //- Two states, one badge: lit when forwards are
                                 //- actually mounted, dimmed when the profile
                                 //- merely carries some in its configuration.
@@ -390,6 +401,12 @@
     a.group-context-menu-item((click)='launchGroupSessions(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | Lancer toutes les sessions
+    a.group-context-menu-item(*ngIf='showSnippets', (click)='openSnippetsModal()', href='#')
+        .fa.fa-fw.fas.fa-terminal.me-2
+        | Snippets...
+    a.group-context-menu-item(*ngIf='showNotes', (click)='openNoteModal()', href='#')
+        .fa.fa-fw.fas.fa-note-sticky.me-2
+        | {{ hasNote(contextMenuGroup.id) ? 'Modifier la note...' : 'Ajouter une note...' }}
     a.group-context-menu-item((click)='toggleFavoriteGroupFromMenu(contextMenuGroup, $event)', href='#')
         .fa.fa-fw.me-2(
             [class.fas]='isFavoriteGroup(contextMenuGroup)',
@@ -409,6 +426,15 @@
     a.group-context-menu-item((click)='openIconPicker()', href='#')
         .fa.fa-fw.fas.fa-icons.me-2
         | Changer l'icône...
+    //- Two entries and not one setting: the purge level belongs to the gesture.
+    //- The second keeps the host and port — what it drops is the username, the
+    //- keys and the route in (jump host, proxies, forwarded ports).
+    a.group-context-menu-item((click)='copyGroupStructure("secrets")', href='#')
+        .fa.fa-fw.fas.fa-copy.me-2
+        | Copier la structure (JSON)
+    a.group-context-menu-item((click)='copyGroupStructure("credentials")', href='#')
+        .fa.fa-fw.fas.fa-user-shield.me-2
+        | Copier sans les identifiants
     a.group-context-menu-item(*ngIf='activeWorkspace', (click)='hideInActiveWorkspace()', href='#')
         .fa.fa-fw.fas.fa-eye-slash.me-2
         | Cacher dans le workspace
@@ -428,6 +454,13 @@
     a.group-context-menu-item((click)='openCreateProfilePicker()', href='#')
         .fa.fa-fw.fas.fa-plus.me-2
         | Nouveau profil...
+    //- Always shown, never greyed out on "the clipboard does not hold one":
+    //- reading the clipboard to decide would mean reading it on every right
+    //- click, and a refusal that explains itself beats an entry that cannot be
+    //- clicked and says nothing.
+    a.group-context-menu-item((click)='pasteGroup()', href='#')
+        .fa.fa-fw.fas.fa-paste.me-2
+        | Coller le groupe
 
 .group-context-menu(
     *ngIf='contextMenuProfile && isMenuMode',
@@ -441,6 +474,12 @@
     a.group-context-menu-item((click)='launchProfileFromMenu(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | Lancer la session
+    a.group-context-menu-item(*ngIf='showSnippets', (click)='openSnippetsModal()', href='#')
+        .fa.fa-fw.fas.fa-terminal.me-2
+        | Snippets...
+    a.group-context-menu-item(*ngIf='showNotes', (click)='openNoteModal()', href='#')
+        .fa.fa-fw.fas.fa-note-sticky.me-2
+        | {{ hasNote(contextMenuProfile.id) ? 'Modifier la note...' : 'Ajouter une note...' }}
     a.group-context-menu-item((click)='toggleFavoriteFromMenu(contextMenuProfile, $event)', href='#')
         .fa.fa-fw.me-2(
             [class.fas]='isFavorite(contextMenuProfile)',
@@ -460,6 +499,9 @@
     a.group-context-menu-item((click)='editProfile(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-pen.me-2
         | Éditer...
+    a.group-context-menu-item((click)='duplicateProfile(contextMenuProfile)', href='#')
+        .fa.fa-fw.fas.fa-copy.me-2
+        | Dupliquer
     a.group-context-menu-item((click)='openIconPicker()', href='#')
         .fa.fa-fw.fas.fa-icons.me-2
         | Changer l'icône...

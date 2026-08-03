@@ -21,6 +21,69 @@ export interface SidebarWorkspace {
     profileOrder: Record<string, string[]>
 }
 
+/**
+ * One command of the library, written into a session from the context menu.
+ *
+ * A snippet is defined *once* and attached wherever it is useful — it does not
+ * belong to the profile it was written from. Two consequences worth knowing
+ * before touching this: fixing a command fixes it everywhere it is attached,
+ * and detaching it from one profile leaves it available to every other. Which
+ * of the two a gesture means is spelled out in the popup, because nothing in
+ * the data can tell them apart.
+ */
+export interface SidebarSnippet {
+    /** Stable across renames — an attachment points at this, never at a name or a position. */
+    id: string
+    /** What the menu shows. */
+    name: string
+    /** What is written into the terminal. */
+    command: string
+}
+
+/**
+ * How snippets behave on one profile or one folder.
+ *
+ * Both fields are tri-state on purpose: `undefined` means "inherit", which is
+ * what lets the same setting be answered at whatever level of the tree the
+ * user actually thinks about it — once on a "Prod" folder, or profile by
+ * profile where one server is the exception. Resolution walks profile →
+ * nearest folder → up to the root, and the first defined value wins; nothing
+ * defined anywhere means `false`, so a fresh install neither launches sessions
+ * nor runs anything on its own.
+ *
+ * Keyed by profile id *and* group id in one map: the resolution above walks
+ * both kinds in the same pass, and splitting them would mean keeping two maps
+ * in step through re-parenting and deletion for no gain.
+ */
+/**
+ * How snippets behave, answered per profile/folder — and, within one of them,
+ * per snippet.
+ *
+ * Two levels because the question is asked twice over: a profile may want most
+ * of its snippets to run outright and one of them never to, which a single
+ * answer per profile cannot express. Resolution therefore asks, at each link of
+ * the chain, the snippet-specific answer first and the item's general one
+ * second, before moving up to the folder above.
+ */
+export interface SidebarSnippetSettings {
+    /** Open the session when the profile has none, instead of refusing to send. */
+    autoLaunch?: boolean
+    /** Send the trailing newline — i.e. run the command — instead of only typing it in. */
+    execute?: boolean
+    /**
+     * Milliseconds to wait after an *automatic* launch before writing, 0 for
+     * none. Never applied to a session that was already open: there is nothing
+     * to wait for there.
+     *
+     * A blunt instrument, and knowingly so — SSH offers no "the shell is ready"
+     * signal, so the alternative to a delay is guessing. It exists because the
+     * guess is wrong on exactly the servers one does not administer: a long
+     * MOTD swallows the command. Per profile and per folder like the two above,
+     * because slowness is a property of a given server, not of the plugin.
+     */
+    launchDelayMs?: number
+}
+
 export class SidebarPlusConfigProvider extends ConfigProvider {
     defaults = {
         // Outside `sidebarPlus` on purpose: Tabby merges every provider's
@@ -109,6 +172,60 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             showTransfers: true,
             showWorkspaces: true,
             showFilter: true,
+            // Éteints, les deux retirent leur entrée du menu contextuel et ce
+            // qu'ils posent sur les lignes — sans toucher à ce qui est stocké :
+            // la bibliothèque, les rattachements et les notes attendent d'être
+            // rallumés. `showSnippets` retire aussi l'onglet de la bibliothèque
+            // des réglages, et le contrôle des variables au lancement d'une
+            // session ; `showNotes` retire les pastilles et cesse de chercher
+            // dans les notes.
+            showSnippets: true,
+            showNotes: true,
+            // The snippet library: every command the user has written, once
+            // each, independent of where it is used. Nothing here is keyed by a
+            // profile or group id, so none of it has to be migrated or
+            // collected when the tree changes shape.
+            snippetLibrary: [] as SidebarSnippet[],
+            // Which library snippets each profile/folder offers, by id — a
+            // profile shows its own attachments plus everything inherited from
+            // the folders above it. Order is the order they appear in the menu.
+            //
+            // Keyed by id like favorites and groupOrder, with the same duty
+            // attached: migrateWorkspaceGroupId() carries these over when a
+            // folder is re-parented and forgetDeletedId() drops them on
+            // deletion, or a folder loses its snippets the next time it is
+            // dragged (piège #62). Only the *attachments* are at stake — the
+            // commands themselves survive in the library either way, which is
+            // precisely the point of keeping them apart.
+            snippetAttachments: {} as Record<string, string[]>,
+            // Per profile/folder: the answer for all its snippets at once.
+            snippetSettings: {} as Record<string, SidebarSnippetSettings>,
+            // Per profile/folder *and* per snippet: what one command does
+            // differently from the others on that very item. Beats the map
+            // above at the same link of the chain.
+            snippetOverrides: {} as Record<string, Record<string, SidebarSnippetSettings>>,
+            // Values a snippet is expanded with, per profile/folder *and* per
+            // snippet: `{{logdir}}` written once in the library, answered
+            // differently by each server.
+            //
+            // Keyed by snippet as well as by owner because the same name means
+            // different things to different commands — one snippet's `{{path}}`
+            // is a log directory, another's is a deployment root, and a single
+            // answer per profile would force them to agree. The cost is
+            // assumed: a name shared by three snippets is answered three times.
+            snippetVariables: {} as Record<string, Record<string, Record<string, string>>>,
+            // Inherited snippets switched off on one profile: still attached to
+            // the folder, simply not offered here. The alternative — detaching
+            // — is not available on an inherited snippet, since the attachment
+            // belongs to the folder and removing it would take the snippet from
+            // every other profile of that folder.
+            snippetMuted: {} as Record<string, string[]>,
+            // Free-text memo per profile or folder — restart commands, ticket
+            // numbers, whatever has to be at hand when the session opens.
+            // Deliberately *not* inherited, unlike everything else keyed this
+            // way: a folder's note repeated on each of its twelve profiles
+            // would be noise rather than a reminder.
+            profileNotes: {} as Record<string, string>,
             // favorites/favoriteGroups above double as the "Tous" workspace's
             // own favorites (no migration needed — they're already live in
             // the user's config.yaml). Each entry here carries its own.

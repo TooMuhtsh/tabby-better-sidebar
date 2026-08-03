@@ -19,6 +19,11 @@
       a.nav-link(href='#', [class.active]="section === 'general'", (click)="setSection('general', $event)") Général
     li.nav-item
       a.nav-link(href='#', [class.active]="section === 'features'", (click)="setSection('features', $event)") Fonctionnalités
+    //- Disparaît avec l'interrupteur du bloc, comme toute option qui n'existe
+    //- que pour une fonctionnalité : un onglet qui survit à ce qu'il règle se
+    //- lit comme cassé plutôt que comme sans objet.
+    li.nav-item(*ngIf="blockOn('showSnippets')")
+      a.nav-link(href='#', [class.active]="section === 'snippets'", (click)="setSection('snippets', $event)") Snippets
 
   ng-container(*ngIf="section === 'general'")
     .settings-section
@@ -86,6 +91,26 @@
           toggle(
             [ngModel]="blockOn('showFilter')",
             (ngModelChange)="setBlock('showFilter', $event)"
+          )
+
+      .form-line.block-switch
+        .header
+          .title Snippets #[i.fas.fa-info-circle.info-hint(title="Une bibliothèque de commandes rattachées aux profils et aux dossiers. Éteint, l onglet de la bibliothèque disparaît aussi, et une session qui s ouvre ne vérifie plus les variables. Rien n est supprimé : tout revient en rallumant.")]
+          .description L'entrée « Snippets… » du clic droit, et l'onglet de la bibliothèque.
+        .control
+          toggle(
+            [ngModel]="blockOn('showSnippets')",
+            (ngModelChange)="setBlock('showSnippets', $event)"
+          )
+
+      .form-line.block-switch
+        .header
+          .title Notes #[i.fas.fa-info-circle.info-hint(title="Un mémento libre par profil ou dossier. Éteintes, les pastilles disparaissent et la barre de filtrage cesse de chercher dedans. Les notes écrites sont conservées.")]
+          .description L'entrée « note » du clic droit, et la pastille sur les lignes concernées.
+        .control
+          toggle(
+            [ngModel]="blockOn('showNotes')",
+            (ngModelChange)="setBlock('showNotes', $event)"
           )
 
     //- SESSIONS ACTIVES
@@ -203,3 +228,70 @@
               [ngModel]="blockOn('showTransfers')",
               (ngModelChange)="setBlock('showTransfers', $event)"
             )
+
+  //- The library. Commands are written here and nowhere else: the sidebar's
+  //- context menu only attaches, detaches and runs them, because a 300px popup
+  //- is the wrong place to edit anything shaped like code.
+  //- Le bloc est retesté ici, pas seulement sur l'onglet : l'interrupteur vit
+  //- dans « Fonctionnalités », donc on ne peut pas l'éteindre depuis cette page
+  //- — mais une autre fenêtre Tabby le peut, `config.changed$` étant diffusé
+  //- entre elles. Sans cela, la bibliothèque resterait affichée sous un onglet
+  //- disparu.
+  ng-container(*ngIf="section === 'snippets' && blockOn('showSnippets')")
+    .settings-section
+      .section-intro
+        | Une commande écrite une fois, rattachée aux profils et aux dossiers où
+        | elle sert. La modifier ici la corrige partout. Ce qui change d'un
+        | serveur à l'autre s'écrit #[code {{ '{{variable}}' }}] et se renseigne
+        | par le clic droit sur le profil.
+
+      .snippet-library(*ngIf='!draft')
+        .snippet-empty(*ngIf='!snippets.length')
+          | Aucun snippet pour l'instant.
+        //- Boxed and set apart from the section's own intro: as a plain line of
+        //- text under it, it read as more explanation rather than as a state.
+        .snippet-unused-summary(*ngIf='unusedCount')
+          strong {{ unusedCount }} snippet(s) rattachés à rien.
+          |  Détachés depuis la sidebar, ils restent ici jusqu'à suppression.
+        .snippet-item(*ngFor='let s of snippets')
+          .snippet-item-head
+            .snippet-item-name {{ s.name }}
+            .snippet-item-uses(*ngIf='attachmentCount(s)') rattaché à {{ attachmentCount(s) }} élément(s)
+            .snippet-item-uses.unused(*ngIf='!attachmentCount(s)') rattaché nulle part
+            .snippet-item-actions
+              button.btn.btn-sm.btn-secondary((click)='editSnippet(s)') Modifier
+              button.btn.btn-sm.btn-danger((click)='deleteSnippet(s)') Supprimer
+          pre.snippet-item-command {{ s.command }}
+          .snippet-item-vars(*ngIf='variablesOf(s).length')
+            span.snippet-var-chip(*ngFor='let v of variablesOf(s)', [class.required]='v.required')
+              | {{ v.name }}
+              span(*ngIf='v.required') &nbsp;*
+        button.btn.btn-primary.mt-3((click)='newSnippet()') Nouveau snippet
+
+      .snippet-editor(*ngIf='draft')
+        .form-line
+          .header
+            .title Nom
+            .description Ce que montre le menu contextuel.
+          .control
+            input.form-control(type='text', [(ngModel)]='draft.name', placeholder='Redémarrer nginx')
+        .form-line.stacked
+          .header
+            .title Commande
+            .description
+              | Écrivez #[code {{ '{{nom}}' }}] pour une valeur attendue du profil, ou
+              | #[code {{ '{{nom=valeur}}' }}] pour une valeur par défaut. Sans défaut,
+              | la variable est obligatoire : le snippet refuse de partir tant qu'elle
+              | n'est pas renseignée. Entourez de guillemets — #[code cd "{{ '{{dir}}' }}"] —
+              | toute variable pouvant contenir un espace ; l'écran des variables le
+              | signale au cas par cas.
+          .control
+            textarea.form-control.snippet-editor-command(rows='6', [(ngModel)]='draft.command', placeholder='sudo systemctl restart nginx')
+        //- No behaviour settings here: they belong to the pairing of a snippet
+        //- with a profile or a folder, not to the command in the abstract. They
+        //- are set by the right-click, where that pairing exists.
+        .snippet-editor-actions
+          button.btn.btn-primary((click)='saveDraft()') Enregistrer
+          button.btn.btn-secondary((click)='cancelEdit()') Annuler
+          .snippet-editor-warning(*ngIf='draft.id && attachmentCount(draft)')
+            | Modifie la commande sur les {{ attachmentCount(draft) }} rattachement(s) existants.
