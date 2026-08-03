@@ -25,6 +25,17 @@ entrées les plus récentes en tête.</p>
 </div>
 
 <h2>L'éditeur par type de fichier est écarté (2026-08-03)</h2>
+<div class="callout note"><span class="callout-title">Ajout du 2026-08-03, après vérification —
+le résidu annoncé plus bas n'existe pas</span>
+<p>L'utilisateur ayant retiré le chiffrement de son <code>config.yaml</code>, il a pu être lu :
+<strong>aucune clé <code>sidebarPlus.sftpEditors</code></strong>, et <code>sftpEditorPath</code> porte
+toujours son éditeur. La migration a tourné en mémoire pendant l'essai sans que rien n'atteigne le
+disque. Le paragraphe ci-dessous, écrit par précaution avant d'avoir pu vérifier, décrit donc un état
+qui n'a pas eu lieu — il est conservé tel quel, le journal étant en ajout seul, et c'est cette entrée
+qui fait foi.</p>
+<p>À en retenir plus qu'un détail de nettoyage : une conséquence supposée d'un code retiré n'est pas
+un fait tant qu'elle n'a pas été observée, et une gouvernance qui l'écrit au futur crée une fausse
+piste pour la session suivante.</p></div>
 <p>Chantier <a href="ROADMAP.html#editeur-par-type">Éditeur par type de fichier</a>, construit puis
 retiré le même jour. Décision de l'utilisateur à l'essai : « Ouvrir avec » du clic droit fait le
 travail plus directement, et la table extension → programme n'apportait rien qui vaille son coût.
