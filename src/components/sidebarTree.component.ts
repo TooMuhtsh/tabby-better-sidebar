@@ -1251,13 +1251,20 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return ''
     }
 
-    /** Everything the dot knows, in one tooltip: latency when it is being measured, uptime always. */
-    sessionDotLabel (session: ActiveSession): string {
+    /**
+     * The row's tooltip, carried by the whole row rather than by the dot.
+     *
+     * A 6px dot is not something one aims at to read a figure (user request,
+     * 2026-08-03), so the latency and the uptime join the tab's own live title
+     * — `user@host: cwd`, which is what this tooltip showed before and remains
+     * the most identifying part of it, hence its place at the front.
+     */
+    sessionTooltip (session: ActiveSession): string {
         const uptime = `ouverte depuis ${this.sessionUptime(session)}`
-        if (this.ping.intervalMs <= 0) {
-            return `Session ${uptime}`
-        }
-        return `${this.ping.label(session.tab)} — session ${uptime}`
+        const state = this.ping.intervalMs > 0
+            ? `${this.ping.label(session.tab)} — session ${uptime}`
+            : `Session ${uptime}`
+        return [session.title, state].filter(Boolean).join(' — ')
     }
 
     /**

@@ -49,18 +49,15 @@
                 *ngFor='let session of activeSessions',
                 [class.focused]='session.focused',
                 (click)='focusSession(session, $event)',
-                [title]='session.title',
+                [title]='sessionTooltip(session)',
                 href='#'
             )
                 //- The row's one dot, carrying the latency colour: in this
                 //- section every row is a live session by construction, so a
-                //- permanently green "connected" dot said nothing. Its tooltip
-                //- is where the numbers are — hence the enlarged hit area in
-                //- the SCSS, a 6px target being unhoverable in practice.
-                span.status-dot(
-                    [ngClass]='sessionDotClass(session)',
-                    [title]='sessionDotLabel(session)'
-                )
+                //- permanently green "connected" dot said nothing. It carries
+                //- no tooltip of its own — the figures are in the row's, which
+                //- is reachable from anywhere along it.
+                span.status-dot.ms-1([ngClass]='sessionDotClass(session)')
                 .fw-20
                     profile-icon.ms-1([icon]='session.icon', [color]='session.color')
                 span.ms-2.me-auto.no-wrap {{ session.name }}

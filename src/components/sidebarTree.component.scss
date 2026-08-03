@@ -144,21 +144,14 @@ sidebar-plus-tree .active-sessions {
             box-shadow: inset 2px 0 0 var(--theme-primary);
         }
 
-        // Still a 6px dot, but hoverable over 14: it carries the latency
-        // tooltip now, and a 6px target cannot be aimed at. `content-box` +
-        // `background-clip` grow the box without growing the dot, and the
-        // negative margins give the padding back to the layout — `margin-left`
-        // stays at 0 so the visible dot lands where `.ms-1` used to put it.
         .status-dot {
             flex: 0 0 auto;
-            box-sizing: content-box;
             width: 6px;
             height: 6px;
-            padding: 4px;
-            margin: -4px;
-            margin-left: 0;
             border-radius: 50%;
-            background-clip: content-box;
+            // Grey is the base, i.e. "no figure to show": latency not measured
+            // yet, or a server that opens no SFTP channel. The colours below
+            // override it.
             background-color: var(--theme-secondary-fg);
             opacity: .35;
 
