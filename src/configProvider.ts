@@ -86,6 +86,29 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // every transfer, so keeping both means a popup covering the tabs on
             // top of a panel that already says it. Untick to get it back.
             hideNativeTransfersMenu: true,
+            // Per-block switches. All default to true: these blocks are what
+            // was asked for and built, so defaulting them off would make
+            // delivered features vanish on a plugin update.
+            //
+            // The contract is "off means gone, not merely hidden": each of
+            // these also stops what feeds the block — the 2s scan skips the
+            // work, the latency probe stops sending, the transfers registry
+            // stops polling and unsubscribes. A switch that only hid the view
+            // would tidy the screen while keeping the cost, which is the one
+            // thing it must not do. See the components for where each one is
+            // read; SidebarPlusTreeComponent has the getters that combine them
+            // with what the host can still carry (hostCompat.ts).
+            //
+            // Flat keys rather than a `blocks: {...}` object on purpose:
+            // mutating a nested property of sidebarPlus without reassigning it
+            // never persists (piège #23), and every key must be declared here
+            // to survive a restart at all (piège #16).
+            showActiveSessions: true,
+            showTunnels: true,
+            showSftp: true,
+            showTransfers: true,
+            showWorkspaces: true,
+            showFilter: true,
             // favorites/favoriteGroups above double as the "Tous" workspace's
             // own favorites (no migration needed — they're already live in
             // the user's config.yaml). Each entry here carries its own.

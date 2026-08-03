@@ -70,6 +70,16 @@ export interface HostCompatReport {
     fatal: boolean
 }
 
+/**
+ * Verdict of the last `checkHost()`, so anything can ask "does the host still
+ * provide this?" without re-running the checks.
+ *
+ * Empty until the first run, which is deliberate: before `app.ready$` the DOM
+ * precondition cannot be answered honestly, and a block that asked early would
+ * get a "supported" it did not earn. Every consumer runs well after.
+ */
+const failedIds = new Set<string>()
+
 export function checkHost (): HostCompatReport {
     const failed = HOST_PRECONDITIONS.filter(p => {
         try {
@@ -81,7 +91,22 @@ export function checkHost (): HostCompatReport {
             return true
         }
     })
+    failedIds.clear()
+    failed.forEach(p => failedIds.add(p.id))
     return { failed, fatal: failed.some(p => p.fatal) }
+}
+
+/**
+ * Whether the host still provides a given precondition.
+ *
+ * This is the junction between the two robustness mechanisms: a block switched
+ * off by the user and a block the host can no longer carry both come down to
+ * "do not show it, and do not feed it". The settings checkbox stays ticked in
+ * the second case — the user did not untick it, and lying about their own
+ * setting would be worse than a block that simply is not there.
+ */
+export function hostSupports (id: string): boolean {
+    return !failedIds.has(id)
 }
 
 /**
