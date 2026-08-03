@@ -24,6 +24,64 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Latence et âge des sessions actives (2026-08-03)</h2>
+<p>Chantier <a href="ROADMAP.html#ping-live">Ping live</a>, branche <code>feat/ping-live</code>, testé
+et validé par l'utilisateur le 2026-08-03.</p>
+<p><strong>La question à trancher n'était pas l'affichage mais la mesure</strong> : ni Tabby ni
+<code>russh</code> ne tiennent de temps d'aller-retour — vérifié sur le bundle installé, la seule
+mention de keepalive est l'intervalle passé à <code>connect()</code>, qui ne rend rien. Le chiffre
+est donc produit, et le moyen choisi <em>est</em> la définition de ce que la pastille signifie. Retenu
+après arbitrage de l'utilisateur : un <code>stat()</code> chronométré sur le canal SFTP déjà ouvert de
+la session. Il mesure l'aller-retour chiffré de cette session — le délai ressenti à la frappe — quand
+un ping ICMP mesure l'hôte et se fait couramment filtrer, et qu'une sonde TCP ouvrirait puis
+abandonnerait une connexion avant authentification à chaque tour, laissant une trace dans les logs du
+serveur et de quoi se faire bannir par son propre fail2ban.</p>
+<p>Ce <code>stat()</code> ne contredit pas l'invariant du <a href="AI-CONTEXT.html#piege-50">piège
+#50</a> : rien de la réponse n'est lu, seul le temps compte. La distinction est écrite dans le service
+pour qu'une relecture n'y voie pas une régression.</p>
+<p><strong>Trois retours de la passe de test ont refait la présentation.</strong> La pastille ajoutée
+au bout de la ligne était recouverte par le bouton SFTP au survol — et n'apportait rien, toutes les
+lignes de cette section étant vivantes par construction, donc la pastille de gauche était
+perpétuellement verte et muette. La latence a pris sa place. L'infobulle, d'abord posée sur la
+pastille, est passée sur la ligne entière : viser 6 px pour lire une valeur n'est pas un geste. Sa
+forme a été fixée à trois champs, <code>app.exemple.fr | 13 ms | 1m 47s</code>, ce qui a sorti le
+titre vivant de l'onglet — la ligne montre déjà le nom, et un titre qui suit le répertoire courant
+était la partie bavarde.</p>
+<p><strong>Un ajout non prévu</strong>, demandé en cours de passe : le temps écoulé depuis l'ouverture.
+Rien ne date une session dans Tabby, il est donc stampé à la première apparition dans la liste — avec
+les deux conséquences consignées dans la roadmap. Il ne dépend pas du réglage de latence.</p>
+<p>Le sondage suit le passage de 2 s déjà en place plutôt que d'ajouter un timer, et ni la latence ni
+la durée ne sont portées par les lignes elles-mêmes : une valeur qui bouge ferait échouer
+<code>sameSessions()</code> et reconstruirait le DOM de chaque ligne deux fois par seconde, emportant
+le survol dont dépendent leurs boutons.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>96575fa</code></td>
+<td><strong>Infobulle figée sous le curseur.</strong> Réécrire un <code>title</code> détruit
+l'infobulle affichée : celle-ci clignotait à chaque passage de 2 s pendant qu'on la lisait
+(<a href="AI-CONTEXT.html#piege-69">piège #69</a>). Gelée tant que le pointeur reste sur la ligne.</td></tr>
+
+<tr><td>2026-08-03</td><td><code>8b2661b</code></td>
+<td><strong>Infobulle concise à trois champs.</strong> Forme fixée par l'utilisateur ; le champ de
+latence disparaît faute de mesure plutôt que d'afficher une attente, et le service rend le nombre brut
+au lieu d'une phrase.</td></tr>
+
+<tr><td>2026-08-03</td><td><code>3bddfc6</code></td>
+<td><strong>Infobulle sur la ligne entière</strong>, plus sur la pastille — l'agrandissement de sa
+zone de survol disparaît avec la raison qui l'avait fait ajouter.</td></tr>
+
+<tr><td>2026-08-03</td><td><code>f3060e7</code></td>
+<td><strong>Latence portée par la pastille existante, et âge de la session.</strong> La seconde
+pastille est retirée ; le temps écoulé s'affiche sur la ligne et dans l'infobulle.</td></tr>
+
+<tr><td>2026-08-03</td><td><code>92af148</code></td>
+<td><strong>Sonde de latence</strong> (<code>src/ping.service.ts</code>) : <code>stat()</code>
+chronométré sur le canal SFTP de la session, réglage <code>pingIntervalSeconds</code> à 0 par défaut,
+serveur sans canal SFTP marqué non mesurable une fois pour toutes.</td></tr>
+</table>
+
 <h2>Auto-Enter sort du périmètre (2026-08-03)</h2>
 <p>Décision de l'utilisateur, sans code. Le chantier
 <a href="ROADMAP.html#auto-enter">Auto-Enter</a> rejoint la section hors périmètre, son design

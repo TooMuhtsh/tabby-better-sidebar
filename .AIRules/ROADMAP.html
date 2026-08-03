@@ -15,7 +15,7 @@
 </nav>
 
 <h1>Roadmap</h1>
-<p class="muted">Dernière revue : 2026-08-02</p>
+<p class="muted">Dernière revue : 2026-08-03</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
 techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
@@ -61,7 +61,7 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
 <tr><td><a href="#icon-favorites">Favoris d'icônes (distincts des « Récentes »)</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#partage-groupe">Partage rapide de groupe (Presse-papiers)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#notes-profil">Notes de profil (Mémento contextuel)</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
-<tr><td><a href="#ping-live">Indicateur de latence / Ping live</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#ping-live">Indicateur de latence / Ping live</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Basse</td></tr>
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
     <td><span class="pill done">✅ Revue faite (2026-07-31)</span></td>
     <td>Entretien récurrent</td></tr>
@@ -1842,6 +1842,45 @@ d'exploitation (commandes de relance, rappels de maintenance, numéros de ticket
 <h3 id="ping-live">Indicateur de santé (Ping live)</h3>
 <p>Option pour afficher une micro-pastille colorée (vert/orange/rouge) à côté des sessions actives
 représentant la latence réseau actuelle via un ping régulier en tâche de fond (désactivable).</p>
+
+<div class="callout note"><span class="callout-title">Fait — testé et validé par l'utilisateur le 2026-08-03</span>
+<p>Branche <code>feat/ping-live</code>, détail dans <a href="AI-HISTORY.html">AI-HISTORY</a>. Réglage
+<code>pingIntervalSeconds</code>, <strong>0 par défaut</strong> : une mesure est une requête adressée à
+un vrai serveur, elle ne part donc pas sans qu'on le demande.</p>
+<p><strong>Ce que « ping » veut dire ici a été tranché, pas supposé.</strong> Ni Tabby ni
+<code>russh</code> n'exposent de temps d'aller-retour, le chiffre est donc produit — et le moyen choisi
+définit ce que la pastille signifie. Retenu : un <code>stat()</code> chronométré sur le canal SFTP déjà
+ouvert de la session, qui mesure l'aller-retour <em>chiffré de cette session</em>, celui qu'on ressent
+en tapant. Les deux autres voies ont été écartées pour des raisons constatées, pas par préférence : le
+ping ICMP mesure l'hôte et se fait couramment filtrer, donc rouge sur un lien sain ; la sonde TCP
+ouvre puis abandonne une connexion avant authentification à chaque tour, ce qui écrit dans les logs du
+serveur et peut faire bannir par son propre fail2ban.</p>
+<p><strong>Écarts au design ci-dessus, tous issus de la passe de test :</strong></p>
+<ul>
+<li><strong>Pas de micro-pastille supplémentaire</strong> : c'est la pastille de connexion existante
+  qui prend la couleur de la latence. Une seconde pastille était recouverte par le bouton SFTP au
+  survol, et n'ajoutait rien — dans cette section toutes les lignes sont vivantes par construction,
+  donc la pastille de gauche était perpétuellement verte et ne disait rien. Le vert garde son sens, le
+  orange et le rouge sont de la latence et jamais un état de connexion.</li>
+<li><strong>L'infobulle est portée par la ligne entière</strong>, jamais par la pastille : viser 6 px
+  pour lire une valeur n'est pas un geste. Forme fixée par l'utilisateur, trois champs sans prose —
+  <code>app.exemple.fr | 13 ms | 1m 47s</code> — le champ de latence disparaissant faute de mesure
+  plutôt que d'afficher une attente.</li>
+<li><strong>Ajout non prévu : l'âge de la session</strong>, sur la ligne et dans l'infobulle,
+  indépendant du réglage de latence. Rien ne date une session dans Tabby, il est donc stampé à la
+  première apparition dans la liste : une session déjà ouverte au montage de la sidebar serait datée du
+  montage (inatteignable en pratique, la sidebar étant montée au démarrage), et une session qui tombe
+  puis se reconnecte repart de zéro — ce qui est la bonne réponse, c'en est une autre.</li>
+<li><strong>Seuils en dur</strong> (80 ms et 250 ms) : deux nombres de plus dans la page de réglages
+  demanderaient à être expliqués, et personne n'a demandé à les changer.</li>
+</ul>
+<p><strong>Deux limites assumées.</strong> Le canal SFTP est partagé avec les transferts réels : une
+sonde envoyée pendant un gros transfert fait la queue derrière ses données et lit haut — c'est la
+session qui répond lentement, pas une mesure fausse. Et un serveur sans sous-système SFTP n'est pas
+mesurable du tout : sa pastille reste grise et il n'est plus sollicité.</p>
+<p><a href="AI-CONTEXT.html#piege-69">Piège #69</a> consigné au passage : réécrire un
+<code>title</code> détruit l'infobulle affichée, donc une valeur qui se rafraîchit scintille sous le
+curseur.</p></div>
 
 <h3 id="robustesse">Robustesse — édition de profil</h3>
 <p>Envelopper la séquence <code>clickNativeProfileRow()</code> (édition de profil par clic droit —
