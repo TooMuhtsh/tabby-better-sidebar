@@ -106,13 +106,16 @@ export class SidebarPlusPingService {
         return sample.ms > FAIR_ABOVE_MS ? 'fair' : 'good'
     }
 
-    /** What the dot's tooltip says. */
-    label (tab: SSHTabComponent): string {
-        if (this.unavailable.has(tab)) {
-            return 'Latence non mesurable — ce serveur n\'ouvre pas de canal SFTP'
-        }
-        const sample = this.samples.get(tab)
-        return sample ? `Latence ${sample.ms} ms` : 'Latence en cours de mesure'
+    /**
+     * The last measured round trip, or null when there is none — probing off,
+     * first probe not back yet, or a server that opens no SFTP channel.
+     *
+     * The raw number rather than a sentence: the tooltip that shows it is a
+     * compact `profil | 13 ms | 1m 47s`, so the wording belongs to the caller
+     * and a placeholder here would have to be dropped by it anyway.
+     */
+    latencyMs (tab: SSHTabComponent): number|null {
+        return this.samples.get(tab)?.ms ?? null
     }
 
     /**

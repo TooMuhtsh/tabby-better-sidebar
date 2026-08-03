@@ -1252,19 +1252,24 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     /**
-     * The row's tooltip, carried by the whole row rather than by the dot.
+     * The row's tooltip, carried by the whole row rather than by the dot: a 6px
+     * dot is not something one aims at to read a figure (user request,
+     * 2026-08-03).
      *
-     * A 6px dot is not something one aims at to read a figure (user request,
-     * 2026-08-03), so the latency and the uptime join the tab's own live title
-     * — `user@host: cwd`, which is what this tooltip showed before and remains
-     * the most identifying part of it, hence its place at the front.
+     * Form settled by the user the same day: `app.exemple.fr | 13 ms | 1m 47s`,
+     * three fields and no prose. The tab's live title (`user@host: cwd`), which
+     * this tooltip used to carry, is dropped with it — the row already shows
+     * the name, and a title that moves with the working directory was the
+     * verbose part. The latency field disappears entirely when there is no
+     * figure, rather than showing a placeholder.
      */
     sessionTooltip (session: ActiveSession): string {
-        const uptime = `ouverte depuis ${this.sessionUptime(session)}`
-        const state = this.ping.intervalMs > 0
-            ? `${this.ping.label(session.tab)} — session ${uptime}`
-            : `Session ${uptime}`
-        return [session.title, state].filter(Boolean).join(' — ')
+        const latency = this.ping.latencyMs(session.tab)
+        return [
+            session.name,
+            latency === null ? null : `${latency} ms`,
+            SidebarPlusTreeComponent.formatUptimePrecise(this.uptimeMs(session)),
+        ].filter(Boolean).join(' | ')
     }
 
     /**
@@ -1280,8 +1285,42 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * The second one is arguably the right answer anyway.
      */
     sessionUptime (session: ActiveSession): string {
+        const elapsed = this.uptimeMs(session)
+        return elapsed === null ? '' : SidebarPlusTreeComponent.formatUptime(elapsed)
+    }
+
+    /** Milliseconds since the tab was first seen live, or null while it has not been stamped yet. */
+    private uptimeMs (session: ActiveSession): number|null {
         const startedAt = this.sessionOpenedAt.get(session.tab)
-        return startedAt ? SidebarPlusTreeComponent.formatUptime(Date.now() - startedAt) : ''
+        return startedAt === undefined ? null : Date.now() - startedAt
+    }
+
+    /**
+     * `1m 47s`, `3h 05m`, `2j 04h` — the tooltip's own form, precise to the
+     * second under a minute.
+     *
+     * Deliberately not the same rendering as the row's: this one is only read
+     * while hovering, whereas the row is permanently in view, and seconds
+     * ticking on every open session would keep the sidebar moving in the
+     * corner of the eye for no gain.
+     */
+    private static formatUptimePrecise (ms: number|null): string {
+        if (ms === null) {
+            return ''
+        }
+        const seconds = Math.max(0, Math.floor(ms / 1000))
+        if (seconds < 60) {
+            return `${seconds}s`
+        }
+        const minutes = Math.floor(seconds / 60)
+        if (minutes < 60) {
+            return `${minutes}m ${String(seconds % 60).padStart(2, '0')}s`
+        }
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24) {
+            return `${hours}h ${String(minutes % 60).padStart(2, '0')}m`
+        }
+        return `${Math.floor(hours / 24)}j ${String(hours % 24).padStart(2, '0')}h`
     }
 
     /** `42 s`, `12 min`, `3 h 05`, `2 j 4 h` — coarser as it gets longer, since a session's age is read at a glance. */
