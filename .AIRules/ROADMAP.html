@@ -18,7 +18,9 @@
 <p class="muted">Dernière revue : 2026-08-03</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
-techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.</p>
+techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.
+Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
+<a href="#restes">Reste ouvert dans les chantiers livrés</a>.</p>
 
 <h2>Vue d'ensemble</h2>
 <table>
@@ -69,6 +71,109 @@ techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">
     <td><span class="pill done">✅ Clos (2026-08-03)</span></td>
     <td>Avant toute publication npm</td></tr>
 </table>
+
+<h2 id="restes">Reste ouvert dans les chantiers livrés</h2>
+<p>Le tableau ci-dessus dit d'un chantier qu'il est <strong>fait</strong> dès que ce qui le justifiait
+est en service et validé — pas qu'il ne reste rien de son périmètre d'origine. Ce qui a été
+explicitement différé, laissé à arbitrer ou jamais exercé est donc rassemblé ici, chaque ligne
+renvoyant au chantier qui le porte. Cette liste n'a <strong>aucune existence propre</strong> : elle ne
+fait que rendre visible ce qui est déjà écrit dans les fiches, et se vide en même temps qu'elles. Ne
+jamais y consigner un point qui ne serait pas aussi dans sa fiche — ce serait le deuxième endroit où
+lire le même fait.</p>
+
+<table>
+<tr><th>Ce qui reste</th><th>Chantier</th><th>Nature</th></tr>
+
+<tr><td>Flèches d'activité <code>↑</code>/<code>↓</code> sur la ligne du profil concerné. Le
+    gestionnaire de transferts les affiche dans son propre panneau, jamais sur le profil.</td>
+    <td><a href="#sftp">SFTP contextuel</a></td><td>Différé</td></tr>
+<tr><td>Interrupteur de <strong>gel de la vue</strong> : la vue suit le pane focalisé, rien ne permet
+    de la figer pendant une navigation en cours. Porté aussi par
+    <a href="#ui-polish">Options &amp; polissage UI</a>.</td>
+    <td><a href="#sftp">SFTP contextuel</a></td><td>Différé</td></tr>
+<tr><td>Chargement de la liste par blocs (lazy loading RxJS) — à reprendre si un dossier distant très
+    peuplé fige l'interface.</td>
+    <td><a href="#sftp">SFTP contextuel</a></td><td>Différé</td></tr>
+
+<tr><td>Icône par workspace (champ <code>icon</code> sur <code>SidebarWorkspace</code>, picker ouvert
+    depuis le menu contextuel de l'onglet).</td>
+    <td><a href="#workspaces">Workspaces</a></td><td>Différé</td></tr>
+<tr><td>Sélecteur adaptatif : bascule en dropdown sous une largeur seuil (<code>ResizeObserver</code>).</td>
+    <td><a href="#workspaces">Workspaces</a></td><td>Différé</td></tr>
+<tr><td>Couleurs contextuelles — bordure de terminal selon le workspace actif au lancement. Touche le
+    lancement de profil, d'où l'étape séparée.</td>
+    <td><a href="#workspaces">Workspaces</a></td><td>Différé</td></tr>
+<tr><td>Export/import JSON ponctuel des workspaces.</td>
+    <td><a href="#workspaces">Workspaces</a></td><td>Différé</td></tr>
+<tr><td>Les trois propositions du test manuel du 2026-07-29 : masquage par défaut des créations dans
+    les workspaces existants, comportement configurable de la barre de filtre, levée de l'ambiguïté
+    « réordonner » / « imbriquer » au glisser-déposer.</td>
+    <td><a href="#ws-propositions">Workspaces — propositions</a></td><td>À arbitrer</td></tr>
+
+<tr><td>États de transfert SFTP (vitesse, file d'attente) <strong>sur la ligne de session</strong>. Le
+    motif de blocage est levé depuis le 2026-08-02 : le gestionnaire existe, mais dans son panneau.</td>
+    <td><a href="#sessions-actives">Sessions actives</a></td><td>Différé</td></tr>
+
+<tr><td>Chemin distant et session porteuse sur la ligne du gestionnaire de transferts — ligne gardée
+    compacte, information non réclamée au test. Le registre les a sous la main.</td>
+    <td><a href="#transferts">Transferts SFTP</a></td><td>À rouvrir si besoin</td></tr>
+<tr><td>Multi-sélection dans la liste distante : préalable au déplacement et à la
+    <a href="#suppr-sftp">suppression</a> par lot.</td>
+    <td><a href="#transferts">Transferts SFTP</a></td><td>Différé</td></tr>
+
+<tr><td>Bascule sur <code>exit</code> : le code la couvre (<code>isLiveSSHTab()</code> lit le shell),
+    mais le <code>behaviorOnSessionEnd</code> de l'utilisateur ferme l'onglet — aucun geste n'a
+    parcouru ce chemin. À vérifier le jour où un profil garde l'onglet ouvert.</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>Non exercé</td></tr>
+<tr><td><code>downloadFolder</code> reste sur la voie héritée : « Download directory » affiche encore
+    « annulé » sur une coupure, là où le reste dit « interrompu à N&nbsp;% ».</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>Différé</td></tr>
+<tr><td>Contrôle « le fichier est-il bien arrivé ? » pour les téléchargements du <strong>menu
+    contextuel</strong> — impossible sur un glisser, faisable ici puisqu'ils imposent leur chemin à
+    <code>platform.startDownload()</code>.</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>À arbitrer</td></tr>
+
+<tr><td>Repli du marqueur — livraison dans <code>~/Downloads</code> quand il n'est pas retrouvé. Le
+    code est en place, aucun geste ne l'a parcouru.</td>
+    <td><a href="#marqueur-depot">Marqueur de dépôt</a></td><td>Non exercé</td></tr>
+
+<tr><td>Affichage de l'état de reprise sur micro-coupure réseau.</td>
+    <td><a href="#tunnels-ssh">Tunnels SSH</a></td><td>Différé</td></tr>
+
+<tr><td>Comparer les deux identifiants de charte en début de session, repropager les copies à chaque
+    révision, corriger la dérive dès qu'elle est constatée.</td>
+    <td><a href="#gouvernance">Conformité de la gouvernance</a></td><td>Récurrent</td></tr>
+
+<tr><td>Passe de test d'une release avant publication npm. Ne relève plus du ménage, qui est clos —
+    c'est du test, pas du rangement.</td>
+    <td><a href="#menage-release">Ménage avant release</a></td><td>Avant publication</td></tr>
+</table>
+
+<div class="callout warning"><span class="callout-title">Ce qui ressemble à un reste et n'en est pas
+un</span>
+<p>Ces points ont été tranchés, vérifiés faux ou rendus sans objet. Les relire comme des manques
+ferait rouvrir un travail déjà fait :</p>
+<ul>
+<li><strong>Les deux retours de la passe manuelle du <a href="#transferts">volet 3</a></strong>
+  (curseur d'interdit hors fenêtre, notice « glissez-le à nouveau » à faire tenir) : sans objet depuis
+  le <a href="#marqueur-depot">marqueur de dépôt</a>, qui a supprimé le geste en deux temps. Ils ne
+  valent plus que pour le repli, et ne se rouvrent que s'il redevient le chemin ordinaire.</li>
+<li><strong>Le point 3 du <a href="#panneau-etat-session">panneau d'état</a></strong> (confirmation
+  quand un transfert est en cours au moment de la bascule) : sa prémisse est fausse, vérifiée sur le
+  code — retirer le panneau ne libère pas le canal et n'annule rien.</li>
+<li><strong>Le transfert qui continue pendant que « Enregistrer sous » est ouverte</strong> : écart
+  constaté en test et assumé, l'alternative ayant été proposée puis écartée.</li>
+<li><strong>Une cible qui ne comprend pas l'offre de dépôt</strong> (Terminal Windows, MobaXterm) :
+  rien ne se produit, pas même le repli — c'est le comportement voulu
+  (<a href="AI-CONTEXT.html#piege-67">piège #67</a>).</li>
+<li><strong>« Gérer les tunnels… » déléguant à la modale native</strong> : construit, testé, puis
+  retiré à la demande explicite de l'utilisateur. Le <a href="#tunnels-ssh">périmètre restreint</a>
+  qui en découle n'est pas un oubli.</li>
+<li><strong><a href="#sftp-scp">SCP</a>, <a href="#auto-enter">Auto-Enter</a>,
+  <a href="#editeur-par-type">éditeur par type de fichier</a>,
+  <a href="#moba-importer">importateur MobaXterm</a></strong> : écartés ou hors périmètre, chacun avec
+  son motif dans sa fiche.</li>
+</ul></div>
 
 <h2>Phase 1 — priorité absolue</h2>
 <p>Les deux fonctionnalités qui justifiaient de remplacer MobaXterm par Tabby + ce plugin — le
@@ -714,15 +819,20 @@ c'est un mécanisme différent (<code>DownloadURL</code>/fichier promis), sans r
 plomberie ci-dessus. Repris et détaillé dans <a href="#drag-out">Glisser-déposer sortant</a>
 ci-dessous.</p>
 
-<h3 id="panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</h3>
+<h3 id="panneau-etat-session">Panneau SFTP : suivre l'état réel de la session
+<span class="pill done">✅ Fait (2026-08-03)</span></h3>
 <p class="muted">Ouvert le 2026-08-02 sur un bug remonté en test, élargi par ce que le diagnostic a
 mis au jour. Les quatre points ci-dessous partagent la même mécanique — savoir si la session porte
 encore un SFTP utilisable — et se traitent donc ensemble. <strong>Options tranchées avec l'utilisateur
 le 2026-08-02</strong>. <strong>Points 1 et 2 livrés, testés et validés le 2026-08-02</strong>
 (branche <code>fix/sftp-session-perdue</code>, 4 commits, détail dans
 <a href="AI-HISTORY.html">AI-HISTORY</a>). <strong>Point 3 sans objet</strong> — sa prémisse était
-fausse, et ce qui a été livré à la place l'a été sur <code>fix/transferts-interrompus</code>. Seul
-le point 4 reste à faire, le chantier reste donc ouvert.</p>
+fausse, et ce qui a été livré à la place l'a été sur <code>fix/transferts-interrompus</code>.
+<strong>Point 4 livré, testé et validé le 2026-08-03</strong> (branche
+<code>fix/etat-transitoire</code>) : le chantier est clos. Trois constats en sont sortis sans être des
+manques de ce chantier — bascule sur <code>exit</code> non exercée, <code>downloadFolder</code> resté
+sur la voie héritée, contrôle d'arrivée pour les téléchargements du menu contextuel — repris dans
+<a href="#restes">Reste ouvert</a>.</p>
 
 <h4>1. Bug : après une perte de connexion, le panneau reste mort jusqu'au kill de l'onglet</h4>
 <p>Deux causes cumulées, l'une chez nous, l'autre chez Tabby :</p>
