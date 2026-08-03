@@ -37,6 +37,7 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
 <tr><td><a href="#robustesse">Robustesse : vérifier le couplage à l'hôte au démarrage</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#edition-profil">Édition de profil par l'API plutôt que par le DOM</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Haute</td></tr>
+<tr><td><a href="#points-fragiles">Combler les points de veille restants</a></td><td><span class="pill planned">📋 Proposé (2026-08-03)</span></td><td>Haute — session dédiée</td></tr>
 <tr><td><a href="#feature-flags">Interrupteurs par bloc de la sidebar</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
@@ -2215,6 +2216,108 @@ silence. <strong>Le pilotage DOM a été supprimé au lieu d'être instrumenté<
 réponse, dans ce cas-là, était de <strong>retirer le couplage</strong> — et elle a coûté moins cher
 que le garde-fou qu'on s'apprêtait à construire. Avant d'instrumenter un point de contact, poser la
 question dans cet ordre : peut-il disparaître ? Sinon seulement, comment le rendre bruyant.</p></div>
+
+<h3 id="points-fragiles">Combler les points de veille restants
+<span class="pill planned">📋 Proposé (2026-08-03)</span></h3>
+<p class="muted">Ouvert le 2026-08-03 à la demande de l'utilisateur, pour une session dédiée. Suite
+directe du <a href="#robustesse">contrôle de compatibilité</a> : celui-ci a rendu bruyants les
+couplages qu'il couvre, cette fiche liste ce qu'il <strong>ne</strong> couvre pas, par ordre de ce
+qu'il en coûterait.</p>
+
+<h4>État mesuré le 2026-08-03</h4>
+<p>Sévérité établie sur deux axes — <em>ce que la panne emporte</em> et <em>comment elle se
+manifeste</em>. Le second pèse plus lourd : une panne bruyante sur une grosse fonctionnalité coûte
+moins qu'une panne muette sur une petite.</p>
+<table>
+<tr><th>Point</th><th>Ce qui casse</th><th>Détection</th><th>Sévérité</th></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-7"><code>EditProfileModalComponent</code></a> — l'augmentation
+    de types <strong>ment</strong> à TypeScript sur <code>partialProfile</code> /
+    <code>profileProvider</code></td>
+    <td>Création <em>et</em> édition de profil</td>
+    <td><strong>Aucune</strong> : compile, puis modale vide au runtime</td>
+    <td>🔴 Élevée</td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-3">Classes <code>tabby-ssh</code></a> — panneau sous-classé,
+    <code>SSHTabComponent</code>, <code>SFTPSession</code></td>
+    <td>SFTP, sessions actives, tunnels</td>
+    <td>Compilation, précondition, et sonde du <a href="AI-CONTEXT.html#piege-34">#34</a></td>
+    <td>🟠 Moyenne</td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-8">Téléchargements servis par nous</a> — trois appuis non
+    contractuels</td>
+    <td>« Download » du menu contextuel</td>
+    <td>Partielle : le libellé « annulé » revient, sans autre signal</td>
+    <td>🟠 Moyenne</td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-5">Clone non garanti</a> de
+    <code>getProfileGroups()</code>/<code>buildGroupTree()</code></td>
+    <td><strong>Intégrité de <code>config.yaml</code></strong></td>
+    <td>Aucune — seule la discipline <code>structuredClone()</code> protège</td>
+    <td>🟠 Moyenne (impact critique, probabilité faible)</td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-4"><code>writeProfileGroup()</code> et sœurs</a></td>
+    <td>Re-parentage de dossier</td>
+    <td>Testable sur <code>grp-zzz-test-*</code></td>
+    <td>🟡 Faible</td></tr>
+<tr><td><code>.window.h-100.d-flex</code> dans <code>mount.service.ts</code></td>
+    <td>La sidebar entière</td>
+    <td>Fatale, notifiée et journalisée depuis le 2026-08-03</td>
+    <td>🟡 Faible</td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-2"><code>SettingsTabComponent.activeTab</code></a></td>
+    <td>Le seul repli « provider introuvable »</td>
+    <td>Visible immédiatement</td>
+    <td>🟢 Très faible</td></tr>
+<tr><td><a href="AI-CONTEXT.html#fragile-6"><code>profile-tree</code> non exporté</a></td>
+    <td>Rien</td>
+    <td>—</td>
+    <td>⚪ Nul — une simplification manquée, pas un risque</td></tr>
+</table>
+
+<div class="callout important"><span class="callout-title">Le chantier du 2026-08-03 a déplacé le
+risque, il ne l'a pas supprimé</span>
+<p><a href="#edition-profil">Passer l'édition de profil par l'API</a> a fait <strong>chuter</strong>
+<code>fragile-2</code> — <code>activeTab</code> ne porte plus qu'un repli rare au lieu de tout le
+chemin d'édition — et <strong>monter</strong> <code>fragile-7</code>, qui a désormais
+<strong>deux</strong> appelants au lieu d'un. Le risque a été concentré sur un point mieux choisi
+(une API que <code>tabby-settings</code> emploie lui-même, contre un DOM interne que personne ne
+garantit), mais plus chargé. Bon échange, pas victoire nette : le noter évite de relire la fiche
+comme si le sujet était clos.</p></div>
+
+<h4>Le trou principal, et comment le combler</h4>
+<p>Le contrôle de compatibilité vérifie que <code>EditProfileModalComponent</code>
+<strong>existe</strong>. Il ne vérifie pas que ses champs s'appellent encore
+<code>partialProfile</code> et <code>profileProvider</code> — et cette panne-là est muette
+<em>des deux côtés</em> : TypeScript se tait parce que l'augmentation affirme ces noms, Angular se
+tait parce qu'assigner une propriété inconnue à une instance est parfaitement légal.</p>
+<ul>
+<li><strong>Piste retenue à vérifier</strong> : Angular publie les entrées d'un composant dans
+  <code>ɵcmp.inputs</code>. Une cinquième précondition lisant cette table confirmerait les deux
+  entrées attendues et transformerait le seul point rouge en échec annoncé au démarrage.
+  <em>À établir avant de coder</em> : la forme exacte de la table sous Angular 15 (alias public →
+  nom de propriété, ou l'inverse), et son nom réel dans le bundle de production — un champ préfixé
+  <code>ɵ</code> n'est pas contractuel non plus, ce qui vaut d'être dit dans le code plutôt que
+  découvert.</li>
+<li><strong>Repli si la table n'est pas lisible</strong> : vérifier après coup plutôt qu'avant —
+  ouvrir la modale, relire <code>componentInstance.partialProfile</code> et signaler s'il est
+  <code>undefined</code>. Moins bon (l'utilisateur voit la modale s'ouvrir), mais robuste à la forme
+  interne d'Angular.</li>
+</ul>
+
+<h4>Les autres, par ordre de valeur</h4>
+<ul>
+<li><strong><code>fragile-5</code>, l'intégrité de <code>config.yaml</code></strong> : la discipline
+  <code>structuredClone()</code> n'est vérifiée par rien. Piste : un contrôle en développement
+  seulement (gelé/comparé après lecture), ou un helper unique par lequel passeraient tous les appels
+  à <code>getProfileGroups()</code> — le même raisonnement que <code>isSSHTab()</code>, qui a
+  transformé une convention en point unique vérifiable.</li>
+<li><strong><code>fragile-8</code></strong> : les trois appuis se vérifient à l'exécution
+  (l'entrée de menu appelle-t-elle bien <code>downloadItem()</code> ?). Une précondition est possible
+  mais le gain est plus faible — la panne est déjà partiellement visible.</li>
+<li><strong><code>fragile-6</code></strong> : à revérifier à chaque montée majeure de
+  <code>tabby-core</code>, sans urgence. S'il devenait exporté, la copie locale de
+  <code>profile-tree</code> disparaîtrait.</li>
+</ul>
+<div class="callout warning"><span class="callout-title">Ce que cette fiche ne promet pas</span>
+<p>Aucun de ces contrôles ne rend le plugin plus compatible. Ils changent le <em>mode d'échec</em> —
+c'est la même réserve que pour le <a href="#robustesse">contrôle de compatibilité</a>, et elle vaut
+d'être répétée ici parce qu'une liste de points « comblés » se relit facilement comme une liste de
+points « supprimés ».</p></div>
 
 <h3 id="edition-profil">Édition de profil par l'API plutôt que par le DOM
 <span class="pill done">✅ Fait (2026-08-03)</span></h3>
