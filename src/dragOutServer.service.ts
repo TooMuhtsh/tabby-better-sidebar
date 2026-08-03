@@ -325,7 +325,13 @@ export class SidebarPlusDragOutServer {
         // Announced here, not at `dragstart`: this is the moment the drop
         // actually happened and the bytes start moving. A gesture begun and
         // abandoned never shows up.
-        this.transfers.track(transfer)
+        //
+        // Flagged as handing over, and this route is the only one that does:
+        // serving the last byte hands the file to the shell, which still has to
+        // write it where it was dropped — so "terminé" is not ours to announce
+        // (piège #58). The marker route below is not concerned: there, the
+        // download *is* the final write, at a path we chose.
+        this.transfers.track(transfer, true)
         try {
             await offer.sftp.download(offer.item.fullPath, transfer)
         } catch (error) {
