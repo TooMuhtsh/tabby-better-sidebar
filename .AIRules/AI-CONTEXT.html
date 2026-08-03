@@ -492,7 +492,14 @@ plausibles (Bureau, Téléchargements, fenêtres de l'Explorateur ouvertes énum
 requête HTTP du marqueur signale de surcroît que le dépôt a eu lieu. Heuristique et non garantie —
 elle échoue sur un dépôt hors de ces emplacements — mais elle transforme une impossibilité en repli.
 Relevé chez <code>tabby-sftp-panel</code> ; conception dans
-<a href="ROADMAP.html#marqueur-depot">ROADMAP § marqueur de dépôt</a>.</p></div>
+<a href="ROADMAP.html#marqueur-depot">ROADMAP § marqueur de dépôt</a>.</p>
+<p><strong>Ce qui en est fait dans ce plugin</strong> : un <em>dossier</em> passe par le marqueur, donc
+c'est nous qui écrivons à un chemin connu — sa fin est exacte. Un <em>fichier</em> reste servi en
+<code>DownloadURL</code> portant ses vrais octets, délibérément : le marqueur suppose que la
+destination est un dossier du système de fichiers, ce qu'une zone d'envoi de navigateur ou un client
+de messagerie n'est pas. Pour lui, l'écart mesuré ici est couvert par un état <code>handover</code>
+(« remise au système ») levé sur une durée estimée d'après la taille — approximation assumée, faute de
+tout signal de fin.</p></div>
 
 <h3 id="piege-67">#67 — Une cible qui ne comprend pas une offre de fichier différé ne produit
 <em>aucun</em> signal</h3>

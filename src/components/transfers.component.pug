@@ -44,6 +44,15 @@
             span.transfer-speed(*ngIf='entry.state === "active"') {{ entry.speedLabel }}
             span.transfer-figure(*ngIf='entry.state === "active"') {{ entry.percent }}%
             span.transfer-figure(*ngIf='entry.state === "done"') {{ entry.sizeLabel }}
+            //- Our bytes are all served, but the file is not where it was
+            //- dropped yet: the shell copies it there itself, and says nothing
+            //- when it is done (piège #58). The wait shown is estimated from the
+            //- size — deliberately generous, so the line never claims a file is
+            //- in place before it can be.
+            span.transfer-figure(
+                *ngIf='entry.state === "handover"',
+                title='Transfert terminé — le système finit de placer le fichier à destination. La durée est estimée : rien ne signale la fin de cette copie.'
+            ) remise au système…
             span.transfer-figure(*ngIf='entry.state === "cancelled"') annulé
             //- The percentage reached is kept alongside: "interrompu" alone
             //- does not say whether 2 % or 98 % had made it across.

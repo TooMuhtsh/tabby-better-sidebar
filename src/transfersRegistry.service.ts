@@ -3,7 +3,11 @@ import { Injectable, NgZone } from '@angular/core'
 import { FileDownload, FileTransfer, PlatformService } from 'tabby-core'
 
 export type TransferDirection = 'up'|'down'
-export type TransferState = 'active'|'done'|'cancelled'|'failed'
+/**
+ * `handover` sits between the last byte we serve and the file actually being
+ * where the user dropped it — see `HANDOVER_BYTES_PER_MS`.
+ */
+export type TransferState = 'active'|'handover'|'done'|'cancelled'|'failed'
 
 /**
  * One line of the panel.
@@ -34,6 +38,13 @@ export interface TransferEntry {
     lastTickAt: number
     /** What killed the transfer, shown on hover. Empty unless the state is `failed`. */
     failureReason: string
+    /**
+     * True when the last byte served is not the end of the story: the shell
+     * still has to write the file where it was dropped.
+     */
+    handsOver: boolean
+    /** When the handover is estimated to be over. Only meaningful while the state is `handover`. */
+    handoverUntil: number
 }
 
 /** How often the visible figures are recomputed while something is running. */
@@ -48,6 +59,31 @@ const TICK_MS = 500
  * the network.
  */
 const SPEED_SMOOTHING = 0.25
+
+/**
+ * Assumed rate of the shell's own copy, in bytes per millisecond (~200 MB/s).
+ *
+ * A drag-out served as a `DownloadURL` is not finished when our last byte
+ * leaves: Chromium materialises the content into a temporary file and the shell
+ * *copies* that to the drop site — 22 seconds of it, measured on 5.52 GB across
+ * two volumes (piège #58). Announcing "terminé" at the end of our stream was
+ * therefore a lie of exactly that length.
+ *
+ * Nothing signals the end of that copy: the shell never reports back, and the
+ * destination is unknown on this route, so there is no file to watch either.
+ * The wait is estimated from the size instead, deliberately on the slow side of
+ * what was measured (250 MB/s) so the state ends late rather than early — the
+ * whole point being to stop claiming a file is in place before it can be.
+ * Approximate and accepted as such; a drop landing on the *same* volume is a
+ * rename rather than a copy, and finishes long before this says so.
+ */
+const HANDOVER_BYTES_PER_MS = 200 * 1024
+
+/** Floor on the handover, so a small file still shows the state rather than blinking through it. */
+const HANDOVER_MIN_MS = 400
+
+/** Ceiling, so a mis-estimate cannot leave a line stuck short of done. */
+const HANDOVER_MAX_MS = 120_000
 
 /** `1:07`, `12:05`, `1:02:33` — minutes and seconds, hours only when there are any. */
 function formatDuration (totalSeconds: number): string {
@@ -94,6 +130,20 @@ export class SidebarPlusTransfersService {
     }
 
     /**
+     * What still needs the tick to run — which is not the same as what can still
+     * be cancelled.
+     *
+     * A line in `handover` has nothing left to interrupt on our side, so it does
+     * not belong in `activeCount` (which drives "clearing will cancel them").
+     * It does need the tick, though: its own end is a deadline nothing else
+     * watches, and stopping the timer on the last *active* transfer would leave
+     * it saying "remise au système" for the rest of the session.
+     */
+    private get runningCount (): number {
+        return this.entries.filter(entry => entry.state === 'active' || entry.state === 'handover').length
+    }
+
+    /**
      * Shows a transfer this plugin started itself.
      *
      * `fileTransferStarted$` above covers everything that goes through
@@ -104,7 +154,7 @@ export class SidebarPlusTransfersService {
      * list is only ever emptied by clicking each line, so a hidden menu would
      * accumulate entries nobody can reach.
      */
-    track (transfer: FileTransfer): void {
+    track (transfer: FileTransfer, handsOver = false): void {
         this.zone.run(() => {
             const size = transfer.getSize()
             const now = Date.now()
@@ -125,6 +175,8 @@ export class SidebarPlusTransfersService {
                 lastBytes: 0,
                 lastTickAt: now,
                 failureReason: '',
+                handsOver,
+                handoverUntil: 0,
             })
             this.refreshSummary()
             this.startTicking()
@@ -150,7 +202,7 @@ export class SidebarPlusTransfersService {
             this.finish(entry, 'failed', Date.now())
             entry.failureReason = reason ?? ''
             this.refreshSummary()
-            if (!this.activeCount) {
+            if (!this.runningCount) {
                 this.stopTicking()
             }
         })
@@ -165,7 +217,9 @@ export class SidebarPlusTransfersService {
      * total when everything is over, the breakdown moving to the tooltip.
      */
     private refreshSummary (): void {
-        const active = this.entries.filter(entry => entry.state === 'active').length
+        // Counted with the active ones: a handover is not finished, and the
+        // badge exists to say whether anything still is not.
+        const active = this.runningCount
         const done = this.entries.filter(entry => entry.state === 'done').length
         const cancelled = this.entries.filter(entry => entry.state === 'cancelled').length
         const failed = this.entries.filter(entry => entry.state === 'failed').length
@@ -208,6 +262,15 @@ export class SidebarPlusTransfersService {
         let stillRunning = false
         const now = Date.now()
         for (const entry of this.entries) {
+            // Our part is over; only the estimated wait is left to run down.
+            if (entry.state === 'handover') {
+                if (now >= entry.handoverUntil) {
+                    this.finish(entry, 'done', now)
+                } else {
+                    stillRunning = true
+                }
+                continue
+            }
             if (entry.state !== 'active') {
                 continue
             }
@@ -223,6 +286,12 @@ export class SidebarPlusTransfersService {
             // whose completed/size ratio never moves off 0.
             if (entry.transfer.isComplete() || (entry.size > 0 && completed >= entry.size)) {
                 entry.percent = 100
+                if (entry.handsOver) {
+                    entry.handoverUntil = now + this.handoverDuration(entry.size)
+                    this.finish(entry, 'handover', now)
+                    stillRunning = true
+                    continue
+                }
                 this.finish(entry, 'done', now)
                 continue
             }
@@ -264,6 +333,12 @@ export class SidebarPlusTransfersService {
             : ''
     }
 
+    /** How long the shell is assumed to need to put a file of this size in place. */
+    private handoverDuration (size: number): number {
+        const estimate = size / HANDOVER_BYTES_PER_MS
+        return Math.min(HANDOVER_MAX_MS, Math.max(HANDOVER_MIN_MS, estimate))
+    }
+
     /** Freezes a finished line: the duration it took, and no figure that keeps moving. */
     private finish (entry: TransferEntry, state: TransferState, now: number): void {
         entry.state = state
@@ -292,7 +367,7 @@ export class SidebarPlusTransfersService {
         }
         this.entries = this.entries.filter(candidate => candidate !== entry)
         this.refreshSummary()
-        if (!this.activeCount) {
+        if (!this.runningCount) {
             this.stopTicking()
         }
     }
