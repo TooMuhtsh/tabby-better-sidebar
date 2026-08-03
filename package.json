@@ -17,7 +17,7 @@
   },
   "scripts": {
     "build": "webpack --progress --color",
-    "build:prod": "webpack --progress --color --mode production",
+    "build:prod": "webpack --progress --color --mode production && node -e \"require('fs').rmSync('dist/index.js.map', { force: true })\"",
     "watch": "webpack --progress --color --watch",
     "lint:airules": "html-validate \".AIRules/**/*.html\"",
     "prepublishOnly": "npm run build:prod"
