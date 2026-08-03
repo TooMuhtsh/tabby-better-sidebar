@@ -35,7 +35,7 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
-<tr><td><a href="#robustesse">Robustesse : vérifier le couplage à l'hôte au démarrage</a></td><td><span class="pill planned">📋 Proposé (élargi le 2026-08-03)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#robustesse">Robustesse : vérifier le couplage à l'hôte au démarrage</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#edition-profil">Édition de profil par l'API plutôt que par le DOM</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Haute</td></tr>
 <tr><td><a href="#feature-flags">Interrupteurs par bloc de la sidebar</a></td><td><span class="pill planned">📋 Proposé (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
@@ -2057,11 +2057,59 @@ mesurable du tout : sa pastille reste grise et il n'est plus sollicité.</p>
 <code>title</code> détruit l'infobulle affichée, donc une valeur qui se rafraîchit scintille sous le
 curseur.</p></div>
 
-<h3 id="robustesse">Robustesse — vérifier le couplage à l'hôte au démarrage</h3>
+<h3 id="robustesse">Robustesse — vérifier le couplage à l'hôte au démarrage
+<span class="pill done">✅ Fait (2026-08-03)</span></h3>
 <p class="muted">Fiche élargie le 2026-08-03, sur une observation de l'utilisateur : le plugin tire sa
 puissance d'une intégration profonde à Tabby, et c'est la même chose qui le rend cassable par une
-mise à jour mineure de l'hôte. Elle ne portait jusque-là que sur l'édition de profil, qui n'est qu'un
-des points de contact — ce cas reste le plus fragile et est repris tel quel en fin de fiche.</p>
+mise à jour mineure de l'hôte. Elle ne portait jusque-là que sur l'édition de profil — cas devenu
+sans objet, le couplage ayant été <a href="#edition-profil">supprimé</a> plutôt qu'instrumenté.
+Livré sur <code>refactor/edition-profil-modale-directe</code> puis
+<code>feat/controle-compatibilite-hote</code>.</p>
+
+<div class="callout note"><span class="callout-title">Fait — 18 contrôles CDP verts le 2026-08-03</span>
+<p>Deux mécanismes, l'un statique et l'autre en fonctionnement, dans
+<code>src/hostCompat.ts</code> :</p>
+<ul>
+<li><strong>Quatre préconditions nommées</strong>, évaluées une fois à <code>app.ready$</code> —
+  conteneur de montage, <code>SSHTabComponent</code>, <code>SFTPPanelComponent</code>/
+  <code>SFTPSession</code>, <code>EditProfileModalComponent</code>/<code>SettingsTabComponent</code>.
+  Chacune porte <em>la fonctionnalité qu'elle fait perdre</em>, ce qui donne un message utilisable
+  plutôt qu'un identifiant technique. Seul le conteneur est fatal : sans lui il n'y a rien à
+  dégrader. Une précondition qui <em>lève</em> compte comme échouée — avaler l'exception est ici le
+  comportement voulu, pas un oubli.</li>
+<li><strong>Une sonde de dédoublement</strong> (<a href="AI-CONTEXT.html#piege-34">piège #34</a>),
+  qu'aucun contrôle statique ne peut voir : avec deux <code>tabby-ssh</code> chargés, les quatre
+  préconditions passent — les classes existent, ce sont simplement les mauvaises. Le seul symptôme
+  observable est un objet dont le <code>constructor.name</code> vaut
+  <code>SSHTabComponent</code> mais qui échoue à l'<code>instanceof</code>.
+  <code>isSSHTab()</code> dans <code>src/tabs.ts</code> porte cette sonde, et les trois
+  <code>instanceof</code> dispersés y passent désormais — le partage n'économise pas une ligne, il
+  crée le point unique où l'hypothèse est vérifiée au lieu d'être supposée.</li>
+</ul>
+<p><strong>Signalement une fois, jamais en cascade</strong> : <code>verifyHost()</code> tourne à
+<code>ready$</code> et pas depuis <code>sync()</code>, qui se rejoue à chaque
+<code>config.changed$</code> et transformerait un hôte cassé en flux de toasts. La sonde de
+dédoublement mémorise la classe déjà signalée. Et le message part <em>aussi</em> en
+<code>console.error</code> : une notification disparaît en quelques secondes, or c'est précisément le
+genre de panne qu'on revient diagnostiquer plus tard.</p>
+<p><strong>Vérifié au test</strong> : hôte sain, aucun bruit ; conteneur neutralisé, verdict fatal,
+une notification, détail en console, sidebar non montée, <em>et l'hôte laissé sans classe
+résiduelle</em> — un plugin qui renonce n'a pas à continuer de masquer un morceau de l'interface de
+Tabby ; restauration, la sidebar revient et le verdict retombe. La sonde de dédoublement a été
+exercée avec un imposteur (bon nom, mauvaise identité) : elle se déclenche, une seule fois, et
+l'imposteur n'entre pas dans les sessions actives.</p>
+</div>
+<div class="callout warning"><span class="callout-title">Ce que ce contrôle ne fait pas, volontairement</span>
+<p><strong>Il ne rend pas le plugin plus compatible</strong> — il ne réduit ni ce qui casse ni la
+fréquence. Il change le <em>mode d'échec</em> : d'un non-événement (une sidebar qui n'apparaît pas,
+un panneau vide, un <code>instanceof</code> faux à jamais) vers quelque chose qui se lit. C'est un
+gain de diagnostic, à ne pas relire plus tard comme une promesse de solidité.</p>
+<p><strong>Le détail par fonctionnalité n'est pas encore consommé par le code</strong> : retirer un
+bloc précis (masquer la bascule SFTP quand <code>SFTPPanelComponent</code> a disparu) suppose un
+moyen d'éteindre un bloc, que construit
+<a href="#feature-flags">Interrupteurs par bloc</a>. Stocker la liste dès maintenant aurait posé un
+second mécanisme inutilisé en concurrence de celui qui arrive. <strong>C'est le point de jonction des
+deux chantiers</strong>.</p></div>
 
 <h4>Ce à quoi le plugin est réellement couplé</h4>
 <p>Inventaire fait sur <code>src/</code> avant d'écrire cette fiche, pour que le chantier porte sur

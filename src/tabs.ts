@@ -1,5 +1,35 @@
 import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
 import { SSHTabComponent } from 'tabby-ssh'
+import { noteIdentityMismatch } from './hostCompat'
+
+/**
+ * `tab instanceof SSHTabComponent`, and the one place that says so.
+ *
+ * The narrowing is shared not to save a line but to hold a probe. A second
+ * `tabby-ssh` in the plugin's `node_modules` gives homonym classes that are not
+ * the same objects, so this test goes false for tabs that plainly are SSH tabs
+ * — silently, forever, taking the active sessions list, the SFTP view and the
+ * tunnels with it (piège #34). The class name still matches in that state, and
+ * that disagreement is the only thing that can be observed from here.
+ *
+ * `constructor.name` survives Tabby's production build: its bundle is minified
+ * but keeps class names — the plugin already leans on this to find components
+ * from the CDP console. If a future build did mangle them, this probe would
+ * simply stop reporting, never misreport: a mangled name matches nothing.
+ */
+export function isSSHTab (tab: BaseTabComponent): tab is SSHTabComponent {
+    if (tab instanceof SSHTabComponent) {
+        return true
+    }
+    if (tab?.constructor?.name === 'SSHTabComponent' && noteIdentityMismatch('SSHTabComponent')) {
+        console.warn(
+            '[tabby-better-sidebar] Un onglet SSHTabComponent ne passe pas son `instanceof` : ' +
+            'deux copies de tabby-ssh sont chargées (voir AI-CONTEXT, piège #34). ' +
+            'Sessions actives, SFTP et tunnels resteront vides.',
+        )
+    }
+    return false
+}
 
 /**
  * Every tab currently open, with split tabs flattened into their panes.

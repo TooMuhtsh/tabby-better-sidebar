@@ -16,7 +16,7 @@ import {
 } from '@angular/core'
 import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
 import { SSHTabComponent } from 'tabby-ssh'
-import { getAllOpenTabs, isLiveSSHTab } from '../tabs'
+import { getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { SidebarPlusNoticesService } from '../notices.service'
 import { SidebarPlusSftpBrowserComponent } from './sftpBrowser.component'
 
@@ -302,11 +302,12 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         if (tab instanceof SplitTabComponent) {
             tab = tab.getFocusedTab()
         }
-        // This `instanceof` only holds because `tabby-ssh` is absent from
-        // node_modules — see src/types/tabby-ssh/PROVENANCE.md. Reinstall it
-        // and this silently returns null forever, against a class that merely
-        // shares its name.
-        if (!(tab instanceof SSHTabComponent)) {
+        // Narrowed through isSSHTab() rather than inline: reinstalling
+        // `tabby-ssh` into node_modules would make this test false forever
+        // against a class that merely shares its name
+        // (src/types/tabby-ssh/PROVENANCE.md, piège #34), and that shared
+        // helper is what notices and says so.
+        if (!isSSHTab(tab)) {
             return null
         }
         // A tab whose session is still negotiating (or already dropped) has no
