@@ -4,8 +4,8 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 [`GOUVERNANCE-IA.md`](./GOUVERNANCE-IA.md), partie B.
 
 - **Profil de départ** : `complet`
-- **Charte au moment du cadrage** : `20260731-150737`
-- **Dernière revue de ce profil** : 2026-08-01 (entretien rouvert sur la seule clé `attribution`)
+- **Charte au moment du cadrage** : `20260731-204511`
+- **Dernière revue de ce profil** : 2026-08-03 (entretien complet relu ; seule `seuil` a changé)
 
 ## Choix
 
@@ -22,7 +22,7 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 | `attribution` | `non` | tranché le 2026-08-01, en remplacement de `oui` : aucune métadonnée d'attribution IA dans les messages de commit. La trace de la collaboration reste **dans les documents de gouvernance**, qui la portent avec leur contexte, plutôt que dans un historique Git où elle est bruit. L'historique existant a été purgé dans le même geste — décision assumée malgré la réécriture des hashs |
 | `authentification` | compte `TooMuhtsh`, `gh` CLI authentifié via le trousseau de l'OS, opérations Git en HTTPS | identité de commit configurée **localement** à ce dépôt, pas globalement ; ne jamais committer sous une autre adresse sans confirmation |
 | `branches` | `branche` | tranché au cadrage, en changement de la pratique antérieure : un chantier non abouti et sa documentation arrivent ensemble sur `master`, ce qui garantit A-10 mécaniquement plutôt que par vigilance |
-| `seuil` | `strict` | un statut de chantier engage ; seul le contexte s'écrit au fil de l'eau |
+| `seuil` | `roadmap-libre` | tranché le 2026-08-03, en remplacement de `strict`. La roadmap s'écrit librement, le **journal reste sous validation**. Motif tiré de deux cas constatés le même jour : un chantier corrige en passant ce qu'une autre fiche décrit — les trois défauts mineurs du voisinage `config.store`, puis `build:prod` et `filesize` —, la fiche voisine n'est pas la sienne, et le feu vert nécessaire pour la rectifier n'arrive jamais. Une roadmap périmée ment autant qu'une roadmap écrite sans arbitrage ; c'était le risque inverse, et c'est celui qui s'est réalisé. La contrepartie est assumée : un statut peut désormais bouger sans arbitrage explicite |
 | `roadmap-avant-code` | `oui` | une idée exprimée en vrac se consigne avec son design étudié et attend l'arbitrage ; l'implémentation démarre sur consigne explicite |
 | `mot-cloture` | `MAJ` | transverse au workspace : feu vert d'A-3, mise à jour des documents, vérification de `CLAUDE.md`, commit, push — la chaîne s'arrête à la première étape qui échoue et dit où. Remplace `CLOTURE` depuis le 2026-07-31. **Moins distinctif que le précédent** — c'est l'abréviation usuelle de « mise à jour », si bien que la règle de désambiguïsation rappelée dans `CLAUDE.md` porte ici l'essentiel du travail : dans le doute, demander plutôt qu'exécuter |
 | `mot-cadrage` | `GOUVERNANCE` | transverse au workspace : rouvre cet entretien, en entier ou sur les clés nommées après le mot |
@@ -37,7 +37,9 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 ## Questions non tranchées
 
 Aucune. Les vingt-deux options ont reçu une réponse explicite au cadrage du 2026-07-31 ;
-aucune ligne ne porte « défaut appliqué, non tranché ».
+aucune ligne ne porte « défaut appliqué, non tranché ». Les vingt-deux ont été relues le
+2026-08-03 sous la charte `20260731-204511` : les clés de la charte et celles de ce tableau
+correspondent une à une, et seule `seuil` a changé de valeur.
 
 ## Historique des changements
 

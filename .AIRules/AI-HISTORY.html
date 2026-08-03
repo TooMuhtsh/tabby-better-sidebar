@@ -24,6 +24,38 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Cadrage relu, et <code>seuil</code> passe à <code>roadmap-libre</code> (2026-08-03)</h2>
+<p>Entretien complet rouvert à la demande de l'utilisateur, sous la charte
+<code>20260731-204511</code>. Les vingt-deux clés de la charte et les vingt-deux lignes de
+<a href="PROFIL.md">PROFIL.md</a> ont été confrontées une à une : elles correspondent exactement,
+aucune ajoutée ni retirée. La ligne « Charte au moment du cadrage » passe donc de
+<code>20260731-150737</code> à <code>20260731-204511</code> — elle attendait précisément cette
+relecture, et l'avancer plus tôt aurait écrit un fait faux (voir
+<a href="ROADMAP.html#remise-a-niveau">le chantier de remise à niveau</a>).</p>
+<p><strong>Une seule option change</strong> : <code>seuil</code>, de <code>strict</code> à
+<code>roadmap-libre</code>. La roadmap s'écrit désormais librement ; <strong>le journal reste sous
+validation</strong>. Le motif n'est pas une commodité mais un défaut constaté deux fois le même
+jour : un chantier corrige en passant ce qu'une autre fiche décrit — les trois défauts mineurs du
+voisinage <code>config.store</code>, corrigés en construisant l'intégrité des données, puis
+<code>build:prod</code> et <code>filesize</code>, réglés dans la préparation de la 0.3.0 — et la
+fiche voisine, qui n'appartient à aucun de ces chantiers, reste périmée faute d'un feu vert que
+personne ne pense à demander. <em>Une roadmap périmée ment autant qu'une roadmap écrite sans
+arbitrage</em> : c'était le risque inverse de celui que <code>strict</code> protège, et c'est
+celui-là qui s'est réalisé.</p>
+<p><strong>Contrepartie assumée</strong>, écrite ici pour qu'elle ne se redécouvre pas :
+un statut de chantier peut désormais bouger sans arbitrage explicite de l'utilisateur. Ce qui la
+borne, c'est que le journal, lui, ne bouge pas — et qu'un statut « Fait » continue de reposer sur
+une validation en conditions réelles, qui est une autre règle.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>49bf8c4</code></td>
+<td><strong><code>seuil</code> → <code>roadmap-libre</code></strong>, les vingt-et-une autres
+options confirmées telles quelles. <code>CLAUDE.md</code> mis à jour dans le même geste : il
+annonçait un feu vert portant sur la roadmap <em>et</em> le journal.</td></tr>
+</table>
+
 <h2>Le build de publication n'embarque plus de source-map (2026-08-03)</h2>
 <p>Premier des points de <a href="ROADMAP.html#menage-release">Ménage avant release soignée</a> à
 être traité. Deux des trois y étaient déjà faits sans que la fiche le dise :

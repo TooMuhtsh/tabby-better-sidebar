@@ -288,7 +288,15 @@ anciens commits sans les supprimer de GitHub (.AIRules/AI-CONTEXT.html, piège
 
 Le dossier `.AIRules/` se commite et se pousse **à chaque modification**, dans
 la foulée du travail qu'il décrit (`A-10`). Le feu vert de l'utilisateur porte
-sur le fait d'écrire dans `AI-HISTORY.html`/`ROADMAP.html`, pas sur le push.
+sur le fait d'écrire dans `AI-HISTORY.html`, pas sur le push.
+
+**La roadmap, elle, s'écrit librement** (option `seuil` = `roadmap-libre`,
+tranchée le 2026-08-03 en remplacement de `strict`) : corriger une fiche périmée
+ou consigner une idée n'attend aucun feu vert. Le motif est un défaut constaté
+deux fois — un chantier corrige en passant ce qu'une autre fiche décrit, et
+cette fiche-là reste fausse faute d'une autorisation que personne ne pense à
+demander. Le journal reste sous validation, et « Fait » continue de reposer sur
+un test en conditions réelles.
 
 **Un chantier non abouti vit sur une branche** (option `branches`, tranchée au
 cadrage du 2026-07-31 en changement de la pratique antérieure) : sa
