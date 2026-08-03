@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #67.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #68.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -41,7 +41,7 @@ Tabby.</p>
 <li><a href="#cat-identite">Identité du projet</a></li>
 <li><a href="#cat-env">Environnement &amp; build</a> — #1, #2, #4, #5</li>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56</li>
-<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64 + 6 points de veille</li>
+<li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64, #67 + 6 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62 + 2 points de veille</li>
 <li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8, #63</li>
@@ -493,6 +493,23 @@ requête HTTP du marqueur signale de surcroît que le dépôt a eu lieu. Heurist
 elle échoue sur un dépôt hors de ces emplacements — mais elle transforme une impossibilité en repli.
 Relevé chez <code>tabby-sftp-panel</code> ; conception dans
 <a href="ROADMAP.html#marqueur-depot">ROADMAP § marqueur de dépôt</a>.</p></div>
+
+<h3 id="piege-67">#67 — Une cible qui ne comprend pas une offre de fichier différé ne produit
+<em>aucun</em> signal</h3>
+<p>Mesuré le 2026-08-03 en déposant un dossier distant sur le Terminal Windows puis sur MobaXterm :
+rien ne se passe, et rien ne peut se passer. Ces applications acceptent du texte ou une liste de
+chemins réels, pas une offre <code>DownloadURL</code>, dont le contenu est produit à la demande. Elles
+ne réclament donc jamais l'URL — le serveur local ne reçoit aucune requête.</p>
+<p>Conséquence à ne pas confondre avec une panne : sur cette voie, <strong>la requête HTTP est le seul
+signal qu'un dépôt a eu lieu</strong>. Pas de requête ⇒ pas de dépôt à traiter, donc pas de marqueur
+écrit, et le repli « destination introuvable » <strong>ne se déclenche pas</strong> — ce qui est le
+comportement voulu : une cible incompatible ne doit pas provoquer une livraison surprise dans le
+dossier de repli. Ce repli ne couvre que le cas inverse, où la cible a bien accepté l'offre mais où le
+marqueur n'est pas retrouvé.</p>
+<p>Corollaire : rien ne permet d'avertir l'utilisateur que la cible a refusé. Il n'existe aucun retour
+de la cible vers la source, et le seul indice disponible côté fenêtre — un <code>dragend</code> à
+<code>dropEffect: 'none'</code> — ne distingue pas un refus d'un geste abandonné. Écart assumé par
+l'utilisateur : « il faut que la cible soit valide ».</p>
 
 <h3 id="piege-61">#61 — <code>SFTPSession.download()</code> ne consulte jamais l'annulation : seule
 une exception arrête la boucle</h3>
