@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #70.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #71.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -43,7 +43,7 @@ Tabby.</p>
 <li><a href="#cat-angular">Composants Angular dans un plugin tiers</a> — #3, #14, #15, #18, #19, #21, #22, #30, #33, #39, #41, #42, #52, #54, #56, #69</li>
 <li><a href="#cat-api-tabby">Vérifier une classe/API Tabby avant de s'y fier</a> — #6, #13, #17, #32, #34, #35, #36, #37, #38, #43, #44, #45, #46, #48, #49, #50, #51, #53, #55, #57, #58, #59, #60, #61, #64, #67 + 6 points de veille</li>
 <li><a href="#cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</a> — #12, #16, #23, #24, #25, #26, #27, #28, #29, #31, #40, #62, #68 + 2 points de veille</li>
-<li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47</li>
+<li><a href="#cat-git">Git &amp; GitHub</a> — #9, #10, #11, #47, #70</li>
 <li><a href="#cat-debug">Debug &amp; workflow de dev</a> — #8, #63</li>
 <li><a href="#cat-npm">Publication &amp; distribution npm</a> — #20</li>
 </ul>
@@ -55,8 +55,14 @@ Tabby.</p>
   Le loader de plugins Tabby se base sur le nom du dossier dans <code>plugins/node_modules/</code>
   (déjà correct), pas sur <code>package.json.name</code> ni le nom du dossier source — incohérence
   cosmétique sans impact fonctionnel.</li>
-<li><code>LICENSE</code> garde encore le placeholder <code>"tabby-sidebar-plus contributors"</code>
-  — à corriger avant une release soignée.</li>
+<li><code>LICENSE</code> porte <code>"Copyright (c) 2026 tabby-better-sidebar contributors"</code> —
+  formule valable en soi, mais le champ <code>author</code> de <code>package.json</code> dit
+  <code>TooMuhtsh</code> : à aligner avant une release soignée (chantier
+  <a href="ROADMAP.html#menage-release">Ménage</a>).</li>
+<li><strong>Aucune donnée réelle de l'utilisateur dans les documents de ce dépôt</strong> : ni nom
+  d'hôte, ni arborescence de son parc, ni nom d'organisation. Ce dépôt est public et le retrait
+  n'est jamais complet une fois publié (<a href="#piege-70">#70</a>). Exemple neutre :
+  <code>app.exemple.fr</code>.</li>
 <li>Identité Git configurée <strong>localement à ce dépôt uniquement</strong> (pas
   <code>--global</code>) : <code>TooMuhtsh &lt;188712716+TooMuhtsh@users.noreply.github.com&gt;</code>
   (email noreply GitHub du compte perso). À reconfigurer manuellement sur toute nouvelle machine
@@ -1232,7 +1238,16 @@ la branche de sauvegarde faite juste avant. Ce qui sauve réellement, c'est
 la correspondance ancien→nouveau ne se reconstitue pas par simple position dans
 <code>git rev-list --reverse</code>, et il faut un vrai outil de mapping.</li>
 <li><strong>Après</strong> : <code>git diff refs/original/refs/heads/master master</code> doit être
-<strong>vide</strong> — c'est le contrôle qui prouve qu'on n'a touché qu'aux messages.</li>
+<strong>vide</strong> — c'est le contrôle qui prouve qu'on n'a touché qu'aux messages. Il ne vaut
+que pour une purge de <em>messages</em> : une purge de contenu (<code>--tree-filter</code>) change
+l'arbre par construction, et le contrôle qui la prouve est l'absence d'occurrence dans
+<strong>tous</strong> les commits, pas seulement au HEAD.</li>
+<li><strong>La table de correspondance n'existe plus après coup.</strong> <code>filter-branch</code>
+écrit sa map dans un répertoire temporaire qu'il efface en terminant — <code>.git/filter-branch/map</code>
+est introuvable quand on en a besoin. Elle se reconstitue depuis <code>refs/original</code>, qui
+survit, en appariant les deux listes <code>rev-list --topo-order --reverse</code>. Apparier sur la
+position <strong>et vérifier sujet et date à chaque rang</strong> : sans ce contrôle, un décalage
+d'un seul cran réécrirait toute la documentation avec des hashs faux mais plausibles.</li>
 <li><strong>Reporter les hashs cités dans la documentation</strong>, sinon tout le journal pointe
 dans le vide. Et ne pas remplacer aveuglément toute chaîne de 7 caractères hexadécimaux : les
 empreintes de <em>blob</em> (contrôle de conformité de la charte, cf. #47) leur ressemblent
@@ -1255,6 +1270,25 @@ git -C &lt;clone-canonique&gt; rev-parse HEAD:GOUVERNANCE-IA.md</code></pre>
 <p>Sur le contenu de travail, <code>diff --strip-trailing-cr</code> donne la même réponse. La
 comparaison des identifiants de version en pied de page reste le contrôle le plus rapide, et il
 suffit dans la plupart des cas.</p></div>
+
+<h3 id="piege-70">#70 — Un <code>push --force</code> ne retire rien de GitHub</h3>
+<p>Réécrire l'historique puis forcer le push déréférence les anciens commits sans les supprimer :
+ils <strong>répondent encore par leur hash</strong> sur github.com et par l'API. Ne jamais présenter
+une purge comme terminée sur la seule foi du push.</p>
+<div class="callout warning"><span class="callout-title">Ce qui rend la survie définitive</span>
+<p>Un seul <strong>fork</strong> suffit — les dépôts d'un même réseau partagent leur stockage — et
+une <code>refs/pull/*</code> est une vraie référence, permanente. Les deux se vérifient avant de
+conclure quoi que ce soit :</p>
+<pre><code>gh api repos/&lt;owner&gt;/&lt;repo&gt; --jq '{forks: .forks_count, network: .network_count}'
+git ls-remote &lt;url&gt;</code></pre>
+<p>Sans fork ni PR, un ramassage côté GitHub finit probablement par l'emporter — sans garantie ni
+délai annonçable. La seule voie certaine est un ticket au support GitHub, que seul le titulaire du
+compte peut ouvrir.</p></div>
+<p>Corollaire sur ce qu'on publie : un nom d'hôte, une arborescence de dossiers ou un nom
+d'organisation repris des <strong>vraies données de l'utilisateur</strong> n'ont pas leur place dans
+un document de ce dépôt, qui est public. Un exemple neutre (<code>app.exemple.fr</code>) porte le
+propos aussi bien. Une fois publié, le retrait n'est jamais complet — c'est tout l'objet de ce
+piège.</p>
 
 <h2 id="cat-debug">Debug &amp; workflow de dev</h2>
 

@@ -24,6 +24,56 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Purge des données réelles de l'utilisateur dans le dépôt public (2026-08-03)</h2>
+<p>Demande de l'utilisateur, née d'une vérification d'attribution : la documentation de ce dépôt
+public citait le <strong>nom de l'employeur de l'utilisateur</strong>, un <strong>nom d'hôte de son
+infrastructure</strong> et l'organisation de son parc, repris de ses vraies données au fil des
+passes de test. Rien de secret — aucun identifiant, aucun accès — mais de l'information interne qui
+n'a pas à être publiée.</p>
+<p><strong>Ce que la vérification a établi au passage</strong>, et qui n'était pas l'objet de la
+demande : ce dépôt ne porte <em>aucune</em> métadonnée d'attribution IA, sur les 149 commits et
+toutes références confondues, et son unique contributeur GitHub est <code>TooMuhtsh</code>. La purge
+du 2026-08-01 a tenu et aucun commit depuis n'en a réintroduit. La page GitHub qui semblait dire le
+contraire servait un cache.</p>
+<p><strong>Exception assumée à l'ajout seul</strong> : la purge a réécrit les entrées existantes de
+ce journal, seule façon de retirer la mention de l'historique. Deux motifs de remplacement,
+<code>App.&lt;employeur&gt;.fr</code> vers <code>app.exemple.fr</code> et le nom seul vers
+<code>Travail</code>, appliqués à tout l'arbre de chacun des 149 commits — dont
+<code>tabby_sidebar_roadmap.md</code>, supprimé du HEAD depuis le 2026-07-26 mais toujours vivant
+dans l'historique. C'est le genre de fichier qu'une recherche au HEAD ne montre pas.</p>
+<p><strong>Deux enseignements sur la réécriture</strong>, qui corrigent le
+<a href="AI-CONTEXT.html#piege-11">piège #11</a> : <code>filter-branch</code> <em>efface</em> sa
+table de correspondance en fin de course, il faut donc la reconstituer depuis
+<code>refs/original</code> — et l'apparier sur le sujet <em>et</em> la date de chaque commit, pas
+seulement sur la position, faute de quoi un décalage d'un cran passerait inaperçu. Et le contrôle
+« <code>git diff refs/original… master</code> doit être vide » ne vaut que pour une purge de
+<em>messages</em> : ici l'arbre change par construction.</p>
+<p><strong>Ce qui n'est pas refermé</strong>, et ne peut pas l'être depuis le poste : un
+<code>push --force</code> ne supprime rien chez GitHub. L'ancien sommet répond encore par son hash.
+Aucune référence ne pointe plus vers lui (ni fork, ni <code>refs/pull/*</code>, ni tag), donc un
+ramassage côté GitHub finira probablement par l'emporter, mais rien ne le garantit ni ne le date —
+seul un ticket au support purge réellement. Arbitrage de l'utilisateur : on laisse courir, le
+contenu retiré ne donnant aucun accès. Voir <a href="AI-CONTEXT.html#piege-70">piège #70</a>.</p>
+<p>Le paquet npm publié (0.2.0, 2026-07-26) a été téléchargé et inspecté : indemne, la mention étant
+postérieure à sa publication.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>7b3c461</code></td>
+<td><strong>Hashs cités remis à jour.</strong> 123 références dans le journal et la roadmap, la
+réécriture les ayant toutes périmées. Six chaînes hexadécimales laissées intactes à dessein : deux
+empreintes de <em>blob</em> de la charte (<code>6e52454</code>, <code>10ddd25</code>, cf.
+<a href="AI-CONTEXT.html#piege-47">#47</a>) et deux ids de groupe Tabby — aucune n'est un
+commit.</td></tr>
+
+<tr><td>2026-08-03</td><td><code>0192382</code></td>
+<td><strong>Réécriture des 149 commits</strong> (sommet d'origine <code>dc8fd95</code>). Sauvegarde
+préalable en <strong>clone miroir hors du dépôt</strong>, pas en branche —
+<a href="AI-CONTEXT.html#piege-11">#11</a>. <code>refs/original</code> et reflog purgés,
+<code>gc --prune=now</code>, puis contrôle : plus aucune occurrence dans aucun objet.</td></tr>
+</table>
+
 <h2>L'éditeur par type de fichier est écarté (2026-08-03)</h2>
 <div class="callout note"><span class="callout-title">Ajout du 2026-08-03, après vérification —
 le résidu annoncé plus bas n'existe pas</span>

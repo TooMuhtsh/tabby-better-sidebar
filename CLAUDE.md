@@ -9,9 +9,9 @@ Dépôt distant : https://github.com/TooMuhtsh/tabby-better-sidebar (public).
 
 **Avant toute session de travail sur ce projet, lire `.AIRules/README.html`**
 (index + protocole), puis `.AIRules/AI-CONTEXT.html` (invariants, pièges déjà
-rencontrés — numérotés jusqu'à #66, le #7 est un trou hérité de la
-restructuration doc ; le prochain numéro libre est indiqué en tête du fichier —
-et points fragiles à revérifier après mise à jour de Tabby) et
+rencontrés — le prochain numéro libre est indiqué en tête de ce fichier, qui en
+est la seule source ; le #7 est un trou hérité de la restructuration doc — et
+points fragiles à revérifier après mise à jour de Tabby) et
 `.AIRules/AI-HISTORY.html`/`.AIRules/ROADMAP.html` pour l'état d'avancement et
 ce qui reste à faire. Ouvrir ces fichiers directement dans un navigateur
 (navigation commune entre les 4 pages). Plusieurs bugs Windows/Tabby non
@@ -269,6 +269,14 @@ antérieur a été purgé et force-poussé dans le même geste. La trace de la
 collaboration IA vit dans `.AIRules/`, qui la porte avec son contexte. À
 rediscuter avec l'utilisateur si ce choix doit changer, jamais à trancher au
 coup par coup.
+
+**Aucune donnée réelle de l'utilisateur dans un fichier de ce dépôt** — ni nom
+d'hôte, ni arborescence de son parc, ni nom d'organisation, y compris dans un
+commentaire de code ou un exemple d'affichage. Le dépôt est public, et un
+retrait après coup n'est jamais complet : un `push --force` déréférence les
+anciens commits sans les supprimer de GitHub (.AIRules/AI-CONTEXT.html, piège
+#70). Utiliser un exemple neutre, `app.exemple.fr`. Purge menée le 2026-08-03,
+149 commits réécrits.
 
 Le dossier `.AIRules/` se commite et se pousse **à chaque modification**, dans
 la foulée du travail qu'il décrit (`A-10`). Le feu vert de l'utilisateur porte
