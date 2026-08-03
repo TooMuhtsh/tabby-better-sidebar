@@ -24,7 +24,7 @@ ailleurs (CLAUDE.md, ROADMAP.html) — elle ne reflète donc plus l'ordre d'appa
 Les commandes de build/dev restent dans <code>CLAUDE.md</code> à la racine du dépôt — ce fichier ne
 les duplique pas.</p>
 
-<p><strong>Prochain numéro libre : #75.</strong> Qui ajoute un piège prend ce numéro et incrémente
+<p><strong>Prochain numéro libre : #76.</strong> Qui ajoute un piège prend ce numéro et incrémente
 cette ligne dans le même geste. Le #7 est un trou hérité de la restructuration doc ; un numéro
 consommé ne se réattribue jamais, même si son entrée disparaît.</p>
 
@@ -697,6 +697,42 @@ erreur mais ferait planter silencieusement la modale. → Augmentation de type d
 (<code>src/tabby-settings-augment.d.ts</code>) avec les vrais noms de champs, vérifiés directement
 dans le bundle compilé (jamais seulement les typings ni le <code>.ts</code> source de l'app).</p>
 
+<h3 id="piege-75">#75 — Vérifier qu'un composant de l'hôte déclare bien une entrée : lire
+<code>propName</code>, jamais <code>templateName</code> — la doc d'Angular donne l'exemple à l'envers</h3>
+<p>Assigner un <code>@Input()</code> à la main sur une instance ne prouve rien : la propriété est
+créée si elle n'existe pas, sans erreur. Pour savoir ce qu'un composant déclare *vraiment*,
+<code>reflectComponentType()</code> d'<code>@angular/core</code> est la bonne porte — <strong>API
+publique</strong> (<code>@publicApi</code>, depuis 14.1), donc préférable à la table brute
+<code>ɵcmp.inputs</code> : se prémunir d'un champ non contractuel en en lisant un autre ne protège
+de rien. Vérifiée aux deux niveaux du <a href="#piege-13">#13</a> : déclarée dans les typings npm
+d'Angular 15.2.10, et présente comme <code>function reflectComponentType</code> exportée dans le
+bundle que Tabby charge.</p>
+<p>Restent deux façons de lire son résultat de travers, et les deux donnent une alerte permanente
+sur un hôte parfaitement sain.</p>
+<ul>
+<li><strong>Une entrée a deux noms.</strong> <code>EditProfileModalComponent</code> déclare
+  <code>@Input('profile') partialProfile</code> : <code>partialProfile</code> est la propriété —
+  celle qu'on assigne — et <code>profile</code> le nom public, celui d'un binding de template.
+  Le miroir rend <code>{ propName: 'partialProfile', templateName: 'profile' }</code>. Quand on
+  assigne sur l'instance, c'est <code>propName</code> qu'il faut chercher.</li>
+<li><strong>La documentation d'Angular intervertit les deux</strong> dans son propre exemple
+  (<code>@Input('inputName') inputPropName</code> y donne
+  <code>{propName: 'inputName', templateName: 'inputPropName'}</code>). C'est faux : dans
+  l'implémentation, <code>invertObject()</code> construit <code>def.inputs</code> indexé par le nom
+  <em>public</em>, et <code>toRefArray()</code> remet la valeur — donc la propriété — dans
+  <code>propName</code>. Lire l'implémentation dans le bundle, pas le commentaire au-dessus.</li>
+</ul>
+<p>Corollaire pour qui serait tenté par <code>ɵcmp.inputs</code> quand même : cette table est
+<strong>indexée par le nom public</strong>. Mesuré sur l'app installée —
+<code>{ profile: 'partialProfile', profileProvider: 'profileProvider', … }</code> — donc y chercher
+la clé <code>partialProfile</code> échoue à tous les démarrages.</p>
+<p class="muted">Deux points de mise en œuvre : en JIT, <code>ɵcmp</code> est un accesseur paresseux,
+et lire le miroir peut être ce qui déclenche la compilation du composant — sans risque ici, le build
+de Tabby remplaçant <code>templateUrl</code> par un <code>template</code> en ligne, donc sans
+ressource non résolue sur laquelle échouer. Et un miroir <code>null</code> ne veut pas dire « les
+champs ont disparu » mais « Angular n'a rien voulu dire » : c'est un verdict à part, qui ne doit
+jamais valoir échec.</p>
+
 <h3 id="piege-32">#32 — Deux paquets <code>tabby-ssh</code> de <em>même numéro de version</em> mais de contenu différent</h3>
 <div class="callout warning"><span class="callout-title">Le numéro de version ne départage rien</span>
 <p><code>node_modules/tabby-ssh</code> (npm, utilisé à la compilation) et
@@ -972,10 +1008,28 @@ tienne la <em>vraie</em> classe et non un doublon, cf. piège #34.</p></div>
 exporté — simplifierait la maintenance en permettant de réutiliser le composant natif au lieu de
 la copie locale.</p>
 
-<h4 id="fragile-7"><code>EditProfileModalComponent</code> (utilisé pour "Nouveau profil...")</h4>
-<p>Augmentée manuellement avec les noms de champs réels (piège #17). Si une future version de Tabby
-renomme ces champs, l'erreur sera silencieuse à la compilation (l'augmentation "ment" à
-TypeScript) — seul un test manuel de "Nouveau profil..." révélera le problème.</p>
+<h4 id="fragile-7"><code>EditProfileModalComponent</code> — noms des deux entrées
+<span class="pill done">✅ Vérifié au démarrage depuis le 2026-08-03</span></h4>
+<p>Le point le plus sévère du plugin jusqu'à cette date, parce que sa panne était muette
+<em>des deux côtés</em> : TypeScript se taisait, l'augmentation affirmant les noms de champs
+(piège #17) ; Angular aussi, assigner une propriété inconnue à une instance étant parfaitement
+légal. Un renommage dans Tabby compilait, puis ouvrait une modale vide, sans une ligne de journal.
+Seul un essai manuel de « Nouveau profil… » le révélait.</p>
+<p><strong>Ce qui a changé</strong> : <code>src/profileModal.ts</code> est le point unique par lequel
+la modale s'ouvre — les deux entrées n'y sont nommées qu'une fois, et c'est cette même liste que la
+précondition <code>edit-profile-modal</code> confronte à ce qu'Angular déclare, par
+<code>reflectComponentType()</code> (<a href="#piege-75">piège #75</a>, à lire avant d'y toucher :
+la table se lit par <code>propName</code>, l'entrée portant l'alias public <code>profile</code>).
+Un renommage donne désormais, au démarrage, un message nommant le champ absent <em>et</em> les
+entrées réellement déclarées, une notice à l'utilisateur, et un refus d'ouvrir — plutôt qu'une
+fenêtre vide dont personne ne peut rien tirer.</p>
+<p><strong>Ce qui reste à surveiller</strong>, et que rien ne vérifie : le contrat de
+<code>providerForProfile()</code>/<code>writeProfile()</code>. Tous deux sont dans les typings, donc
+un renommage s'y verrait à la compilation.</p>
+<div class="callout warning"><span class="callout-title">Ce que ce contrôle ne fait pas</span>
+<p>Il ne rend le plugin compatible avec rien. Une version de Tabby qui renomme ces champs casse la
+création et l'édition de profils exactement comme avant — la seule différence est qu'elle le
+<em>dit</em>. Relire cette fiche comme un point supprimé serait un contresens.</p></div>
 
 <h2 id="cat-config">Intégrité de <code>config.yaml</code> &amp; persistance</h2>
 <p class="muted">La catégorie la plus critique du projet — a réellement corrompu des données de
@@ -993,6 +1047,12 @@ cette propriété polluante est sérialisée → groupes dupliqués/orphelins da
 <p><strong>Fix retenu</strong> : <code>structuredClone()</code> sur <code>groups</code> juste après
 <code>getProfileGroups()</code>, avant toute manipulation. Le plugin ne mute jamais que sa propre
 copie.</p>
+<p><strong>Depuis le 2026-08-03, ce clone n'est plus une discipline à tenir mais un point
+unique</strong> : <code>readProfileGroups()</code> (<code>src/profileGroups.ts</code>) est le seul
+appel du plugin à <code>getProfileGroups()</code>, et il rend un clone par construction. Ne pas
+appeler l'API directement ailleurs — c'est le même raisonnement que <code>isSSHTab()</code> pour
+<code>instanceof SSHTabComponent</code>. Voir <a href="#fragile-5">fragile-5</a> pour ce que
+l'API garantit réellement aujourd'hui, et pour la sonde qui le vérifie.</p>
 <p><strong>Corollaire</strong> : <code>profilesService.writeProfileGroup(group)</code> fait une
 recherche <em>plate, racine uniquement</em> (<code>config.store.groups.find(...)</code>) —
 fondamentalement inadaptée pour déplacer un groupe entre <code>children:</code> imbriqués
@@ -1243,29 +1303,57 @@ sauvegarde avant de considérer l'opération terminée : le dégât est totaleme
 <code>config.yaml</code> change, retester le re-parentage sur des groupes jetables avant de faire
 confiance au comportement existant.</p>
 
-<h4 id="fragile-8">Téléchargements servis par nous, et non par <code>platform.startDownload()</code></h4>
-<p>Depuis le 2026-08-02, l'entrée « Download » du menu contextuel passe par
-<code>downloadItem()</code> surchargé : le fichier est servi par notre serveur HTTP local et écrit
-par Chromium (voir <a href="ROADMAP.html#transferts">#transferts</a>). Trois appuis non contractuels
-à revérifier après une montée de version :</p>
+<h4 id="fragile-8">Téléchargements servis par nous, et non par <code>platform.startDownload()</code>
+<span class="pill done">✅ Deux appuis sur trois retirés le 2026-08-03</span></h4>
+<p>Depuis le 2026-08-02, l'entrée « Download » du menu contextuel sert le fichier par notre serveur
+HTTP local, écrit par Chromium (voir <a href="ROADMAP.html#transferts">#transferts</a>). Elle
+reposait sur trois appuis non contractuels ; deux ont cessé d'en être :</p>
 <ul>
-<li>l'entrée du menu appelle bien <code>panel.downloadItem(item)</code> — si Tabby la rebranche sur
-  <code>download()</code>, la surcharge devient inopérante <em>sans erreur</em>, et le seul symptôme
-  sera le retour du libellé « annulé » sur un transfert coupé ;</li>
-<li>Tabby n'installe <strong>aucun</strong> gestionnaire <code>will-download</code> : c'est ce qui
-  laisse Electron ouvrir sa boîte « Enregistrer sous ». S'il en ajoutait un, la destination pourrait
-  être imposée sans que rien ne le signale ;</li>
-<li><code>Content-Disposition: attachment</code> reste ce qui fait télécharger plutôt que naviguer.</li>
+<li><strong>« l'entrée du menu appelle bien <code>panel.downloadItem(item)</code> » — sans objet.</strong>
+  La surcharge est passée de <code>downloadItem()</code> à <code>download()</code>, où
+  <em>les deux</em> voies aboutissent, <code>open()</code> comprise. Que Tabby rebranche son entrée
+  sur l'une ou sur l'autre ne change plus rien, et <code>downloadItem()</code> est redevenue la
+  méthode héritée. Il n'y avait rien à surveiller ici, seulement un appui à déplacer.</li>
+<li><strong>« Tabby n'installe aucun gestionnaire <code>will-download</code> » — demandé, plus
+  supposé.</strong> C'est ce qui laisse Electron ouvrir sa boîte « Enregistrer sous » ; un
+  gestionnaire imposerait la destination, ou annulerait le téléchargement — un clic sans effet.
+  <code>listenerCount('will-download')</code> est consulté avant chaque téléchargement (méthode
+  d'<code>EventEmitter</code>, donc réellement contractuelle, ce que rien d'autre n'est ici) : s'il
+  y en a un, la voie héritée reprend la main, puisque c'est elle que Tabby s'attendrait à gérer.
+  Mesuré à 0 sur l'app installée.</li>
+<li><code>Content-Disposition: attachment</code> reste ce qui fait télécharger plutôt que naviguer —
+  mais c'est notre propre serveur qui l'écrit : ce n'est pas un appui sur l'hôte.</li>
 </ul>
+<p class="muted">Les liens symboliques et les dossiers restent sur la voie héritée, comme avant :
+une offre <code>DownloadURL</code> sert exactement un fichier, et un lien ne se résout que par le
+<code>stat()</code> du <a href="#piege-50">#50</a>, dont la taille est juste mais le mode faux.
+<code>downloadFolder()</code> ne passe pas par <code>download()</code> du tout.</p>
 <p>Choix assumé de l'utilisateur le 2026-08-02, en connaissance de ce qu'il coûte : on renonce à la
 progression du menu de transferts natif (masqué par défaut de toute façon) pour gagner un échec
 visible — la voie native appelle <code>sftp.download()</code> <strong>sans l'attendre</strong>, donc
 sa rupture n'est observable nulle part.</p>
 
-<h4 id="fragile-5">Clone non garanti de <code>getProfileGroups()</code>/<code>buildGroupTree()</code></h4>
+<h4 id="fragile-5">Clone non garanti de <code>getProfileGroups()</code>/<code>buildGroupTree()</code>
+<span class="pill done">✅ Point unique + sonde depuis le 2026-08-03</span></h4>
 <p>Le <code>structuredClone()</code> défensif (piège #12) part du principe que l'API peut renvoyer
-des références vivantes. Si une future version clone proprement en interne, il devient superflu
-mais reste inoffensif à garder par précaution.</p>
+des références vivantes. <strong>Mesuré le 2026-08-03 : elle ne le fait plus.</strong>
+<code>getProfileGroups()</code> passe par <code>getSyncProfileGroups()</code>, qui rend
+<code>deepClone(config.store.groups)</code> (paquet <code>clone-deep</code>) — et une comparaison
+d'<em>identité</em> sur l'app en marche confirme qu'aucun groupe ne revient comme le même objet
+(6 groupes appariés, 0 partagé). La précaution est donc, aujourd'hui, une ceinture par-dessus des
+bretelles.</p>
+<p>Elle reste : les bretelles sont un détail d'implémentation d'une méthode que personne n'exporte,
+et ce qu'elles retiennent est un <code>config.yaml</code> corrompu. Ce qui a changé, c'est où elle
+vit — <code>readProfileGroups()</code> (<code>src/profileGroups.ts</code>) est le
+<strong>seul</strong> appel du plugin à <code>getProfileGroups()</code>, et il rend un clone par
+construction. La discipline n'est plus à tenir, donc plus à oublier.</p>
+<p>S'y ajoute la moitié qui manquait : une sonde compare une fois par session l'identité des objets
+rendus avec ceux de <code>config.store.groups</code>, et le signale en console si la garantie
+disparaît. Rien n'est cassé quand elle parle — le clone rattrape — donc elle ne s'adresse pas à
+l'utilisateur ; c'est la note du plugin qu'une hypothèse écrite dans un commentaire est redevenue
+vivante. Comparer par <em>identité</em> et non par valeur est ce qui la rend juste :
+<code>getProfileGroups()</code> pose <code>editable</code> et <code>profiles</code> sur ce qu'il
+rend, si bien qu'un objet partagé n'est jamais égal à celui qui est stocké.</p>
 
 <h3 id="piege-74">#74 — <code>config.store</code> ne contient pas tout ce que l'arbre affiche :
 juger de la vie d'un id sur lui seul détruit des données</h3>

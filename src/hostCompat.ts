@@ -1,5 +1,6 @@
 import { SSHTabComponent, SFTPPanelComponent, SFTPSession } from 'tabby-ssh'
 import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
+import { checkProfileModalInputs } from './profileModal'
 
 /**
  * What this plugin needs from its host, named one by one.
@@ -61,7 +62,16 @@ export const HOST_PRECONDITIONS: HostPrecondition[] = [
     {
         id: 'edit-profile-modal',
         feature: 'la création et l\'édition de profils',
-        check: () => isClass(EditProfileModalComponent) && isClass(SettingsTabComponent),
+        // The class being there is not enough, and this was the one red point
+        // left after the 2026-08-03 pass: the two inputs the plugin assigns are
+        // declared in an augmentation that lies to TypeScript by construction
+        // (piège #17), so a rename in Tabby compiles clean here and opens an
+        // empty modal there. `checkProfileModalInputs()` asks Angular what the
+        // component really declares — and answers `unknown` rather than guess
+        // when it cannot tell, which is why only a settled `missing` fails.
+        check: () => isClass(EditProfileModalComponent)
+            && isClass(SettingsTabComponent)
+            && checkProfileModalInputs() !== 'missing',
     },
 ]
 
