@@ -24,6 +24,94 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Les points de veille restants : deux appuis retirés, le dernier point rouge rendu bruyant
+(2026-08-03)</h2>
+<div class="callout note"><span class="callout-title">Livré, testé et validé le 2026-08-03</span>
+<p>Branche <code>refactor/points-de-veille</code>. Session dédiée demandée par l'utilisateur, sur la
+fiche <a href="ROADMAP.html#points-fragiles">#points-fragiles</a> ouverte le matin même.</p></div>
+<p><strong>La piste que la fiche recommandait aurait fabriqué une fausse panne.</strong> Elle
+proposait de lire <code>ɵcmp.inputs</code> pour vérifier que la modale de profil déclare toujours
+les deux entrées que le plugin lui assigne, en demandant d'établir d'abord « la forme exacte de la
+table ». Bien lui en a pris : cette table est indexée par le <strong>nom public</strong> de l'entrée,
+et la modale déclare <code>@Input('profile') partialProfile</code>. Une précondition y cherchant la
+clé <code>partialProfile</code> aurait échoué à <em>tous</em> les démarrages, sur un Tabby
+parfaitement sain — un contrôle ajouté pour rendre une panne visible aurait produit une panne
+imaginaire, ce qui est pire que le silence qu'il remplaçait.</p>
+<p>Deux corrections en sont sorties, consignées au <a href="AI-CONTEXT.html#piege-75">piège #75</a>.
+<code>reflectComponentType()</code> est de l'<strong>API publique</strong> depuis Angular 14.1 : la
+réserve de la fiche — « un champ préfixé <code>ɵ</code> n'est pas contractuel non plus, donc le
+remède partage la nature du mal » — tombait d'elle-même, il n'y avait pas lieu de lire un champ
+interne. Et son résultat se lit par <code>propName</code>, jamais <code>templateName</code>,
+<strong>contrairement à l'exemple donné par la documentation d'Angular</strong>, qui intervertit les
+deux : c'est <code>toRefArray()</code> dans le bundle réellement chargé qui a tranché, pas le
+commentaire au-dessus.</p>
+<p><strong><code>fragile-7</code>, le seul point rouge, dans l'ordre que ce projet s'impose</strong> —
+réduire d'abord, surveiller ensuite. <code>src/profileModal.ts</code> devient le point unique par
+lequel la modale s'ouvre : les deux appelants la nommaient chacun, elle n'est plus nommée qu'une
+fois, et c'est cette liste-là que la précondition <code>edit-profile-modal</code> confronte à ce
+qu'Angular déclare. Un <code>satisfies</code> l'arrime à l'augmentation de types — ce qui ne prouve
+rien sur Tabby, mais interdit que la liste vérifiée et la liste assignée divergent. En cas d'écart :
+un message nommant le champ absent <em>et</em> les entrées réellement déclarées, une notice, et un
+refus d'ouvrir plutôt qu'une fenêtre vide dont personne ne peut rien tirer.</p>
+<p><strong><code>fragile-5</code> : la discipline devient structure, et une supposition devient une
+mesure.</strong> <code>readProfileGroups()</code> est désormais le seul appel du plugin à
+<code>getProfileGroups()</code> et rend un clone par construction ; les deux appelants recopiaient
+les mêmes lignes et le même avertissement, et rien n'obligeait un troisième à le faire. La mesure a
+rapporté davantage : <strong>Tabby clone déjà</strong> — <code>getSyncProfileGroups()</code> rend
+<code>deepClone(config.store.groups)</code>, et une comparaison d'identité sur l'app en marche
+confirme qu'aucun groupe ne revient comme le même objet. Le <code>structuredClone()</code> du
+<a href="AI-CONTEXT.html#piege-12">piège #12</a> reste malgré tout : les bretelles sont un détail
+d'implémentation d'une méthode que personne n'exporte, et ce qu'elles retiennent est un
+<code>config.yaml</code> corrompu. Une sonde vérifie cette garantie une fois par session au lieu de
+la supposer.</p>
+<p><strong><code>fragile-8</code> : deux appuis retirés plutôt que documentés.</strong> La surcharge
+passe de <code>downloadItem()</code> à <code>download()</code>, où <em>les deux</em> voies
+aboutissent : la question « l'entrée de menu appelle-t-elle bien <code>downloadItem()</code> ? »
+devient sans objet, et cette méthode redevient celle de Tabby. Et l'absence d'un gestionnaire
+<code>will-download</code>, jusque-là supposée, est demandée avant chaque téléchargement par
+<code>listenerCount()</code> — méthode d'<code>EventEmitter</code>, donc réellement contractuelle,
+ce que rien d'autre n'est dans ce voisinage ; s'il y en a un, la voie héritée reprend la main.</p>
+<div class="callout warning"><span class="callout-title">Ce que ce chantier n'a pas fait</span>
+<p>Il ne rend le plugin compatible avec rien. Une version de Tabby qui renomme
+<code>partialProfile</code> casse la création et l'édition de profils exactement comme avant ; la
+seule différence est qu'elle le dit. Deux appuis ont réellement disparu, et c'est écrit comme tel ;
+les autres points ont seulement appris à parler. Un tableau où plus rien n'est rouge se relit trop
+facilement comme un tableau de points supprimés.</p></div>
+
+<h3>Passe de test du 2026-08-03 — pilotée par l'assistant, à la demande de l'utilisateur</h3>
+<p><strong>Le contrôle a été vérifié dans les deux sens</strong>, faute de quoi il n'aurait rien
+prouvé. Dans le bon : démarrage silencieux, modale s'ouvrant en portant le profil qu'on lui passe —
+donc l'entrée est bien assignée <em>et</em> consommée —, configuration inchangée par empreinte,
+arbre chargé sans qu'aucun groupe vivant ne gagne de propriété calculée. Dans l'autre : avec un nom
+d'entrée volontairement faux, recompilé pour l'occasion puis restauré, le démarrage sort le message
+attendu avec la liste des entrées réelles, la notice s'affiche, l'ouverture est refusée — pendant que
+la sidebar et son arbre restent intacts, la précondition n'étant pas fatale.</p>
+<p><strong>Passe SFTP sur le serveur VPN</strong>, dans <code>/tmp/zzz-test-dl/</code> créé puis
+supprimé, sur un fichier au contenu déterministe (<code>seq 1 20000</code>, 108 894 octets — taille
+recalculée à la main pour que le banc lui-même soit vérifiable). Le chemin part de
+<code>downloadItem()</code>, c'est-à-dire de ce que Tabby appelle vraiment : l'offre HTTP locale est
+émise, répond <code>200</code> avec le bon <code>Content-Length</code>, et les octets reçus sont
+identiques à l'attendu. Trois contre-tests : un lien symbolique reste sur la voie héritée, un
+<code>will-download</code> installé pour l'occasion y renvoie aussi, son retrait rend la main à la
+voie HTTP.</p>
+<p class="muted">Deux points de méthode. Aucune boîte de dialogue native n'a été ouverte de toute la
+passe : le clic sur l'ancre est intercepté et <code>startDownload()</code> neutralisé — un dialogue
+natif fige le renderer, CDP compris (<a href="AI-CONTEXT.html#piege-65">#65</a>). Et le panneau SFTP
+ne se construit pas tant que la sidebar est sur la vue Profils : c'est <code>setSftpMode(true)</code>
+qu'il faut appeler, l'entrée <code>active</code> du composant étant précisément ce qui l'empêche
+d'ouvrir un canal pour une vue que personne ne regarde.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>0d70d05</code></td>
+<td><strong>Points de veille : deux appuis retirés, le point rouge rendu bruyant.</strong>
+<code>src/profileModal.ts</code> et <code>src/profileGroups.ts</code> comme points uniques,
+précondition <code>edit-profile-modal</code> étendue aux deux entrées par
+<code>reflectComponentType()</code>, surcharge SFTP déplacée sur <code>download()</code>, sonde
+<code>will-download</code>. Piège #75.</td></tr>
+</table>
+
 <h2>Chaque bloc de la sidebar s'éteint, et son extinction coupe la source (2026-08-03)</h2>
 <div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
 2026-08-03</span>

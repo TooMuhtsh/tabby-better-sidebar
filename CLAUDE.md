@@ -302,7 +302,8 @@ de chargement de plugin.
   quand on en croise un.** Le pilotage du DOM de `tabby-settings` pour éditer
   un profil — le point le plus fragile du plugin pendant des semaines — était
   inutile : la modale s'ouvre par `ngbModal.open(EditProfileModalComponent)`,
-  ce que le même fichier faisait déjà pour « Nouveau profil… ». Un
+  ce que le même fichier faisait déjà pour « Nouveau profil… » — ouverture
+  passée depuis derrière `openProfileModal()`, voir plus haut. Un
   contournement survit à la raison qui l'a fait naître, et son commentaire
   devient l'argument qui empêche de le rouvrir. Les sources TypeScript
   d'origine sont livrées dans `resources/builtin-plugins/*/src/` de l'app
