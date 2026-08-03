@@ -95,6 +95,11 @@ toujours faux, et un `SFTPPanelComponent` dont le `SSHModule` n'a jamais été b
 Ses typings sont donc vendorisés dans `src/types/tabby-ssh/` (mappés par `paths` dans
 `tsconfig.json`), copiés depuis l'app installée : voir
 `src/types/tabby-ssh/PROVENANCE.md` et .AIRules/AI-CONTEXT.html, piège #34.
+Une sonde le dit désormais au lieu de le laisser deviner : `isSSHTab()`
+(`src/tabs.ts`) est le **point unique** par lequel passent tous les
+rétrécissements `instanceof SSHTabComponent`, et il avertit une fois quand le
+`constructor.name` correspond alors que le test échoue. Ne pas réintroduire
+d'`instanceof SSHTabComponent` en ligne : la sonde ne verrait rien passer.
 
 ## Tester dans Tabby
 
@@ -266,6 +271,31 @@ de chargement de plugin.
   (`src/configProvider.ts`), même vide.** Une clé non déclarée se mute très
   bien en mémoire mais ne persiste jamais dans `config.yaml` — silencieux,
   aucune erreur (.AIRules/AI-CONTEXT.html, piège #16).
+- **Chercher l'API avant d'écrire un contournement, et rouvrir la question
+  quand on en croise un.** Le pilotage du DOM de `tabby-settings` pour éditer
+  un profil — le point le plus fragile du plugin pendant des semaines — était
+  inutile : la modale s'ouvre par `ngbModal.open(EditProfileModalComponent)`,
+  ce que le même fichier faisait déjà pour « Nouveau profil… ». Un
+  contournement survit à la raison qui l'a fait naître, et son commentaire
+  devient l'argument qui empêche de le rouvrir. Les sources TypeScript
+  d'origine sont livrées dans `resources/builtin-plugins/*/src/` de l'app
+  installée : les lire est plus sûr que de déduire d'un bundle compilé.
+- **Désactiver une fonctionnalité ne doit écraser aucune configuration
+  existante.** Un interrupteur ne persiste que sa propre valeur ; tout état
+  qu'il se contente de cesser d'afficher lui survit intact. Le cas réel :
+  éteindre les workspaces fait retomber l'affichage sur « Tous », et
+  `loadTreeItems()` persistait ce repli dans
+  `localStorage.sidebarPlusActiveWorkspace` — le workspace choisi était perdu.
+  D'où le garde sur la persistance et l'assignation directe plutôt que
+  `selectWorkspace()`. Corollaire : le plugin cesse de masquer un composant
+  natif de Tabby dès qu'il ne le remplace plus (`hideNativeTransfersMenu`
+  suspendu quand le panneau des transferts n'est pas affiché).
+- **Un interrupteur de bloc coupe la source, pas seulement la vue.** Un
+  `*ngIf` seul laisserait tourner le balayage des onglets, les sondes de
+  latence et le suivi des transferts pour un bloc que personne ne regarde :
+  il épurerait l'écran en gardant le coût. Voir `showActiveSessions` &
+  co. dans `sidebarTree.component.ts`, et `enabled` dans
+  `transfersRegistry.service.ts`.
 - **Un `cdkDropList` vide a une hauteur CSS de 0px**, donc une cible de
   glisser-déposer quasi inatteignable. Le correctif n'est pas un rembourrage
   inconditionnel — il ajoutait de l'espace mort sous chaque dossier — mais un

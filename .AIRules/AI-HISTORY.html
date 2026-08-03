@@ -24,6 +24,113 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Chaque bloc de la sidebar s'éteint, et son extinction coupe la source (2026-08-03)</h2>
+<div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
+2026-08-03</span>
+<p>Branches <code>feat/interrupteurs-par-bloc</code> puis
+<code>feat/transferts-sous-sftp</code>. Proposé par l'utilisateur : garder la puissance du
+« tout-en-un » sans l'imposer.</p></div>
+<p><strong>Le chantier n'était pas le <code>*ngIf</code>.</strong> Six clés sous
+<code>sidebarPlus</code>, toutes à <code>true</code> par défaut, mais éteindre coupe ce qui alimente
+le bloc : le balayage de tous les onglets de tous les splits toutes les 2 s cesse de s'exécuter, la
+sonde de latence reçoit une liste vide et n'interroge plus aucun serveur, <code>track()</code> refuse
+toute inscription en un point unique qui couvre <code>fileTransferStarted$</code> comme nos propres
+appels. Un interrupteur qui n'aurait masqué que la vue aurait épuré l'écran en gardant le coût.</p>
+<p><strong>Le composant SFTP est détruit et non caché</strong> — l'inverse du choix fait pour la
+bascule de <em>mode</em>, qui reste en <code>[hidden]</code> pour préserver son cache de panneaux. Les
+deux ont raison parce que ce ne sont pas les mêmes questions : changer de mode est temporaire,
+éteindre le bloc est censé rendre les canaux.</p>
+<p><strong>Un garde-fou demandé par l'utilisateur a trouvé un vrai défaut</strong>, et c'est le test
+écrit pour le vérifier qui l'a attrapé, pas la relecture. Éteindre les workspaces fait retomber
+l'affichage sur « Tous », et <code>loadTreeItems()</code> persistait cette valeur dans
+<code>localStorage</code> en fin de course : le workspace réellement choisi était perdu, et rallumer
+ne le rendait pas. D'où la règle, désormais écrite : <strong>un interrupteur ne persiste que sa
+propre valeur ; tout état qu'il se contente de cesser d'afficher lui survit intact.</strong> Vérifié
+par empreinte de toute la configuration — profils, groupes, workspaces avec masquages, favoris et
+ordres, tunnels configurés d'un profil — bit à bit identique de part et d'autre d'un cycle complet.</p>
+<p><strong>Le gestionnaire de transferts est passé sous la vue SFTP</strong> en seconde passe, à la
+demande de l'utilisateur. Le corollaire n'était pas dans la demande et compte autant : le registre
+reflète <em>tous</em> les transferts de l'application, y compris ceux du panneau natif et des autres
+plugins. Les rendre invisibles pendant que <code>hideNativeTransfersMenu</code> reste coché laissait
+l'utilisateur sans aucun affichage. Le masquage du menu natif est donc suspendu dès que notre panneau
+ne s'affiche plus — prolongement d'un principe déjà posé au montage : un plugin n'a pas à masquer un
+morceau de l'interface de l'hôte qu'il ne remplace plus.</p>
+<p><strong>Page de réglages refondue dans le même geste</strong>, sur trois règles de l'utilisateur :
+deux onglets (« Général », « Fonctionnalités ») plutôt qu'un long déroulé ; chaque option sous
+l'interrupteur de la fonctionnalité dont elle dépend, et qui disparaît avec elle — un réglage qui
+survit à sa fonctionnalité se lit comme cassé, pas comme sans objet ; descriptions d'une à deux
+lignes, le détail passant en infobulle sur une icône <code>(i)</code>. Les blocs sans réglage propre
+sont groupés et resserrés en tête. Ce qui règle du même coup l'agencement qu'attendait
+« Options &amp; polissage UI ».</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>0696799</code></td>
+<td><strong>Le gestionnaire de transferts devient une option de la vue SFTP</strong>, et le masquage
+du menu natif de Tabby est suspendu dès que notre panneau ne s'affiche plus. Blocs sans réglage
+groupés en tête de page. 10 contrôles CDP.</td></tr>
+
+<tr><td>2026-08-03</td><td><code>12ad2b7</code></td>
+<td><strong>Six interrupteurs par bloc</strong>, coupant la source et pas seulement la vue ;
+<code>reconcileHiddenBlocks()</code> pour les retombées ; persistance du workspace actif préservée ;
+page de réglages en deux onglets. 35 contrôles CDP.</td></tr>
+</table>
+
+<h2>Le point le plus fragile du plugin a été supprimé, pas consolidé (2026-08-03)</h2>
+<div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
+2026-08-03</span>
+<p>Branches <code>refactor/edition-profil-modale-directe</code> puis
+<code>feat/controle-compatibilite-hote</code>. Parti d'une observation de l'utilisateur sur la dette
+d'intégration du plugin.</p></div>
+<p><strong>L'inventaire a précédé le correctif</strong>, et il a changé la conclusion. Quatre natures
+de couplage à l'hôte, très inégalement risquées : le DOM non versionné de Tabby (le seul réellement
+muet), les classes empruntées à <code>tabby-ssh</code> (exportées — le risque est leur dédoublement,
+pas leur absence), le SCSS global (débordement, discipline déjà tenue) et les API publiques de
+<code>tabby-core</code> (contractuelles, rien à durcir). Distinguer les quatre a évité de dépenser le
+chantier sur ce qui ne risquait rien.</p>
+<p><strong>« Éditer… » pilotait le DOM de <code>tabby-settings</code></strong> : ouvrir l'onglet
+Paramètres, déplier tous les dossiers par des clics successifs, retrouver la ligne en comparant le
+texte d'un <code>span</code>, la cliquer, puis sonder <code>.modal-content</code> toutes les 300 ms
+pour savoir quand refermer. Le commentaire qui portait ce code affirmait qu'aucune API publique
+n'existait — <strong>et le même fichier ouvrait déjà cette modale</strong> quelques centaines de
+lignes plus haut, pour « Nouveau profil… ». <code>editProfile()</code> reprend donc les huit lignes de
+<code>tabby-settings</code>. Environ 135 lignes retirées, et le point de veille
+<a href="AI-CONTEXT.html#fragile-1">fragile-1</a> avec.</p>
+<p><strong>La leçon, plus large que ce cas</strong> : le premier réflexe devant un couplage fragile
+avait été de mieux <em>surveiller</em> la casse. Retirer le couplage a coûté moins cher que le
+garde-fou qu'on s'apprêtait à construire. Avant d'instrumenter un point de contact : peut-il
+disparaître ? Sinon seulement, comment le rendre bruyant. Un contournement survit à la raison qui l'a
+fait naître, et son commentaire devient l'argument qui empêche de le rouvrir.</p>
+<p><strong>Ce qui reste couplé est désormais vérifié.</strong> Quatre préconditions nommées dans
+<code>src/hostCompat.ts</code>, évaluées une fois à <code>app.ready$</code>, chacune portant la
+fonctionnalité qu'elle fait perdre — seul le conteneur de montage est fatal. Pas de contrôle de
+version de Tabby : un numéro crierait au loup sur une version compatible et se tairait sur un build
+local qui a bougé. Et une sonde pour ce qu'aucun contrôle statique ne peut voir : avec deux
+<code>tabby-ssh</code> chargés, les quatre préconditions passent — les classes existent, ce sont les
+mauvaises. <code>isSSHTab()</code> porte cette sonde, et les trois <code>instanceof</code> dispersés y
+passent désormais : le partage ne gagne pas une ligne, il crée le point où l'hypothèse est vérifiée au
+lieu d'être supposée.</p>
+<p><strong>Ce que ce contrôle ne fait pas</strong>, à ne pas relire plus tard comme une promesse : il
+ne rend pas le plugin plus compatible et ne réduit ni ce qui casse ni la fréquence. Il change le mode
+d'échec, d'un non-événement vers quelque chose qui se lit.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-03</td><td><code>3ecac9b</code></td>
+<td><strong>Contrôle de compatibilité à l'hôte</strong> (<code>src/hostCompat.ts</code>) : quatre
+préconditions nommées à <code>ready$</code>, signalement unique en notification et en console, et
+sonde du <a href="AI-CONTEXT.html#piege-34">piège #34</a> portée par <code>isSSHTab()</code>.
+18 contrôles CDP, chemin fatal et restauration compris.</td></tr>
+
+<tr><td>2026-08-03</td><td><code>e386b94</code></td>
+<td><strong><code>editProfile()</code> ouvre <code>EditProfileModalComponent</code> directement</strong>,
+comme <code>tabby-settings</code> pour sa propre liste. Suppression de
+<code>clickNativeProfileRow()</code>, <code>watchForNativeModalClose()</code>,
+<code>modalWatchInterval</code> et <code>wait()</code>. 15 contrôles CDP.</td></tr>
+</table>
+
 <h2>Un id supprimé ne laisse plus de trace derrière lui (2026-08-03)</h2>
 <div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
 2026-08-03</span>
