@@ -56,6 +56,14 @@
                 .fw-20
                     profile-icon.ms-1([icon]='session.icon', [color]='session.color')
                 span.ms-2.me-auto.no-wrap {{ session.name }}
+                //- Its own dot, never a recolouring of the connection dot on
+                //- the left: that one says "connected", and turning it red for
+                //- a slow link would read as a session that has dropped.
+                span.ping-dot(
+                    *ngIf='pingEnabled',
+                    [ngClass]='"ping-dot-" + pingState(session)',
+                    [title]='pingLabel(session)'
+                )
                 .actions
                     .action(
                         (click)='openSessionSftp(session, $event)',

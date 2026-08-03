@@ -23,6 +23,7 @@ import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh
 import { ICON_ENTRIES, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarWorkspace } from '../configProvider'
+import { PingState, SidebarPlusPingService } from '../ping.service'
 import { focusTab, getAllOpenTabs, isLiveSSHTab } from '../tabs'
 import { clampInViewport } from '../viewport'
 
@@ -274,6 +275,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private ngbModal: NgbModal,
         private zone: NgZone,
         private platform: PlatformService,
+        private ping: SidebarPlusPingService,
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
     ) { }
 
@@ -1191,6 +1193,28 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!SidebarPlusTreeComponent.sameSessions(this.activeSessions, sessions)) {
             this.activeSessions = sessions
         }
+
+        // Rides this same 2s pass rather than bringing its own timer; the
+        // service decides which sessions are actually due a probe, and does
+        // nothing at all while the interval is 0. Deliberately *not* part of
+        // the ActiveSession rows above: a latency that changes every few
+        // seconds would fail `sameSessions()` and rebuild every row's DOM,
+        // dropping the `:hover` the action buttons live in. The template reads
+        // it through pingState()/pingLabel() instead.
+        this.ping.poll(sessions.map(session => session.tab))
+    }
+
+    pingState (session: ActiveSession): PingState {
+        return this.ping.state(session.tab)
+    }
+
+    pingLabel (session: ActiveSession): string {
+        return this.ping.label(session.tab)
+    }
+
+    /** Hidden entirely when the feature is off, rather than shown as a grey "unknown" dot on every row. */
+    get pingEnabled (): boolean {
+        return this.ping.intervalMs > 0
     }
 
     private static sameSessions (a: ActiveSession[], b: ActiveSession[]): boolean {
