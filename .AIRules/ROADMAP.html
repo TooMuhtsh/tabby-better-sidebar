@@ -3104,16 +3104,15 @@ Design détaillé ci-dessous transporté à l'identique là-bas.</p></div>
 <li><strong>Interfaçage entre plugins indépendants</strong> : possible, pattern identifié. Tous les
   plugins Tabby tournent dans le même process Electron et partagent le même injecteur Angular —
   déjà le mécanisme utilisé par <code>better-sidebar</code> pour consommer des classes de
-  <code>tabby-core</code>/<code>tabby-settings</code>/<code>tabby-ssh</code>. Un futur
-  <code>tabby-better-vault</code> exporterait un service minimal (ex.
-  <code>VaultBridgeService</code>), et <code>better-sidebar</code> l'importerait en dépendance
-  optionnelle avec <code>@Optional()</code>/<code>Injector.get(TOKEN, null)</code> — la section
-  correspondante des réglages disparaît simplement si le plugin Vault n'est pas installé. Pattern
-  non officiel (effet de bord du chargeur de plugins, pas une API documentée) : le contrat entre
-  les deux packages serait à notre charge (versioning à gérer). Même discipline de vérification que
-  le reste du projet : si <code>tabby-better-vault</code> exporte un service, vérifier les DEUX
-  niveaux (typings ET bundle <code>dist/index.js</code> compilé) avant de s'y fier — voir piège
-  #13 d'AI-CONTEXT.html.</li>
+  <code>tabby-core</code>/<code>tabby-settings</code>/<code>tabby-ssh</code>. Pattern non officiel
+  (effet de bord du chargeur de plugins, pas une API documentée) : le contrat entre les deux
+  packages serait à notre charge (versioning à gérer). Même discipline de vérification que le reste
+  du projet : si <code>tabby-better-vault</code> exporte un service, vérifier les DEUX niveaux
+  (typings ET bundle <code>dist/index.js</code> compilé) avant de s'y fier — voir piège #13
+  d'AI-CONTEXT.html. Pour le cas concret de l'onglet de réglages, ce pattern générique s'est précisé
+  en un mécanisme d'élection par token de chaîne (pas de classe TypeScript importée, justement pour
+  ne pas créer de dépendance npm dure entre les deux plugins) — conception tranchée avec
+  l'utilisateur, voir <a href="#onglet-reglages-unifie">ci-dessous</a>.</li>
 <li><strong>Design prévu</strong> pour ce futur plugin : délégation à l'OS via
   <code>electron.safeStorage</code> (Windows : Gestionnaire d'identifiants/DPAPI ; macOS : Trousseau
   d'accès/Keychain avec Touch ID si activé ; Linux : Secret Service API/<code>libsecret</code> via
@@ -3131,6 +3130,81 @@ Design détaillé ci-dessous transporté à l'identique là-bas.</p></div>
   bien une méthode d'injection programmatique utilisable depuis un plugin tiers — typings ET bundle
   compilé, ne jamais conclure sur un seul des deux (piège #13).</li>
 </ul>
+
+<h4 id="onglet-reglages-unifie">Onglet de réglages unifié entre <code>better-sidebar</code> et
+<code>tabby-better-vault</code> <span class="pill planned">📋 Conception tranchée, non codée
+(2026-08-07)</span></h4>
+<p>Aujourd'hui, si les deux plugins sont installés ensemble, chacun déclare son propre onglet de
+premier niveau dans les réglages Tabby — deux onglets côte à côte pour une même famille de plugins,
+plutôt qu'un seul. Vérifié dans le bundle compilé
+(<code>node_modules/tabby-settings/dist/index.js</code>) : Tabby <strong>ne déduplique pas</strong>
+deux <code>SettingsTabProvider</code> qui partageraient un même <code>id</code> — ils apparaîtraient
+comme deux entrées séparées dans la liste triée, sans fusion ni erreur. Unifier les deux onglets
+suppose donc qu'<strong>un seul plugin à la fois</strong> déclare l'onglet unifié — d'où le mécanisme
+d'élection ci-dessous, tranché avec l'utilisateur mais dont rien n'est encore codé.</p>
+<p><strong>Détection inter-plugin, par token de chaîne</strong> : pas de classe TypeScript importée
+d'un plugin par l'autre — ça créerait une dépendance npm dure, alors que les deux plugins doivent
+rester installables indépendamment. Chaque plugin « Better * » présent expose, au niveau de son
+module racine, un provider Angular sous une clé <code>BetterPanelContribution:&lt;id&gt;</code>
+(ex. <code>BetterPanelContribution:sidebar</code>, <code>BetterPanelContribution:vault</code>), de
+forme :</p>
+<pre><code>interface BetterPanelContribution {
+  id: string                 // identifiant stable ('sidebar', 'vault', ...)
+  title: string               // libellé affiché en sous-onglet
+  hostWeight: number           // poids d'élection de l'hôte — SANS RAPPORT avec le `weight` natif
+                                // de SettingsTabProvider (qui ordonne les onglets Tabby de premier
+                                // niveau, déjà utilisé ici avec la valeur 2), à ne pas confondre
+  componentType: Type&lt;any&gt;  // le composant Angular déjà existant de ce plugin, réutilisé tel quel
+}</code></pre>
+<p>Chaque plugin interroge les tokens des autres membres connus de la famille via
+<code>injector.get('BetterPanelContribution:xxx', null)</code> — jamais d'erreur si l'autre n'est
+pas installé. La liste des tokens à connaître est <strong>codée en dur</strong> et documentée dans
+le <code>CLAUDE.md</code> de chaque plugin, pas un registre automatique : un futur plugin
+« Better X » devra être ajouté à cette liste dans les projets existants pour rejoindre
+l'unification.</p>
+<p><strong>Élection de l'hôte, poids numérique, le plus léger gagne</strong> : chaque plugin déclare
+un <code>hostWeight</code> fixe. Au démarrage, un plugin calcule l'ensemble des contributions
+présentes (lui-même + celles détectées) et devient hôte seulement s'il porte le
+<code>hostWeight</code> le plus faible parmi les présentes (égalité départagée par ordre
+alphabétique d'<code>id</code>, cas improbable mais couvert).</p>
+<ul>
+<li><strong>Hôte</strong> : déclare seul un <code>SettingsTabProvider</code> unifié
+  (<code>id: 'better-tabby'</code>), qui monte dynamiquement chaque <code>componentType</code>
+  présent comme sous-onglet (y compris le sien) via <code>ViewContainerRef.createComponent()</code>
+  (API Angular 15 native, pas de <code>ComponentFactoryResolver</code> déprécié).</li>
+<li><strong>Non-hôte</strong> : ne déclare PAS son propre <code>SettingsTabProvider</code>
+  (<code>useFactory</code> conditionnel dans le module racine) — expose seulement sa contribution
+  par le token, montée par l'hôte.</li>
+<li><strong>Seul de sa famille présent</strong> : reste trivialement hôte d'un ensemble à un seul
+  élément — dégrade proprement vers l'onglet solo actuel, sans habillage de sous-onglet unique
+  forcé.</li>
+</ul>
+<p>Valeurs retenues (espacées de 10, pour insérer un futur membre sans renuméroter) :</p>
+<ul>
+<li><code>better-sidebar</code> : <code>hostWeight = 10</code> — hôte par défaut aujourd'hui, car il
+  a déjà l'infrastructure de nav à onglets internes à étendre
+  (<code>src/components/settingsTab.component.ts</code>/<code>.pug</code>, nav
+  Général/Fonctionnalités/Snippets actuellement fermée sur 3 valeurs codées en dur — à généraliser
+  pour accueillir une entrée externe).</li>
+<li><code>better-vault</code> : <code>hostWeight = 20</code> — n'a qu'un panneau plat à
+  contribuer.</li>
+</ul>
+<div class="callout warning"><span class="callout-title">Ce qui reste un vrai chantier de code, pas
+commencé</span>
+<ul>
+<li>Rendre l'enregistrement du <code>SettingsTabProvider</code> conditionnel dans le module racine
+  de chaque plugin.</li>
+<li>Généraliser la nav interne actuelle de sidebar (fermée sur 3 valeurs) pour monter dynamiquement
+  un composant externe comme 4<sup>e</sup> section.</li>
+<li>Documenter la convention <code>hostWeight</code>/<code>BetterPanelContribution:*</code> dans les
+  deux <code>CLAUDE.md</code>.</li>
+<li>Tester avec les deux plugins installés simultanément.</li>
+</ul></div>
+<p>Le pendant symétrique côté coffre-fort (mêmes valeurs de <code>hostWeight</code>, même statut de
+conception non codée) est à consigner dans son propre projet, hors périmètre de cette session qui
+ne touche qu'à ce dépôt-ci — voir
+<a href="../../tabby-better-vault/.AIRules/README.html">.AIRules de tabby-better-vault</a> (lien
+relatif valable tant que les deux dossiers restent côte à côte dans <code>Développement/</code>).</p>
 
 <h3 id="moba-importer">Importateur MobaXterm</h3>
 <p>Explicitement écarté par l'utilisateur : des outils de conversion (<code>.mxtpro</code>/<code>.ini</code>)
