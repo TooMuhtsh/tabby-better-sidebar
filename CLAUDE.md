@@ -383,6 +383,41 @@ de chargement de plugin.
   annulant la hauteur dans le flux pendant que la boîte recouvre la moitié basse
   de la ligne au-dessus (.AIRules/AI-CONTEXT.html, pièges #19 et #26).
 
+## Panneau de réglages unifié Better Tabby
+
+Les plugins « Better * » partagent un seul onglet de réglages « Better Tabby ».
+Le contrat vit dans `src/betterPanel.ts` et est **dupliqué dans chaque dépôt,
+jamais partagé par un import npm** : chaque plugin expose sa contribution sous
+la clé de **chaîne** `BetterPanelContribution:<id>` dans les providers de son
+module — aucune classe ne voyage entre plugins, aucun ne dépend de la présence
+d'un autre.
+
+- **Tokens connus codés en dur** dans `KNOWN_PANEL_TOKENS` de
+  `src/betterPanel.ts` : une clé de chaîne ne s'énumère pas depuis l'injecteur,
+  donc un futur plugin « Better X » doit y être ajouté (et dans la copie des
+  autres dépôts) pour participer.
+- **Élection de l'hôte par `hostWeight` minimal** (égalité départagée par `id`
+  alphabétique) : sidebar = 10, vault = 20, espacés de 10 pour intercaler sans
+  renuméroter. L'hôte monte les pages des autres en sous-onglets ; un non-hôte
+  ne monte jamais les autres (sinon montage récursif).
+- **Le retrait passe par `getComponentType() → null`**, jamais par un
+  `useFactory` conditionnel : le constructeur de `SettingsTabComponent`
+  (bundle `tabby-settings`) filtre lui-même les providers dont
+  `getComponentType()` rend une valeur fausse, alors que
+  `SettingsHotkeyProvider` parcourt **tous** les providers sans ce filtre et
+  lit `provider.id`/`provider.title` — une entrée `null` dans le multi-provider
+  le ferait planter. Le `SettingsTabProvider` s'enregistre donc toujours.
+- **Le jeton `BetterPanelEmbedded`** (casse exacte) est fourni par l'hôte à
+  l'injecteur du composant embarqué, pour qu'il sache qu'il est un sous-onglet
+  (le vault s'en sert pour retirer sa classe `content-box`).
+- **Hotkey fantôme assumé** : le provider non-hôte restant enregistré,
+  `SettingsHotkeyProvider` liste toujours « Open settings tab: Better Vault » —
+  l'appuyer ouvre les réglages sans cibler d'onglet, sans erreur.
+- Tout deep-link interne vers l'onglet passe par l'id élu
+  (`electBetterPanelHost(...).settingsTabId`), jamais par `'better-sidebar'` en
+  dur : l'onglet s'appelle `better-tabby` dès que plus d'une contribution est
+  présente.
+
 ## Git
 
 Identité configurée **localement** pour ce dépôt (pas globalement) :

@@ -2,7 +2,7 @@ import './sidebarTree.component.scss'
 import FuzzySearch from 'fuzzy-search'
 import { merge, Subscription, timer } from 'rxjs'
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop'
-import { AfterViewChecked, Component, ElementRef, HostBinding, HostListener, Inject, Input, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core'
+import { AfterViewChecked, Component, ElementRef, HostBinding, HostListener, Inject, Injector, Input, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import {
     AppService,
@@ -37,6 +37,7 @@ import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { hostSupports } from '../hostCompat'
 import { readProfileGroups } from '../profileGroups'
 import { buildPayload, countPayload, describePurge, isEmptyReport, parsePayload, PurgeLevel, SharedGroup } from '../groupShare'
+import { electBetterPanelHost } from '../betterPanel'
 import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
 import { clampInViewport } from '../viewport'
 
@@ -309,6 +310,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // is seen. See notices.service.ts.
         private notices: SidebarPlusNoticesService,
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
+        private injector: Injector,
     ) { }
 
     async ngOnInit (): Promise<void> {
@@ -3840,7 +3842,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         if (result.action === 'library') {
             SidebarPlusSettingsTabComponent.requestedSection = 'snippets'
-            this.openSettingsTab('better-sidebar')
+            // The tab id depends on who hosts the shared "Better Tabby" tab —
+            // 'better-tabby' when unified, 'better-sidebar' when this plugin is alone.
+            this.openSettingsTab(electBetterPanelHost(this.injector).settingsTabId)
             return
         }
         await this.runSnippet(result.snippet, profile)

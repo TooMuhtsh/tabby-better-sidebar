@@ -24,6 +24,10 @@
     //- lit comme cassé plutôt que comme sans objet.
     li.nav-item(*ngIf="blockOn('showSnippets')")
       a.nav-link(href='#', [class.active]="section === 'snippets'", (click)="setSection('snippets', $event)") Snippets
+    //- Les pages des autres plugins « Better * », quand ce plugin héberge
+    //- l'onglet unifié « Better Tabby » (voir betterPanel.ts). Vide sinon.
+    li.nav-item(*ngFor='let panel of externalPanels')
+      a.nav-link(href='#', [class.active]="section === 'ext:' + panel.id", (click)="setSection('ext:' + panel.id, $event)") {{panel.title}}
 
   ng-container(*ngIf="section === 'general'")
     .settings-section
@@ -295,3 +299,11 @@
           button.btn.btn-secondary((click)='cancelEdit()') Annuler
           .snippet-editor-warning(*ngIf='draft.id && attachmentCount(draft)')
             | Modifie la commande sur les {{ attachmentCount(draft) }} rattachement(s) existants.
+
+  //- Les pages embarquées des autres plugins « Better * ». Pas de
+  //- `.settings-section` autour : chaque composant embarqué apporte sa propre
+  //- mise en page, et l'injecteur qu'on lui passe porte le marqueur
+  //- BetterPanelEmbedded qui lui dit qu'il est un sous-onglet.
+  ng-container(*ngFor='let panel of externalPanels')
+    ng-container(*ngIf="section === 'ext:' + panel.id")
+      ng-container(*ngComponentOutlet='panel.componentType; injector: embedInjector')

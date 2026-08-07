@@ -1,8 +1,9 @@
 import './settingsTab.component.scss'
-import { Component, HostBinding, NgZone } from '@angular/core'
+import { Component, HostBinding, Injector, NgZone } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService } from 'tabby-core'
 import { ConfirmModalComponent } from './confirmModal.component'
+import { BETTER_PANEL_EMBEDDED, BetterPanelContribution, electBetterPanelHost } from '../betterPanel'
 import { SidebarSnippet } from '../configProvider'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { hostSupports } from '../hostCompat'
@@ -32,10 +33,25 @@ export class SidebarPlusSettingsTabComponent {
      * Angular builds this only once the tab is shown. Reset on read so it
      * cannot pin the page for every later visit.
      */
-    static requestedSection: 'general'|'features'|'snippets'|null = null
+    static requestedSection: string|null = null
 
-    /** Which page of this tab is showing. Deliberately not persisted: a reading position, not a preference. */
-    section: 'general'|'features'|'snippets' = 'general'
+    /**
+     * Which page of this tab is showing. Deliberately not persisted: a reading
+     * position, not a preference. `string` rather than a union — the pages of
+     * the other "Better *" plugins are named `'ext:' + panel.id`.
+     */
+    section: string = 'general'
+
+    /**
+     * The other plugins' settings pages, shown as extra sub-tabs when this
+     * plugin hosts the unified "Better Tabby" tab (see betterPanel.ts). Empty
+     * when not hosting: a non-host mounting the others would have the host
+     * mount it back, recursively.
+     */
+    externalPanels: BetterPanelContribution[]
+
+    /** Injector handed to the embedded pages, carrying the marker that tells them they are a sub-tab. */
+    embedInjector: Injector
 
     editorPath: string
 
@@ -48,7 +64,14 @@ export class SidebarPlusSettingsTabComponent {
         private snippetsService: SidebarPlusSnippetsService,
         private ngbModal: NgbModal,
         private zone: NgZone,
+        injector: Injector,
     ) {
+        const election = electBetterPanelHost(injector)
+        this.externalPanels = election.isHost ? election.others : []
+        this.embedInjector = Injector.create({
+            providers: [{ provide: BETTER_PANEL_EMBEDDED, useValue: true }],
+            parent: injector,
+        })
         this.editorPath = this.editors.editorPath
         if (SidebarPlusSettingsTabComponent.requestedSection) {
             this.section = SidebarPlusSettingsTabComponent.requestedSection
@@ -57,7 +80,7 @@ export class SidebarPlusSettingsTabComponent {
     }
 
     /** `href='#'` is what gives the tabs their pointer and focus behaviour; without this the page would jump to the top on every click. */
-    setSection (section: 'general'|'features'|'snippets', event: Event): void {
+    setSection (section: string, event: Event): void {
         event.preventDefault()
         this.section = section
     }
