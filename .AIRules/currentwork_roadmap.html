@@ -26,7 +26,8 @@
 <p class="muted">Tableau de bord de la phase à roadmap figée : ce qui reste, dans quel ordre, et où
 reprendre. <strong>Le détail de ce qui est fait n'est pas ici</strong> — il vit dans
 <a href="ROADMAP.html">ROADMAP.html</a> et <a href="AI-HISTORY.html">AI-HISTORY.html</a>.
-<strong>Dernière mise à jour : 2026-08-03, G1 consigné et fusionné sur <code>master</code>.</strong></p>
+<strong>Dernière mise à jour : 2026-08-07, G5 validé 24/24 en passe pilotée + visuelle — consignation
+du lot en attente de feu vert.</strong></p>
 
 <div class="callout note"><span class="callout-title">Fichier temporaire</span>
 <p>Ouvert pendant une phase où la roadmap est <strong>figée</strong> : ce qui est réalisable de suite
@@ -34,20 +35,21 @@ est fait de suite, et la consignation se fait par lots plutôt qu'à chaque gest
 <strong>Ce fichier disparaît à la consignation finale</strong>, avec la section correspondante de
 <code>CLAUDE.md</code> ; il ne fait pas partie du corpus permanent.</p></div>
 
-<p><span class="count">5 / 25</span> validés — les cinq de G1, le 2026-08-03. Reste
-<strong>20 items</strong> en cinq groupes.</p>
+<p><span class="count">9 / 27</span> validés — les cinq de G1 (2026-08-03), les quatre de G5
+(2026-08-07, passe 24/24). Reste <strong>18 items</strong> en cinq groupes (deux ajouts le
+2026-08-07 : retour auto sur Profils en G4, libellé de la fenêtre de téléchargement en G5).</p>
 
 <div class="callout important"><span class="callout-title">Reprendre ici</span>
-<p><strong>G1 est clos, consigné et fusionné.</strong> Son code, ses fiches de roadmap et son entrée
-de journal sont sur <code>master</code> — la branche de phase est repartie de là.</p>
-<p><strong>Prochain geste</strong> : choisir le groupe suivant. Rien ne l'impose, mais deux angles
-valent d'être posés à l'utilisateur plutôt que devinés :</p>
+<p><strong>G1 est clos, consigné et fusionné</strong> (2026-08-03). <strong>G5 est validé 24/24</strong>
+(2026-08-07) : son code est commité sur la branche de phase, sa consignation détaillée (fiches de
+roadmap + entrée de journal) attend le feu vert, et l'item « libellé 127.0.0.1 » attend l'observation
+de l'utilisateur (quelle fenêtre l'affiche).</p>
+<p><strong>Prochain geste</strong> : consigner le lot G5 sur feu vert, puis choisir le groupe
+suivant — G6 ferme des inconnues bon marché avant la release (deux tests jamais exercés), G4 porte
+les deux dernières demandes de l'utilisateur (multi-sélection, retour auto sur Profils).</p>
 <ul>
-<li><strong>G5 est le groupe « Fiabilité »</strong> — quatre items dont trois évitent une perte ou un
-  message faux. C'est le seul groupe dont le report a un coût qui n'est pas du confort.</li>
-<li><strong>G6 porte deux tests jamais exercés</strong> et le jalon de publication. Il n'y a pas de
-  code à écrire pour les deux premiers, seulement des passes à faire — donc du bon marché qui ferme
-  des inconnues avant une release.</li>
+<li>Le harnais CDP de la passe G5 vit dans le scratchpad de la session du 2026-08-07
+  (<code>g5/cdp.js</code> + expressions) — réutilisable tel quel pour les prochaines passes.</li>
 </ul>
 <p><strong>Deux fichiers de travail, jetables</strong>, à supprimer à la consignation finale au même
 titre que ce document — et volontairement <strong>non versionnés</strong>, pour ne pas laisser dans un
@@ -143,22 +145,35 @@ ne désigne rien chez celui qui importe ?), mais le patron l'est.</p>
 <table class="board">
 <tr><th>Item</th><th>Diff.</th><th>Jauge</th><th>État</th></tr>
 <tr><td>Gel de la vue</td><td class="diff">S</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
-<tr><td>Multi-sélection distante</td><td class="diff">L</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Multi-sélection distante — fichiers <strong>et</strong> dossiers (précisé le 2026-08-07)</td><td class="diff">L</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
 <tr><td>Chargement par blocs</td><td class="diff">L</td><td><span class="pill">Confort</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td>Retour automatique sur la vue Profils quand plus aucun onglet n'a de SFTP actif — réglage dédié, valeur par défaut à confirmer au codage (ajouté le 2026-08-07)</td><td class="diff">M</td><td><span class="pill adopted">Utile</span></td><td><span class="pill planned">À faire</span></td></tr>
 </table>
+<p class="muted"><strong>Le retour automatique n'est pas la bascule existante</strong> : le délai de
+grâce de 3 s (chantier <a href="ROADMAP.html#panneau-etat-session">#panneau-etat-session</a>) réagit à
+la mort de la <em>session de l'onglet lié</em>. Le nouvel item couvre l'autre déclencheur — plus aucun
+onglet SSH avec SFTP actif nulle part — et doit réutiliser <code>isLiveSSHTab()</code>
+(<code>src/tabs.ts</code>), jamais <code>sshSession.open</code>
+(<a href="AI-CONTEXT.html#piege-59">piège #59</a>).</p>
 
-<h2>G5 — Transferts <span class="grp">· fiabilité, passe sur serveur réel</span></h2>
+<h2>G5 — Transferts &amp; tunnels <span class="pill done">✅ Validé (2026-08-07)</span></h2>
 <table class="board">
 <tr><th>Item</th><th>Diff.</th><th>Jauge</th><th>État</th></tr>
-<tr><td><code>downloadFolder</code> sur la voie moderne</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill planned">À faire</span></td></tr>
-<tr><td>Contrôle « le fichier est-il arrivé ? »</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill planned">À faire</span></td></tr>
-<tr><td>État de reprise tunnel (micro-coupure)</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill planned">À faire</span></td></tr>
-<tr><td>Chemin distant + session sur la ligne</td><td class="diff">S</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill planned">À faire</span></td></tr>
+<tr><td><code>downloadFolder</code> sur la voie moderne</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill done">Validé</span></td></tr>
+<tr><td>Contrôle « le fichier est-il arrivé ? »</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill done">Validé</span></td></tr>
+<tr><td>État de reprise tunnel (micro-coupure) + dédoublonnage des tunnels multiplexés (demande du 2026-08-07)</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill done">Validé</span></td></tr>
+<tr><td>Chemin distant + session sur la ligne (infobulle)</td><td class="diff">S</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill done">Validé</span></td></tr>
+<tr><td>Libellé « 127.0.0.1 » de la fenêtre de téléchargement — texte arbitraire impossible (hôte de l'URL) ; reste à savoir quelle fenêtre l'affiche et si « localhost » vaut le risque IPv6 (ajouté le 2026-08-07)</td><td class="diff">S</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill planned">À trancher</span></td></tr>
 </table>
-<p class="muted"><strong>Le seul groupe dont le report coûte autre chose que du confort.</strong>
-<code>downloadFolder</code> dira encore « annulé » sur une coupure tant qu'il reste sur la voie
-héritée, et le contrôle d'arrivée n'est possible que pour les téléchargements par menu contextuel,
-qui imposent leur chemin — jamais pour un glisser sortant, où le système ne dit pas la destination.</p>
+<p class="muted">Passe du 2026-08-07 : 16 tests pilotés par CDP (serveur VPN, banc
+<code>/tmp/zzz-test-g5</code> nettoyé, config vérifiée identique à l'octet) + 8 tests visuels
+utilisateur, <strong>24/24 ok</strong>. Deux faits à ne pas redécouvrir : les tunnels en
+3-4 exemplaires venaient du <strong>multiplexage</strong> (même session listée une fois par onglet) ;
+et sur ce poste un second bind local est refusé (<code>EADDRINUSE</code>), donc le démontage
+automatique de doublon est un filet de sécurité <strong>au chemin non exercé</strong>. Remarque du
+test 20, comportement voulu : fermer le 1ᵉʳ onglet d'une session multiplexée laisse le tunnel
+vivant tant qu'un onglet la référence. La consignation détaillée (fiches + journal) suit le feu
+vert du lot.</p>
 
 <h2>G6 — Sortie de version</h2>
 <table class="board">
@@ -177,8 +192,8 @@ parcouru. Les laisser non exercés jusqu'à la release revient à publier en esp
 <tr><td>G1 — Menu contextuel</td><td><strong>0 / 5</strong></td><td>Clos le 2026-08-03</td></tr>
 <tr><td>G2 — Sections hautes</td><td>4 / 4</td><td>+ confirmation d'annulation de transfert</td></tr>
 <tr><td>G3 — Workspaces</td><td>5 / 5</td><td>Dont une décision ; l'export gagne à réutiliser G1</td></tr>
-<tr><td>G4 — Liste SFTP</td><td>3 / 3</td><td>Intact</td></tr>
-<tr><td>G5 — Transferts</td><td>4 / 4</td><td>Intact, c'est le groupe « Fiabilité »</td></tr>
+<tr><td>G4 — Liste SFTP</td><td>4 / 4</td><td>Intact ; + retour auto sur Profils (2026-08-07)</td></tr>
+<tr><td>G5 — Transferts &amp; tunnels</td><td><strong>1 / 5</strong></td><td>Validé 24/24 le 2026-08-07 ; reste le libellé « 127.0.0.1 » à trancher</td></tr>
 <tr><td>G6 — Sortie de version</td><td>4 / 4</td><td>Dont deux tests jamais exercés</td></tr>
 </table>
 
@@ -193,6 +208,14 @@ de chaque item est dans la <a href="ROADMAP.html">roadmap</a>.</p>
     avec arbitrage, purge rejouée à l'entrée) · interrupteurs <code>showSnippets</code> /
     <code>showNotes</code>. Pièges <a href="AI-CONTEXT.html#piege-76">#76</a>,
     <a href="AI-CONTEXT.html#piege-77">#77</a>, <a href="AI-CONTEXT.html#piege-78">#78</a>.</td></tr>
+<tr><td>2026-08-07</td><td>G5 — les quatre items</td><td><span class="muted">commit de code sur la
+    branche de phase ; doc en attente de feu vert</span></td>
+    <td>« Download directory » sur la voie moderne (une ligne par fichier, collision « (2) »,
+    « interrompu à N % » sur coupure) · contrôle d'arrivée (état <code>unsound</code> « incomplet à
+    destination », résolution des symlinks partagée) · tunnels : mémoire de coupure
+    (<code>waiting</code> 60 s), « non remonté » après reprise (30 s), dédoublonnage multiplexage +
+    démontage de doublon en filet · chemin distant + session en infobulle des lignes de transfert.
+    Passe 24/24 (16 pilotées CDP + 8 visuelles).</td></tr>
 </table>
 
 <h2>Chantiers ouverts en chemin</h2>

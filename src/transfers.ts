@@ -1,8 +1,21 @@
+import * as fs from 'fs'
 import { FileDownload, FileTransfer, FileUpload, PlatformService } from 'tabby-core'
 import { SidebarPlusNoticesService } from './notices.service'
-import { SidebarPlusTransfersService } from './transfersRegistry.service'
+import { SidebarPlusTransfersService, TransferContext } from './transfersRegistry.service'
 import { SFTPPanelComponent } from 'tabby-ssh'
 import { LocalFileDownload, LocalFileUpload } from './sftpLocalTransfer'
+import { readRemoteEntry, resolveRemoteSymlink } from './remoteEntry'
+
+/**
+ * How long a just-finished download is given to reach its final size on disk.
+ *
+ * `sftp.download()` resolving means the last byte was handed to the transfer,
+ * not that the write stream behind it has flushed: a stat taken immediately can
+ * see a file still short of its size. Polled briefly rather than trusted once —
+ * and only when the first look disagrees, so the happy path costs one stat.
+ */
+const ARRIVAL_SETTLE_ATTEMPTS = 5
+const ARRIVAL_SETTLE_DELAY_MS = 200
 
 /** The live SFTP transport, borrowed from the one member that publicly exposes its type. */
 type SftpSession = SFTPPanelComponent['sftp']
@@ -21,6 +34,14 @@ type SftpSession = SFTPPanelComponent['sftp']
  * that until now ran completely invisibly.
  */
 export class SftpTransfers {
+    /**
+     * The display name of the SSH tab this instance works for, shown on the
+     * transfer lines. A plain mutable field rather than a constructor argument:
+     * the browser component that owns this instance only learns its tab's name
+     * after construction, when the host panel binds it.
+     */
+    sessionLabel: string|null = null
+
     constructor (
         private platform: PlatformService,
         private notifications: SidebarPlusNoticesService,
@@ -58,18 +79,83 @@ export class SftpTransfers {
         return this.platform.startDownload.length >= 4
     }
 
-    async download (sftp: SftpSession, remotePath: string, localPath: string, name: string, size: number, mode: number): Promise<void> {
+    async download (sftp: SftpSession, remotePath: string, localPath: string, name: string, size: number, mode: number, context?: TransferContext): Promise<void> {
         if (this.imposesPath) {
             const transfer = await this.platform.startDownload(name, mode, size, localPath)
             if (!transfer) {
                 throw new Error(`Le téléchargement de ${name} n'a pas pu démarrer`)
             }
+            // The `fileTransferStarted$` subscription tracked it inside the call
+            // above, without context — completed here, where it is known.
+            this.registry.attachContext(transfer, {
+                remotePath,
+                sessionLabel: context?.sessionLabel ?? this.sessionLabel ?? undefined,
+            })
             await this.report(transfer, () => sftp.download(remotePath, transfer))
+            await this.verifyArrival(sftp, remotePath, localPath, name, size, transfer)
             return
         }
         const fallback: FileDownload = new LocalFileDownload(localPath, name, size, mode)
         await (fallback as LocalFileDownload).openForWriting()
         await sftp.download(remotePath, fallback)
+        await this.verifyArrival(sftp, remotePath, localPath, name, size, null)
+    }
+
+    /**
+     * Confirms that what `download()` wrote is actually at `localPath`, whole.
+     *
+     * This is the one route where the question is answerable at all: the
+     * destination is a path this plugin chose. A drag-out served over HTTP has
+     * no destination to inspect — that is what the `handover` state is for.
+     *
+     * The expected size comes from the caller's `readdir` listing, which can be
+     * legitimately stale: a file rewritten remotely between the listing and the
+     * download arrives at its *new* size. Before crying wolf, the entry is
+     * re-read from the parent listing (never `stat()`, piège #50) and the local
+     * size is accepted if it matches either figure. A remote re-read that fails
+     * proves nothing either way and is not treated as a verdict.
+     */
+    private async verifyArrival (
+        sftp: SftpSession,
+        remotePath: string,
+        localPath: string,
+        name: string,
+        expectedSize: number,
+        transfer: FileTransfer|null,
+    ): Promise<void> {
+        let localSize: number|null = null
+        for (let attempt = 0; attempt < ARRIVAL_SETTLE_ATTEMPTS; attempt++) {
+            if (attempt > 0) {
+                await new Promise(resolve => setTimeout(resolve, ARRIVAL_SETTLE_DELAY_MS))
+            }
+            localSize = await fs.promises.stat(localPath).then(st => st.size).catch(() => null)
+            if (localSize === expectedSize) {
+                return
+            }
+        }
+        if (localSize !== null) {
+            const fresh = await readRemoteEntry(sftp, remotePath).catch(() => null)
+            if (fresh && localSize === fresh.size) {
+                return
+            }
+            // A symlink's listed size is the link's own — a couple dozen bytes —
+            // while the download delivers the *target's* content. Resolving is
+            // what keeps a perfectly sound copy from being called incomplete
+            // (found by the very first run of this check, on lien-fichier).
+            if (fresh?.isSymlink) {
+                const target = await resolveRemoteSymlink(sftp, fresh).catch(() => null)
+                if (target && localSize === target.size) {
+                    return
+                }
+            }
+        }
+        const reason = localSize === null
+            ? `aucun fichier à destination (${localPath})`
+            : `${localSize} octets à destination, ${expectedSize} attendus`
+        if (transfer) {
+            this.registry.markUnsound(transfer, reason)
+        }
+        throw new Error(`${name} : arrivée non vérifiée — ${reason}`)
     }
 
     /**
@@ -82,12 +168,16 @@ export class SftpTransfers {
      * dropped it to a non-executable mode, silently. Restoring the mode we read
      * before the edit is the only thing that keeps a script runnable.
      */
-    async upload (sftp: SftpSession, remotePath: string, localPath: string, name: string, size: number, mode: number): Promise<void> {
+    async upload (sftp: SftpSession, remotePath: string, localPath: string, name: string, size: number, mode: number, context?: TransferContext): Promise<void> {
         if (this.imposesPath) {
             const [transfer] = await this.platform.startUpload({ multiple: false }, [localPath])
             if (!transfer) {
                 throw new Error(`L'envoi de ${name} n'a pas pu démarrer`)
             }
+            this.registry.attachContext(transfer, {
+                remotePath,
+                sessionLabel: context?.sessionLabel ?? this.sessionLabel ?? undefined,
+            })
             await this.report(transfer, () => sftp.upload(remotePath, transfer))
         } else {
             const fallback = new LocalFileUpload(localPath, name, size, mode)

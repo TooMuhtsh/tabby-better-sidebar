@@ -6,8 +6,24 @@ export type TransferDirection = 'up'|'down'
 /**
  * `handover` sits between the last byte we serve and the file actually being
  * where the user dropped it — see `HANDOVER_BYTES_PER_MS`.
+ *
+ * `unsound` is a transfer that *finished* but whose arrival check failed: every
+ * byte we knew of was served, yet the file at destination is missing or has the
+ * wrong size. Distinct from `failed` because "interrompu à N %" would be a lie —
+ * nothing was interrupted, the copy just is not what it should be.
  */
-export type TransferState = 'active'|'handover'|'done'|'cancelled'|'failed'
+export type TransferState = 'active'|'handover'|'done'|'cancelled'|'failed'|'unsound'
+
+/**
+ * What a transfer is *about*, which the `FileTransfer` object cannot say:
+ * `getName()` is all it exposes. Supplied by whoever starts the transfer —
+ * the only party that knows — and shown on the line's tooltip.
+ */
+export interface TransferContext {
+    remotePath?: string
+    /** The owning SSH tab's display name, same fallback rule as the sessions list. */
+    sessionLabel?: string
+}
 
 /**
  * One line of the panel.
@@ -45,6 +61,12 @@ export interface TransferEntry {
     handsOver: boolean
     /** When the handover is estimated to be over. Only meaningful while the state is `handover`. */
     handoverUntil: number
+    /** Where the entry lives on the server. Empty when the starter never said. */
+    remotePath: string
+    /** Which session carries it. Empty when the starter never said. */
+    sessionLabel: string
+    /** The row's whole tooltip, composed once — name, remote path and session on their own lines. */
+    tooltip: string
 }
 
 /** How often the visible figures are recomputed while something is running. */
@@ -168,7 +190,7 @@ export class SidebarPlusTransfersService {
      * list is only ever emptied by clicking each line, so a hidden menu would
      * accumulate entries nobody can reach.
      */
-    track (transfer: FileTransfer, handsOver = false): void {
+    track (transfer: FileTransfer, handsOver = false, context?: TransferContext): void {
         // The single gate for both feeds — `fileTransferStarted$` above and our
         // own callers here. Placed on the way in rather than at the panel: an
         // entry recorded for a switched-off panel would grow a list nobody can
@@ -180,7 +202,7 @@ export class SidebarPlusTransfersService {
         this.zone.run(() => {
             const size = transfer.getSize()
             const now = Date.now()
-            this.entries.unshift({
+            const entry: TransferEntry = {
                 id: this.counter++,
                 transfer,
                 direction: transfer instanceof FileDownload ? 'down' : 'up',
@@ -199,10 +221,46 @@ export class SidebarPlusTransfersService {
                 failureReason: '',
                 handsOver,
                 handoverUntil: 0,
-            })
+                remotePath: context?.remotePath ?? '',
+                sessionLabel: context?.sessionLabel ?? '',
+                tooltip: '',
+            }
+            entry.tooltip = SidebarPlusTransfersService.composeTooltip(entry)
+            this.entries.unshift(entry)
             this.refreshSummary()
             this.startTicking()
         })
+    }
+
+    /**
+     * Completes an entry's context after the fact.
+     *
+     * Needed by the one feed that cannot pass it at `track()` time: a transfer
+     * started through `platform.startDownload()`/`startUpload()` is registered
+     * by the `fileTransferStarted$` subscription, synchronously, *inside* that
+     * call — the caller only holds the transfer once it is already tracked.
+     * Attaching afterwards closes the gap without a second bookkeeping path.
+     */
+    attachContext (transfer: FileTransfer, context: TransferContext): void {
+        const entry = this.entries.find(candidate => candidate.transfer === transfer)
+        if (!entry) {
+            return
+        }
+        entry.remotePath = context.remotePath ?? entry.remotePath
+        entry.sessionLabel = context.sessionLabel ?? entry.sessionLabel
+        entry.tooltip = SidebarPlusTransfersService.composeTooltip(entry)
+    }
+
+    /** One line each, present parts only: the tooltip is read on hover, not parsed. */
+    private static composeTooltip (entry: TransferEntry): string {
+        const parts = [entry.name]
+        if (entry.remotePath) {
+            parts.push(entry.remotePath)
+        }
+        if (entry.sessionLabel) {
+            parts.push(`Session : ${entry.sessionLabel}`)
+        }
+        return parts.join('\n')
     }
 
     /**
@@ -231,6 +289,30 @@ export class SidebarPlusTransfersService {
     }
 
     /**
+     * Marks a transfer that finished but did not arrive sound.
+     *
+     * Reported by the arrival check that runs after a download to an imposed
+     * path — the only route where a destination exists to inspect. By the time
+     * the check runs, the tick may already have flipped the line to `done`,
+     * which is why `done` is accepted here where `markFailed()` refuses it:
+     * this is precisely a verdict *on* a finished transfer.
+     */
+    markUnsound (transfer: FileTransfer, reason?: string): void {
+        this.zone.run(() => {
+            const entry = this.entries.find(candidate => candidate.transfer === transfer)
+            if (!entry || (entry.state !== 'active' && entry.state !== 'done')) {
+                return
+            }
+            this.finish(entry, 'unsound', Date.now())
+            entry.failureReason = reason ?? ''
+            this.refreshSummary()
+            if (!this.runningCount) {
+                this.stopTicking()
+            }
+        })
+    }
+
+    /**
      * Says what is happening rather than just how many lines there are.
      *
      * A bare count next to the title read as "Transferts2" and told nothing:
@@ -244,7 +326,10 @@ export class SidebarPlusTransfersService {
         const active = this.runningCount
         const done = this.entries.filter(entry => entry.state === 'done').length
         const cancelled = this.entries.filter(entry => entry.state === 'cancelled').length
-        const failed = this.entries.filter(entry => entry.state === 'failed').length
+        // Counted together for the badge: to someone deciding whether to look,
+        // "the copy is not sound" and "the copy died" are the same news.
+        const failed = this.entries.filter(entry => entry.state === 'failed' || entry.state === 'unsound').length
+        const unsound = this.entries.filter(entry => entry.state === 'unsound').length
         // A failure outranks the plain total even when nothing is running: it is
         // the one state the user has to know about without opening the list.
         this.summary = active > 0
@@ -260,8 +345,11 @@ export class SidebarPlusTransfersService {
         if (cancelled > 0) {
             parts.push(cancelled > 1 ? `${cancelled} annulés` : '1 annulé')
         }
-        if (failed > 0) {
-            parts.push(failed > 1 ? `${failed} interrompus` : '1 interrompu')
+        if (failed - unsound > 0) {
+            parts.push(failed - unsound > 1 ? `${failed - unsound} interrompus` : '1 interrompu')
+        }
+        if (unsound > 0) {
+            parts.push(unsound > 1 ? `${unsound} incomplets à destination` : '1 incomplet à destination')
         }
         this.summaryTitle = parts.join(', ')
     }

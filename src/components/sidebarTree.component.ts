@@ -26,6 +26,13 @@ import { SnippetsModalComponent, SnippetsModalResult } from './snippetsModal.com
 import { NoteModalComponent } from './noteModal.component'
 import { PasteGroupModalComponent, PasteResolution } from './pasteGroupModal.component'
 import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh'
+
+/**
+ * A live forward as the session holds it. The `ForwardedPort` class is not
+ * exported by the vendored typings' index — borrowed through the one member
+ * that publicly exposes it, same pattern as `SftpSession` in transfers.ts.
+ */
+type LiveForward = NonNullable<SSHTabComponent['sshSession']>['forwardedPorts'][number]
 import { loadIconEntries, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarSnippet, SidebarWorkspace } from '../configProvider'
@@ -80,7 +87,52 @@ interface ActiveTunnel {
     detail: string
     /** Browsable address, for a Local forward only — Remote listens on the far end, Dynamic is a SOCKS proxy with no page to open. */
     url: string|null
+    /**
+     * `live` is a mounted forward. `waiting` is remembered from a session that
+     * just died — the row stays, dimmed, while the session gets a chance to
+     * come back (see TUNNEL_LOSS_GRACE_MS). `lost` is the aftermath of a
+     * reconnection: a forward the revived session did *not* remount, which is
+     * exactly what happens to a tunnel added on the fly — Tabby only remounts
+     * what the profile carries (verified in `ssh.ts:493`, nothing else is
+     * replayed). Shown for a while so the loss is seen instead of silent.
+     */
+    state: 'live'|'waiting'|'lost'
+    /** The row's whole hover text, composed once — the detail, plus what the state means when it is not `live`. */
+    tooltip: string
+    /** `tunnelKey()` of the forward — never displayed, carried so memory can match rows across a reconnection. */
+    key: string
 }
+
+/** What `tunnelMemory` keeps per forward — enough to rebuild a row without the (dead) session. */
+interface RememberedTunnel {
+    key: string
+    sessionName: string
+    label: string
+    detail: string
+}
+
+/** What `tunnelMemory` keeps per SSH tab, across the death and revival of its session. */
+interface TunnelMemoryEntry {
+    rows: RememberedTunnel[]
+    /** When the session was first seen dead, null while it lives. */
+    lostAt: number|null
+    /** Rows for forwards a revived session did not bring back, each with its display deadline. */
+    ghosts: { row: ActiveTunnel, until: number }[]
+}
+
+/**
+ * How long a dead session's tunnels stay visible as « en attente de reprise ».
+ *
+ * Long enough to cover an automatic reconnection and a human clicking
+ * "Reconnect" without hurrying; bounded because a session nobody revives is a
+ * session that was closed, and its tunnels with it. The SFTP panel's 3 s grace
+ * answers a different question (when to *leave* the view) — this one is about
+ * how long a line may honestly claim it might come back.
+ */
+const TUNNEL_LOSS_GRACE_MS = 60_000
+
+/** How long a « non remonté » row lingers after a reconnection before the loss is considered acknowledged. */
+const TUNNEL_NOT_RESTORED_MS = 30_000
 
 /** One row of the "Sessions actives" section — a live SSH tab, flattened out of its split if it is in one. */
 interface ActiveSession {
@@ -1453,6 +1505,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             }
             this.tunnelCounts = new Map()
             this.liveTunnelKeys = new Map()
+            // A stale memory would resurrect "waiting" rows the moment the
+            // block comes back on, for sessions that may be long gone.
+            this.tunnelMemory.clear()
             return
         }
 
@@ -1461,6 +1516,14 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const tunnels: ActiveTunnel[] = []
         const tunnelCounts = new Map<string, number>()
         const liveTunnelKeys = new Map<string, Set<string>>()
+        const nowMs = Date.now()
+        const openSSHTabs = new Set<SSHTabComponent>()
+        // A multiplexed session is one object shared by several tabs, so its
+        // forwards would otherwise be listed once per tab: same object, same
+        // tunnel, N lines for one listener.
+        const seenForwards = new Set<LiveForward>()
+        // First mounted wins for a local listener — see the dedup note below.
+        const localOwners = new Map<string, string>()
         for (const tab of getAllOpenTabs(this.app)) {
             // Same narrowing as the SFTP panel, through the same helper: it
             // only holds while `tabby-ssh` stays out of node_modules
@@ -1469,10 +1532,19 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             if (!isSSHTab(tab)) {
                 continue
             }
+            openSSHTabs.add(tab)
             // Both halves of the test matter — see isLiveSSHTab and piège #37.
             // Shared with the SFTP panel since 2026-08-02: the two had drifted
             // apart, this list dropping a session the panel went on serving.
             if (!isLiveSSHTab(tab)) {
+                // The tab still exists but its transport is gone: this is the
+                // very window a reconnection happens in. Its tunnels are shown
+                // from memory, dimmed, rather than silently dropped — a section
+                // that vanishes during a micro-cut is indistinguishable from
+                // one that never had tunnels.
+                if (wantTunnels) {
+                    this.pushWaitingTunnels(tab, tunnels, nowMs)
+                }
                 continue
             }
             const profile = (tab as unknown as ProfileBackedTab).profile
@@ -1513,21 +1585,56 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // Read straight off the live transport. Tabby owns the forwarding
             // engine entirely — this plugin only mirrors its state, per the
             // roadmap's "surcouche visuelle" framing.
+            const tabRows: ActiveTunnel[] = []
             for (const forward of tab.sshSession.forwardedPorts ?? []) {
+                if (seenForwards.has(forward)) {
+                    continue
+                }
+                seenForwards.add(forward)
+                const key = SidebarPlusTreeComponent.tunnelKey(forward)
+                // Real duplicate: two *distinct* sessions each mounted the same
+                // forward — several tabs on one profile do exactly that, since
+                // every session start replays the profile's list, and Windows
+                // lets a second listener bind a port Unix would refuse. Only
+                // one of them usefully serves; the first mounted is kept and
+                // the copy is dismounted, with a notice. Remote forwards are
+                // exempt: they listen on *their* server's side, so the same
+                // key on two sessions to two hosts is two different tunnels —
+                // and on the same host the server already refused the second.
+                if (forward.type !== PortForwardType.Remote) {
+                    const owner = localOwners.get(key)
+                    if (owner !== undefined) {
+                        this.dismountDuplicate(tab, forward, owner, sessionName)
+                        continue
+                    }
+                    localOwners.set(key, sessionName)
+                }
                 const detail = SidebarPlusTreeComponent.formatTunnel(forward)
-                tunnels.push({
+                tabRows.push({
                     tab,
                     sessionName,
                     label: forward.description?.trim() || detail,
                     detail,
                     url: SidebarPlusTreeComponent.tunnelUrl(forward),
+                    state: 'live',
+                    tooltip: detail,
+                    key,
                 })
                 if (profile?.id) {
                     tunnelCounts.set(profile.id, (tunnelCounts.get(profile.id) ?? 0) + 1)
                     const keys = liveTunnelKeys.get(profile.id) ?? new Set<string>()
-                    keys.add(SidebarPlusTreeComponent.tunnelKey(forward))
+                    keys.add(key)
                     liveTunnelKeys.set(profile.id, keys)
                 }
+            }
+            tunnels.push(...tabRows)
+            this.rememberTunnels(tab, tabRows, tunnels, nowMs)
+        }
+        // Tabs that no longer exist take their memory with them: a closed tab
+        // is a closed session, not a cut waiting to heal.
+        for (const tab of [...this.tunnelMemory.keys()]) {
+            if (!openSSHTabs.has(tab)) {
+                this.tunnelMemory.delete(tab)
             }
         }
         // Same guard as the sessions list above, and for the same reason: this
@@ -1794,7 +1901,112 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             tunnel.label === b[i].label &&
             tunnel.detail === b[i].detail &&
             tunnel.url === b[i].url &&
-            tunnel.sessionName === b[i].sessionName)
+            tunnel.sessionName === b[i].sessionName &&
+            tunnel.state === b[i].state)
+    }
+
+    /**
+     * What each SSH tab's tunnels looked like when last seen alive, kept across
+     * the death of the session so a micro-cut shows as a state instead of a
+     * disappearance. Pruned when the tab itself goes away.
+     */
+    private tunnelMemory = new Map<SSHTabComponent, TunnelMemoryEntry>()
+
+    /** Forwards already dismounted as duplicates — the poll must not notice (or dismount) them twice while the removal is in flight. */
+    private dismountedForwards = new WeakSet<LiveForward>()
+
+    /** Emits the remembered tunnels of a dead-but-present tab, dimmed, while the reconnection window lasts. */
+    private pushWaitingTunnels (tab: SSHTabComponent, into: ActiveTunnel[], now: number): void {
+        const entry = this.tunnelMemory.get(tab)
+        if (!entry?.rows.length) {
+            return
+        }
+        entry.lostAt ??= now
+        if (now - entry.lostAt > TUNNEL_LOSS_GRACE_MS) {
+            // Nobody revived it in time: from here on the cut is treated as a
+            // closure, and the rows go the way they always did before this
+            // feature — away.
+            this.tunnelMemory.delete(tab)
+            return
+        }
+        for (const row of entry.rows) {
+            into.push({
+                tab,
+                sessionName: row.sessionName,
+                label: row.label,
+                detail: row.detail,
+                // No browser button on a dead listener: the page could not load.
+                url: null,
+                state: 'waiting',
+                tooltip: `${row.detail} — session coupée, tunnel en attente de reprise`,
+                key: row.key,
+            })
+        }
+    }
+
+    /**
+     * Updates the memory of a live tab, and surfaces what a revival did *not*
+     * bring back.
+     *
+     * Tabby only remounts the forwards written on the profile — a tunnel added
+     * on the fly through the modal is silently gone after a reconnection
+     * (verified in the installed app's `ssh.ts`: `start()` replays
+     * `profile.options.forwardedPorts`, nothing else). Those are shown as
+     * `lost` for a while, so the silence has a witness.
+     */
+    private rememberTunnels (tab: SSHTabComponent, live: ActiveTunnel[], into: ActiveTunnel[], now: number): void {
+        const previous = this.tunnelMemory.get(tab)
+        let ghosts = previous?.ghosts ?? []
+        if (previous && previous.lostAt !== null) {
+            const liveKeys = new Set(live.map(row => row.key))
+            ghosts = previous.rows.filter(row => !liveKeys.has(row.key)).map(row => ({
+                row: {
+                    tab,
+                    sessionName: row.sessionName,
+                    label: row.label,
+                    detail: row.detail,
+                    url: null,
+                    state: 'lost' as const,
+                    tooltip: `${row.detail} — non remonté après la reconnexion. Seuls les tunnels enregistrés`
+                        + ` dans le profil sont remontés ; un tunnel ajouté à la volée disparaît avec la session.`,
+                    key: row.key,
+                },
+                until: now + TUNNEL_NOT_RESTORED_MS,
+            }))
+        }
+        // The same row objects are re-pushed every pass on purpose: their
+        // fields are what sameTunnels() compares, and stable rows are what
+        // keeps the DOM from being rebuilt twice a second.
+        ghosts = ghosts.filter(ghost => ghost.until > now)
+        into.push(...ghosts.map(ghost => ghost.row))
+        this.tunnelMemory.set(tab, {
+            rows: live.map(row => ({ key: row.key, sessionName: row.sessionName, label: row.label, detail: row.detail })),
+            lostAt: null,
+            ghosts,
+        })
+    }
+
+    /**
+     * Dismounts one duplicate forward and says so.
+     *
+     * Fire-and-forget on purpose: this runs inside the 2 s poll, and the poll
+     * must not await network round trips. The WeakSet is what keeps the next
+     * pass from dismounting (or announcing) the same object again while the
+     * removal is still in flight.
+     */
+    private dismountDuplicate (tab: SSHTabComponent, forward: LiveForward, ownerName: string, sessionName: string): void {
+        if (this.dismountedForwards.has(forward)) {
+            return
+        }
+        this.dismountedForwards.add(forward)
+        const detail = SidebarPlusTreeComponent.formatTunnel(forward)
+        tab.sshSession?.removePortForward(forward).catch(() => {
+            // The listener may already be gone with its session; either way the
+            // next poll re-reads reality rather than trusting this call.
+        })
+        this.notices.notice(
+            `Tunnel ${detail} déjà monté par ${ownerName} — doublon démonté (${sessionName})`,
+        )
     }
 
     /**

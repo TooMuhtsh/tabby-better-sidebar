@@ -29,8 +29,8 @@
             *ngFor='let entry of transfers.entries; trackBy: trackById',
             [class.transfer-done]='entry.state === "done"',
             [class.transfer-cancelled]='entry.state === "cancelled"',
-            [class.transfer-failed]='entry.state === "failed"',
-            [title]='entry.name'
+            [class.transfer-failed]='entry.state === "failed" || entry.state === "unsound"',
+            [title]='entry.tooltip'
         )
             .fa.fa-fw.fas.transfer-arrow(
                 [class.fa-arrow-down]='entry.direction === "down"',
@@ -60,6 +60,13 @@
                 *ngIf='entry.state === "failed"',
                 [title]='entry.failureReason'
             ) interrompu à {{ entry.percent }} %
+            //- Finished, but the arrival check disagreed: the file at
+            //- destination is missing or short. « interrompu » would be a lie —
+            //- nothing broke mid-flight — hence its own label.
+            span.transfer-figure(
+                *ngIf='entry.state === "unsound"',
+                [title]='entry.failureReason'
+            ) incomplet à destination
             //- Blank until a speed is known, and gone once there is nothing left
             //- to wait for — hence its own span rather than a suffix on the time.
             span.transfer-eta(*ngIf='entry.etaLabel', title='Temps restant estimé') ~{{ entry.etaLabel }}
