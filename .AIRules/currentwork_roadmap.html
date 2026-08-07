@@ -35,15 +35,14 @@ est fait de suite, et la consignation se fait par lots plutôt qu'à chaque gest
 <strong>Ce fichier disparaît à la consignation finale</strong>, avec la section correspondante de
 <code>CLAUDE.md</code> ; il ne fait pas partie du corpus permanent.</p></div>
 
-<p><span class="count">9 / 27</span> validés — les cinq de G1 (2026-08-03), les quatre de G5
-(2026-08-07, passe 24/24). Reste <strong>18 items</strong> en cinq groupes (deux ajouts le
-2026-08-07 : retour auto sur Profils en G4, libellé de la fenêtre de téléchargement en G5).</p>
+<p><span class="count">10 / 27</span> validés — les cinq de G1 (2026-08-03), les cinq de G5
+(2026-08-07 : quatre items en passe 24/24, plus le libellé « 127.0.0.1 » clos en écart assumé).
+Reste <strong>17 items</strong> en quatre groupes.</p>
 
 <div class="callout important"><span class="callout-title">Reprendre ici</span>
-<p><strong>G1 et G5 sont clos, consignés et fusionnés</strong> (2026-08-03 et 2026-08-07). Reste de
-G5 un seul point, « libellé 127.0.0.1 » : l'observation est faite (dialogue « Enregistrer sous » de
-la voie fichier du menu contextuel), les options sont posées dans la fiche
-<a href="ROADMAP.html#panneau-etat-session">panneau d'état</a> — décision utilisateur attendue.</p>
+<p><strong>G1 et G5 sont clos, consignés et fusionnés</strong> (2026-08-03 et 2026-08-07). G5 est
+entièrement soldé : le « libellé 127.0.0.1 » est un écart assumé, tranché par l'utilisateur le
+2026-08-07 après présentation des alternatives.</p>
 <p><strong>Prochain geste</strong> : choisir le groupe suivant — G6 ferme des inconnues bon marché
 avant la release (deux tests jamais exercés), G4 porte les deux dernières demandes de l'utilisateur
 (multi-sélection, retour auto sur Profils).</p>
@@ -163,7 +162,7 @@ onglet SSH avec SFTP actif nulle part — et doit réutiliser <code>isLiveSSHTab
 <tr><td>Contrôle « le fichier est-il arrivé ? »</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill done">Validé</span></td></tr>
 <tr><td>État de reprise tunnel (micro-coupure) + dédoublonnage des tunnels multiplexés (demande du 2026-08-07)</td><td class="diff">M</td><td><span class="pill warn">Fiabilité</span></td><td><span class="pill done">Validé</span></td></tr>
 <tr><td>Chemin distant + session sur la ligne (infobulle)</td><td class="diff">S</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill done">Validé</span></td></tr>
-<tr><td>Libellé « 127.0.0.1 » de la fenêtre de téléchargement — texte arbitraire impossible (hôte de l'URL) ; reste à savoir quelle fenêtre l'affiche et si « localhost » vaut le risque IPv6 (ajouté le 2026-08-07)</td><td class="diff">S</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill planned">À trancher</span></td></tr>
+<tr><td>Libellé « 127.0.0.1 » de la fenêtre de téléchargement — hôte de l'URL, texte arbitraire impossible ; alternatives écartées par l'utilisateur (ajouté et clos le 2026-08-07)</td><td class="diff">S</td><td><span class="pill out">Cosmétique</span></td><td><span class="pill done">Écart assumé</span></td></tr>
 </table>
 <p class="muted">Passe du 2026-08-07 : 16 tests pilotés par CDP (serveur VPN, banc
 <code>/tmp/zzz-test-g5</code> nettoyé, config vérifiée identique à l'octet) + 8 tests visuels
@@ -193,7 +192,7 @@ parcouru. Les laisser non exercés jusqu'à la release revient à publier en esp
 <tr><td>G2 — Sections hautes</td><td>4 / 4</td><td>+ confirmation d'annulation de transfert</td></tr>
 <tr><td>G3 — Workspaces</td><td>5 / 5</td><td>Dont une décision ; l'export gagne à réutiliser G1</td></tr>
 <tr><td>G4 — Liste SFTP</td><td>4 / 4</td><td>Intact ; + retour auto sur Profils (2026-08-07)</td></tr>
-<tr><td>G5 — Transferts &amp; tunnels</td><td><strong>1 / 5</strong></td><td>Validé 24/24 le 2026-08-07 ; reste le libellé « 127.0.0.1 » à trancher</td></tr>
+<tr><td>G5 — Transferts &amp; tunnels</td><td><strong>0 / 5</strong></td><td>Clos le 2026-08-07 — passe 24/24 + un écart assumé</td></tr>
 <tr><td>G6 — Sortie de version</td><td>4 / 4</td><td>Dont deux tests jamais exercés</td></tr>
 </table>
 

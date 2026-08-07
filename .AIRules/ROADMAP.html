@@ -147,11 +147,11 @@ lire le même fait.</p>
     <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>✅ Fait (2026-08-07)</td></tr>
 <tr><td>Le dialogue « Enregistrer sous » d'un téléchargement de <strong>fichier</strong> par menu
     contextuel affiche « 127.0.0.1 » (l'hôte de l'URL de l'offre HTTP locale — le dossier n'y passe
-    plus). Texte arbitraire impossible ; à arbitrer : « localhost » (gain marginal, risque de
-    résolution IPv6 <code>::1</code> face au serveur IPv4), ou basculer cette voie sur
-    <code>platform.startDownload()</code> à dialogue — ce qui rouvrirait un écart déjà tranché
-    (transfert pendant la boîte ouverte, voir « ce qui ressemble à un reste »).</td>
-    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>À trancher</td></tr>
+    plus). Texte arbitraire impossible ; les deux alternatives (« localhost » au risque IPv6, ou la
+    voie <code>platform.startDownload()</code> à dialogue) ont été présentées et
+    <strong>écartées par l'utilisateur le 2026-08-07</strong> — l'adresse est exacte, c'est bien un
+    serveur local qui sert le fichier.</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>Écart assumé (2026-08-07)</td></tr>
 
 <tr><td>Repli du marqueur — livraison dans <code>~/Downloads</code> quand il n'est pas retrouvé. Le
     code est en place, aucun geste ne l'a parcouru.</td>
@@ -185,6 +185,8 @@ ferait rouvrir un travail déjà fait :</p>
   code — retirer le panneau ne libère pas le canal et n'annule rien.</li>
 <li><strong>Le transfert qui continue pendant que « Enregistrer sous » est ouverte</strong> : écart
   constaté en test et assumé, l'alternative ayant été proposée puis écartée.</li>
+<li><strong>Le « 127.0.0.1 » du même dialogue</strong> : c'est l'hôte de l'URL servie, pas un libellé —
+  irremplaçable par un texte, alternatives présentées et écartées par l'utilisateur le 2026-08-07.</li>
 <li><strong>Une cible qui ne comprend pas l'offre de dépôt</strong> (Terminal Windows, MobaXterm) :
   rien ne se produit, pas même le repli — c'est le comportement voulu
   (<a href="AI-CONTEXT.html#piege-67">piège #67</a>).</li>
