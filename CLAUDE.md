@@ -53,8 +53,8 @@ ne se consigne au fil de l'eau** — ni `.AIRules/`, ni journal, ni commit par
 chantier : tout est consigné **en une seule fois à la fin de la phase**.
 
 L'état vit dans [`.AIRules/currentwork_roadmap.html`](./.AIRules/currentwork_roadmap.html) :
-les **19 items restants** (G1 est clos depuis le 2026-08-03), leur difficulté,
-leur jauge, et un journal de phase. **Le détail de ce qui est fait n'y est pas** :
+les **17 items restants** (G1 est clos depuis le 2026-08-03, G5 depuis le
+2026-08-07), leur difficulté, leur jauge, et un journal de phase. **Le détail de ce qui est fait n'y est pas** :
 il part dans la roadmap et le journal à chaque lot consigné, pour qu'il n'y ait
 jamais deux endroits où lire le même fait.
 
