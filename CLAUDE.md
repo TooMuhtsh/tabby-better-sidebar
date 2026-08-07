@@ -398,8 +398,14 @@ d'un autre.
   autres dépôts) pour participer.
 - **Élection de l'hôte par `hostWeight` minimal** (égalité départagée par `id`
   alphabétique) : sidebar = 10, vault = 20, espacés de 10 pour intercaler sans
-  renuméroter. L'hôte monte les pages des autres en sous-onglets ; un non-hôte
-  ne monte jamais les autres (sinon montage récursif).
+  renuméroter.
+- **Structure à deux niveaux** : quand la famille compte plus d'un membre,
+  l'hôte élu rend son `hostPanel.component` — **un onglet par plugin**, sa
+  propre page comprise, chaque page montée par `ngComponentOutlet` en mode
+  embarqué ; les sous-onglets internes d'un plugin (Général/Fonctionnalités/
+  Snippets ici) restent au niveau du dessous, une page plate s'affiche
+  directement. Seul de sa famille, l'hôte rend sa page telle quelle, sans
+  habillage. Une page embarquée ne monte jamais les autres.
 - **Le retrait passe par `getComponentType() → null`**, jamais par un
   `useFactory` conditionnel : le constructeur de `SettingsTabComponent`
   (bundle `tabby-settings`) filtre lui-même les providers dont
@@ -408,15 +414,19 @@ d'un autre.
   lit `provider.id`/`provider.title` — une entrée `null` dans le multi-provider
   le ferait planter. Le `SettingsTabProvider` s'enregistre donc toujours.
 - **Le jeton `BetterPanelEmbedded`** (casse exacte) est fourni par l'hôte à
-  l'injecteur du composant embarqué, pour qu'il sache qu'il est un sous-onglet
-  (le vault s'en sert pour retirer sa classe `content-box`).
+  l'injecteur des composants qu'il monte — chaque page embarquée s'en sert pour
+  retirer sa classe `content-box` (la mise en page est portée par l'hôte).
 - **Hotkey fantôme assumé** : le provider non-hôte restant enregistré,
   `SettingsHotkeyProvider` liste toujours « Open settings tab: Better Vault » —
   l'appuyer ouvre les réglages sans cibler d'onglet, sans erreur.
 - Tout deep-link interne vers l'onglet passe par l'id élu
   (`electBetterPanelHost(...).settingsTabId`), jamais par `'better-sidebar'` en
   dur : l'onglet s'appelle `better-tabby` dès que plus d'une contribution est
-  présente.
+  présente. Pour viser l'onglet de CE plugin dans le panneau partagé, le
+  deep-link pose `openRequested = true` sur sa propre contribution (objet
+  partagé tel quel via l'injecteur) — le panneau hôte, quel que soit son
+  porteur, le lit et l'efface à sa construction (reset-on-read, comme
+  `requestedSection`).
 
 ## Git
 

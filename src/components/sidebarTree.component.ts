@@ -37,7 +37,7 @@ import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { hostSupports } from '../hostCompat'
 import { readProfileGroups } from '../profileGroups'
 import { buildPayload, countPayload, describePurge, isEmptyReport, parsePayload, PurgeLevel, SharedGroup } from '../groupShare'
-import { electBetterPanelHost } from '../betterPanel'
+import { BetterPanelContribution, electBetterPanelHost, SIDEBAR_PANEL_TOKEN } from '../betterPanel'
 import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
 import { clampInViewport } from '../viewport'
 
@@ -3844,7 +3844,14 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             SidebarPlusSettingsTabComponent.requestedSection = 'snippets'
             // The tab id depends on who hosts the shared "Better Tabby" tab —
             // 'better-tabby' when unified, 'better-sidebar' when this plugin is alone.
-            this.openSettingsTab(electBetterPanelHost(this.injector).settingsTabId)
+            const election = electBetterPanelHost(this.injector)
+            if (election.unified) {
+                // Whichever plugin hosts the panel reads this at construction
+                // and pre-selects our tab, so the section request above lands
+                // even when the vault carries the settings.
+                this.injector.get<BetterPanelContribution>(SIDEBAR_PANEL_TOKEN as any).openRequested = true
+            }
+            this.openSettingsTab(election.settingsTabId)
             return
         }
         await this.runSnippet(result.snippet, profile)

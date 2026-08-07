@@ -12,6 +12,7 @@ import { ConfirmModalComponent } from './components/confirmModal.component'
 import { SnippetsModalComponent } from './components/snippetsModal.component'
 import { NoteModalComponent } from './components/noteModal.component'
 import { PasteGroupModalComponent } from './components/pasteGroupModal.component'
+import { SidebarPlusHostPanelComponent } from './components/hostPanel.component'
 import { SidebarPlusSettingsTabComponent } from './components/settingsTab.component'
 import { SidebarPlusTransfersComponent } from './components/transfers.component'
 import { SidebarPlusConfigProvider } from './configProvider'
@@ -54,6 +55,7 @@ const SIDEBAR_PANEL_CONTRIBUTION: BetterPanelContribution = {
         SnippetsModalComponent,
         NoteModalComponent,
         PasteGroupModalComponent,
+        SidebarPlusHostPanelComponent,
         SidebarPlusSettingsTabComponent,
         SidebarPlusTransfersComponent,
     ],

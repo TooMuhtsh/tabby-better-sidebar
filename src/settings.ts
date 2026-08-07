@@ -1,8 +1,9 @@
 import { Injectable, Injector } from '@angular/core'
 import { SettingsTabProvider } from 'tabby-settings'
 
+import { SidebarPlusHostPanelComponent } from './components/hostPanel.component'
 import { SidebarPlusSettingsTabComponent } from './components/settingsTab.component'
-import { electBetterPanelHost, UNIFIED_TAB_ID, UNIFIED_TAB_TITLE } from './betterPanel'
+import { BetterPanelElection, electBetterPanelHost, UNIFIED_TAB_ID, UNIFIED_TAB_TITLE } from './betterPanel'
 
 /** @hidden */
 @Injectable()
@@ -21,7 +22,7 @@ export class SidebarPlusSettingsTabProvider extends SettingsTabProvider {
      */
     weight = 2
 
-    private isBetterPanelHost: boolean
+    private election: BetterPanelElection
 
     /**
      * The "Better Tabby" election happens here because provider instances are
@@ -31,9 +32,8 @@ export class SidebarPlusSettingsTabProvider extends SettingsTabProvider {
      */
     constructor (injector: Injector) {
         super()
-        const election = electBetterPanelHost(injector)
-        this.isBetterPanelHost = election.isHost
-        if (election.isHost && election.unified) {
+        this.election = electBetterPanelHost(injector)
+        if (this.election.isHost && this.election.unified) {
             this.id = UNIFIED_TAB_ID
             this.title = UNIFIED_TAB_TITLE
         }
@@ -47,8 +47,14 @@ export class SidebarPlusSettingsTabProvider extends SettingsTabProvider {
      * list would then hold a null entry, and SettingsHotkeyProvider iterates ALL
      * providers without that filter, reading `provider.id`/`provider.title`,
      * which would crash on it.
+     *
+     * Hosting a family of more than one: the host panel (one tab per plugin).
+     * Alone: the plain settings page, with no wrapper.
      */
     getComponentType (): any {
-        return this.isBetterPanelHost ? SidebarPlusSettingsTabComponent : null
+        if (!this.election.isHost) {
+            return null
+        }
+        return this.election.unified ? SidebarPlusHostPanelComponent : SidebarPlusSettingsTabComponent
     }
 }

@@ -25,6 +25,15 @@ export interface BetterPanelContribution {
     hostWeight: number
     /** The settings page to embed. The host mounts it through NgComponentOutlet. */
     componentType: Type<any>
+    /**
+     * Mutable, reset-on-read: set to `true` by this plugin's own deep-link just
+     * before opening the unified tab; the elected host panel — whichever plugin
+     * carries it — reads and clears it at construction to pre-select this
+     * plugin's tab. The contribution object travels between plugins as-is
+     * through the injector, which is what lets this field cross them without
+     * any npm import.
+     */
+    openRequested?: boolean
 }
 
 /** This plugin's own contribution token. */
@@ -56,8 +65,8 @@ export interface BetterPanelElection {
     isHost: boolean
     /** More than one contribution present — the tab is shared. */
     unified: boolean
-    /** The other plugins' contributions, in election order. Empty when alone. */
-    others: BetterPanelContribution[]
+    /** Every contribution present, this plugin's own included, in election order — the host first. */
+    present: BetterPanelContribution[]
     /** The id of the settings tab that carries this plugin's page — what internal deep-links must target. */
     settingsTabId: string
 }
@@ -73,12 +82,11 @@ export function electBetterPanelHost (injector: Injector): BetterPanelElection {
         .filter((c): c is BetterPanelContribution => !!c)
         .sort((a, b) => a.hostWeight - b.hostWeight || a.id.localeCompare(b.id))
     const mine = injector.get<BetterPanelContribution|null>(SIDEBAR_PANEL_TOKEN as any, null)
-    const isHost = !!mine && present[0] === mine
     const unified = present.length > 1
     return {
-        isHost,
+        isHost: !!mine && present[0] === mine,
         unified,
-        others: present.filter(c => c !== mine),
+        present,
         settingsTabId: unified ? UNIFIED_TAB_ID : 'better-sidebar',
     }
 }
