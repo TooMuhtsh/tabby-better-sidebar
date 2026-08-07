@@ -434,9 +434,10 @@ couleurs contextuelles, export/import JSON — détaillés ci-dessous.</p></div>
   <code>this.rootGroups</code> à la fin.</li>
 </ul>
 
-<h4 id="ws-propositions">Propositions issues du test manuel du 2026-07-29 <span class="pill planned">📋 À arbitrer</span></h4>
-<p class="muted">Consignées à la demande de l'utilisateur pour vérification de faisabilité, aucune
-n'est implémentée.</p>
+<h4 id="ws-propositions">Propositions issues du test manuel du 2026-07-29 <span class="pill done">✅ Tranchées (2026-08-07)</span></h4>
+<p class="muted">Consignées à la demande de l'utilisateur pour vérification de faisabilité. Arbitrées le
+2026-08-07 : deux écartées en statu quo, une retenue pour construction (§ G3 de
+<a href="currentwork_roadmap.html">Travail en cours</a>).</p>
 <ul>
 <li><strong>Masquer par défaut dans les workspaces existants tout profil/dossier nouvellement
   créé</strong> (visible d'emblée uniquement dans « Tous »). Motif avancé par l'utilisateur : en
@@ -450,19 +451,30 @@ n'est implémentée.</p>
   paramètres natifs de Tabby n'emprunte aucun de ces chemins et resterait visible partout — sauf à
   détecter les nouveautés au chargement (comparaison avec un instantané des ids connus), ce qui
   suppose de stocker cet instantané et de trancher le cas « profil vu pour la première fois sur une
-  autre machine ».</p></div></li>
+  autre machine ».</p></div>
+  <div class="callout note"><span class="callout-title">Écarté le 2026-08-07 : statu quo</span>
+  <p>Reste visible par défaut dans tous les workspaces. Ne pas rouvrir sans nouvelle demande.</p>
+  </div></li>
 <li><strong>Rendre configurable le comportement de la barre de filtre</strong> vis-à-vis des éléments
   masqués. Aujourd'hui le filtre cherche délibérément partout, y compris ce que le workspace actif
   masque (confirmé comme voulu par l'utilisateur au test du 2026-07-29) ; l'option offrirait le
   comportement inverse — restreindre la recherche au périmètre visible du workspace. Réglage
-  <code>sidebarPlus</code> booléen, sans impact sur le stockage des workspaces.</li>
+  <code>sidebarPlus</code> booléen, sans impact sur le stockage des workspaces.
+  <div class="callout note"><span class="callout-title">Écarté le 2026-08-07 : statu quo</span>
+  <p>Le filtre continue de chercher partout, sans réglage. Ne pas rouvrir sans nouvelle demande.</p>
+  </div></li>
 <li><strong>Lever l'ambiguïté entre « réordonner » et « imbriquer » au glisser-déposer.</strong>
   Constat du test du 2026-07-29 : l'utilisateur pensait réordonner deux dossiers alors qu'il en
   imbriquait un dans l'autre. Ce n'est pas un défaut de cloisonnement — un re-parentage modifie
   l'arborescence réelle, donc tous les workspaces, ce qui est la conception actée — mais le geste ne
   se distingue que par quelques pixels (moitié haute d'une ligne = réordonner, moitié basse =
-  déposer dedans, cf. piège #26). Pistes : retour visuel distinct selon la moitié survolée, seuil
-  de déclenchement plus strict, ou modificateur clavier pour forcer l'imbrication.</li>
+  déposer dedans, cf. piège #26). Pistes envisagées : retour visuel distinct selon la moitié
+  survolée, seuil de déclenchement plus strict, ou modificateur clavier pour forcer l'imbrication.
+  <div class="callout note"><span class="callout-title">Retenu le 2026-08-07 : retour visuel selon la
+  moitié survolée</span>
+  <p>Indicateur distinct pendant le survol (ligne d'insertion pour réordonner, surbrillance du
+  dossier cible pour imbriquer), sans changer le geste ni son seuil. Reste à construire — voir G3 de
+  <a href="currentwork_roadmap.html">Travail en cours</a>.</p></div></li>
 </ul>
 
 <h3 id="sessions-actives">Section "Sessions Actives" en haut de la sidebar</h3>
