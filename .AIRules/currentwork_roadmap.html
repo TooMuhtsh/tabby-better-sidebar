@@ -26,8 +26,8 @@
 <p class="muted">Tableau de bord de la phase à roadmap figée : ce qui reste, dans quel ordre, et où
 reprendre. <strong>Le détail de ce qui est fait n'est pas ici</strong> — il vit dans
 <a href="ROADMAP.html">ROADMAP.html</a> et <a href="AI-HISTORY.html">AI-HISTORY.html</a>.
-<strong>Dernière mise à jour : 2026-08-07, G5 validé 24/24 en passe pilotée + visuelle — consignation
-du lot en attente de feu vert.</strong></p>
+<strong>Dernière mise à jour : 2026-08-07, G5 validé 24/24, consigné et fusionné sur
+<code>master</code>.</strong></p>
 
 <div class="callout note"><span class="callout-title">Fichier temporaire</span>
 <p>Ouvert pendant une phase où la roadmap est <strong>figée</strong> : ce qui est réalisable de suite
@@ -40,13 +40,13 @@ est fait de suite, et la consignation se fait par lots plutôt qu'à chaque gest
 2026-08-07 : retour auto sur Profils en G4, libellé de la fenêtre de téléchargement en G5).</p>
 
 <div class="callout important"><span class="callout-title">Reprendre ici</span>
-<p><strong>G1 est clos, consigné et fusionné</strong> (2026-08-03). <strong>G5 est validé 24/24</strong>
-(2026-08-07) : son code est commité sur la branche de phase, sa consignation détaillée (fiches de
-roadmap + entrée de journal) attend le feu vert, et l'item « libellé 127.0.0.1 » attend l'observation
-de l'utilisateur (quelle fenêtre l'affiche).</p>
-<p><strong>Prochain geste</strong> : consigner le lot G5 sur feu vert, puis choisir le groupe
-suivant — G6 ferme des inconnues bon marché avant la release (deux tests jamais exercés), G4 porte
-les deux dernières demandes de l'utilisateur (multi-sélection, retour auto sur Profils).</p>
+<p><strong>G1 et G5 sont clos, consignés et fusionnés</strong> (2026-08-03 et 2026-08-07). Reste de
+G5 un seul point, « libellé 127.0.0.1 » : l'observation est faite (dialogue « Enregistrer sous » de
+la voie fichier du menu contextuel), les options sont posées dans la fiche
+<a href="ROADMAP.html#panneau-etat-session">panneau d'état</a> — décision utilisateur attendue.</p>
+<p><strong>Prochain geste</strong> : choisir le groupe suivant — G6 ferme des inconnues bon marché
+avant la release (deux tests jamais exercés), G4 porte les deux dernières demandes de l'utilisateur
+(multi-sélection, retour auto sur Profils).</p>
 <ul>
 <li>Le harnais CDP de la passe G5 vit dans le scratchpad de la session du 2026-08-07
   (<code>g5/cdp.js</code> + expressions) — réutilisable tel quel pour les prochaines passes.</li>
@@ -172,8 +172,8 @@ utilisateur, <strong>24/24 ok</strong>. Deux faits à ne pas redécouvrir : les 
 et sur ce poste un second bind local est refusé (<code>EADDRINUSE</code>), donc le démontage
 automatique de doublon est un filet de sécurité <strong>au chemin non exercé</strong>. Remarque du
 test 20, comportement voulu : fermer le 1ᵉʳ onglet d'une session multiplexée laisse le tunnel
-vivant tant qu'un onglet la référence. La consignation détaillée (fiches + journal) suit le feu
-vert du lot.</p>
+vivant tant qu'un onglet la référence. Consignation détaillée : fiches de la roadmap et entrée de
+journal du 2026-08-07.</p>
 
 <h2>G6 — Sortie de version</h2>
 <table class="board">
@@ -208,8 +208,7 @@ de chaque item est dans la <a href="ROADMAP.html">roadmap</a>.</p>
     avec arbitrage, purge rejouée à l'entrée) · interrupteurs <code>showSnippets</code> /
     <code>showNotes</code>. Pièges <a href="AI-CONTEXT.html#piege-76">#76</a>,
     <a href="AI-CONTEXT.html#piege-77">#77</a>, <a href="AI-CONTEXT.html#piege-78">#78</a>.</td></tr>
-<tr><td>2026-08-07</td><td>G5 — les quatre items</td><td><span class="muted">commit de code sur la
-    branche de phase ; doc en attente de feu vert</span></td>
+<tr><td>2026-08-07</td><td>G5 — les quatre items</td><td><code>ccb586b</code><br><span class="muted">+ son lot de doc</span></td>
     <td>« Download directory » sur la voie moderne (une ligne par fichier, collision « (2) »,
     « interrompu à N % » sur coupure) · contrôle d'arrivée (état <code>unsound</code> « incomplet à
     destination », résolution des symlinks partagée) · tunnels : mémoire de coupure
