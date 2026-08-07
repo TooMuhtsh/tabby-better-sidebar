@@ -98,13 +98,25 @@
             //- buttons are divs, never nested <a> — the parser un-nests those
             //- silently and breaks the row (piège #38).
             ng-container(*ngFor='let tunnel of activeTunnels; let i = index')
+                //- Three states, told apart by the row style rather than by
+                //- presence: `waiting` is a cut session's tunnel kept visible
+                //- while a reconnection is possible, `lost` one the revival did
+                //- not bring back. The tooltip carries the explanation.
                 a.active-tunnel(
                     (click)='toggleTunnelDetails(i, $event)',
-                    [title]='tunnel.detail',
+                    [class.tunnel-waiting]='tunnel.state === "waiting"',
+                    [class.tunnel-lost]='tunnel.state === "lost"',
+                    [title]='tunnel.tooltip',
                     href='#'
                 )
-                    .fa.fa-fw.fas.fa-link.ms-1.tunnel-icon
+                    .fa.fa-fw.fas.ms-1.tunnel-icon(
+                        [class.fa-link]='tunnel.state === "live"',
+                        [class.fa-rotate]='tunnel.state === "waiting"',
+                        [class.fa-link-slash]='tunnel.state === "lost"'
+                    )
                     span.ms-2.me-auto.no-wrap {{ tunnel.label }}
+                    span.tunnel-state(*ngIf='tunnel.state === "waiting"') reprise…
+                    span.tunnel-state(*ngIf='tunnel.state === "lost"') non remonté
                     span.tunnel-session.no-wrap {{ tunnel.sessionName }}
                     .actions
                         .action(

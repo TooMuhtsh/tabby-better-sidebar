@@ -385,6 +385,14 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             // is what triggers the first change detection pass, and that is
             // where ngOnInit() reads `session` to open the SFTP channel.
             ref.instance.session = tab.sshSession!
+            // Same fallback rule as the sessions list: the user's own rename
+            // first, then the profile, then the live title. Shown on the
+            // transfer lines this panel starts, so they can say whose they are.
+            ref.instance.sessionLabel = tab.customTitle
+                || tab.topmostParent?.customTitle
+                || (tab as unknown as { profile?: { name?: string } }).profile?.name
+                || tab.title
+                || null
             // Same window for `path`, and for the same reason — ngOnInit
             // navigates to it. Only set when there is something to restore, so
             // a first panel keeps the inherited default.

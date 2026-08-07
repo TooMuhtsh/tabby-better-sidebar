@@ -383,6 +383,51 @@ de chargement de plugin.
   annulant la hauteur dans le flux pendant que la boîte recouvre la moitié basse
   de la ligne au-dessus (.AIRules/AI-CONTEXT.html, pièges #19 et #26).
 
+## Panneau de réglages unifié Better Tabby
+
+Les plugins « Better * » partagent un seul onglet de réglages « Better Tabby ».
+Le contrat vit dans `src/betterPanel.ts` et est **dupliqué dans chaque dépôt,
+jamais partagé par un import npm** : chaque plugin expose sa contribution sous
+la clé de **chaîne** `BetterPanelContribution:<id>` dans les providers de son
+module — aucune classe ne voyage entre plugins, aucun ne dépend de la présence
+d'un autre.
+
+- **Tokens connus codés en dur** dans `KNOWN_PANEL_TOKENS` de
+  `src/betterPanel.ts` : une clé de chaîne ne s'énumère pas depuis l'injecteur,
+  donc un futur plugin « Better X » doit y être ajouté (et dans la copie des
+  autres dépôts) pour participer.
+- **Élection de l'hôte par `hostWeight` minimal** (égalité départagée par `id`
+  alphabétique) : sidebar = 10, vault = 20, espacés de 10 pour intercaler sans
+  renuméroter.
+- **Structure à deux niveaux** : quand la famille compte plus d'un membre,
+  l'hôte élu rend son `hostPanel.component` — **un onglet par plugin**, sa
+  propre page comprise, chaque page montée par `ngComponentOutlet` en mode
+  embarqué ; les sous-onglets internes d'un plugin (Général/Fonctionnalités/
+  Snippets ici) restent au niveau du dessous, une page plate s'affiche
+  directement. Seul de sa famille, l'hôte rend sa page telle quelle, sans
+  habillage. Une page embarquée ne monte jamais les autres.
+- **Le retrait passe par `getComponentType() → null`**, jamais par un
+  `useFactory` conditionnel : le constructeur de `SettingsTabComponent`
+  (bundle `tabby-settings`) filtre lui-même les providers dont
+  `getComponentType()` rend une valeur fausse, alors que
+  `SettingsHotkeyProvider` parcourt **tous** les providers sans ce filtre et
+  lit `provider.id`/`provider.title` — une entrée `null` dans le multi-provider
+  le ferait planter. Le `SettingsTabProvider` s'enregistre donc toujours.
+- **Le jeton `BetterPanelEmbedded`** (casse exacte) est fourni par l'hôte à
+  l'injecteur des composants qu'il monte — chaque page embarquée s'en sert pour
+  retirer sa classe `content-box` (la mise en page est portée par l'hôte).
+- **Hotkey fantôme assumé** : le provider non-hôte restant enregistré,
+  `SettingsHotkeyProvider` liste toujours « Open settings tab: Better Vault » —
+  l'appuyer ouvre les réglages sans cibler d'onglet, sans erreur.
+- Tout deep-link interne vers l'onglet passe par l'id élu
+  (`electBetterPanelHost(...).settingsTabId`), jamais par `'better-sidebar'` en
+  dur : l'onglet s'appelle `better-tabby` dès que plus d'une contribution est
+  présente. Pour viser l'onglet de CE plugin dans le panneau partagé, le
+  deep-link pose `openRequested = true` sur sa propre contribution (objet
+  partagé tel quel via l'injecteur) — le panneau hôte, quel que soit son
+  porteur, le lit et l'efface à sa construction (reset-on-read, comme
+  `requestedSection`).
+
 ## Git
 
 Identité configurée **localement** pour ce dépôt (pas globalement) :

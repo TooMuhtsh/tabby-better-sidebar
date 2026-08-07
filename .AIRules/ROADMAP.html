@@ -119,9 +119,11 @@ lire le même fait.</p>
     motif de blocage est levé depuis le 2026-08-02 : le gestionnaire existe, mais dans son panneau.</td>
     <td><a href="#sessions-actives">Sessions actives</a></td><td>Différé</td></tr>
 
-<tr><td>Chemin distant et session porteuse sur la ligne du gestionnaire de transferts — ligne gardée
-    compacte, information non réclamée au test. Le registre les a sous la main.</td>
-    <td><a href="#transferts">Transferts SFTP</a></td><td>À rouvrir si besoin</td></tr>
+<tr><td>Chemin distant et session porteuse sur la ligne du gestionnaire de transferts — livrés en
+    <strong>infobulle</strong> de la ligne (champs plats composés à l'inscription, piège #54 respecté),
+    la ligne restant compacte. Contexte fourni par les appelants : le registre ne peut pas le deviner,
+    <code>FileTransfer</code> n'expose que <code>getName()</code>.</td>
+    <td><a href="#transferts">Transferts SFTP</a></td><td>✅ Fait (2026-08-07)</td></tr>
 <tr><td>Multi-sélection dans la liste distante : préalable au déplacement et à la
     <a href="#suppr-sftp">suppression</a> par lot.</td>
     <td><a href="#transferts">Transferts SFTP</a></td><td>Différé</td></tr>
@@ -130,20 +132,35 @@ lire le même fait.</p>
     mais le <code>behaviorOnSessionEnd</code> de l'utilisateur ferme l'onglet — aucun geste n'a
     parcouru ce chemin. À vérifier le jour où un profil garde l'onglet ouvert.</td>
     <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>Non exercé</td></tr>
-<tr><td><code>downloadFolder</code> reste sur la voie héritée : « Download directory » affiche encore
-    « annulé » sur une coupure, là où le reste dit « interrompu à N&nbsp;% ».</td>
-    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>Différé</td></tr>
-<tr><td>Contrôle « le fichier est-il bien arrivé ? » pour les téléchargements du <strong>menu
-    contextuel</strong> — impossible sur un glisser, faisable ici puisqu'ils imposent leur chemin à
-    <code>platform.startDownload()</code>.</td>
-    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>À arbitrer</td></tr>
+<tr><td><code>downloadFolder</code> ne passe plus par la voie héritée : « Download directory » ouvre
+    notre <code>pickDirectory()</code>, descend l'arbre par <code>downloadRemoteTree()</code> (4 fichiers
+    de front, une ligne de transfert chacun), refuse les collisions à la façon Explorateur
+    (<code>freeLocalName()</code>, partagé avec la livraison du marqueur) — et une coupure dit
+    « interrompu à N&nbsp;% », vérifié en coupant le transport à 23&nbsp;%.</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>✅ Fait (2026-08-07)</td></tr>
+<tr><td>Contrôle « le fichier est-il bien arrivé ? » — livré sur <strong>toute</strong> voie à chemin
+    imposé (<code>SftpTransfers.download()</code>) : taille locale confrontée au listing, puis à une
+    relecture fraîche, puis à la <strong>cible résolue</strong> d'un lien symbolique (le premier passage
+    du contrôle a pris la taille du lien pour celle du fichier — résolveur borné à 8 sauts partagé dans
+    <code>remoteEntry.ts</code>). Échec = état <code>unsound</code> « incomplet à destination », distinct
+    d'« interrompu » : rien ne s'est cassé en vol, la copie n'est juste pas ce qu'elle devrait être.</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>✅ Fait (2026-08-07)</td></tr>
+<tr><td>Le dialogue « Enregistrer sous » d'un téléchargement de <strong>fichier</strong> par menu
+    contextuel affiche « 127.0.0.1 » (l'hôte de l'URL de l'offre HTTP locale — le dossier n'y passe
+    plus). Texte arbitraire impossible ; à arbitrer : « localhost » (gain marginal, risque de
+    résolution IPv6 <code>::1</code> face au serveur IPv4), ou basculer cette voie sur
+    <code>platform.startDownload()</code> à dialogue — ce qui rouvrirait un écart déjà tranché
+    (transfert pendant la boîte ouverte, voir « ce qui ressemble à un reste »).</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>À trancher</td></tr>
 
 <tr><td>Repli du marqueur — livraison dans <code>~/Downloads</code> quand il n'est pas retrouvé. Le
     code est en place, aucun geste ne l'a parcouru.</td>
     <td><a href="#marqueur-depot">Marqueur de dépôt</a></td><td>Non exercé</td></tr>
 
-<tr><td>Affichage de l'état de reprise sur micro-coupure réseau.</td>
-    <td><a href="#tunnels-ssh">Tunnels SSH</a></td><td>Différé</td></tr>
+<tr><td>État de reprise sur micro-coupure : livré, avec le dédoublonnage des tunnels multiplexés
+    (la vraie cause des lignes en 3-4 exemplaires) — détail dans la fiche
+    <a href="#tunnels-ssh">Tunnels SSH</a>.</td>
+    <td><a href="#tunnels-ssh">Tunnels SSH</a></td><td>✅ Fait (2026-08-07)</td></tr>
 
 <tr><td>Comparer les deux identifiants de charte en début de session, repropager les copies à chaque
     révision, corriger la dérive dès qu'elle est constatée.</td>
@@ -935,12 +952,13 @@ dans <a href="AI-HISTORY.html">AI-HISTORY</a>) : état <code>failed</code> et li
 N % », <code>dispose()</code> qui n'efface plus un temporaire en cours d'écriture, téléchargement du
 menu contextuel servi par notre offre HTTP pour que son échec soit visible, et arrêt réel du
 transfert quand le client s'en va.</p>
-<p>Deux écarts connus à ne pas retraiter comme des manques : la voie Chromium
+<p>Un écart connu à ne pas retraiter comme un manque : la voie Chromium
 <strong>transfère pendant que la boîte « Enregistrer sous » est ouverte</strong> (les octets d'une
 annulation sont perdus, rien ne s'écrit chez l'utilisateur) — comportement constaté en test et
-assumé, l'alternative ayant été proposée puis écartée ; et
-<code>downloadFolder</code> reste sur la voie héritée, donc « Download directory » affiche encore
-« annulé » sur une coupure.</p>
+assumé, l'alternative ayant été proposée puis écartée. Le second écart de cette liste est levé :
+<code>downloadFolder</code> est passé sur la voie du plugin le <strong>2026-08-07</strong> (fiche
+mise à jour dans « Reste ouvert »), et « Download directory » dit désormais « interrompu à N&nbsp;% »
+sur une coupure, comme le reste.</p>
 </div>
 
 <h4>4. Ne plus annoncer « terminé » pour un glisser sortant</h4>
@@ -1851,6 +1869,30 @@ ensemble) ; le bouton navigateur n'apparaît que sur les tunnels <em>Local</em> 
 l'autre bout, un Dynamic est un proxy SOCKS), et <code>https</code> n'est déduit que des ports
 usuels.</p>
 <p><strong>Non traité</strong> : l'affichage de l'état de reprise sur micro-coupure réseau.</p></div>
+
+<div class="callout note"><span class="callout-title">État de reprise et dédoublonnage — fait, passe
+pilotée + visuelle 24/24 le 2026-08-07</span>
+<p><strong>Le point de départ est un fait établi sur les sources installées : il n'existe aucune
+reprise native à refléter.</strong> Une micro-coupure détruit la <code>SSHSession</code> entière ;
+seuls les tunnels <em>écrits dans le profil</em> sont remontés quand l'onglet se reconnecte
+(<code>start()</code> rejoue <code>profile.options.forwardedPorts</code>, rien d'autre), et un tunnel
+ajouté à la volée par la modale disparaît <strong>en silence</strong>. L'état de reprise est donc
+porté par le plugin : mémoire des tunnels <strong>par onglet</strong> (l'objet onglet survit à la
+reconnexion, seul <code>sshSession</code> change), clé de corrélation <code>tunnelKey()</code>.</p>
+<p>Trois états sur les lignes : <code>waiting</code> — la session est morte, la ligne reste, grisée
+« reprise… », pendant 60 s (une section qui disparaît pendant la coupure est indiscernable d'une
+section qui n'a jamais eu de tunnel) ; retour à <code>live</code> si la reprise remonte le tunnel ;
+<code>lost</code> — orange, « non remonté », 30 s après une reconnexion qui n'a pas ramené un tunnel
+mémorisé : c'est le témoin de la perte silencieuse ci-dessus.</p>
+<p><strong>Les tunnels affichés en 3-4 exemplaires (demande utilisateur du 2026-08-07) venaient du
+multiplexage</strong> (<code>reuseSession</code>) : plusieurs onglets partagent la même session, et le
+panneau listait le même tableau une fois par onglet. Dédoublonnage par identité d'objet du
+<code>ForwardedPort</code>. Pour deux sessions <em>distinctes</em>, le second bind local est refusé
+par l'OS sur ce poste (<code>EADDRINUSE</code> mesuré, y compris à chaud) : le démontage automatique
+de doublon (premier monté gagne, notice) est en place mais son chemin est <strong>non exercé et non
+atteignable ici</strong> — ne pas le présenter comme validé. Comportement vérifié au test 20, voulu :
+fermer un onglet d'une session multiplexée laisse le tunnel vivant tant qu'un autre onglet la
+référence (comptage par référence côté Tabby).</p></div>
 
 <h3 id="group-exec">Ouverture groupée d'un dossier ("Group Exec")
 <span class="pill done">✅ Clos (2026-08-03)</span></h3>
@@ -3104,16 +3146,15 @@ Design détaillé ci-dessous transporté à l'identique là-bas.</p></div>
 <li><strong>Interfaçage entre plugins indépendants</strong> : possible, pattern identifié. Tous les
   plugins Tabby tournent dans le même process Electron et partagent le même injecteur Angular —
   déjà le mécanisme utilisé par <code>better-sidebar</code> pour consommer des classes de
-  <code>tabby-core</code>/<code>tabby-settings</code>/<code>tabby-ssh</code>. Un futur
-  <code>tabby-better-vault</code> exporterait un service minimal (ex.
-  <code>VaultBridgeService</code>), et <code>better-sidebar</code> l'importerait en dépendance
-  optionnelle avec <code>@Optional()</code>/<code>Injector.get(TOKEN, null)</code> — la section
-  correspondante des réglages disparaît simplement si le plugin Vault n'est pas installé. Pattern
-  non officiel (effet de bord du chargeur de plugins, pas une API documentée) : le contrat entre
-  les deux packages serait à notre charge (versioning à gérer). Même discipline de vérification que
-  le reste du projet : si <code>tabby-better-vault</code> exporte un service, vérifier les DEUX
-  niveaux (typings ET bundle <code>dist/index.js</code> compilé) avant de s'y fier — voir piège
-  #13 d'AI-CONTEXT.html.</li>
+  <code>tabby-core</code>/<code>tabby-settings</code>/<code>tabby-ssh</code>. Pattern non officiel
+  (effet de bord du chargeur de plugins, pas une API documentée) : le contrat entre les deux
+  packages serait à notre charge (versioning à gérer). Même discipline de vérification que le reste
+  du projet : si <code>tabby-better-vault</code> exporte un service, vérifier les DEUX niveaux
+  (typings ET bundle <code>dist/index.js</code> compilé) avant de s'y fier — voir piège #13
+  d'AI-CONTEXT.html. Pour le cas concret de l'onglet de réglages, ce pattern générique s'est précisé
+  en un mécanisme d'élection par token de chaîne (pas de classe TypeScript importée, justement pour
+  ne pas créer de dépendance npm dure entre les deux plugins) — conception tranchée avec
+  l'utilisateur, voir <a href="#onglet-reglages-unifie">ci-dessous</a>.</li>
 <li><strong>Design prévu</strong> pour ce futur plugin : délégation à l'OS via
   <code>electron.safeStorage</code> (Windows : Gestionnaire d'identifiants/DPAPI ; macOS : Trousseau
   d'accès/Keychain avec Touch ID si activé ; Linux : Secret Service API/<code>libsecret</code> via
@@ -3131,6 +3172,88 @@ Design détaillé ci-dessous transporté à l'identique là-bas.</p></div>
   bien une méthode d'injection programmatique utilisable depuis un plugin tiers — typings ET bundle
   compilé, ne jamais conclure sur un seul des deux (piège #13).</li>
 </ul>
+
+<h4 id="onglet-reglages-unifie">Onglet de réglages unifié entre <code>better-sidebar</code> et
+<code>tabby-better-vault</code> <span class="pill done">✅ Livré le 2026-08-07 — validé 25/25 en
+conditions réelles</span></h4>
+<p>Si les deux plugins sont installés ensemble, un seul onglet <strong>« Better Tabby »</strong>
+apparaît dans les réglages Tabby, à la place des deux onglets côte à côte. Vérifié dans le bundle
+compilé (<code>node_modules/tabby-settings/dist/index.js</code>) : Tabby <strong>ne déduplique
+pas</strong> deux <code>SettingsTabProvider</code> de même <code>id</code> — un seul plugin à la
+fois doit donc déclarer l'onglet unifié, d'où l'élection ci-dessous. Conçu, codé et validé le même
+jour (cinq vagues de tests, 25/25, y compris poids inversés) ; la convention vit dans
+<code>src/betterPanel.ts</code> et le <code>CLAUDE.md</code> des deux projets, le pendant vault dans
+sa branche <code>feat/panneau-unifie</code>.</p>
+<p><strong>Détection inter-plugin, par token de chaîne</strong> : pas de classe TypeScript importée
+d'un plugin par l'autre — ça créerait une dépendance npm dure, alors que les deux plugins doivent
+rester installables indépendamment. Chaque plugin « Better * » présent expose, au niveau de son
+module racine, un provider Angular sous une clé <code>BetterPanelContribution:&lt;id&gt;</code>
+(ex. <code>BetterPanelContribution:sidebar</code>, <code>BetterPanelContribution:vault</code>), de
+forme :</p>
+<pre><code>interface BetterPanelContribution {
+  id: string                 // identifiant stable ('sidebar', 'vault', ...)
+  title: string               // libellé affiché en sous-onglet
+  hostWeight: number           // poids d'élection de l'hôte — SANS RAPPORT avec le `weight` natif
+                                // de SettingsTabProvider (qui ordonne les onglets Tabby de premier
+                                // niveau, déjà utilisé ici avec la valeur 2), à ne pas confondre
+  componentType: Type&lt;any&gt;  // le composant Angular déjà existant de ce plugin, réutilisé tel quel
+}</code></pre>
+<p>Chaque plugin interroge les tokens des autres membres connus de la famille via
+<code>injector.get('BetterPanelContribution:xxx', null)</code> — jamais d'erreur si l'autre n'est
+pas installé. La liste des tokens à connaître est <strong>codée en dur</strong> et documentée dans
+le <code>CLAUDE.md</code> de chaque plugin, pas un registre automatique : un futur plugin
+« Better X » devra être ajouté à cette liste dans les projets existants pour rejoindre
+l'unification.</p>
+<p><strong>Élection de l'hôte, poids numérique, le plus léger gagne</strong> : chaque plugin déclare
+un <code>hostWeight</code> fixe. Au démarrage, un plugin calcule l'ensemble des contributions
+présentes (lui-même + celles détectées) et devient hôte seulement s'il porte le
+<code>hostWeight</code> le plus faible parmi les présentes (égalité départagée par ordre
+alphabétique d'<code>id</code>, cas improbable mais couvert). Valeurs : <code>better-sidebar</code>
+= 10, <code>better-vault</code> = 20, espacées de 10 pour insérer un futur membre sans
+renuméroter.</p>
+<p><strong>Tel que réalisé</strong> — deux écarts à la conception d'origine, tous deux tranchés en
+cours de route :</p>
+<ul>
+<li><strong>Le retrait du non-hôte passe par <code>getComponentType() → null</code></strong>, pas
+  par le <code>useFactory</code> conditionnel envisagé : le constructeur de
+  <code>SettingsTabComponent</code> (bundle <code>tabby-settings</code>) filtre lui-même les
+  providers dont <code>getComponentType()</code> rend une valeur fausse, alors que
+  <code>SettingsHotkeyProvider</code> parcourt <em>tous</em> les providers sans ce filtre et lit
+  <code>id</code>/<code>title</code> — une entrée <code>null</code> du multi-provider l'aurait fait
+  planter. Le provider reste donc toujours enregistré ; conséquence assumée, un hotkey fantôme
+  « Open settings tab: Better Vault » subsiste côté non-hôte.</li>
+<li><strong>Structure à deux niveaux</strong> (demande de l'utilisateur en cours de chantier, à la
+  place de la « 4<sup>e</sup> section ») : l'hôte élu d'une famille de plusieurs rend son
+  <code>hostPanel.component</code> — un onglet par plugin, sa propre page comprise, chaque page
+  montée par <code>NgComponentOutlet</code> avec un injecteur portant le jeton
+  <code>BetterPanelEmbedded</code> (les pages embarquées lâchent leur <code>content-box</code>).
+  Les sous-onglets internes d'un plugin restent au niveau du dessous, une page plate s'affiche
+  telle quelle. Chaque plugin porte son propre panneau hôte : le vault sait héberger aussi, vérifié
+  en poids inversés. Seul de sa famille, un plugin garde son onglet solo, sans habillage.</li>
+<li><strong>Deep-links</strong> : l'onglet s'appelle <code>better-tabby</code> dès que la famille
+  compte deux membres — tout lien interne passe par l'id élu
+  (<code>electBetterPanelHost().settingsTabId</code>), et <code>openRequested</code> posé sur sa
+  propre contribution (objet partagé tel quel via l'injecteur) fait présélectionner son onglet par
+  l'hôte, quel qu'en soit le porteur — reset-on-read, comme <code>requestedSection</code>.</li>
+</ul>
+<div class="callout important"><span class="callout-title">Deux limites découvertes à la passe de
+test, non bloquantes</span>
+<ul>
+<li><strong>Le bouton « désactiver » de l'onglet Plugins de Tabby fausse l'élection</strong> : il
+  inscrit le plugin dans <code>pluginBlacklist</code> sans décharger son module — les services sont
+  filtrés (<code>enabledServices</code>) mais le token <code>useValue</code> de la contribution
+  reste visible, donc l'autre plugin se croit toujours non-hôte et plus aucun onglet Better ne
+  s'affiche. Amélioration possible : faire consulter <code>pluginBlacklist</code> par l'élection.
+  En attendant, désactiver un plugin de la famille se fait en retirant sa jonction.</li>
+<li><strong><code>requestedSection</code> est ignoré si l'onglet paramètres est déjà ouvert</strong>
+  (limite préexistante au chantier) : lu une seule fois au constructeur, jamais sur un composant
+  déjà construit. Corrigeable par un flux auquel le composant s'abonne, émis après sélection de
+  l'onglet existant.</li>
+</ul></div>
+<p>Le pendant symétrique côté coffre-fort est réalisé dans son propre projet (branche
+<code>feat/panneau-unifie</code>, même convention, contrat dupliqué sans import npm) — voir
+<a href="../../tabby-better-vault/.AIRules/README.html">.AIRules de tabby-better-vault</a> (lien
+relatif valable tant que les deux dossiers restent côte à côte dans <code>Développement/</code>).</p>
 
 <h3 id="moba-importer">Importateur MobaXterm</h3>
 <p>Explicitement écarté par l'utilisateur : des outils de conversion (<code>.mxtpro</code>/<code>.ini</code>)

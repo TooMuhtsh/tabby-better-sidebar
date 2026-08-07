@@ -12,6 +12,7 @@ import { ConfirmModalComponent } from './components/confirmModal.component'
 import { SnippetsModalComponent } from './components/snippetsModal.component'
 import { NoteModalComponent } from './components/noteModal.component'
 import { PasteGroupModalComponent } from './components/pasteGroupModal.component'
+import { SidebarPlusHostPanelComponent } from './components/hostPanel.component'
 import { SidebarPlusSettingsTabComponent } from './components/settingsTab.component'
 import { SidebarPlusTransfersComponent } from './components/transfers.component'
 import { SidebarPlusConfigProvider } from './configProvider'
@@ -19,6 +20,19 @@ import { SidebarPlusSettingsTabProvider } from './settings'
 import { SidebarPlusMountService } from './mount.service'
 import { SidebarPlusHotkeyProvider, SidebarPlusHotkeyService } from './hotkeys'
 import { SidebarPlusTempFilesService } from './tempFiles.service'
+import { BetterPanelContribution, SIDEBAR_PANEL_TOKEN } from './betterPanel'
+
+/**
+ * This plugin's entry in the shared "Better Tabby" settings tab (see
+ * betterPanel.ts). Defined here and not in betterPanel.ts, which must stay
+ * free of component imports.
+ */
+const SIDEBAR_PANEL_CONTRIBUTION: BetterPanelContribution = {
+    id: 'sidebar',
+    title: 'Better Sidebar',
+    hostWeight: 10,
+    componentType: SidebarPlusSettingsTabComponent,
+}
 
 @NgModule({
     imports: [
@@ -31,6 +45,7 @@ import { SidebarPlusTempFilesService } from './tempFiles.service'
         { provide: ConfigProvider, useClass: SidebarPlusConfigProvider, multi: true },
         { provide: SettingsTabProvider, useClass: SidebarPlusSettingsTabProvider, multi: true },
         { provide: HotkeyProvider, useClass: SidebarPlusHotkeyProvider, multi: true },
+        { provide: SIDEBAR_PANEL_TOKEN, useValue: SIDEBAR_PANEL_CONTRIBUTION },
     ],
     declarations: [
         SidebarPlusTreeComponent,
@@ -40,6 +55,7 @@ import { SidebarPlusTempFilesService } from './tempFiles.service'
         SnippetsModalComponent,
         NoteModalComponent,
         PasteGroupModalComponent,
+        SidebarPlusHostPanelComponent,
         SidebarPlusSettingsTabComponent,
         SidebarPlusTransfersComponent,
     ],

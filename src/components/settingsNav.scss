@@ -1,0 +1,41 @@
+// The tab strip shared by the plugin's settings page and the "Better Tabby"
+// host panel — a top-level class on purpose (piège #56): nested under one
+// page's root class it would silently not apply in the other. Imported as a
+// side-effect by BOTH components; webpack loads the module once whichever
+// shows first.
+//
+// Bootstrap's `.nav-tabs` ships with Tabby but its default palette assumes a
+// light card behind it, so the colours are restated in the same
+// rgba-of-white/black idiom as the settings page — legible on both themes
+// without detecting which one is on.
+.sidebar-plus-settings-nav {
+    border-bottom: 1px solid rgba(128, 128, 128, 0.35);
+    margin-bottom: 1.25rem;
+    gap: 0.25rem;
+
+    .nav-link {
+        border: 1px solid transparent;
+        border-bottom: none;
+        border-radius: 4px 4px 0 0;
+        color: rgba(255, 255, 255, 0.62);
+        padding: 0.45rem 0.9rem;
+        cursor: pointer;
+        transition: color 0.15s ease, background 0.15s ease;
+
+        &:hover:not(.active) {
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(128, 128, 128, 0.14);
+        }
+
+        // The active tab reads as attached to the page below it: same
+        // border as the strip, minus the segment under the tab itself.
+        &.active {
+            color: rgba(255, 255, 255, 0.95);
+            background: rgba(128, 128, 128, 0.2);
+            border-color: rgba(128, 128, 128, 0.35);
+            // Covers the strip's own border, so the tab and the page join.
+            margin-bottom: -1px;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+        }
+    }
+}

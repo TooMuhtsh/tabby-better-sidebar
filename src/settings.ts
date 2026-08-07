@@ -1,7 +1,9 @@
-import { Injectable } from '@angular/core'
+import { Injectable, Injector } from '@angular/core'
 import { SettingsTabProvider } from 'tabby-settings'
 
+import { SidebarPlusHostPanelComponent } from './components/hostPanel.component'
 import { SidebarPlusSettingsTabComponent } from './components/settingsTab.component'
+import { BetterPanelElection, electBetterPanelHost, UNIFIED_TAB_ID, UNIFIED_TAB_TITLE } from './betterPanel'
 
 /** @hidden */
 @Injectable()
@@ -20,7 +22,39 @@ export class SidebarPlusSettingsTabProvider extends SettingsTabProvider {
      */
     weight = 2
 
+    private election: BetterPanelElection
+
+    /**
+     * The "Better Tabby" election happens here because provider instances are
+     * built at startup (SettingsHotkeyProvider walks them all for hotkey
+     * labels), and by then every plugin's contribution is already in the root
+     * injector — registration is declarative, so load order does not matter.
+     */
+    constructor (injector: Injector) {
+        super()
+        this.election = electBetterPanelHost(injector)
+        if (this.election.isHost && this.election.unified) {
+            this.id = UNIFIED_TAB_ID
+            this.title = UNIFIED_TAB_TITLE
+        }
+    }
+
+    /**
+     * `null` when another plugin hosts the shared tab. That is the official
+     * withdrawal mechanism: the constructor of SettingsTabComponent (bundle of
+     * tabby-settings) filters providers with `!!x.getComponentType()`. Not done
+     * with a conditional useFactory returning null instead — the multi-provider
+     * list would then hold a null entry, and SettingsHotkeyProvider iterates ALL
+     * providers without that filter, reading `provider.id`/`provider.title`,
+     * which would crash on it.
+     *
+     * Hosting a family of more than one: the host panel (one tab per plugin).
+     * Alone: the plain settings page, with no wrapper.
+     */
     getComponentType (): any {
-        return SidebarPlusSettingsTabComponent
+        if (!this.election.isHost) {
+            return null
+        }
+        return this.election.unified ? SidebarPlusHostPanelComponent : SidebarPlusSettingsTabComponent
     }
 }

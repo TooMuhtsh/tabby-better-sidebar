@@ -1,0 +1,12 @@
+//- One tab per "Better *" plugin of the family; each tab's content is that
+//- plugin's own settings component, mounted embedded (BetterPanelEmbedded
+//- token) — its internal sub-tabs, if it has any, appear on the level below,
+//- and a flat page shows directly. Labels are plugin names: nothing to
+//- translate.
+.sidebar-plus-host
+  ul.nav.nav-tabs.sidebar-plus-settings-nav
+    li.nav-item(*ngFor='let panel of panels')
+      a.nav-link(href='#', [class.active]='selected === panel.id', (click)='select(panel.id, $event)') {{panel.title}}
+  ng-container(*ngFor='let panel of panels')
+    ng-container(*ngIf='selected === panel.id')
+      ng-container(*ngComponentOutlet='panel.componentType; injector: embedInjector')

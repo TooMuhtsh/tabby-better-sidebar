@@ -1,8 +1,10 @@
 import './settingsTab.component.scss'
-import { Component, HostBinding, NgZone } from '@angular/core'
+import './settingsNav.scss'
+import { Component, HostBinding, Inject, NgZone, Optional } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService } from 'tabby-core'
 import { ConfirmModalComponent } from './confirmModal.component'
+import { BETTER_PANEL_EMBEDDED } from '../betterPanel'
 import { SidebarSnippet } from '../configProvider'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { hostSupports } from '../hostCompat'
@@ -20,8 +22,13 @@ import { SidebarPlusSnippetsService } from '../snippets.service'
     template: require('./settingsTab.component.pug'),
 })
 export class SidebarPlusSettingsTabComponent {
-    /** Tabby's own settings pages carry it — it is what gives the page its padding and max width. */
-    @HostBinding('class.content-box') contentBox = true
+    /**
+     * Tabby's own settings pages carry it — it is what gives the page its
+     * padding and max width. Dropped when this page is mounted as a tab of the
+     * unified "Better Tabby" panel (BetterPanelEmbedded token present): the
+     * host carries the layout then.
+     */
+    @HostBinding('class.content-box') contentBox: boolean
 
     /**
      * The page to open on, set by whoever is about to open this tab and read
@@ -48,7 +55,9 @@ export class SidebarPlusSettingsTabComponent {
         private snippetsService: SidebarPlusSnippetsService,
         private ngbModal: NgbModal,
         private zone: NgZone,
+        @Optional() @Inject(BETTER_PANEL_EMBEDDED) embedded: unknown,
     ) {
+        this.contentBox = !embedded
         this.editorPath = this.editors.editorPath
         if (SidebarPlusSettingsTabComponent.requestedSection) {
             this.section = SidebarPlusSettingsTabComponent.requestedSection

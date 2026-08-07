@@ -11,8 +11,10 @@ import { EmptyFileUpload } from '../sftpLocalTransfer'
 import { DirectoryWeight, SftpDragOut } from '../sftpDragOut'
 import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
 import { SidebarPlusDragOutServer } from '../dragOutServer.service'
+import { freeLocalName } from '../localNames'
 import { SidebarPlusNoticesService } from '../notices.service'
-import { readRemoteEntry } from '../remoteEntry'
+import { readRemoteEntry, resolveRemoteSymlink } from '../remoteEntry'
+import { downloadRemoteTree } from '../remoteTree'
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
 import { SftpTransfers } from '../transfers'
 import { SidebarPlusTransfersService } from '../transfersRegistry.service'
@@ -210,8 +212,31 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
         const transfers = new SftpTransfers(platform, notices, registry)
+        this.fileTransfers = transfers
+        this.platformSvc = platform
         this.editor = new SftpRemoteEditor(notices, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel), zone)
         this.dragOut = new SftpDragOut(notices, zone, transfers, temp)
+    }
+
+    /** The transfers helper shared with the editor and the drag-out — kept for routes started here. */
+    private readonly fileTransfers: SftpTransfers
+    /** The constructor's `platform` goes to `super` — kept under our own name for the routes below. */
+    private readonly platformSvc: PlatformService
+
+    private _sessionLabel: string|null = null
+    /**
+     * Display name of the SSH tab this panel serves, set by the host panel at
+     * creation. Forwarded to the transfers helper, which stamps it on every
+     * registry line this panel starts — and passed along with each drag-out
+     * offer, whose delivery happens long after this component may be gone.
+     */
+    set sessionLabel (value: string|null) {
+        this._sessionLabel = value
+        this.fileTransfers.sessionLabel = value
+    }
+
+    get sessionLabel (): string|null {
+        return this._sessionLabel
     }
 
     /**
@@ -302,7 +327,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             await super.download(itemPath, mode, size)
             return
         }
-        const url = this.dragServer.offer(this.sftp, item)
+        const url = this.dragServer.offer(this.sftp, item, this._sessionLabel ?? undefined)
         if (!url) {
             await super.download(itemPath, mode, size)
             return
@@ -314,6 +339,57 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         link.href = url
         link.download = item.name
         link.click()
+    }
+
+    /**
+     * Sends « Download directory » down this plugin's own route instead of the
+     * inherited one.
+     *
+     * The inherited route *does* await its transfers, but converts any failure
+     * into `transfer.cancel()` on its single aggregated line — so a transport
+     * that dies mid-download reads « annulé » for something the user never
+     * cancelled, exactly the confusion `download()` above was moved off of.
+     * Going through `SftpTransfers.download()` gives every file its own line,
+     * a real `failed` state when one dies, and the arrival check — the folder
+     * route is the one place where the destination is a path we chose, so
+     * « le fichier est-il bien arrivé ? » is actually answerable here.
+     *
+     * Same shape as the marker delivery in `SidebarPlusDragOutServer.deliver()`:
+     * pick a folder, avoid collisions the Explorer way, then walk and fetch
+     * four files at a time. The directory dialog is ours to raise since the
+     * inherited `startDownloadDirectory()` is never called — `pickDirectory()`
+     * answers null on cancel, which ends the gesture without a word, like the
+     * native route.
+     */
+    override async downloadFolder (folder: SFTPFile): Promise<void> {
+        // Arity-checked like `imposesPath`: an older Tabby without the two
+        // dialog arguments still answers a folder, just with a stock title.
+        if (typeof this.platformSvc.pickDirectory !== 'function') {
+            await super.downloadFolder(folder)
+            return
+        }
+        const base = await this.platformSvc.pickDirectory(
+            `Dossier de destination pour ${folder.name}`,
+            'Télécharger ici',
+        )
+        if (!base) {
+            return
+        }
+        const target = freeLocalName(base, folder.name)
+        try {
+            await downloadRemoteTree(
+                this.sftp, folder.fullPath, target,
+                (remote, local, item) => this.fileTransfers.download(this.sftp, remote, local, item.name, item.size, item.mode),
+            )
+            this.notices.notice(`${folder.name} téléchargé dans ${base}`)
+        } catch (error) {
+            // The lines already say which file failed and why; the toast says
+            // the folder as a whole is not to be trusted yet.
+            this.notices.error(
+                `${folder.name} : téléchargement incomplet`,
+                String((error as Error)?.message ?? error),
+            )
+        }
     }
 
     /**
@@ -606,36 +682,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     /** A symlink chain longer than this is a loop as far as we are concerned. */
-    private static readonly MAX_SYMLINK_HOPS = 8
-
     /**
-     * Follows a symlink to the entry it really designates.
-     *
-     * Read through `readRemoteEntry()` — the parent directory's listing — and
-     * never through `stat()`, whose mode comes back 0 and whose date comes back
-     * 1970 (piège #50). That is the whole point: the resolved entry has to carry
-     * a *usable* mode and mtime, since everything downstream depends on them.
-     *
-     * Returns null when the chain cannot be followed — a dangling link, a loop,
-     * or a server that refuses `readlink`.
+     * Follows a symlink to the entry it really designates — the shared
+     * resolver in remoteEntry.ts, kept behind a method so the many call sites
+     * of this file did not all have to change when it moved there.
      */
     private async resolveSymlink (item: SFTPFile): Promise<SFTPFile|null> {
-        let current = item
-        for (let hop = 0; hop < SidebarPlusSftpBrowserComponent.MAX_SYMLINK_HOPS; hop++) {
-            if (!current.isSymlink) {
-                return current
-            }
-            const raw = await this.sftp.readlink(current.fullPath)
-            const absolute = raw.startsWith('/')
-                ? raw
-                : posix.resolve(posix.dirname(current.fullPath), raw)
-            const next = await readRemoteEntry(this.sftp, absolute)
-            if (!next) {
-                return null
-            }
-            current = next
-        }
-        return null
+        return resolveRemoteSymlink(this.sftp, item)
     }
 
     /**
@@ -752,7 +805,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // Files only: a `DownloadURL` announces exactly one file, so a
         // directory cannot be offered this way and takes the route below.
         if (!isDirectory && this.dragServer.ready && event.dataTransfer) {
-            const url = this.dragServer.offer(this.sftp, item)
+            const url = this.dragServer.offer(this.sftp, item, this._sessionLabel ?? undefined)
             if (url) {
                 // Both, because both are on offer: copy towards the OS, move
                 // inside the panel. `effectAllowed` is the gate `dropEffect`
@@ -774,7 +827,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // the same drag and the copy no longer takes a gesture of its own. The
         // two-step shape below is only reached when the server never started.
         if (isDirectory && this.canDragOutFolders && this.dragServer.ready && event.dataTransfer) {
-            const marker = this.dragServer.offerMarker(this.sftp, item)
+            const marker = this.dragServer.offerMarker(this.sftp, item, this._sessionLabel ?? undefined)
             if (marker) {
                 event.dataTransfer.effectAllowed = 'copyMove'
                 event.dataTransfer.setData('DownloadURL', `application/octet-stream:${marker.markerName}:${marker.url}`)
@@ -1306,7 +1359,10 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         const failed: string[] = []
         for (const planned of plan.files) {
             const transfer = new HTMLFileUpload(planned.file)
-            this.registry.track(transfer)
+            this.registry.track(transfer, false, {
+                remotePath: planned.remotePath,
+                sessionLabel: this._sessionLabel ?? undefined,
+            })
             try {
                 await this.sftp.upload(planned.remotePath, transfer)
             } catch (e) {

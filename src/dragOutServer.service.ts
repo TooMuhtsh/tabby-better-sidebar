@@ -1,11 +1,10 @@
 import * as crypto from 'crypto'
-import * as fs from 'fs'
 import * as http from 'http'
-import * as path from 'path'
 import { Injectable, NgZone } from '@angular/core'
 import { FileDownload, PlatformService } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { SidebarPlusDropLocator } from './dropLocator.service'
+import { freeLocalName } from './localNames'
 import { SidebarPlusNoticesService } from './notices.service'
 import { readRemoteEntry } from './remoteEntry'
 import { downloadRemoteTree } from './remoteTree'
@@ -40,6 +39,12 @@ interface Offer {
     sftp: SftpSession
     item: SFTPFile
     expiresAt: number
+    /**
+     * Display name of the SSH tab the offer came from, carried with the offer
+     * because an `SFTPSession` knows nothing of its tab: by the time the drop
+     * claims the offer, this is the only party that can still say whose it was.
+     */
+    sessionLabel?: string
 }
 
 /**
@@ -239,8 +244,8 @@ export class SidebarPlusDragOutServer {
      * Synchronous by necessity: it is called from `dragstart`, where an `await`
      * would let the gesture start without the announcement.
      */
-    offer (sftp: SftpSession, item: SFTPFile): string|null {
-        const announced = this.announce('file', sftp, item)
+    offer (sftp: SftpSession, item: SFTPFile, sessionLabel?: string): string|null {
+        const announced = this.announce('file', sftp, item, sessionLabel)
         return announced?.url ?? null
     }
 
@@ -252,21 +257,21 @@ export class SidebarPlusDragOutServer {
      * the drop site, and therefore what the sweep looks for. Unique per gesture,
      * so two drags in flight cannot be confused for one another.
      */
-    offerMarker (sftp: SftpSession, item: SFTPFile): { url: string, markerName: string }|null {
-        const announced = this.announce('marker', sftp, item)
+    offerMarker (sftp: SftpSession, item: SFTPFile, sessionLabel?: string): { url: string, markerName: string }|null {
+        const announced = this.announce('marker', sftp, item, sessionLabel)
         if (!announced) {
             return null
         }
         return { url: announced.url, markerName: announced.token + MARKER_EXTENSION }
     }
 
-    private announce (kind: Offer['kind'], sftp: SftpSession, item: SFTPFile): { url: string, token: string }|null {
+    private announce (kind: Offer['kind'], sftp: SftpSession, item: SFTPFile, sessionLabel?: string): { url: string, token: string }|null {
         if (!this.ready) {
             return null
         }
         this.pruneExpired()
         const token = crypto.randomBytes(24).toString('hex')
-        this.offers.set(token, { kind, sftp, item, expiresAt: Date.now() + OFFER_TTL_MS })
+        this.offers.set(token, { kind, sftp, item, expiresAt: Date.now() + OFFER_TTL_MS, sessionLabel })
         return { url: `http://127.0.0.1:${this.port}/${token}`, token }
     }
 
@@ -331,7 +336,7 @@ export class SidebarPlusDragOutServer {
         // write it where it was dropped — so "terminé" is not ours to announce
         // (piège #58). The marker route below is not concerned: there, the
         // download *is* the final write, at a path we chose.
-        this.transfers.track(transfer, true)
+        this.transfers.track(transfer, true, { remotePath: offer.item.fullPath, sessionLabel: offer.sessionLabel })
         try {
             await offer.sftp.download(offer.item.fullPath, transfer)
         } catch (error) {
@@ -394,17 +399,18 @@ export class SidebarPlusDragOutServer {
     private async deliver (offer: Offer, folder: string): Promise<void> {
         const target = this.freeName(folder, offer.item.name)
         try {
+            const context = { sessionLabel: offer.sessionLabel }
             if (offer.item.isDirectory) {
                 await downloadRemoteTree(
                     offer.sftp,
                     offer.item.fullPath,
                     target,
-                    (remote, local, item) => this.fileTransfers.download(offer.sftp, remote, local, item.name, item.size, item.mode),
+                    (remote, local, item) => this.fileTransfers.download(offer.sftp, remote, local, item.name, item.size, item.mode, context),
                 )
             } else {
                 await this.fileTransfers.download(
                     offer.sftp, offer.item.fullPath, target,
-                    offer.item.name, offer.item.size, offer.item.mode,
+                    offer.item.name, offer.item.size, offer.item.mode, context,
                 )
             }
             this.notify(`${offer.item.name} déposé dans ${folder}`)
@@ -413,25 +419,9 @@ export class SidebarPlusDragOutServer {
         }
     }
 
-    /**
-     * A path in `folder` that nothing occupies, suffixed the way Explorer does.
-     *
-     * Checked with `fs` rather than remembered: the folder belongs to the user,
-     * and anything may have appeared in it between the drop and this call.
-     */
+    /** See `freeLocalName()` — one rule for every route that writes into a chosen folder. */
     private freeName (folder: string, name: string): string {
-        let candidate = path.join(folder, name)
-        if (!fs.existsSync(candidate)) {
-            return candidate
-        }
-        const extension = path.extname(name)
-        const base = name.slice(0, name.length - extension.length)
-        for (let n = 2; ; n++) {
-            candidate = path.join(folder, `${base} (${n})${extension}`)
-            if (!fs.existsSync(candidate)) {
-                return candidate
-            }
-        }
+        return freeLocalName(folder, name)
     }
 
     /**

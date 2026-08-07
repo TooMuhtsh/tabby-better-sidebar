@@ -25,5 +25,10 @@ declare module 'tabby-core' {
     interface PlatformService {
         startDownload (name: string, mode: number, size: number, filePath: string): Promise<FileDownload|null>
         startUpload (options: FileUploadOptions, paths: string[]): Promise<FileUpload[]>
+        // The published signature takes no argument and claims to always answer
+        // a string; the installed app takes a dialog title and button label,
+        // and answers null when the user cancels. The null matters most: acting
+        // on a cancelled pick as if it were a path would write into "null/".
+        pickDirectory (title?: string, buttonLabel?: string): Promise<string|null>
     }
 }

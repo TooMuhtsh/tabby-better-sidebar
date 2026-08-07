@@ -24,6 +24,60 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>G5 — transferts fiables et tunnels à état de reprise (2026-08-07)</h2>
+<div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
+2026-08-07 — passe 24/24</span>
+<p>Branche <code>feat/phase-0.3.0</code>, deuxième groupe de la phase à roadmap figée. Quatre items
+écrits d'affilée et commités d'un seul geste. Détail de chaque design dans les fiches de la
+<a href="ROADMAP.html">roadmap</a>, qui font foi. <strong>Première passe majoritairement pilotée par
+l'assistant</strong> : 16 tests sur 24 exécutés par le harnais CDP (injecteur Angular, jamais de clic
+simulé), 8 à l'œil de l'utilisateur.</p></div>
+
+<p><strong>Le fait marquant du groupe : les deux vrais défauts de la passe ont été trouvés par les
+contrôles eux-mêmes, dès leur première exécution.</strong> Le contrôle d'arrivée a déclaré
+« incomplet » un lien symbolique parfaitement livré — la taille d'un lien dans un listing est celle
+du <em>lien</em>, le téléchargement livre la <em>cible</em> ; d'où l'extraction du résolveur borné à
+8 sauts dans <code>remoteEntry.ts</code>, partagé entre l'édition distante et la vérification. Et la
+cause réelle des tunnels affichés en 3-4 exemplaires n'était pas celle supposée : pas de doubles
+listeners, mais le <strong>multiplexage</strong> — plusieurs onglets partagent la même
+<code>SSHSession</code> et le panneau listait le même tableau une fois par onglet. Sur ce poste, un
+second bind local est refusé (<code>EADDRINUSE</code>, mesuré y compris à chaud) : le démontage
+automatique de doublon reste un filet de sécurité <strong>au chemin non exercé</strong>, à ne pas
+présenter comme validé.</p>
+
+<p><strong>Un fait établi sur les sources installées, qui a dicté le design des tunnels</strong> : il
+n'existe aucune reprise native à refléter. La micro-coupure détruit la session entière ; à la
+reconnexion de l'onglet, seuls les tunnels du profil sont remontés, et un tunnel ajouté à la volée
+disparaît en silence. Les trois états du panneau (« reprise… » 60 s, retour à <code>live</code>,
+« non remonté » 30 s) sont la mémoire que Tabby n'a pas. Vérifié au test&nbsp;20 et voulu : fermer un
+onglet d'une session multiplexée laisse le tunnel vivant tant qu'un autre onglet la référence.</p>
+
+<p><strong>Méthode de passe, réutilisable</strong> : les services du plugin ne sont pas exportés par
+son paquet — ils se retrouvent par leur nom de classe dans <code>inj.records</code> de l'injecteur
+racine (complément au piège #8). <code>pickDirectory()</code> neutralisé vers un banc local (un
+dialogue natif fige le renderer, CDP compris), profil SSH jetable <code>zzz-test-g5-tunnel</code>
+créé puis retiré avec <strong>contrôle d'intégrité de la config à l'octet près</strong>, banc distant
+<code>/tmp/zzz-test-g5</code> nettoyé, <code>ForwardedPort</code> fabriqué par prototype d'une
+instance vivante pour le montage à chaud. Harnais dans le scratchpad de la session.</p>
+
+<p><strong>Ouvert par l'utilisateur pendant la passe</strong>, consigné sans être tranché : le
+dialogue « Enregistrer sous » d'un téléchargement de <em>fichier</em> par menu contextuel affiche
+« 127.0.0.1 » — l'hôte de notre offre HTTP locale, non remplaçable par un texte arbitraire. Options
+dans la fiche <a href="ROADMAP.html#panneau-etat-session">panneau d'état</a>.</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-07</td><td><code>ccb586b</code></td>
+<td><strong>Les quatre items de G5</strong> : « Download directory » sur la voie du plugin
+(<code>pickDirectory</code> + arbre parallélisé, une ligne par fichier, collision « (2) »,
+« interrompu à N % » sur coupure — vérifié à 23 %) ; contrôle d'arrivée sur toute voie à chemin
+imposé (état <code>unsound</code> « incomplet à destination », symlinks résolus) ; tunnels à mémoire
+de coupure (« reprise… » / « non remonté ») + dédoublonnage multiplexage + demande utilisateur du
+jour ; chemin distant + session en infobulle des lignes. Passe 24/24 : 16 tests pilotés CDP sur
+serveur réel, 8 visuels.</td></tr>
+</table>
+
 <h2>G1 — duplication, snippets, notes et partage de groupe (2026-08-03)</h2>
 <div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
 2026-08-03</span>

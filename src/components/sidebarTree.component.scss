@@ -777,6 +777,31 @@ sidebar-plus-tree .active-tunnels {
             opacity: .6;
         }
 
+        // The state word sits between the label and the session name, in the
+        // same quiet register as `.tunnel-session` — the row's dimming and
+        // colour carry the state, the word only names it.
+        .tunnel-state {
+            font-size: .65rem;
+            opacity: .7;
+            margin-left: .4rem;
+            font-style: italic;
+            white-space: nowrap;
+        }
+
+        // A cut session's tunnel, kept while a reconnection is possible: the
+        // whole row steps back rather than changing colour — it may come back,
+        // it has not failed.
+        &.tunnel-waiting {
+            opacity: .5;
+        }
+
+        // A forward the reconnection did not bring back: this one *is* bad
+        // news, hence a colour and not just a dimming. Theme variable first,
+        // with a fallback for themes that do not define it.
+        &.tunnel-lost {
+            color: var(--bs-warning, #d9a406);
+        }
+
         // Which session carries the tunnel, kept on the row rather than folded
         // away: with several sessions open, a description alone does not say
         // where the tunnel runs.

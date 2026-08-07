@@ -27,3 +27,42 @@ export async function readRemoteEntry (sftp: SftpSession, remotePath: string): P
     const entries = await sftp.readdir(parent).catch(() => [] as SFTPFile[])
     return entries.find(entry => entry.name === name) ?? null
 }
+
+/** Longest symlink chain followed before concluding the link cannot be resolved. */
+const MAX_SYMLINK_HOPS = 8
+
+/**
+ * Follows a symlink to the entry it really designates.
+ *
+ * Read through `readRemoteEntry()` — the parent directory's listing — and
+ * never through `stat()`, whose mode comes back 0 and whose date comes back
+ * 1970 (piège #50). The resolved entry is the one whose size, mode and mtime
+ * mean anything: the link's own say nothing about what a download delivers.
+ *
+ * Returns null when the chain cannot be followed — a dangling link, a loop,
+ * or a server that refuses `readlink`. Lifted out of the browser component
+ * (2026-08-07) so the arrival check can resolve too; the component delegates.
+ */
+export async function resolveRemoteSymlink (sftp: SftpSession, item: SFTPFile): Promise<SFTPFile|null> {
+    let current = item
+    for (let hop = 0; hop < MAX_SYMLINK_HOPS; hop++) {
+        if (!current.isSymlink) {
+            return current
+        }
+        let next: SFTPFile|null = null
+        try {
+            const raw = await sftp.readlink(current.fullPath)
+            const absolute = raw.startsWith('/')
+                ? raw
+                : path.posix.resolve(path.posix.dirname(current.fullPath), raw)
+            next = await readRemoteEntry(sftp, absolute)
+        } catch {
+            return null
+        }
+        if (!next) {
+            return null
+        }
+        current = next
+    }
+    return null
+}
