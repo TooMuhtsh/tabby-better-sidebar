@@ -3132,16 +3132,16 @@ Design détaillé ci-dessous transporté à l'identique là-bas.</p></div>
 </ul>
 
 <h4 id="onglet-reglages-unifie">Onglet de réglages unifié entre <code>better-sidebar</code> et
-<code>tabby-better-vault</code> <span class="pill planned">📋 Conception tranchée, non codée
-(2026-08-07)</span></h4>
-<p>Aujourd'hui, si les deux plugins sont installés ensemble, chacun déclare son propre onglet de
-premier niveau dans les réglages Tabby — deux onglets côte à côte pour une même famille de plugins,
-plutôt qu'un seul. Vérifié dans le bundle compilé
-(<code>node_modules/tabby-settings/dist/index.js</code>) : Tabby <strong>ne déduplique pas</strong>
-deux <code>SettingsTabProvider</code> qui partageraient un même <code>id</code> — ils apparaîtraient
-comme deux entrées séparées dans la liste triée, sans fusion ni erreur. Unifier les deux onglets
-suppose donc qu'<strong>un seul plugin à la fois</strong> déclare l'onglet unifié — d'où le mécanisme
-d'élection ci-dessous, tranché avec l'utilisateur mais dont rien n'est encore codé.</p>
+<code>tabby-better-vault</code> <span class="pill done">✅ Livré le 2026-08-07 — validé 25/25 en
+conditions réelles</span></h4>
+<p>Si les deux plugins sont installés ensemble, un seul onglet <strong>« Better Tabby »</strong>
+apparaît dans les réglages Tabby, à la place des deux onglets côte à côte. Vérifié dans le bundle
+compilé (<code>node_modules/tabby-settings/dist/index.js</code>) : Tabby <strong>ne déduplique
+pas</strong> deux <code>SettingsTabProvider</code> de même <code>id</code> — un seul plugin à la
+fois doit donc déclarer l'onglet unifié, d'où l'élection ci-dessous. Conçu, codé et validé le même
+jour (cinq vagues de tests, 25/25, y compris poids inversés) ; la convention vit dans
+<code>src/betterPanel.ts</code> et le <code>CLAUDE.md</code> des deux projets, le pendant vault dans
+sa branche <code>feat/panneau-unifie</code>.</p>
 <p><strong>Détection inter-plugin, par token de chaîne</strong> : pas de classe TypeScript importée
 d'un plugin par l'autre — ça créerait une dépendance npm dure, alors que les deux plugins doivent
 rester installables indépendamment. Chaque plugin « Better * » présent expose, au niveau de son
@@ -3166,43 +3166,50 @@ l'unification.</p>
 un <code>hostWeight</code> fixe. Au démarrage, un plugin calcule l'ensemble des contributions
 présentes (lui-même + celles détectées) et devient hôte seulement s'il porte le
 <code>hostWeight</code> le plus faible parmi les présentes (égalité départagée par ordre
-alphabétique d'<code>id</code>, cas improbable mais couvert).</p>
+alphabétique d'<code>id</code>, cas improbable mais couvert). Valeurs : <code>better-sidebar</code>
+= 10, <code>better-vault</code> = 20, espacées de 10 pour insérer un futur membre sans
+renuméroter.</p>
+<p><strong>Tel que réalisé</strong> — deux écarts à la conception d'origine, tous deux tranchés en
+cours de route :</p>
 <ul>
-<li><strong>Hôte</strong> : déclare seul un <code>SettingsTabProvider</code> unifié
-  (<code>id: 'better-tabby'</code>), qui monte dynamiquement chaque <code>componentType</code>
-  présent comme sous-onglet (y compris le sien) via <code>ViewContainerRef.createComponent()</code>
-  (API Angular 15 native, pas de <code>ComponentFactoryResolver</code> déprécié).</li>
-<li><strong>Non-hôte</strong> : ne déclare PAS son propre <code>SettingsTabProvider</code>
-  (<code>useFactory</code> conditionnel dans le module racine) — expose seulement sa contribution
-  par le token, montée par l'hôte.</li>
-<li><strong>Seul de sa famille présent</strong> : reste trivialement hôte d'un ensemble à un seul
-  élément — dégrade proprement vers l'onglet solo actuel, sans habillage de sous-onglet unique
-  forcé.</li>
+<li><strong>Le retrait du non-hôte passe par <code>getComponentType() → null</code></strong>, pas
+  par le <code>useFactory</code> conditionnel envisagé : le constructeur de
+  <code>SettingsTabComponent</code> (bundle <code>tabby-settings</code>) filtre lui-même les
+  providers dont <code>getComponentType()</code> rend une valeur fausse, alors que
+  <code>SettingsHotkeyProvider</code> parcourt <em>tous</em> les providers sans ce filtre et lit
+  <code>id</code>/<code>title</code> — une entrée <code>null</code> du multi-provider l'aurait fait
+  planter. Le provider reste donc toujours enregistré ; conséquence assumée, un hotkey fantôme
+  « Open settings tab: Better Vault » subsiste côté non-hôte.</li>
+<li><strong>Structure à deux niveaux</strong> (demande de l'utilisateur en cours de chantier, à la
+  place de la « 4<sup>e</sup> section ») : l'hôte élu d'une famille de plusieurs rend son
+  <code>hostPanel.component</code> — un onglet par plugin, sa propre page comprise, chaque page
+  montée par <code>NgComponentOutlet</code> avec un injecteur portant le jeton
+  <code>BetterPanelEmbedded</code> (les pages embarquées lâchent leur <code>content-box</code>).
+  Les sous-onglets internes d'un plugin restent au niveau du dessous, une page plate s'affiche
+  telle quelle. Chaque plugin porte son propre panneau hôte : le vault sait héberger aussi, vérifié
+  en poids inversés. Seul de sa famille, un plugin garde son onglet solo, sans habillage.</li>
+<li><strong>Deep-links</strong> : l'onglet s'appelle <code>better-tabby</code> dès que la famille
+  compte deux membres — tout lien interne passe par l'id élu
+  (<code>electBetterPanelHost().settingsTabId</code>), et <code>openRequested</code> posé sur sa
+  propre contribution (objet partagé tel quel via l'injecteur) fait présélectionner son onglet par
+  l'hôte, quel qu'en soit le porteur — reset-on-read, comme <code>requestedSection</code>.</li>
 </ul>
-<p>Valeurs retenues (espacées de 10, pour insérer un futur membre sans renuméroter) :</p>
+<div class="callout important"><span class="callout-title">Deux limites découvertes à la passe de
+test, non bloquantes</span>
 <ul>
-<li><code>better-sidebar</code> : <code>hostWeight = 10</code> — hôte par défaut aujourd'hui, car il
-  a déjà l'infrastructure de nav à onglets internes à étendre
-  (<code>src/components/settingsTab.component.ts</code>/<code>.pug</code>, nav
-  Général/Fonctionnalités/Snippets actuellement fermée sur 3 valeurs codées en dur — à généraliser
-  pour accueillir une entrée externe).</li>
-<li><code>better-vault</code> : <code>hostWeight = 20</code> — n'a qu'un panneau plat à
-  contribuer.</li>
-</ul>
-<div class="callout warning"><span class="callout-title">Ce qui reste un vrai chantier de code, pas
-commencé</span>
-<ul>
-<li>Rendre l'enregistrement du <code>SettingsTabProvider</code> conditionnel dans le module racine
-  de chaque plugin.</li>
-<li>Généraliser la nav interne actuelle de sidebar (fermée sur 3 valeurs) pour monter dynamiquement
-  un composant externe comme 4<sup>e</sup> section.</li>
-<li>Documenter la convention <code>hostWeight</code>/<code>BetterPanelContribution:*</code> dans les
-  deux <code>CLAUDE.md</code>.</li>
-<li>Tester avec les deux plugins installés simultanément.</li>
+<li><strong>Le bouton « désactiver » de l'onglet Plugins de Tabby fausse l'élection</strong> : il
+  inscrit le plugin dans <code>pluginBlacklist</code> sans décharger son module — les services sont
+  filtrés (<code>enabledServices</code>) mais le token <code>useValue</code> de la contribution
+  reste visible, donc l'autre plugin se croit toujours non-hôte et plus aucun onglet Better ne
+  s'affiche. Amélioration possible : faire consulter <code>pluginBlacklist</code> par l'élection.
+  En attendant, désactiver un plugin de la famille se fait en retirant sa jonction.</li>
+<li><strong><code>requestedSection</code> est ignoré si l'onglet paramètres est déjà ouvert</strong>
+  (limite préexistante au chantier) : lu une seule fois au constructeur, jamais sur un composant
+  déjà construit. Corrigeable par un flux auquel le composant s'abonne, émis après sélection de
+  l'onglet existant.</li>
 </ul></div>
-<p>Le pendant symétrique côté coffre-fort (mêmes valeurs de <code>hostWeight</code>, même statut de
-conception non codée) est à consigner dans son propre projet, hors périmètre de cette session qui
-ne touche qu'à ce dépôt-ci — voir
+<p>Le pendant symétrique côté coffre-fort est réalisé dans son propre projet (branche
+<code>feat/panneau-unifie</code>, même convention, contrat dupliqué sans import npm) — voir
 <a href="../../tabby-better-vault/.AIRules/README.html">.AIRules de tabby-better-vault</a> (lien
 relatif valable tant que les deux dossiers restent côte à côte dans <code>Développement/</code>).</p>
 
