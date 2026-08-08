@@ -217,6 +217,34 @@ const de_DE: Record<string, string> = {
     'Manage the library': 'Bibliothek verwalten',
     'Close': 'Schließen',
 
+    // transfers.component.pug — header, per-row states and tooltips (lot 3)
+    'Transfers': 'Übertragungen',
+    'Clear the list — running transfers will be cancelled': 'Liste leeren — laufende Übertragungen werden abgebrochen',
+    'Transfer finished — the system is still placing the file at its destination. The shown duration is an estimate: nothing signals when this copy ends.': 'Übertragung abgeschlossen — das System legt die Datei noch am Ziel ab. Die angezeigte Dauer ist geschätzt: Nichts meldet das Ende dieser Kopie.',
+    'handing over to the system…': 'Übergabe an das System…',
+    'cancelled': 'abgebrochen',
+    'interrupted at {percent} %': 'unterbrochen bei {percent} %',
+    'incomplete at destination': 'unvollständig am Ziel',
+    'Estimated time remaining': 'Geschätzte Restzeit',
+    'Elapsed time': 'Verstrichene Zeit',
+    'Cancel this transfer and remove it': 'Diese Übertragung abbrechen und entfernen',
+    'Remove from the list': 'Aus der Liste entfernen',
+
+    // transfers.component.ts — confirmations
+    'Cancel "{name}" while it is running?': 'Laufende Übertragung „{name}“ abbrechen?',
+    'Cancel the transfer': 'Übertragung abbrechen',
+    'One transfer is still running. Clearing the list will cancel it. Continue?': 'Eine Übertragung läuft noch. Das Leeren der Liste bricht sie ab. Fortfahren?',
+    '{count} transfers are still running. Clearing the list will cancel them. Continue?': '{count} Übertragungen laufen noch. Das Leeren der Liste bricht sie ab. Fortfahren?',
+    'Clear and cancel': 'Leeren und abbrechen',
+
+    // transfersRegistry.service.ts — badge, breakdown tooltip, row tooltip
+    'Session: {label}': 'Sitzung: {label}',
+    '{count} running': '{count} aktiv',
+    '{count, plural, one {# finished} other {# finished}}': '{count, plural, one {# abgeschlossen} other {# abgeschlossen}}',
+    '{count, plural, one {# cancelled} other {# cancelled}}': '{count, plural, one {# abgebrochen} other {# abgebrochen}}',
+    '{count, plural, one {# interrupted} other {# interrupted}}': '{count, plural, one {# unterbrochen} other {# unterbrochen}}',
+    '{count, plural, one {# incomplete at destination} other {# incomplete at destination}}': '{count, plural, one {# unvollständig am Ziel} other {# unvollständig am Ziel}}',
+
 }
 
 export default de_DE

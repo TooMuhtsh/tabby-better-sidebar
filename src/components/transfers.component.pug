@@ -10,7 +10,7 @@
             [class.fa-chevron-down]='!collapsed',
             [class.fa-chevron-right]='collapsed'
         )
-        span Transferts
+        span {{ 'Transfers' | translate }}
         span.transfers-count(
             [class.active]='transfers.activeCount > 0',
             [title]='transfers.summaryTitle'
@@ -20,7 +20,7 @@
         //- edge, which only works now that the header is a flex container.
         .transfer-clear.ms-auto(
             (click)='clear($event)',
-            title='Vider la liste — les transferts en cours seront annulés'
+            [title]="'Clear the list — running transfers will be cancelled' | translate"
         )
             .fa.fa-fw.fas.fa-broom
 
@@ -51,30 +51,30 @@
             //- in place before it can be.
             span.transfer-figure(
                 *ngIf='entry.state === "handover"',
-                title='Transfert terminé — le système finit de placer le fichier à destination. La durée est estimée : rien ne signale la fin de cette copie.'
-            ) remise au système…
-            span.transfer-figure(*ngIf='entry.state === "cancelled"') annulé
+                [title]="'Transfer finished — the system is still placing the file at its destination. The shown duration is an estimate: nothing signals when this copy ends.' | translate"
+            ) {{ 'handing over to the system…' | translate }}
+            span.transfer-figure(*ngIf='entry.state === "cancelled"') {{ 'cancelled' | translate }}
             //- The percentage reached is kept alongside: "interrompu" alone
             //- does not say whether 2 % or 98 % had made it across.
             span.transfer-figure(
                 *ngIf='entry.state === "failed"',
                 [title]='entry.failureReason'
-            ) interrompu à {{ entry.percent }} %
+            ) {{ 'interrupted at {percent} %' | translate:{ percent: entry.percent } }}
             //- Finished, but the arrival check disagreed: the file at
             //- destination is missing or short. « interrompu » would be a lie —
             //- nothing broke mid-flight — hence its own label.
             span.transfer-figure(
                 *ngIf='entry.state === "unsound"',
                 [title]='entry.failureReason'
-            ) incomplet à destination
+            ) {{ 'incomplete at destination' | translate }}
             //- Blank until a speed is known, and gone once there is nothing left
             //- to wait for — hence its own span rather than a suffix on the time.
-            span.transfer-eta(*ngIf='entry.etaLabel', title='Temps restant estimé') ~{{ entry.etaLabel }}
-            span.transfer-time(title='Temps écoulé') {{ entry.elapsedLabel }}
+            span.transfer-eta(*ngIf='entry.etaLabel', [title]="'Estimated time remaining' | translate") ~{{ entry.etaLabel }}
+            span.transfer-time([title]="'Elapsed time' | translate") {{ entry.elapsedLabel }}
             //- A bin rather than a cross: on a finished line it removes, on a
             //- running one it cancels *and* removes — one gesture, one meaning.
             .transfer-remove(
                 (click)='remove(entry, $event)',
-                [title]='entry.state === "active" ? "Annuler ce transfert et le retirer" : "Retirer de la liste"'
+                [title]="entry.state === 'active' ? ('Cancel this transfer and remove it' | translate) : ('Remove from the list' | translate)"
             )
                 .fa.fa-fw.fas.fa-trash

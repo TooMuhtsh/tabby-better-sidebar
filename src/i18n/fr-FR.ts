@@ -243,6 +243,34 @@ const fr_FR: Record<string, string> = {
     'Manage the library': 'Gérer la bibliothèque',
     'Close': 'Fermer',
 
+    // transfers.component.pug — header, per-row states and tooltips (lot 3)
+    'Transfers': 'Transferts',
+    'Clear the list — running transfers will be cancelled': 'Vider la liste — les transferts en cours seront annulés',
+    'Transfer finished — the system is still placing the file at its destination. The shown duration is an estimate: nothing signals when this copy ends.': 'Transfert terminé — le système finit de placer le fichier à destination. La durée est estimée : rien ne signale la fin de cette copie.',
+    'handing over to the system…': 'remise au système…',
+    'cancelled': 'annulé',
+    'interrupted at {percent} %': 'interrompu à {percent} %',
+    'incomplete at destination': 'incomplet à destination',
+    'Estimated time remaining': 'Temps restant estimé',
+    'Elapsed time': 'Temps écoulé',
+    'Cancel this transfer and remove it': 'Annuler ce transfert et le retirer',
+    'Remove from the list': 'Retirer de la liste',
+
+    // transfers.component.ts — confirmations
+    'Cancel "{name}" while it is running?': 'Annuler « {name} » en cours ?',
+    'Cancel the transfer': 'Annuler le transfert',
+    'One transfer is still running. Clearing the list will cancel it. Continue?': 'Un transfert est encore en cours. Vider la liste l\'annulera. Continuer ?',
+    '{count} transfers are still running. Clearing the list will cancel them. Continue?': '{count} transferts sont encore en cours. Vider la liste les annulera. Continuer ?',
+    'Clear and cancel': 'Vider et annuler',
+
+    // transfersRegistry.service.ts — badge, breakdown tooltip, row tooltip
+    'Session: {label}': 'Session : {label}',
+    '{count} running': '{count} en cours',
+    '{count, plural, one {# finished} other {# finished}}': '{count, plural, one {# terminé} other {# terminés}}',
+    '{count, plural, one {# cancelled} other {# cancelled}}': '{count, plural, one {# annulé} other {# annulés}}',
+    '{count, plural, one {# interrupted} other {# interrupted}}': '{count, plural, one {# interrompu} other {# interrompus}}',
+    '{count, plural, one {# incomplete at destination} other {# incomplete at destination}}': '{count, plural, one {# incomplet à destination} other {# incomplets à destination}}',
+
 }
 
 export default fr_FR
