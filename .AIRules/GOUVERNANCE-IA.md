@@ -38,6 +38,12 @@ et la charte n'en est pas dispensée. Ils sont cités des dizaines de fois ici m
 gabarits, et depuis les documents de chaque projet ; une renumérotation les casserait tous
 en silence.
 
+**Prochain numéro d'invariant libre : `A-16`.** A-6 exige qu'un document à numérotation
+stable porte cette information en tête, et la charte ne s'en dispense pas plus que du
+reste : l'ordre d'affichage ne suivant pas la numérotation, aucune lecture partielle ne
+donne le dernier numéro attribué. Celui qui ajoute un invariant l'incrémente dans le même
+geste.
+
 Conséquences pour une révision future :
 
 - un invariant ajouté prend le **numéro suivant**, quelle que soit sa place logique dans le
@@ -171,8 +177,24 @@ Une entrée de journal écrite **ne se réécrit jamais**, même fausse. Une cor
 en tête du chantier concerné, ou sous forme de table de correspondance ; elle ne se
 substitue pas.
 
-**Une seule modification est autorisée** : remplacer le marqueur `(commit en cours)` par le
-hash réel. Elle ne réécrit rien, elle complète.
+**Deux exceptions nommées, et deux seulement :**
+
+1. **Remplacer le marqueur `(commit en cours)` par le hash réel.** Elle ne réécrit rien,
+   elle complète.
+2. **La conversion de format** — faire passer un journal existant d'un support à un autre
+   (tableau vers lignes de log, HTML vers Markdown) — sous quatre conditions cumulatives :
+   **décidée en révision** (A-13), jamais au fil d'une session ; **appliquée en une fois**,
+   à tout le document, jamais entrée par entrée ; à **contenu constant**, le texte de chaque
+   entrée transporté tel quel, seul son support changeant ; **vérifiée par comparaison des
+   textes extraits** avant et après, la vérification faisant partie du geste et non de la
+   bonne volonté. Si les textes extraits diffèrent, ce n'est pas une conversion.
+
+   **Convertir n'est pas réduire.** La conversion est mécanique, scriptable, sans perte —
+   c'est elle que cette exception couvre. Ramener des résumés existants à une forme plus
+   dense supprime de l'information, autant de fois qu'il y a d'entrées, sans que personne ne
+   relise l'ensemble pour vérifier ce qui a sauté : cela reste hors de l'exception. Un format
+   plus dense s'applique aux entrées **nouvelles**, et son gain s'installe par accumulation,
+   jamais en réécrivant le passé.
 
 Corollaire — une entrée se rédige au moment du commit qu'elle décrit, donc avant que
 celui-ci existe. Quand le journal trace des commits, la colonne `Hash` a **trois valeurs, et
@@ -296,9 +318,11 @@ anomalie, repérable d'un coup d'œil.
 
 Certains contenus ne tiennent pas dans un document principal sans le rendre illisible :
 relevé de mesures, tableau de correspondance long, capture d'une configuration de
-référence, note de conception détaillée sur un seul chantier. Ils vont dans un
-sous-dossier **`annexes/`**, versionné comme le reste. À ne pas confondre avec l'espace de
-brouillons, ignoré par Git et jetable (option `tempfiles`).
+référence, note de conception détaillée sur un seul chantier, **registre des chantiers de
+roadmap arrivés à leur état terminal** quand le projet sépare l'actif du réalisé (option
+`registre-livrés`). Ils vont dans un sous-dossier **`annexes/`**, versionné comme le reste.
+À ne pas confondre avec l'espace de brouillons, ignoré par Git et jetable (option
+`tempfiles`).
 
 `annexes/` ne se crée qu'au moment où un premier fichier annexe existe — pas de dossier
 vide « au cas où ». Dès qu'il existe :
@@ -595,6 +619,8 @@ Chaque défaut porte son motif : un défaut sans motif ne se conteste pas, il se
 |---|---|---|---|
 | `format` | Format des documents | `html` · `markdown` · autre | `html` |
 | `documents` | Nombre de documents | `4` · `3` (journal et roadmap fusionnés) | `4` |
+| `registre-livrés` | Séparer la roadmap active du registre des chantiers livrés | `oui` · `non` | `oui` |
+| `journal-format` | Format des entrées du journal | `tableau` · `log` | `tableau` |
 | `fichier-instructions` | Nom du fichier d'instructions auto-chargé | `CLAUDE.md` · `AGENTS.md` · les deux · autre | `CLAUDE.md` |
 | `statuts` | Vocabulaire de statuts | `complet` · `réduit` | `complet` |
 | `outillage` | Le projet produit-il de l'outillage pour vous-même ? | `oui` · `non` | déduit au cadrage |
@@ -643,6 +669,89 @@ réfléchir, et c'est la lecture qui coûte, pas le nombre de fichiers.
 **Critère de scission, obligatoire si `3` est retenu** : dès que le document fusionné
 dépasse ce qu'on relit d'un bout à l'autre, il se sépare. Sans ce critère écrit, la fusion
 devient définitive par inertie.
+
+## `registre-livrés` — séparer la roadmap active du registre des chantiers livrés
+
+**`oui`** (défaut) : un chantier arrivé à son **état terminal** (`Livré`, ou `Adopté` pour
+l'outillage) quitte la roadmap active pour un **registre du réalisé** —
+`annexes/REALISE.{{ext}}` au sens d'A-8, jamais `archive/` (A-9), dont le régime d'ajout
+seul interdirait à la fois la condensation à l'entrée et l'amendement d'un chantier livré.
+La roadmap active n'en garde qu'**une ligne et le lien** vers son entrée du registre ;
+l'énoncé et le détail complet y vivent en entier, pas en double (A-2).
+
+*Pourquoi `oui` par défaut* : mesuré le 2026-08-03 sur un projet réel, 87 % des pastilles de
+statut d'une roadmap marquaient un chantier déjà livré — le document censé porter « ce qui
+reste à faire » décrivait surtout ce qui était fait, jusqu'à devenir le plus lourd document
+de la gouvernance. Rien n'empêchait ce découpage avant cette option : la roadmap n'est pas
+en ajout seul (A-15 l'exige même de la corriger en place) ; il manquait seulement une
+convention nommée, pas une exception à créer.
+
+**`non`** : la roadmap reste un document unique, faits compris — adapté à un projet dont
+l'historique de chantiers reste court.
+
+**Ce que porte une entrée du registre**, dans cet ordre :
+
+1. Le design retenu et l'ampleur du chantier, repris depuis la roadmap au moment de la
+   bascule — pas réécrit.
+2. Le renvoi vers l'entrée de journal qui l'a acté : le journal garde l'événement daté, le
+   registre garde l'état.
+3. Les évolutions post-livraison, **une ligne chacune** — ajout, retrait ou remplacement —
+   datée par rapport à la livraison initiale. Une ligne se limite au changement lui-même ;
+   le récit du pourquoi et du comment reste au journal, que la ligne renvoie sans le
+   répéter. Le seuil qui décide si une évolution reste une ligne ou rouvre un chantier dans
+   l'actif est celui de l'option `roadmap-avant-code` : dès qu'elle touche l'architecture,
+   une convention, ou plus d'un fichier.
+4. Les numéros de pièges issus du chantier, **sans les réexpliquer** — le contexte les
+   décrit (A-2), le registre fournit le renvoi inverse, du chantier vers le piège.
+5. La liste des commits du chantier, sur une seule ligne, en ordre chronologique — la seule
+   information de l'entrée qu'aucun autre document ne porte.
+
+**Une réécriture d'historique invalide cette ligne de commits, en silence** : `rebase`,
+`filter-branch` ou une amende massive changent les hashes sans que la ligne cesse d'être
+lisible. Elle impose alors de rejouer la ligne, ou d'y porter une table de correspondance —
+le même geste qu'A-4 prévoit pour le journal.
+
+**Ordre du registre** : le plus récent en tête, un nouveau chantier s'ajoute en début de
+fichier — l'inverse de l'ordre de la roadmap active. **Un chantier `Écarté` n'y bascule
+jamais** : il reste en « Hors périmètre » dans la roadmap active, seul endroit qui évite
+qu'une idée déjà tranchée soit reproposée six mois plus tard.
+
+**Indépendant de l'option `documents`** : que la roadmap et le journal restent scindés en
+quatre documents ou fusionnés en trois, le registre est une **annexe**, pas un cinquième
+document principal — il ne compte pas dans ce total et n'entre jamais dans la navbar
+(`GABARITS.md`, § 5).
+
+## `journal-format` — format des entrées du journal
+
+**`tableau`** (défaut) : une section par chantier, chacune avec son propre tableau
+`Date | Hash | Résumé` (`GABARITS.md`, § 3). **`log`** : un tableau unique et plat pour tout
+le journal, trié de la plus récente à la plus ancienne entrée, colonnes
+`Date | Hash | Chantier | Résumé` — `Chantier` devient un champ de chaque ligne plutôt qu'un
+regroupement en section.
+
+*Pourquoi `tableau` par défaut* : c'est la structure historique de la charte, et rien
+n'oblige un projet jeune ou à faible volume à basculer — le coût du format `log` se paie en
+discipline d'écriture (borne de caractères, renvois raccourcis), pas en simplicité de
+lecture.
+
+**Ce que change `log`** :
+
+- **`Résumé` borné à 250 caractères.** Se vérifie d'un `grep` sur la longueur de la cellule.
+  Un résumé qui dépasserait se réduit au fait acté, pas au récit qui y a mené.
+- **Le paragraphe de contexte de chantier n'a plus de place dans le journal.** Ce qu'il
+  portait — le pourquoi d'un chantier, qui l'a signalé, ce qui l'a déclenché — devient, s'il
+  compte encore, un **fait stable dans le contexte** (`AI-CONTEXT`) plutôt qu'un événement
+  daté : A-2 le range là dès qu'il cesse d'être ponctuel.
+- **Les liens d'ancre survivent, sous forme courte**, insérés dans le texte du résumé —
+  `[#N]` vers un piège du contexte, `[roadmap#slug]` vers un chantier de la roadmap —
+  comptés dans les 250 caractères comme le reste.
+- **Convertir un journal existant** du format `tableau` vers `log` est permis par la
+  deuxième exception nommée d'A-4 (conversion de format, à contenu constant, vérifiée) —
+  ce n'est jamais une obligation : un journal peut rester au format `tableau` indéfiniment,
+  y compris sur un projet qui adopte `log` pour ses entrées futures.
+
+Régime de cette option : purement additive — nouvelle option, aucun défaut existant ne
+change, un projet qui ne répond pas hérite de `tableau` sans rien changer à son journal.
 
 ## `fichier-instructions` — nom du fichier d'instructions
 
@@ -1079,7 +1188,7 @@ Quatre déclencheurs :
 
 ## Profils de départ
 
-Poser vingt-trois questions à chaque SETUP garantit qu'il ne sera jamais mené jusqu'au bout.
+Poser vingt-cinq questions à chaque SETUP garantit qu'il ne sera jamais mené jusqu'au bout.
 L'entretien commence donc par **un mot**, puis se poursuit en écrasant les points qu'on veut.
 
 | Profil | Pour quel projet |
@@ -1172,51 +1281,13 @@ workspace
 
 ---
 
-# Correspondance avec la numérotation antérieure
-
-**Table temporaire**, à retirer à la révision suivante une fois les références des projets
-migrées. Une table de compatibilité sans date de péremption reste éternellement.
-
-| Ancienne référence | Nouvelle |
-|---|---|
-| Règle 1 — dossier `.AIRules/` versionné | A-1, A-7, A-10 |
-| Règle 1 — `.tempfiles/` | option `tempfiles` |
-| Règle 1 — annexes | A-8 |
-| Règle 1 — archive | A-9 |
-| Règle 1 — éclatement d'une page | `GABARITS.md` § éclatement |
-| Règle 1 — trois questions au SETUP | options `visibilité`, `attribution`, `authentification` |
-| Règle 1 — vérification périodique par cron | option `veille-conformité` |
-| Règle 1 — colonne `Hash` | A-4 |
-| Règle 2 — format HTML, squelettes, navbar | option `format` + `GABARITS.md` |
-| Règle 2 — plan de chaque page | `GABARITS.md` |
-| Règle 2 — discipline d'édition, liens relatifs | A-14 |
-| Règle 2 — identifiants stables, compteur | A-6 |
-| Règle 2 — callouts | A-14 |
-| Règle 2 — pastilles de statut | option `statuts` |
-| Règle 2 — cadences d'écriture | A-3 |
-| Règle 3 — `CLAUDE.md` et mémoire | A-11 |
-| Règle 3 — attribution IA en commit | option `attribution` |
-| Règle 4 — détection de dérive | A-5 |
-| Règle 4 — validation avant « fait » | A-12 + option `validation` |
-| Règle 4 — données jetables | A-12 + option `jetables` |
-| Règle 4 — export d'API à deux niveaux | A-12 (généralisé) |
-| Règle 4 — sauvegarde puis `diff` | A-12 |
-| Règle 4 — encodage / PowerShell | A-12 (généralisé) |
-| Règle 4 — test manuel d'abord | option `test-manuel` |
-| Règle 4 — compromis sûreté/complétude | A-12 |
-| Règle 4 — bibliothèque avant maison | A-12 + option `dépendances` |
-| Règle 5 — statusline | § Environnement de travail + `outils/` du dépôt canonique |
-| Règle 6 — idée avant code | option `roadmap-avant-code` |
-| Règle 6 — propositions numérotées | A-13 |
-| Règle 7 — cas A et cas B | A-15 |
-| Règle 7 — suivre les révisions | A-7 |
-
----
-
 # Historique des révisions
 
 | Version | Régime |
 |---|---|
+| `20260804-071239` | purement additive |
+| `20260804-064238` | touche le noyau |
+| `20260803-200821` | purement additive |
 | `20260803-182826` | purement additive |
 | `20260731-204511` | purement additive |
 | `20260731-203812` | touche le noyau |
@@ -1234,6 +1305,6 @@ se propose (A-7). Le récit détaillé, lui, ne se lit qu'au moment de réviser,
 révise.
 
 ---
-*Version de cette charte : **`20260803-182826`**. C'est cet identifiant que reprend la
+*Version de cette charte : **`20260804-071239`**. C'est cet identifiant que reprend la
 mention « Conforme à la charte de gouvernance, version {{id}} » dans le pied de page de
 l'index de gouvernance de chaque projet.*
