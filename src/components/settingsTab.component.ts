@@ -8,6 +8,7 @@ import { BETTER_PANEL_EMBEDDED } from '../betterPanel'
 import { SidebarSnippet } from '../configProvider'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { hostSupports } from '../hostCompat'
+import { SidebarPlusI18nService } from '../i18n'
 import { SidebarPlusSnippetsService } from '../snippets.service'
 
 /**
@@ -55,6 +56,7 @@ export class SidebarPlusSettingsTabComponent {
         private snippetsService: SidebarPlusSnippetsService,
         private ngbModal: NgbModal,
         private zone: NgZone,
+        private i18n: SidebarPlusI18nService,
         @Optional() @Inject(BETTER_PANEL_EMBEDDED) embedded: unknown,
     ) {
         this.contentBox = !embedded
@@ -69,6 +71,106 @@ export class SidebarPlusSettingsTabComponent {
     setSection (section: 'general'|'features'|'snippets', event: Event): void {
         event.preventDefault()
         this.section = section
+    }
+
+    ////// I18N LABELS //////
+    // Every user-visible string of the template lives here, NEVER as an inline
+    // literal in the pug: a straight apostrophe (or em dash) inside an inline
+    // `| translate` expression breaks the JIT compiler at runtime, invisibly
+    // to the webpack build — the lot-2 incident of 2026-08-08. Getters are
+    // fine on this cold page (unlike sidebarTree, piège #54).
+    get lblGeneral (): string { return this.i18n.t('General') }
+    get lblFeatures (): string { return this.i18n.t('Features') }
+    get lblShowSidebar (): string { return this.i18n.t('Show the sidebar') }
+    get lblShowSidebarHint (): string { return this.i18n.t('Removes the sidebar without uninstalling anything.') }
+    get lblShowSidebarDesc (): string { return this.i18n.t('Untick to hide it; this page stays reachable.') }
+    get lblHideTransfersMenu (): string { return this.i18n.t('Hide the Tabby transfers menu') }
+    get lblHideTransfersMenuHint (): string { return this.i18n.t('Otherwise the native Tabby menu opens on every transfer.') }
+    get lblHideTransfersMenuDesc (): string { return this.i18n.t('The sidebar panel already shows the same transfers.') }
+    get lblFeaturesIntro (): string { return this.i18n.t('Each block switches on independently. Nothing is deleted by turning one off.') }
+    get lblTunnels (): string { return this.i18n.t('Active tunnels') }
+    get lblTunnelsHint (): string { return this.i18n.t('Mirrors the state of Tabby port forwarding.') }
+    get lblTunnelsDesc (): string { return this.i18n.t('Port forwarding panel and badges on the profiles.') }
+    get lblUnavailable (): string { return this.i18n.t('Unavailable on this version of Tabby. Your setting is kept.') }
+    get lblWorkspaces (): string { return this.i18n.t('Workspaces') }
+    get lblWorkspacesHint (): string { return this.i18n.t('"All" excludes nothing; the filter bar searches everywhere.') }
+    get lblWorkspacesDesc (): string { return this.i18n.t('Workspace bar, above the list.') }
+    get lblPresentation (): string { return this.i18n.t('Presentation') }
+    get lblPresentationHint (): string { return this.i18n.t('Tabs or a compact list, as you prefer.') }
+    get lblPresentationDesc (): string { return this.i18n.t('Changes how the workspace bar is displayed.') }
+    get lblModeTabs (): string { return this.i18n.t('Tabs (wrap onto new lines)') }
+    get lblModeDropdown (): string { return this.i18n.t('Dropdown list') }
+    get lblFilterBar (): string { return this.i18n.t('Filter bar') }
+    get lblFilterBarHint (): string { return this.i18n.t('Searches the name, description, host and username.') }
+    get lblFilterBarDesc (): string { return this.i18n.t('Search field and shortcut') }
+    get lblSnippetsHint (): string { return this.i18n.t('A library of commands attached to profiles and folders.') }
+    get lblSnippetsDesc (): string { return this.i18n.t('The "Snippets" entry of the right click and its dedicated tab.') }
+    get lblNotes (): string { return this.i18n.t('Notes') }
+    get lblNotesHint (): string { return this.i18n.t('A free-form memo per profile or folder.') }
+    get lblNotesDesc (): string { return this.i18n.t('The "note" entry of the right click and its badge.') }
+    get lblRecentProfiles (): string { return this.i18n.t('Recent profiles') }
+    get lblRecentProfilesHint (): string { return this.i18n.t('The 5 most recently launched profiles, all types together.') }
+    get lblRecentProfilesDesc (): string { return this.i18n.t('A list shown under the active sessions.') }
+    get lblActiveSessions (): string { return this.i18n.t('Active sessions') }
+    get lblActiveSessionsHint (): string { return this.i18n.t('One row per pane, not per tab.') }
+    get lblActiveSessionsDesc (): string { return this.i18n.t('Open SSH connections, at the top of the sidebar.') }
+    get lblPing (): string { return this.i18n.t('Latency probe, in seconds') }
+    get lblPingHint (): string { return this.i18n.t('A real SFTP round trip, not an ICMP ping.') }
+    get lblPingDesc (): string { return this.i18n.t('Colors the dot of each session. 0 disables.') }
+    get lblSftp (): string { return this.i18n.t('SFTP view') }
+    get lblSftpHint (): string { return this.i18n.t('One SFTP channel per session actually browsed.') }
+    get lblSftpDesc (): string { return this.i18n.t('The SFTP tab of the sidebar and its panel.') }
+    get lblEditor (): string { return this.i18n.t('Remote file editor') }
+    get lblEditorHint (): string { return this.i18n.t('The file is copied, edited, then sent back to the server.') }
+    get lblEditorDesc (): string { return this.i18n.t('Program opened on double-click. Empty, Windows decides.') }
+    get lblEditorPlaceholder (): string { return this.i18n.t('No editor chosen') }
+    get lblBrowse (): string { return this.i18n.t('Browse...') }
+    get lblClear (): string { return this.i18n.t('Erase') }
+    get lblDragOut (): string { return this.i18n.t('Drag a folder out to Explorer') }
+    get lblDragOutHint (): string { return this.i18n.t('The folder is downloaded in full before the drop.') }
+    get lblDragOutDesc (): string { return this.i18n.t('Beyond 25 files or 20 MB, confirmation is asked.') }
+    get lblAutoRefresh (): string { return this.i18n.t('Automatic refresh, in seconds') }
+    get lblAutoRefreshHint (): string { return this.i18n.t('Only changed entries are redrawn.') }
+    get lblAutoRefreshDesc (): string { return this.i18n.t('0 disables; every cycle re-reads the folder.') }
+    get lblAutoReturn (): string { return this.i18n.t('Return to Profiles when no SSH session is open any more') }
+    get lblAutoReturnHint (): string { return this.i18n.t('Also covers the waiting screen of the SFTP panel.') }
+    get lblAutoReturnDesc (): string { return this.i18n.t('Waits for the grace period of the displayed session to end.') }
+    get lblDeleteDefault (): string { return this.i18n.t('Deletion: button activated by Enter') }
+    get lblDeleteDefaultHint (): string { return this.i18n.t('No deletion can be undone afterwards.') }
+    get lblDeleteApplies (): string { return this.i18n.t('Applies to') }
+    get lblDeleteRightClick (): string { return this.i18n.t('and to the right click.') }
+    get lblDeleteEscape (): string { return this.i18n.t('always cancels.') }
+    get lblKeyDel (): string { return this.i18n.t('Del') }
+    get lblKeyEsc (): string { return this.i18n.t('Esc') }
+    get lblOptionCancel (): string { return this.i18n.t('Cancel: the safe answer (default)') }
+    get lblOptionConfirm (): string { return this.i18n.t('Delete: Del then Enter in one gesture') }
+    get lblTransfers (): string { return this.i18n.t('Transfer manager') }
+    get lblTransfersHint (): string { return this.i18n.t('Also mirrors the transfers of the native SFTP panel.') }
+    get lblTransfersDesc (): string { return this.i18n.t('Panel shown at the bottom of the sidebar.') }
+    get lblSnippetsIntro (): string { return this.i18n.t('A command written once, usable everywhere it is attached.') }
+    get lblNoSnippets (): string { return this.i18n.t('No snippets yet.') }
+    get lblUnusedSummary (): string { return this.i18n.t('{count} snippet(s) attached to nothing.', { count: this.unusedCount }) }
+    get lblUnusedDetail (): string { return this.i18n.t('Detached from the sidebar, they stay here until deleted.') }
+    get lblAttachedNowhere (): string { return this.i18n.t('attached nowhere') }
+    get lblEdit (): string { return this.i18n.t('Modify') }
+    get lblDelete (): string { return this.i18n.t('Delete') }
+    get lblNewSnippet (): string { return this.i18n.t('New snippet') }
+    get lblName (): string { return this.i18n.t('Name') }
+    get lblNameDesc (): string { return this.i18n.t('What the context menu shows.') }
+    get lblNamePlaceholder (): string { return this.i18n.t('Restart nginx') }
+    get lblCommand (): string { return this.i18n.t('Command') }
+    get lblCommandUse (): string { return this.i18n.t('Use') }
+    get lblCommandRequired (): string { return this.i18n.t('for a required value, or') }
+    get lblCommandDefault (): string { return this.i18n.t('for a default value.') }
+    get lblSave (): string { return this.i18n.t('Save') }
+    get lblCancel (): string { return this.i18n.t('Cancel') }
+    get lblDraftWarning (): string {
+        return this.i18n.t('Changes the command on the {count} existing attachment(s).', { count: this.draft ? this.attachmentCount(this.draft) : 0 })
+    }
+
+    /** The per-row "rattaché à N élément(s)" caption — a method because it needs the row's snippet. */
+    attachedToLabel (snippet: SidebarSnippet): string {
+        return this.i18n.t('attached to {count} item(s)', { count: this.attachmentCount(snippet) })
     }
 
 
@@ -134,9 +236,9 @@ export class SidebarPlusSettingsTabComponent {
         const count = this.attachmentCount(snippet)
         const modal = this.ngbModal.open(ConfirmModalComponent)
         modal.componentInstance.message = count
-            ? `Supprimer « ${snippet.name} » ? Il est rattaché à ${count} élément(s), qui le perdront.`
-            : `Supprimer « ${snippet.name} » ?`
-        modal.componentInstance.confirmLabel = 'Supprimer'
+            ? this.i18n.t('Delete the snippet "{name}"? It is attached to {count} item(s), which will lose it.', { name: snippet.name, count })
+            : this.i18n.t('Delete the snippet "{name}"?', { name: snippet.name })
+        modal.componentInstance.confirmLabel = this.i18n.t('Delete')
         if (!await modal.result.catch(() => false)) {
             return
         }

@@ -5,16 +5,16 @@
         a.view-mode-tab(
             [class.active]='!sftpMode',
             (click)='setSftpMode(false)',
-            title='Profils',
+            [title]="'Profiles' | translate",
             href='#'
         )
             .fa.fa-fw.fas.fa-list.me-1
-            span Profils
+            span {{ 'Profiles' | translate }}
         a.view-mode-tab(
             *ngIf='showSftp',
             [class.active]='sftpMode',
             (click)='setSftpMode(true)',
-            title='SFTP de la session active',
+            [title]="'SFTP of the active session' | translate",
             href='#'
         )
             .fa.fa-fw.fas.fa-folder-open.me-1
@@ -37,7 +37,7 @@
                 [class.fa-chevron-down]='!activeSessionsCollapsed',
                 [class.fa-chevron-right]='activeSessionsCollapsed'
             )
-            span.me-auto Sessions actives
+            span.me-auto {{ 'Active sessions' | translate }}
             span.active-sessions-count {{ activeSessions.length }}
         //- The list scrolls past four rows (see the SCSS): the header has to
         //- stay put, so the cap goes on this inner wrapper, not on the section.
@@ -76,7 +76,7 @@
                 .actions
                     .action(
                         (click)='openSessionSftp(session, $event)',
-                        title='Ouvrir le SFTP de cette session'
+                        [title]="'Open the SFTP of this session' | translate"
                     )
                         .fa.fa-fw.fas.fa-folder-open
 
@@ -93,7 +93,7 @@
                 [class.fa-chevron-down]='!recentProfilesCollapsed',
                 [class.fa-chevron-right]='recentProfilesCollapsed'
             )
-            span.me-auto Récents
+            span.me-auto {{ 'Recently launched' | translate }}
             span.active-sessions-count {{ recentProfiles.length }}
         div(*ngIf='!recentProfilesCollapsed')
             //- Pas de menu contextuel, pas de favori, pas de statut : une rampe
@@ -122,7 +122,7 @@
                 [class.fa-chevron-down]='!activeTunnelsCollapsed',
                 [class.fa-chevron-right]='activeTunnelsCollapsed'
             )
-            span.me-auto Tunnels actifs
+            span.me-auto {{ 'Active tunnels' | translate }}
             span.active-sessions-count {{ activeTunnels.length }}
         div(*ngIf='!activeTunnelsCollapsed')
             //- The row shows the description the user gave the tunnel; the
@@ -147,19 +147,19 @@
                         [class.fa-link-slash]='tunnel.state === "lost"'
                     )
                     span.ms-2.me-auto.no-wrap {{ tunnel.label }}
-                    span.tunnel-state(*ngIf='tunnel.state === "waiting"') reprise…
-                    span.tunnel-state(*ngIf='tunnel.state === "lost"') non remonté
+                    span.tunnel-state(*ngIf='tunnel.state === "waiting"') {{ 'resuming…' | translate }}
+                    span.tunnel-state(*ngIf='tunnel.state === "lost"') {{ 'not restored' | translate }}
                     span.tunnel-session.no-wrap {{ tunnel.sessionName }}
                     .actions
                         .action(
                             *ngIf='tunnel.url',
                             (click)='openTunnelUrl(tunnel, $event)',
-                            [title]='"Ouvrir " + tunnel.url + " dans le navigateur"'
+                            [title]="'Open {url} in the browser' | translate:{ url: tunnel.url }"
                         )
                             .fa.fa-fw.fas.fa-arrow-up-right-from-square
                         .action(
                             (click)='focusTunnelSession(tunnel, $event)',
-                            title='Aller à la session'
+                            [title]="'Go to the session' | translate"
                         )
                             .fa.fa-fw.fas.fa-terminal
                 //- Session name stays on the row itself, so the unfolded part
@@ -204,7 +204,7 @@
             [class.active]='activeWorkspaceId === "all"',
             (click)='selectWorkspace("all")',
             href='#'
-        ) Tous
+        ) {{ 'All' | translate }}
         a.workspace-tab(
             *ngFor='let ws of workspaces',
             [class.active]='activeWorkspaceId === ws.id',
@@ -221,7 +221,7 @@
             .workspace-color-dot(*ngIf='ws.color', [style.background-color]='ws.color')
         a.workspace-tab.workspace-tab-add(
             (click)='openCreateWorkspacePrompt($event)',
-            title='Nouveau workspace',
+            [title]="'New workspace' | translate",
             href='#'
         )
             .fa.fa-fw.fas.fa-plus
@@ -232,11 +232,11 @@
     a.workspace-bar-compact.d-flex.align-items-center(
         *ngIf='showWorkspaces && !sftpMode && workspaceSelectorMode === "dropdown"',
         (click)='openWorkspaceSwitcher($event)',
-        [title]='activeWorkspace?.name ?? "Tous"',
+        [title]="activeWorkspace?.name ?? ('All' | translate)",
         href='#'
     )
         profile-icon.me-1(*ngIf='activeWorkspace?.icon', [icon]='activeWorkspace?.icon')
-        span.me-auto.no-wrap {{ activeWorkspace?.name ?? 'Tous' }}
+        span.me-auto.no-wrap {{ activeWorkspace?.name ?? ('All' | translate) }}
         .workspace-color-dot(*ngIf='activeWorkspace?.color', [style.background-color]='activeWorkspace?.color')
         .fa.fa-fw.fas.fa-chevron-down.ms-1
 
@@ -248,7 +248,7 @@
             #filterInput='',
             type='text',
             [(ngModel)]='filter',
-            placeholder='Filtrer (Ctrl+F)',
+            [placeholder]="'Filter (Ctrl+F)' | translate",
             (ngModelChange)='onFilterChange()',
             (keydown.escape)='clearFilter()'
         )
@@ -257,7 +257,7 @@
             type='button',
             [class.active]='showHiddenPanel',
             (click)='showHiddenPanel = !showHiddenPanel',
-            title='Éléments masqués dans ce workspace'
+            [title]="'Hidden items in this workspace' | translate"
         )
             .fa.fa-fw.fas.fa-eye-slash
 
@@ -271,22 +271,22 @@
             span.me-auto {{ selectionNotice }}
         ng-container(*ngIf='!selectionNotice')
             .d-flex.align-items-center
-                span.me-auto {{ selectedProfileIds.size }} profil{{ selectedProfileIds.size > 1 ? 's' : '' }} sélectionné{{ selectedProfileIds.size > 1 ? 's' : '' }}
-                .selection-clear((click)='clearSelection()', title='Annuler la sélection')
+                span.me-auto {{ '{count, plural, one {# profile selected} other {# profiles selected}}' | translate:{ count: selectedProfileIds.size } }}
+                .selection-clear((click)='clearSelection()', [title]="'Clear the selection' | translate")
                     .fa.fa-fw.fas.fa-xmark
-            .selection-hint Glissez la sélection, ou clic droit sur le dossier de destination
+            .selection-hint {{ 'Drag the selection, or right-click the destination folder' | translate }}
 
     .hidden-items-panel(*ngIf='showHiddenPanel && !sftpMode')
-        .text-muted.small(*ngIf='!hiddenGroupsInWorkspace.length && !hiddenProfilesInWorkspace.length') Aucun élément masqué dans ce workspace.
+        .text-muted.small(*ngIf='!hiddenGroupsInWorkspace.length && !hiddenProfilesInWorkspace.length') {{ 'No hidden items in this workspace.' | translate }}
         .hidden-item(*ngFor='let g of hiddenGroupsInWorkspace')
             profile-icon.me-2([icon]='g.icon ?? "far fa-folder"', [color]='g.color')
             span.me-auto.no-wrap {{ g.name || 'Ungrouped' }}
-            a.action((click)='restoreGroupInWorkspace(g)', title='Réafficher', href='#')
+            a.action((click)='restoreGroupInWorkspace(g)', [title]="'Show again' | translate", href='#')
                 .fa.fa-fw.fas.fa-eye
         .hidden-item(*ngFor='let p of hiddenProfilesInWorkspace')
             profile-icon.me-2([icon]='p.icon', [color]='p.color')
             span.me-auto.no-wrap {{ p.name }}
-            a.action((click)='restoreProfileInWorkspace(p)', title='Réafficher', href='#')
+            a.action((click)='restoreProfileInWorkspace(p)', [title]="'Show again' | translate", href='#')
                 .fa.fa-fw.fas.fa-eye
 
     .sidebar-plus-tree.h-100(*ngIf='!showHiddenPanel && !sftpMode', (contextmenu)='onSidebarContextMenu($event)')
@@ -373,7 +373,7 @@
                                 span.status-dot.ms-1(
                                     [class.status-dot-connected]='getProfileStatus(profile) === "connected"',
                                     [class.status-dot-error]='getProfileStatus(profile) === "error"',
-                                    [title]='getProfileStatus(profile) === "connected" ? "Connecté" : getProfileStatus(profile) === "error" ? "Déconnecté" : "Aucune session"'
+                                    [title]="getProfileStatus(profile) === 'connected' ? ('Connected' | translate) : getProfileStatus(profile) === 'error' ? ('Disconnected' | translate) : ('No session' | translate)"
                                 )
                                 span.ms-2.no-wrap {{ profile.name }}
                                 .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavorite(profile)')
@@ -389,12 +389,12 @@
                                 //- merely carries some in its configuration.
                                 .tunnel-badge.ms-1(
                                     *ngIf='tunnelCount(profile)',
-                                    [title]='tunnelCount(profile) + " tunnel(s) monté(s) sur cette session"'
+                                    [title]="'{count} tunnel(s) mounted on this session' | translate:{ count: tunnelCount(profile) }"
                                 )
                                     .fa.fa-fw.fas.fa-link
                                 .tunnel-badge.tunnel-badge-idle.ms-1(
                                     *ngIf='!tunnelCount(profile) && configuredTunnelCount(profile)',
-                                    [title]='configuredTunnelCount(profile) + " tunnel(s) configuré(s) — montés au lancement de la session"'
+                                    [title]="'{count} tunnel(s) configured: mounted when the session launches' | translate:{ count: configuredTunnelCount(profile) }"
                                 )
                                     .fa.fa-fw.fas.fa-link
                                 //- Only while a transfer is `active` — never for
@@ -402,9 +402,9 @@
                                 //- panel already carries. One badge per
                                 //- direction, since a session can serve both at
                                 //- once.
-                                .transfer-activity.ms-1(*ngIf='transferActivity(profile)?.up', title='Envoi en cours')
+                                .transfer-activity.ms-1(*ngIf='transferActivity(profile)?.up', [title]="'Upload in progress' | translate")
                                     .fa.fa-fw.fas.fa-arrow-up
-                                .transfer-activity.ms-1(*ngIf='transferActivity(profile)?.down', title='Réception en cours')
+                                .transfer-activity.ms-1(*ngIf='transferActivity(profile)?.down', [title]="'Download in progress' | translate")
                                     .fa.fa-fw.fas.fa-arrow-down
 
                                 .actions
@@ -464,7 +464,7 @@
         span.no-wrap {{ contextMenuGroup.name || 'Ungrouped' }}
     a.group-context-menu-item((click)='moveSelectionToGroup(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-arrow-right-to-bracket.me-2
-        | Déplacer la sélection ici ({{ selectedProfileIds.size }})
+        | {{ 'Move the selection here ({count})' | translate:{ count: selectedProfileIds.size } }}
 
 .group-context-menu(
     *ngIf='contextMenuGroup && isMenuMode && contextMenuGroup.editable',
@@ -477,50 +477,50 @@
         span.no-wrap {{ contextMenuGroup.name || 'Ungrouped' }}
     a.group-context-menu-item(*ngIf='canMoveSelectionTo(contextMenuGroup)', (click)='moveSelectionToGroup(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-arrow-right-to-bracket.me-2
-        | Déplacer la sélection ici ({{ selectedProfileIds.size }})
+        | {{ 'Move the selection here ({count})' | translate:{ count: selectedProfileIds.size } }}
     a.group-context-menu-item((click)='launchGroupSessions(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
-        | Lancer toutes les sessions
+        | {{ 'Launch all sessions' | translate }}
     a.group-context-menu-item(*ngIf='showSnippets', (click)='openSnippetsModal()', href='#')
         .fa.fa-fw.fas.fa-terminal.me-2
         | Snippets...
     a.group-context-menu-item(*ngIf='showNotes', (click)='openNoteModal()', href='#')
         .fa.fa-fw.fas.fa-note-sticky.me-2
-        | {{ hasNote(contextMenuGroup.id) ? 'Modifier la note...' : 'Ajouter une note...' }}
+        | {{ hasNote(contextMenuGroup.id) ? ('Edit the note...' | translate) : ('Add a note...' | translate) }}
     a.group-context-menu-item((click)='toggleFavoriteGroupFromMenu(contextMenuGroup, $event)', href='#')
         .fa.fa-fw.me-2(
             [class.fas]='isFavoriteGroup(contextMenuGroup)',
             [class.far]='!isFavoriteGroup(contextMenuGroup)',
             class='fa-star'
         )
-        | {{ isFavoriteGroup(contextMenuGroup) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}
+        | {{ isFavoriteGroup(contextMenuGroup) ? ('Remove from favorites' | translate) : ('Add to favorites' | translate) }}
     a.group-context-menu-item((click)='openRenamePrompt()', href='#')
         .fa.fa-fw.fas.fa-i-cursor.me-2
-        | Renommer...
+        | {{ 'Rename...' | translate }}
     a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
         .fa.fa-fw.fas.fa-folder-plus.me-2
-        | Nouveau dossier...
+        | {{ 'New folder...' | translate }}
     a.group-context-menu-item((click)='openCreateProfilePicker()', href='#')
         .fa.fa-fw.fas.fa-plus.me-2
-        | Nouveau profil...
+        | {{ 'New profile...' | translate }}
     a.group-context-menu-item((click)='openIconPicker()', href='#')
         .fa.fa-fw.fas.fa-icons.me-2
-        | Changer l'icône...
+        | {{ 'Change the icon...' | translate }}
     //- Two entries and not one setting: the purge level belongs to the gesture.
     //- The second keeps the host and port — what it drops is the username, the
     //- keys and the route in (jump host, proxies, forwarded ports).
     a.group-context-menu-item((click)='copyGroupStructure("secrets")', href='#')
         .fa.fa-fw.fas.fa-copy.me-2
-        | Copier la structure (JSON)
+        | {{ 'Copy the structure (JSON)' | translate }}
     a.group-context-menu-item((click)='copyGroupStructure("credentials")', href='#')
         .fa.fa-fw.fas.fa-user-shield.me-2
-        | Copier sans les identifiants
+        | {{ 'Copy without credentials' | translate }}
     a.group-context-menu-item(*ngIf='activeWorkspace', (click)='hideInActiveWorkspace()', href='#')
         .fa.fa-fw.fas.fa-eye-slash.me-2
-        | Cacher dans le workspace
+        | {{ 'Hide in this workspace' | translate }}
     a.group-context-menu-item((click)='deleteGroup(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-trash.me-2
-        | Supprimer
+        | {{ 'Delete' | translate }}
 
 .group-context-menu(
     *ngIf='contextMenuRoot && isMenuMode',
@@ -530,17 +530,17 @@
 )
     a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
         .fa.fa-fw.fas.fa-folder-plus.me-2
-        | Nouveau dossier...
+        | {{ 'New folder...' | translate }}
     a.group-context-menu-item((click)='openCreateProfilePicker()', href='#')
         .fa.fa-fw.fas.fa-plus.me-2
-        | Nouveau profil...
+        | {{ 'New profile...' | translate }}
     //- Always shown, never greyed out on "the clipboard does not hold one":
     //- reading the clipboard to decide would mean reading it on every right
     //- click, and a refusal that explains itself beats an entry that cannot be
     //- clicked and says nothing.
     a.group-context-menu-item((click)='pasteGroup()', href='#')
         .fa.fa-fw.fas.fa-paste.me-2
-        | Coller le groupe
+        | {{ 'Paste the folder' | translate }}
 
 .group-context-menu(
     *ngIf='contextMenuProfile && isMenuMode',
@@ -553,44 +553,44 @@
         span.no-wrap {{ contextMenuProfile.name }}
     a.group-context-menu-item((click)='launchProfileFromMenu(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
-        | Lancer la session
+        | {{ 'Launch the session' | translate }}
     a.group-context-menu-item(*ngIf='showSnippets', (click)='openSnippetsModal()', href='#')
         .fa.fa-fw.fas.fa-terminal.me-2
         | Snippets...
     a.group-context-menu-item(*ngIf='showNotes', (click)='openNoteModal()', href='#')
         .fa.fa-fw.fas.fa-note-sticky.me-2
-        | {{ hasNote(contextMenuProfile.id) ? 'Modifier la note...' : 'Ajouter une note...' }}
+        | {{ hasNote(contextMenuProfile.id) ? ('Edit the note...' | translate) : ('Add a note...' | translate) }}
     a.group-context-menu-item((click)='toggleFavoriteFromMenu(contextMenuProfile, $event)', href='#')
         .fa.fa-fw.me-2(
             [class.fas]='isFavorite(contextMenuProfile)',
             [class.far]='!isFavorite(contextMenuProfile)',
             class='fa-star'
         )
-        | {{ isFavorite(contextMenuProfile) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}
+        | {{ isFavorite(contextMenuProfile) ? ('Remove from favorites' | translate) : ('Add to favorites' | translate) }}
     //- Single entry, editing the profile's own configuration. Handing over to
     //- Tabby's native modal for live sessions was built and then dropped at the
     //- user's request — see openProfileTunnels() for what that costs.
     a.group-context-menu-item(*ngIf='isSshProfileMenu', (click)='openProfileTunnels()', href='#')
         .fa.fa-fw.fas.fa-link.me-2
-        | Tunnels du profil...
+        | {{ 'Profile tunnels...' | translate }}
     a.group-context-menu-item((click)='openRenamePrompt()', href='#')
         .fa.fa-fw.fas.fa-i-cursor.me-2
-        | Renommer...
+        | {{ 'Rename...' | translate }}
     a.group-context-menu-item((click)='editProfile(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-pen.me-2
-        | Éditer...
+        | {{ 'Edit...' | translate }}
     a.group-context-menu-item((click)='duplicateProfile(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-copy.me-2
-        | Dupliquer
+        | {{ 'Duplicate' | translate }}
     a.group-context-menu-item((click)='openIconPicker()', href='#')
         .fa.fa-fw.fas.fa-icons.me-2
-        | Changer l'icône...
+        | {{ 'Change the icon...' | translate }}
     a.group-context-menu-item(*ngIf='activeWorkspace', (click)='hideInActiveWorkspace()', href='#')
         .fa.fa-fw.fas.fa-eye-slash.me-2
-        | Cacher dans le workspace
+        | {{ 'Hide in this workspace' | translate }}
     a.group-context-menu-item((click)='confirmDeleteProfile()', href='#')
         .fa.fa-fw.fas.fa-trash.me-2
-        | Supprimer
+        | {{ 'Delete' | translate }}
 
 .icon-picker(
     *ngIf='isIconPickerMode && (contextMenuGroup || contextMenuProfile || contextMenuWorkspace)',
@@ -599,7 +599,7 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Choisir une icône
+        span {{ 'Choose an icon' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
 
     //- Workspace-only: folders/profiles have no "back to no icon" entry to
@@ -609,9 +609,9 @@
         *ngIf='contextMenuWorkspace && contextMenuWorkspace.icon',
         (click)='clearWorkspaceIcon()',
         href='#'
-    ) Retirer l'icône
+    ) {{ 'Remove the icon' | translate }}
 
-    .text-muted.small(*ngIf='!iconQuery') Favoris
+    .text-muted.small(*ngIf='!iconQuery') {{ 'Favorites' | translate }}
     .icon-picker-grid(*ngIf='favoriteIcons.length && !iconQuery')
         a.icon-picker-item(
             *ngFor='let c of favoriteIcons',
@@ -622,9 +622,9 @@
         )
             profile-icon([icon]='c')
     .icon-picker-empty(*ngIf='!favoriteIcons.length && !iconQuery')
-        | Clic droit sur une icône → « Ajouter aux favoris »
+        | {{ 'Right-click an icon: "Add to favorites"' | translate }}
 
-    .text-muted.small(*ngIf='recentIcons.length && !iconQuery') Récentes
+    .text-muted.small(*ngIf='recentIcons.length && !iconQuery') {{ 'Recently used' | translate }}
     .icon-picker-grid(*ngIf='recentIcons.length && !iconQuery')
         a.icon-picker-item(
             *ngFor='let c of recentIcons',
@@ -638,7 +638,7 @@
     input.form-control.form-control-sm.mb-1.mt-1(
         type='text',
         [(ngModel)]='iconQuery',
-        placeholder='Rechercher (ex: server, folder, star...)',
+        [placeholder]="'Search (e.g. server, folder, star...)' | translate",
         (ngModelChange)='onIconQueryChange()'
     )
     .icon-picker-grid(*ngIf='iconMatches.length')
@@ -654,7 +654,7 @@
     hr
 
     .icon-picker-custom
-        a.small((click)='toggleCustomSvgInput()', href='#') Importer à partir d'un SVG...
+        a.small((click)='toggleCustomSvgInput()', href='#') {{ 'Import from an SVG...' | translate }}
 
         ng-container(*ngIf='showCustomSvgInput')
             textarea.form-control.form-control-sm.mt-1(
@@ -664,7 +664,7 @@
             )
             .text-danger.small.mt-1(*ngIf='customSvgError') {{ customSvgError }}
             .text-warning.small.mt-1(*ngIf='customSvgWarning') {{ customSvgWarning }}
-            button.btn.btn-sm.btn-secondary.mt-1((click)='applyCustomSvg()') Appliquer le SVG
+            button.btn.btn-sm.btn-secondary.mt-1((click)='applyCustomSvg()') {{ 'Apply the SVG' | translate }}
 
 // Rendered outside .icon-picker: the picker's grids scroll (overflow-y),
 // which would clip a menu overlapping a tile — the same clipping that made
@@ -677,7 +677,7 @@
 )
     a.group-context-menu-item((click)='toggleFavoriteIconFromMenu($event)', href='#')
         profile-icon.me-2([icon]='iconMenuIcon')
-        | {{ isFavoriteIcon(iconMenuIcon) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}
+        | {{ isFavoriteIcon(iconMenuIcon) ? ('Remove from favorites' | translate) : ('Add to favorites' | translate) }}
 
 .create-popup(
     *ngIf='isRenameMode',
@@ -686,7 +686,7 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Renommer
+        span {{ 'Rename' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
     input.form-control.form-control-sm.mt-1(
         type='text',
@@ -694,7 +694,7 @@
         (keydown.enter)='confirmRename()',
         (keydown.escape)='closeContextMenu()'
     )
-    button.btn.btn-sm.btn-primary.mt-2((click)='confirmRename()') Renommer
+    button.btn.btn-sm.btn-primary.mt-2((click)='confirmRename()') {{ 'Rename' | translate }}
 
 .create-popup(
     *ngIf='isCreateGroupMode',
@@ -703,15 +703,15 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Nouveau dossier
+        span {{ 'New folder' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
     input.form-control.form-control-sm.mt-1(
         type='text',
         [(ngModel)]='newGroupName',
-        placeholder='Nom du dossier',
+        [placeholder]="'Folder name' | translate",
         (keydown.enter)='createGroup()'
     )
-    button.btn.btn-sm.btn-primary.mt-2((click)='createGroup()') Créer
+    button.btn.btn-sm.btn-primary.mt-2((click)='createGroup()') {{ 'Create' | translate }}
 
 .create-popup.tunnels-popup(
     *ngIf='isTunnelsMode && contextMenuProfile',
@@ -720,25 +720,25 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span.no-wrap Tunnels — {{ contextMenuProfile.name }}
+        span.no-wrap {{ 'Tunnels: {name}' | translate:{ name: contextMenuProfile.name } }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
-    .text-muted.small.mt-1(*ngIf='!profileTunnels.length') Aucun tunnel configuré sur ce profil.
+    .text-muted.small.mt-1(*ngIf='!profileTunnels.length') {{ 'No tunnels configured on this profile.' | translate }}
     .tunnel-row(
         *ngFor='let fw of profileTunnels; let i = index',
         [class.editing]='editingTunnelIndex === i',
         (dblclick)='startEditTunnel(i)',
-        title='Double-cliquez pour modifier ce tunnel'
+        [title]="'Double-click to edit this tunnel' | translate"
     )
         span.me-auto.no-wrap {{ formatTunnelRow(fw) }}
         .action(
             *ngIf='!isTunnelLive(fw)',
             (click)='removeProfileTunnel(i)',
-            title='Supprimer ce tunnel'
+            [title]="'Delete this tunnel' | translate"
         )
             .fa.fa-fw.fas.fa-trash
         .action.disabled(
             *ngIf='isTunnelLive(fw)',
-            title='Ce tunnel est actuellement monté sur la session ouverte. Le supprimer ici retirerait sa configuration sans couper le tunnel, qui continuerait de tourner jusqu\'à la fermeture de la session. Fermez la session pour pouvoir le supprimer.'
+            [title]="'This tunnel is currently mounted on the open session. Deleting it here would remove its configuration without cutting the tunnel, which would keep running until the session closes. Close the session to be able to delete it.' | translate"
         )
             .fa.fa-fw.fas.fa-lock
     hr
@@ -750,7 +750,7 @@
         input.form-control.form-control-sm(
             type='number',
             [(ngModel)]='tunnelDraft.port',
-            placeholder='Port d\'écoute',
+            [placeholder]="'Listening port' | translate",
             (keydown.enter)='addProfileTunnel()',
             (keydown.escape)='closeContextMenu()'
         )
@@ -758,26 +758,26 @@
         input.form-control.form-control-sm(
             type='text',
             [(ngModel)]='tunnelDraft.targetAddress',
-            placeholder='Hôte cible'
+            [placeholder]="'Target host' | translate"
         )
         input.form-control.form-control-sm(
             type='number',
             [(ngModel)]='tunnelDraft.targetPort',
-            placeholder='Port cible',
+            [placeholder]="'Target port' | translate",
             (keydown.enter)='addProfileTunnel()',
             (keydown.escape)='closeContextMenu()'
         )
     input.form-control.form-control-sm.mb-1(
         type='text',
         [(ngModel)]='tunnelDraft.description',
-        placeholder='Description (optionnel)'
+        [placeholder]="'Description (optional)' | translate"
     )
     .tunnel-hint.small.mb-1 {{ tunnelHint }}
     .text-danger.small.mb-1(*ngIf='tunnelError') {{ tunnelError }}
     .d-flex.gap-2
-        button.btn.btn-sm.btn-primary((click)='addProfileTunnel()') {{ editingTunnelIndex === null ? 'Ajouter le tunnel' : 'Enregistrer' }}
-        button.btn.btn-sm.btn-secondary(*ngIf='editingTunnelIndex !== null', (click)='cancelEditTunnel()') Annuler
-    .text-muted.small.mt-2 Prend effet au prochain lancement de la session.
+        button.btn.btn-sm.btn-primary((click)='addProfileTunnel()') {{ editingTunnelIndex === null ? ('Add the tunnel' | translate) : ('Save' | translate) }}
+        button.btn.btn-sm.btn-secondary(*ngIf='editingTunnelIndex !== null', (click)='cancelEditTunnel()') {{ 'Cancel' | translate }}
+    .text-muted.small.mt-2 {{ 'Takes effect at the next session launch.' | translate }}
 
 .create-popup(
     *ngIf='isCreateProfileMode',
@@ -786,7 +786,7 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Nouveau profil
+        span {{ 'New profile' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
     .create-profile-list
         a.create-profile-item(
@@ -804,12 +804,12 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Supprimer le profil
+        span {{ 'Delete the profile' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
-    .small.mb-2 Supprimer « {{ contextMenuProfile.name }} » ? Cette action est irréversible.
+    .small.mb-2 {{ 'Delete "{name}"? This action is irreversible.' | translate:{ name: contextMenuProfile.name } }}
     .d-flex.gap-2
-        button.btn.btn-sm.btn-danger((click)='deleteProfile(contextMenuProfile)') Supprimer
-        button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') Annuler
+        button.btn.btn-sm.btn-danger((click)='deleteProfile(contextMenuProfile)') {{ 'Delete' | translate }}
+        button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') {{ 'Cancel' | translate }}
 
 .group-context-menu(
     *ngIf='contextMenuWorkspace && isWorkspaceMenuMode',
@@ -821,19 +821,19 @@
         span.no-wrap {{ contextMenuWorkspace.name }}
     a.group-context-menu-item((click)='openRenameWorkspacePrompt()', href='#')
         .fa.fa-fw.fas.fa-i-cursor.me-2
-        | Renommer...
+        | {{ 'Rename...' | translate }}
     a.group-context-menu-item((click)='openIconPicker()', href='#')
         .fa.fa-fw.fas.fa-icons.me-2
-        | Icône...
+        | {{ 'Icon...' | translate }}
     a.group-context-menu-item((click)='openWorkspaceColorPicker()', href='#')
         .fa.fa-fw.fas.fa-palette.me-2
-        | Couleur...
+        | {{ 'Color...' | translate }}
     a.group-context-menu-item((click)='copyWorkspace()', href='#')
         .fa.fa-fw.fas.fa-copy.me-2
-        | Copier (JSON)
+        | {{ 'Copy (JSON)' | translate }}
     a.group-context-menu-item((click)='confirmDeleteWorkspacePrompt()', href='#')
         .fa.fa-fw.fas.fa-trash.me-2
-        | Supprimer
+        | {{ 'Delete' | translate }}
 
 //- Opened by .workspace-bar-compact (openWorkspaceSwitcher()) — the same
 //- entries .workspace-bar itself would show, one per row instead of one per
@@ -855,7 +855,7 @@
         [class.active]='activeWorkspaceId === "all"',
         (click)='selectWorkspace("all")',
         href='#'
-    ) Tous
+    ) {{ 'All' | translate }}
     a.group-context-menu-item(
         *ngFor='let ws of workspaces',
         [class.active]='activeWorkspaceId === ws.id',
@@ -878,12 +878,12 @@
         //- spot for every row (see switcherPopupAnchor()).
         .group-context-menu-item-btn(
             (click)='openWorkspaceMenuFromSwitcher($event, ws)',
-            title='Gérer ce workspace'
+            [title]="'Manage this workspace' | translate"
         )
             .fa.fa-fw.fas.fa-ellipsis-h
     a.group-context-menu-item((click)='openCreateWorkspaceFromSwitcher($event)', href='#')
         .fa.fa-fw.fas.fa-plus.me-2
-        | Nouveau workspace...
+        | {{ 'New workspace...' | translate }}
 
 .create-popup(
     *ngIf='isCreateWorkspaceMode',
@@ -892,16 +892,16 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Nouveau workspace
+        span {{ 'New workspace' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
     input.form-control.form-control-sm.mt-1(
         type='text',
         [(ngModel)]='newWorkspaceName',
-        placeholder='Nom du workspace',
+        [placeholder]="'Workspace name' | translate",
         (keydown.enter)='createWorkspace()'
     )
-    button.btn.btn-sm.btn-primary.mt-2((click)='createWorkspace()') Créer
-    button.btn.btn-sm.btn-secondary.mt-1((click)='importWorkspaceFromClipboard()') Importer du presse-papiers
+    button.btn.btn-sm.btn-primary.mt-2((click)='createWorkspace()') {{ 'Create' | translate }}
+    button.btn.btn-sm.btn-secondary.mt-1((click)='importWorkspaceFromClipboard()') {{ 'Import from the clipboard' | translate }}
 
 .create-popup(
     *ngIf='isRenameWorkspaceMode && contextMenuWorkspace',
@@ -910,7 +910,7 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Renommer le workspace
+        span {{ 'Rename the workspace' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
     input.form-control.form-control-sm.mt-1(
         type='text',
@@ -918,7 +918,7 @@
         (keydown.enter)='confirmRenameWorkspace()',
         (keydown.escape)='closeContextMenu()'
     )
-    button.btn.btn-sm.btn-primary.mt-2((click)='confirmRenameWorkspace()') Renommer
+    button.btn.btn-sm.btn-primary.mt-2((click)='confirmRenameWorkspace()') {{ 'Rename' | translate }}
 
 .create-popup(
     *ngIf='isWorkspaceColorMode && contextMenuWorkspace',
@@ -927,13 +927,13 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Couleur du workspace
+        span {{ 'Workspace color' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
     a.small.d-block.mb-1(
         *ngIf='contextMenuWorkspace.color',
         (click)='clearWorkspaceColor()',
         href='#'
-    ) Retirer la couleur
+    ) {{ 'Remove the color' | translate }}
     .color-picker-grid
         a.color-picker-item(
             *ngFor='let c of workspaceColors',
@@ -951,12 +951,12 @@
     (click)='$event.stopPropagation()'
 )
     .icon-picker-header
-        span Supprimer le workspace
+        span {{ 'Delete the workspace' | translate }}
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
-    .small.mb-2 Supprimer « {{ contextMenuWorkspace.name }} » ? Les profils et dossiers masqués redeviennent visibles partout ailleurs. Cette action est irréversible.
+    .small.mb-2 {{ 'Delete "{name}"? Hidden profiles and folders become visible everywhere else. This action is irreversible.' | translate:{ name: contextMenuWorkspace.name } }}
     .d-flex.gap-2
-        button.btn.btn-sm.btn-danger((click)='deleteWorkspace()') Supprimer
-        button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') Annuler
+        button.btn.btn-sm.btn-danger((click)='deleteWorkspace()') {{ 'Delete' | translate }}
+        button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') {{ 'Cancel' | translate }}
 
 //- Footer bar pinned to the bottom of the sidebar, in both views. Plugin
 //- signature + version on the left, settings gear on the right. Deliberately
@@ -971,7 +971,7 @@
         span.footer-version v{{ pluginVersion }}
     a.sidebar-plus-gear(
         (click)='openPluginSettings()',
-        title='Réglages de Better Sidebar',
+        [title]="'Better Sidebar settings' | translate",
         href='#'
     )
         .fa.fa-fw.fas.fa-cog

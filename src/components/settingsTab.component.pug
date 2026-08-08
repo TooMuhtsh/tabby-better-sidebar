@@ -1,7 +1,5 @@
 //- One `.form-line` per setting — label and short explanation on the left,
-//- control on the right. The wording stays in French: unlike the other plugin,
-//- this one ships no `src/i18n/`, so a `| translate` would resolve to the
-//- source string anyway.
+//- control on the right.
 //-
 //- Three rules hold this page together:
 //-
@@ -14,19 +12,19 @@
 //-    2026-08-08): the setting's label already says what it is, so the
 //-    sentence says only what it does, never the internal justification —
 //-    that belongs in .AIRules, not in front of someone trying to flip a
-//-    switch. Plain static title attributes, never bound through a translate
-//-    pipe: this page has no i18n, and an Angular expression literal is
-//-    parsed at runtime by the JIT compiler, unlike a plain HTML attribute —
-//-    a long sentence with a straight apostrophe or an em dash inside one
-//-    broke that parser across the whole tab (piège vécu ici même, 2026-08-08).
-//- 3. Every setting keeps working exactly as before: only the wording here
-//-    got shorter.
+//-    switch. NO string literal ever appears inline in this template: every
+//-    user-visible string is a component property (`lbl*` getters backed by
+//-    SidebarPlusI18nService) bound via `{{ lblX }}` or `[title]='lblX'` —
+//-    an inline literal with a straight apostrophe or an em dash broke the
+//-    JIT compiler across the whole tab (piège vécu ici même, 2026-08-08).
+//- 3. Every setting keeps working exactly as before: only the wording moved
+//-    into the component.
 .sidebar-plus-settings
   ul.nav.nav-tabs.sidebar-plus-settings-nav
     li.nav-item
-      a.nav-link(href='#', [class.active]="section === 'general'", (click)="setSection('general', $event)") Général
+      a.nav-link(href='#', [class.active]="section === 'general'", (click)="setSection('general', $event)") {{ lblGeneral }}
     li.nav-item
-      a.nav-link(href='#', [class.active]="section === 'features'", (click)="setSection('features', $event)") Fonctionnalités
+      a.nav-link(href='#', [class.active]="section === 'features'", (click)="setSection('features', $event)") {{ lblFeatures }}
     //- Disparaît avec l'interrupteur du bloc, comme toute option qui n'existe
     //- que pour une fonctionnalité : un onglet qui survit à ce qu'il règle se
     //- lit comme cassé plutôt que comme sans objet.
@@ -35,12 +33,12 @@
 
   ng-container(*ngIf="section === 'general'")
     .settings-section
-      h3 Général
+      h3 {{ lblGeneral }}
 
       .form-line
         .header
-          .title Afficher la sidebar #[i.fas.fa-info-circle.info-hint(title="Retire la sidebar sans rien désinstaller.")]
-          .description Décochez pour la masquer ; cette page reste accessible.
+          .title {{ lblShowSidebar }} #[i.fas.fa-info-circle.info-hint([title]='lblShowSidebarHint')]
+          .description {{ lblShowSidebarDesc }}
         .control
           toggle(
             [ngModel]='enabled',
@@ -49,8 +47,8 @@
 
       .form-line
         .header
-          .title Masquer le menu des transferts de Tabby #[i.fas.fa-info-circle.info-hint(title="Sinon le menu natif de Tabby s'ouvre à chaque transfert.")]
-          .description Le panneau de la sidebar affiche déjà les mêmes transferts.
+          .title {{ lblHideTransfersMenu }} #[i.fas.fa-info-circle.info-hint([title]='lblHideTransfersMenuHint')]
+          .description {{ lblHideTransfersMenuDesc }}
         .control
           toggle(
             [ngModel]='hideNativeTransfersMenu',
@@ -60,7 +58,7 @@
   ng-container(*ngIf="section === 'features'")
     .settings-section
       .section-intro
-        | Chaque bloc s'active indépendamment. Rien n'est supprimé en l'éteignant.
+        | {{ lblFeaturesIntro }}
 
 
     //- Les blocs sans réglage propre, groupés et resserrés en tête : ce sont
@@ -69,9 +67,9 @@
     .settings-section.compact-blocks
       .form-line.block-switch
         .header
-          .title Tunnels actifs #[i.fas.fa-info-circle.info-hint(title="Reflète l'état du port-forwarding de Tabby.")]
-          .description Panneau des redirections de ports et pastilles sur les profils.
-          .description.text-warning(*ngIf="!hostHas('ssh-tab')") Indisponible sur cette version de Tabby. Votre réglage est conservé.
+          .title {{ lblTunnels }} #[i.fas.fa-info-circle.info-hint([title]='lblTunnelsHint')]
+          .description {{ lblTunnelsDesc }}
+          .description.text-warning(*ngIf="!hostHas('ssh-tab')") {{ lblUnavailable }}
         .control
           toggle(
             [ngModel]="blockOn('showTunnels', 'ssh-tab')",
@@ -81,8 +79,8 @@
 
       .form-line.block-switch
         .header
-          .title Workspaces #[i.fas.fa-info-circle.info-hint(title="« Tous » n'exclut rien ; la barre de filtrage cherche partout.")]
-          .description Barre des espaces de travail, au-dessus de la liste.
+          .title {{ lblWorkspaces }} #[i.fas.fa-info-circle.info-hint([title]='lblWorkspacesHint')]
+          .description {{ lblWorkspacesDesc }}
         .control
           toggle(
             [ngModel]="blockOn('showWorkspaces')",
@@ -92,20 +90,20 @@
       .block-options(*ngIf="blockOn('showWorkspaces')")
         .form-line
           .header
-            .title Présentation #[i.fas.fa-info-circle.info-hint(title="Onglets ou liste compacte, au choix.")]
-            .description Change l'affichage de la barre des workspaces.
+            .title {{ lblPresentation }} #[i.fas.fa-info-circle.info-hint([title]='lblPresentationHint')]
+            .description {{ lblPresentationDesc }}
           .control
             select#sidebar-plus-workspace-selector-mode.form-control(
               [ngModel]='workspaceSelectorMode',
               (ngModelChange)='setWorkspaceSelectorMode($event)'
             )
-              option(value='tabs') Onglets (passent à la ligne)
-              option(value='dropdown') Liste déroulante
+              option(value='tabs') {{ lblModeTabs }}
+              option(value='dropdown') {{ lblModeDropdown }}
 
       .form-line.block-switch
         .header
-          .title Barre de filtrage #[i.fas.fa-info-circle.info-hint(title="Cherche le nom, la description, l'hôte et l'utilisateur.")]
-          .description Champ de recherche et raccourci #[kbd Ctrl+F].
+          .title {{ lblFilterBar }} #[i.fas.fa-info-circle.info-hint([title]='lblFilterBarHint')]
+          .description {{ lblFilterBarDesc }} #[kbd Ctrl+F].
         .control
           toggle(
             [ngModel]="blockOn('showFilter')",
@@ -114,8 +112,8 @@
 
       .form-line.block-switch
         .header
-          .title Snippets #[i.fas.fa-info-circle.info-hint(title="Bibliothèque de commandes attachées aux profils et aux dossiers.")]
-          .description Entrée « Snippets… » du clic droit et onglet dédié.
+          .title Snippets #[i.fas.fa-info-circle.info-hint([title]='lblSnippetsHint')]
+          .description {{ lblSnippetsDesc }}
         .control
           toggle(
             [ngModel]="blockOn('showSnippets')",
@@ -124,8 +122,8 @@
 
       .form-line.block-switch
         .header
-          .title Notes #[i.fas.fa-info-circle.info-hint(title="Un mémento libre par profil ou dossier.")]
-          .description Entrée « note » du clic droit et pastille associée.
+          .title {{ lblNotes }} #[i.fas.fa-info-circle.info-hint([title]='lblNotesHint')]
+          .description {{ lblNotesDesc }}
         .control
           toggle(
             [ngModel]="blockOn('showNotes')",
@@ -134,8 +132,8 @@
 
       .form-line.block-switch
         .header
-          .title Profils récents #[i.fas.fa-info-circle.info-hint(title="Les 5 derniers profils lancés, tous types confondus.")]
-          .description Liste affichée sous les sessions actives.
+          .title {{ lblRecentProfiles }} #[i.fas.fa-info-circle.info-hint([title]='lblRecentProfilesHint')]
+          .description {{ lblRecentProfilesDesc }}
         .control
           toggle(
             [ngModel]="blockOn('showRecentProfiles')",
@@ -146,9 +144,9 @@
     .settings-section
       .form-line.block-switch
         .header
-          .title Sessions actives #[i.fas.fa-info-circle.info-hint(title="Une ligne par pane, pas par onglet.")]
-          .description Connexions SSH ouvertes, en haut de la sidebar.
-          .description.text-warning(*ngIf="!hostHas('ssh-tab')") Indisponible sur cette version de Tabby. Votre réglage est conservé.
+          .title {{ lblActiveSessions }} #[i.fas.fa-info-circle.info-hint([title]='lblActiveSessionsHint')]
+          .description {{ lblActiveSessionsDesc }}
+          .description.text-warning(*ngIf="!hostHas('ssh-tab')") {{ lblUnavailable }}
         .control
           toggle(
             [ngModel]="blockOn('showActiveSessions', 'ssh-tab')",
@@ -159,8 +157,8 @@
       .block-options(*ngIf="blockOn('showActiveSessions', 'ssh-tab')")
         .form-line
           .header
-            .title Mesure de latence, en secondes #[i.fas.fa-info-circle.info-hint(title="Aller-retour SFTP réel, pas un ping ICMP.")]
-            .description Colore la pastille de chaque session. 0 désactive.
+            .title {{ lblPing }} #[i.fas.fa-info-circle.info-hint([title]='lblPingHint')]
+            .description {{ lblPingDesc }}
           .control
             input#sidebar-plus-ping-interval.form-control(
               type='number',
@@ -174,9 +172,9 @@
     .settings-section
       .form-line.block-switch
         .header
-          .title Vue SFTP #[i.fas.fa-info-circle.info-hint(title="Un canal SFTP par session réellement parcourue.")]
-          .description Onglet SFTP de la sidebar et son panneau.
-          .description.text-warning(*ngIf="!hostHas('sftp-panel')") Indisponible sur cette version de Tabby. Votre réglage est conservé.
+          .title {{ lblSftp }} #[i.fas.fa-info-circle.info-hint([title]='lblSftpHint')]
+          .description {{ lblSftpDesc }}
+          .description.text-warning(*ngIf="!hostHas('sftp-panel')") {{ lblUnavailable }}
         .control
           toggle(
             [ngModel]="blockOn('showSftp', 'sftp-panel')",
@@ -190,22 +188,22 @@
             quelques caractères visibles — un chemin d'exécutable n'y tenait pas.
         .form-line.stacked
           .header
-            .title Éditeur des fichiers distants #[i.fas.fa-info-circle.info-hint(title="Le fichier est copié, édité, puis renvoyé au serveur.")]
-            .description Programme ouvert au double-clic. Vide, Windows décide.
+            .title {{ lblEditor }} #[i.fas.fa-info-circle.info-hint([title]='lblEditorHint')]
+            .description {{ lblEditorDesc }}
           .control
             input#sidebar-plus-editor-path.form-control(
               type='text',
               [(ngModel)]='editorPath',
               (change)='save()',
               [title]='editorPath',
-              placeholder='Aucun éditeur choisi'
+              [placeholder]='lblEditorPlaceholder'
             )
             button.btn.btn-primary((click)='browse()')
               i.fas.fa-folder-open
-              | Parcourir...
+              | {{ lblBrowse }}
             button.btn.btn-secondary(*ngIf='editorPath', (click)='clear()')
               i.fas.fa-times
-              | Effacer
+              | {{ lblClear }}
 
         //- `toggle`, Tabby's own component, and not a bare
         //- `input.form-check-input`: Bootstrap only draws a check *inside* a
@@ -215,8 +213,8 @@
         //- that wrapper and matches the switches of Tabby's own settings pages.
         .form-line
           .header
-            .title Glisser un dossier vers l'Explorateur #[i.fas.fa-info-circle.info-hint(title="Le dossier est téléchargé en entier avant le dépôt.")]
-            .description Au-delà de 25 fichiers ou 20 Mo, confirmation demandée.
+            .title {{ lblDragOut }} #[i.fas.fa-info-circle.info-hint([title]='lblDragOutHint')]
+            .description {{ lblDragOutDesc }}
           .control
             toggle(
               [ngModel]='dragOutFolders',
@@ -225,8 +223,8 @@
 
         .form-line
           .header
-            .title Rafraîchissement automatique, en secondes #[i.fas.fa-info-circle.info-hint(title="Seules les entrées modifiées sont redessinées.")]
-            .description 0 désactive ; chaque cycle relit le dossier.
+            .title {{ lblAutoRefresh }} #[i.fas.fa-info-circle.info-hint([title]='lblAutoRefreshHint')]
+            .description {{ lblAutoRefreshDesc }}
           .control
             input#sidebar-plus-auto-refresh.form-control(
               type='number',
@@ -238,8 +236,8 @@
 
         .form-line
           .header
-            .title Revenir sur Profils quand plus aucune session SSH n'est ouverte #[i.fas.fa-info-circle.info-hint(title="Couvre aussi l'écran d'attente du panneau SFTP.")]
-            .description Attend la fin du délai de grâce de la session affichée.
+            .title {{ lblAutoReturn }} #[i.fas.fa-info-circle.info-hint([title]='lblAutoReturnHint')]
+            .description {{ lblAutoReturnDesc }}
           .control
             toggle(
               [ngModel]='autoReturnToProfiles',
@@ -248,20 +246,20 @@
 
         .form-line
           .header
-            .title Suppression : bouton activé par Entrée #[i.fas.fa-info-circle.info-hint(title="Aucune suppression n'est annulable ensuite.")]
-            .description S'applique à #[kbd Suppr] et au clic droit. #[kbd Échap] annule toujours.
+            .title {{ lblDeleteDefault }} #[i.fas.fa-info-circle.info-hint([title]='lblDeleteDefaultHint')]
+            .description {{ lblDeleteApplies }} #[kbd {{ lblKeyDel }}] {{ lblDeleteRightClick }} #[kbd {{ lblKeyEsc }}] {{ lblDeleteEscape }}
           .control
             select#sidebar-plus-delete-default.form-control(
               [ngModel]='deleteDefaultButton',
               (ngModelChange)='setDeleteDefaultButton($event)'
             )
-              option(value='cancel') Annuler — la réponse sûre (défaut)
-              option(value='confirm') Supprimer — Suppr puis Entrée en un geste
+              option(value='cancel') {{ lblOptionCancel }}
+              option(value='confirm') {{ lblOptionConfirm }}
 
         .form-line
           .header
-            .title Gestionnaire de transferts #[i.fas.fa-info-circle.info-hint(title="Reflète aussi les transferts du panneau SFTP natif.")]
-            .description Panneau affiché en bas de sidebar.
+            .title {{ lblTransfers }} #[i.fas.fa-info-circle.info-hint([title]='lblTransfersHint')]
+            .description {{ lblTransfersDesc }}
           .control
             toggle(
               [ngModel]="blockOn('showTransfers')",
@@ -279,51 +277,54 @@
   ng-container(*ngIf="section === 'snippets' && blockOn('showSnippets')")
     .settings-section
       .section-intro
-        | Une commande écrite une fois, utilisable partout où elle est attachée.
+        | {{ lblSnippetsIntro }}
 
       .snippet-library(*ngIf='!draft')
         .snippet-empty(*ngIf='!snippets.length')
-          | Aucun snippet pour l'instant.
+          | {{ lblNoSnippets }}
         //- Boxed and set apart from the section's own intro: as a plain line of
         //- text under it, it read as more explanation rather than as a state.
         .snippet-unused-summary(*ngIf='unusedCount')
-          strong {{ unusedCount }} snippet(s) rattachés à rien.
-          |  Détachés depuis la sidebar, ils restent ici jusqu'à suppression.
+          strong {{ lblUnusedSummary }}
+          |  {{ lblUnusedDetail }}
         .snippet-item(*ngFor='let s of snippets')
           .snippet-item-head
             .snippet-item-name {{ s.name }}
-            .snippet-item-uses(*ngIf='attachmentCount(s)') rattaché à {{ attachmentCount(s) }} élément(s)
-            .snippet-item-uses.unused(*ngIf='!attachmentCount(s)') rattaché nulle part
+            .snippet-item-uses(*ngIf='attachmentCount(s)') {{ attachedToLabel(s) }}
+            .snippet-item-uses.unused(*ngIf='!attachmentCount(s)') {{ lblAttachedNowhere }}
             .snippet-item-actions
-              button.btn.btn-sm.btn-secondary((click)='editSnippet(s)') Modifier
-              button.btn.btn-sm.btn-danger((click)='deleteSnippet(s)') Supprimer
+              button.btn.btn-sm.btn-secondary((click)='editSnippet(s)') {{ lblEdit }}
+              button.btn.btn-sm.btn-danger((click)='deleteSnippet(s)') {{ lblDelete }}
           pre.snippet-item-command {{ s.command }}
           .snippet-item-vars(*ngIf='variablesOf(s).length')
             span.snippet-var-chip(*ngFor='let v of variablesOf(s)', [class.required]='v.required')
               | {{ v.name }}
               span(*ngIf='v.required') &nbsp;*
-        button.btn.btn-primary.mt-3((click)='newSnippet()') Nouveau snippet
+        button.btn.btn-primary.mt-3((click)='newSnippet()') {{ lblNewSnippet }}
 
       .snippet-editor(*ngIf='draft')
         .form-line
           .header
-            .title Nom
-            .description Ce que montre le menu contextuel.
+            .title {{ lblName }}
+            .description {{ lblNameDesc }}
           .control
-            input.form-control(type='text', [(ngModel)]='draft.name', placeholder='Redémarrer nginx')
+            input.form-control(type='text', [(ngModel)]='draft.name', [placeholder]='lblNamePlaceholder')
         .form-line.stacked
           .header
-            .title Commande
+            .title {{ lblCommand }}
+            //- Les jetons d'exemple restent statiques ({{nom}}) dans toutes les
+            //- langues : un « {nom} » dans une valeur de table ressemblerait à
+            //- un paramètre ICU inventé et ferait échouer lint:i18n.
             .description
-              | Utilisez #[code {{ '{{nom}}' }}] pour une valeur requise, ou
-              | #[code {{ '{{nom=valeur}}' }}] pour une valeur par défaut.
+              | {{ lblCommandUse }} #[code {{ '{{nom}}' }}] {{ lblCommandRequired }}
+              | #[code {{ '{{nom=valeur}}' }}] {{ lblCommandDefault }}
           .control
             textarea.form-control.snippet-editor-command(rows='6', [(ngModel)]='draft.command', placeholder='sudo systemctl restart nginx')
         //- No behaviour settings here: they belong to the pairing of a snippet
         //- with a profile or a folder, not to the command in the abstract. They
         //- are set by the right-click, where that pairing exists.
         .snippet-editor-actions
-          button.btn.btn-primary((click)='saveDraft()') Enregistrer
-          button.btn.btn-secondary((click)='cancelEdit()') Annuler
+          button.btn.btn-primary((click)='saveDraft()') {{ lblSave }}
+          button.btn.btn-secondary((click)='cancelEdit()') {{ lblCancel }}
           .snippet-editor-warning(*ngIf='draft.id && attachmentCount(draft)')
-            | Modifie la commande sur les {{ attachmentCount(draft) }} rattachement(s) existants.
+            | {{ lblDraftWarning }}

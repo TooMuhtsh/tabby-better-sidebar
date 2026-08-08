@@ -41,6 +41,7 @@ type LiveForward = NonNullable<SSHTabComponent['sshSession']>['forwardedPorts'][
 import { loadIconEntries, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarSnippet, SidebarWorkspace } from '../configProvider'
+import { SidebarPlusI18nService } from '../i18n'
 import { SidebarPlusSnippetsService } from '../snippets.service'
 import { SidebarPlusNoticesService } from '../notices.service'
 import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
@@ -500,6 +501,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
         private injector: Injector,
         private transfers: SidebarPlusTransfersService,
+        private i18n: SidebarPlusI18nService,
     ) { }
 
     async ngOnInit (): Promise<void> {
@@ -987,8 +989,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         this.variableNoticesShown.add(key)
         this.notices.notice(
-            `Variables à renseigner sur « ${profile.name} »`,
-            `${detail} — clic droit sur le profil, « Snippets… », puis le bouton de réglages du snippet.`,
+            this.i18n.t('Variables to fill in on "{name}"', { name: profile.name }),
+            this.i18n.t('{detail}: right-click the profile, "Snippets", then the snippet settings button.', { detail }),
         )
     }
 
@@ -1017,7 +1019,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.closeContextMenu()
         const profiles = group.profiles ?? []
         if (!profiles.length) {
-            this.notifications.notice('Ce dossier ne contient aucun profil à lancer')
+            this.notifications.notice(this.i18n.t('This folder contains no profile to launch'))
             return
         }
         await Promise.all(profiles.map(profile => this.launchProfile(profile)))
@@ -1358,12 +1360,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     async importWorkspaceFromClipboard (): Promise<void> {
         const { payload, error } = parseWorkspacePayload(this.platform.readClipboard())
         if (!payload) {
-            this.notices.error(error ?? 'Le presse-papiers ne contient pas un workspace exporté.')
+            this.notices.error(error ?? this.i18n.t('The clipboard does not hold an exported workspace.'))
             return
         }
         this.config.store.sidebarPlus ??= {}
         const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
-        const name = uniqueWorkspaceName(payload.workspace.name?.trim() || 'Workspace importé', workspaces.map(w => w.name))
+        const name = uniqueWorkspaceName(payload.workspace.name?.trim() || this.i18n.t('Imported workspace'), workspaces.map(w => w.name))
         const created: SidebarWorkspace = {
             id: generateWorkspaceId(),
             name,
@@ -1385,7 +1387,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         await this.config.save()
         this.closeContextMenu()
         await this.refreshTree()
-        this.notices.notice(`Workspace « ${name} » importé.`)
+        this.notices.notice(this.i18n.t('Workspace "{name}" imported.', { name }))
     }
 
     openRenameWorkspacePrompt (): void {
@@ -1448,7 +1450,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         const payload = buildWorkspacePayload(workspace)
         this.platform.setClipboard({ text: JSON.stringify(payload, null, 2) })
-        this.notices.notice(`Workspace « ${workspace.name} » copié.`)
+        this.notices.notice(this.i18n.t('Workspace "{name}" copied.', { name: workspace.name }))
     }
 
     ////// WORKSPACE VISIBILITY (hide from the profile/group context menu, restore from the hidden-items panel) //////
@@ -1906,7 +1908,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const favoritesGroup = SidebarPlusTreeComponent.intoCollapsable(
             {
                 id: 'favorites',
-                name: 'Épinglés',
+                name: this.i18n.t('Pinned'),
                 icon: 'fas fa-star',
                 editable: false,
                 profiles: favoriteProfiles,
@@ -2309,7 +2311,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const line = [
             session.name,
             latency === null ? null : `${latency} ms`,
-            SidebarPlusTreeComponent.formatUptimePrecise(this.uptimeMs(session)),
+            this.formatUptimePrecise(this.uptimeMs(session)),
         ].filter(Boolean).join(' | ')
         // A second line, only when there is something to say — the native
         // `title` attribute renders `\n` as an actual line break (same as
@@ -2318,8 +2320,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (session.transferCount <= 0) {
             return line
         }
-        const detail = session.transferSpeedLabel ? `, vitesse totale ${session.transferSpeedLabel}` : ''
-        return `${line}\nTransferts : ${session.transferCount} en cours${detail}`
+        const transfersLine = session.transferSpeedLabel
+            ? this.i18n.t('Transfers: {count} running, total speed {speed}', { count: session.transferCount, speed: session.transferSpeedLabel })
+            : this.i18n.t('Transfers: {count} running', { count: session.transferCount })
+        return `${line}\n${transfersLine}`
     }
 
     /**
@@ -2336,7 +2340,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      */
     sessionUptime (session: ActiveSession): string {
         const elapsed = this.uptimeMs(session)
-        return elapsed === null ? '' : SidebarPlusTreeComponent.formatUptime(elapsed)
+        return elapsed === null ? '' : this.formatUptime(elapsed)
     }
 
     /** Milliseconds since the tab was first seen live, or null while it has not been stamped yet. */
@@ -2354,7 +2358,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * ticking on every open session would keep the sidebar moving in the
      * corner of the eye for no gain.
      */
-    private static formatUptimePrecise (ms: number|null): string {
+    private formatUptimePrecise (ms: number|null): string {
         if (ms === null) {
             return ''
         }
@@ -2370,11 +2374,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (hours < 24) {
             return `${hours}h ${String(minutes % 60).padStart(2, '0')}m`
         }
-        return `${Math.floor(hours / 24)}j ${String(hours % 24).padStart(2, '0')}h`
+        // Only the day unit varies with the language ("2j" in French, "2d" in
+        // English) — the s/m/h forms above are cross-language.
+        return this.i18n.t('{d}d {h}h', { d: Math.floor(hours / 24), h: String(hours % 24).padStart(2, '0') })
     }
 
     /** `42 s`, `12 min`, `3 h 05`, `2 j 4 h` — coarser as it gets longer, since a session's age is read at a glance. */
-    private static formatUptime (ms: number): string {
+    private formatUptime (ms: number): string {
         const seconds = Math.max(0, Math.floor(ms / 1000))
         if (seconds < 60) {
             return `${seconds} s`
@@ -2387,7 +2393,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (hours < 24) {
             return `${hours} h ${String(minutes % 60).padStart(2, '0')}`
         }
-        return `${Math.floor(hours / 24)} j ${hours % 24} h`
+        // Same reasoning as formatUptimePrecise(): only the day unit is
+        // language-bound.
+        return this.i18n.t('{d} d {h} h', { d: Math.floor(hours / 24), h: hours % 24 })
     }
 
     private static sameSessions (a: ActiveSession[], b: ActiveSession[]): boolean {
@@ -2499,7 +2507,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 // No browser button on a dead listener: the page could not load.
                 url: null,
                 state: 'waiting',
-                tooltip: `${row.detail} — session coupée, tunnel en attente de reprise`,
+                tooltip: this.i18n.t('{detail}: session cut, tunnel waiting to resume', { detail: row.detail }),
                 key: row.key,
             })
         }
@@ -2528,8 +2536,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                     detail: row.detail,
                     url: null,
                     state: 'lost' as const,
-                    tooltip: `${row.detail} — non remonté après la reconnexion. Seuls les tunnels enregistrés`
-                        + ` dans le profil sont remontés ; un tunnel ajouté à la volée disparaît avec la session.`,
+                    tooltip: this.i18n.t(
+                        '{detail}: not restored after the reconnection. Only the tunnels saved in the profile are remounted; a tunnel added on the fly disappears with its session.',
+                        { detail: row.detail },
+                    ),
                     key: row.key,
                 },
                 until: now + TUNNEL_NOT_RESTORED_MS,
@@ -2566,7 +2576,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // next poll re-reads reality rather than trusting this call.
         })
         this.notices.notice(
-            `Tunnel ${detail} déjà monté par ${ownerName} — doublon démonté (${sessionName})`,
+            this.i18n.t('Tunnel {detail} already mounted by {owner}: duplicate dismounted ({session})', { detail, owner: ownerName, session: sessionName }),
         )
     }
 
@@ -2815,12 +2825,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      */
     get tunnelHint (): string {
         if (this.tunnelDraft.type === PortForwardType.Remote) {
-            return 'Écoute sur le serveur distant. La destination est résolue depuis votre PC.'
+            return this.i18n.t('Listens on the remote server. The destination is resolved from your PC.')
         }
         if (this.tunnelDraft.type === PortForwardType.Dynamic) {
-            return 'Ouvre un proxy SOCKS sur votre PC, sans destination fixe.'
+            return this.i18n.t('Opens a SOCKS proxy on your PC, with no fixed destination.')
         }
-        return 'Écoute sur votre PC. La destination est résolue depuis le serveur — « localhost » y désigne donc le serveur.'
+        return this.i18n.t('Listens on your PC. The destination is resolved from the server, so "localhost" there means the server.')
     }
 
     async addProfileTunnel (): Promise<void> {
@@ -2830,11 +2840,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         const draft = this.tunnelDraft
         if (!draft.port) {
-            this.tunnelError = 'Indiquez un port d\'écoute.'
+            this.tunnelError = this.i18n.t('Enter a listening port.')
             return
         }
         if (!this.isDynamicDraft && (!draft.targetAddress || !draft.targetPort)) {
-            this.tunnelError = 'Indiquez l\'hôte et le port de destination.'
+            this.tunnelError = this.i18n.t('Enter the destination host and port.')
             return
         }
         this.tunnelError = null
@@ -2878,10 +2888,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // own timeout and splits the message into title and detail.
         if (this.hasLiveSessionForMenuProfile) {
             this.notifications.info(
-                wasEditing ? 'Tunnel modifié' : 'Tunnel enregistré',
+                wasEditing ? this.i18n.t('Tunnel updated') : this.i18n.t('Tunnel saved'),
                 wasEditing
-                    ? 'La session en cours garde l\'ancien tant qu\'elle n\'est pas relancée.'
-                    : 'Il sera monté au prochain lancement de cette session.',
+                    ? this.i18n.t('The current session keeps the old one until it is relaunched.')
+                    : this.i18n.t('It will be mounted at the next launch of this session.'),
             )
         }
     }
@@ -2898,7 +2908,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // in the template: the rule belongs with the data.
         const target = this.profileTunnels[index]
         if (target && this.isTunnelLive(target)) {
-            this.tunnelError = 'Ce tunnel est monté sur la session en cours. Fermez la session pour pouvoir le supprimer.'
+            this.tunnelError = this.i18n.t('This tunnel is mounted on the current session. Close the session to be able to delete it.')
             return
         }
         const options = (profile.options ??= {}) as { forwardedPorts?: ForwardedPortConfig[] }
@@ -3171,12 +3181,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         await this.persistProfileOrder(targetGroup.id, ordered)
 
         await this.config.save()
-        const where = targetGroup.name || 'Sans groupe'
+        const where = targetGroup.name || this.i18n.t('No group')
         this.clearSelection()
         this.showSelectionNotice(
             moves.length > 1
-                ? `${moves.length} profils déplacés vers « ${where} »`
-                : `Profil déplacé vers « ${where} »`,
+                ? this.i18n.t('{count} profiles moved to "{where}"', { count: moves.length, where })
+                : this.i18n.t('Profile moved to "{where}"', { where }),
         )
     }
 
@@ -3617,7 +3627,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // migration did land. console.error keeps it diagnosable.
             // eslint-disable-next-line no-console
             console.error('[sidebarPlus] reparentGroup a échoué', err)
-            this.notifications.error('Le déplacement du dossier a échoué', String(err))
+            this.notifications.error(this.i18n.t('Moving the folder failed'), String(err))
         }
         this.persistGroupOrder(orderKeyParentGroupId, siblingsToPersist)
         await this.config.save()
@@ -4267,7 +4277,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     async applyCustomSvg (): Promise<void> {
         const result = sanitizeSvgIcon(this.customSvgText)
         if (!result.ok || !result.svg) {
-            this.customSvgError = result.error ?? 'SVG rejeté.'
+            this.customSvgError = result.error ?? this.i18n.t('SVG rejected.')
             this.customSvgWarning = null
             return
         }
@@ -4432,7 +4442,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!provider) {
             // tabby-settings throws here. Sending the user somewhere they can
             // finish the job by hand beats a stack trace they never see.
-            this.notifications.error(`Aucun fournisseur ne gère « ${profile.name} » — ouverture des paramètres`)
+            this.notifications.error(this.i18n.t('No provider handles "{name}": opening the settings', { name: profile.name }))
             this.openProfilesSettingsTab()
             return
         }
@@ -4522,7 +4532,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             (this.rawGroupsSnapshot.find(g => g.id === (profile.group ?? 'ungrouped'))?.profiles ?? [])
                 .map(p => p.name),
         )
-        const base = `${profile.name ?? ''} - Copie`
+        const base = this.i18n.t('{name} - Copy', { name: profile.name ?? '' })
         if (!siblings.has(base)) {
             return base
         }
@@ -4638,8 +4648,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const { folders, profiles } = countPayload(payload.group)
         const purged = describePurge(payload.removed)
         this.notices.notice(
-            `Dossier « ${group.name ?? ''} » copié — ${folders} dossier${folders > 1 ? 's' : ''}, ${profiles} profil${profiles > 1 ? 's' : ''}.`,
-            purged ? `Retiré : ${purged}.` : undefined,
+            this.i18n.t(
+                'Folder "{name}" copied: {folders, plural, one {# folder} other {# folders}}, {profiles, plural, one {# profile} other {# profiles}}.',
+                { name: group.name ?? '', folders, profiles },
+            ),
+            purged ? this.i18n.t('Removed: {purged}.', { purged }) : undefined,
         )
     }
 
@@ -4659,11 +4672,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.closeContextMenu()
         const { payload, error } = parsePayload(this.platform.readClipboard())
         if (!payload) {
-            this.notices.error(error ?? 'Le presse-papiers ne contient pas un dossier partagé.')
+            this.notices.error(error ?? this.i18n.t('The clipboard does not hold a shared folder.'))
             return
         }
 
-        const name = payload.group.name?.trim() || 'Dossier collé'
+        const name = payload.group.name?.trim() || this.i18n.t('Pasted folder')
         const { folders, profiles } = countPayload(payload.group)
         const purged = describePurge(payload.removed)
 
@@ -4702,10 +4715,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // on a double-click much later.
         const unknown = created.types.filter(t => !this.profileProviders.some(p => p.id === t))
         this.notices.notice(
-            `Dossier « ${finalName} » collé — ${created.folders} dossier${created.folders > 1 ? 's' : ''}, ${created.profiles} profil${created.profiles > 1 ? 's' : ''}.`,
+            this.i18n.t(
+                'Folder "{name}" pasted: {folders, plural, one {# folder} other {# folders}}, {profiles, plural, one {# profile} other {# profiles}}.',
+                { name: finalName, folders: created.folders, profiles: created.profiles },
+            ),
             [
-                purged ? `Retiré à l'export : ${purged} — à ressaisir.` : '',
-                unknown.length ? `Type${unknown.length > 1 ? 's' : ''} de profil non installé${unknown.length > 1 ? 's' : ''} : ${[...new Set(unknown)].join(', ')}.` : '',
+                purged ? this.i18n.t('Removed at export: {purged}. To be re-entered.', { purged }) : '',
+                unknown.length ? this.i18n.t(
+                    '{count, plural, one {Profile type not installed} other {Profile types not installed}}: {list}.',
+                    { count: unknown.length, list: [...new Set(unknown)].join(', ') },
+                ) : '',
             ].filter(Boolean).join(' ') || undefined,
         )
 
@@ -4716,8 +4735,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // what it claimed.
         if (!isEmptyReport(payload.strippedOnImport)) {
             this.notices.error(
-                'Ce JSON contenait encore des secrets que son en-tête déclarait retirés.',
-                `Retiré au collage : ${describePurge(payload.strippedOnImport!)}.`,
+                this.i18n.t('This JSON still carried secrets its own header declared removed.'),
+                this.i18n.t('Removed at paste: {purged}.', { purged: describePurge(payload.strippedOnImport!) }),
             )
         }
     }
@@ -4778,7 +4797,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
 
         for (const child of shared.children) {
-            const sub = await this.applySharedGroup(child, child.name?.trim() || 'Dossier', null, groupId)
+            const sub = await this.applySharedGroup(child, child.name?.trim() || this.i18n.t('Folder'), null, groupId)
             folders += sub.folders
             profiles += sub.profiles
             types.push(...sub.types)
@@ -4796,7 +4815,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      */
     private rootGroupCopyName (name: string): string {
         const taken = new Set(this.rawGroupsSnapshot.filter(g => !g.parentGroupId).map(g => g.name))
-        const base = `${name} - Copie`
+        const base = this.i18n.t('{name} - Copy', { name })
         if (!taken.has(base)) {
             return base
         }
@@ -4875,8 +4894,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const { text, missing } = this.snippets.expand(snippet, chain, profile)
         if (missing.length) {
             this.notices.error(
-                `« ${snippet.name} » attend une valeur`,
-                `${missing.map(name => `{{${name}}}`).join(', ')} — à renseigner dans « Snippets… ».`,
+                this.i18n.t('"{name}" expects a value', { name: snippet.name }),
+                this.i18n.t('{list}: to fill in under "Snippets".', { list: missing.map(name => `{{${name}}}`).join(', ') }),
             )
             return
         }
@@ -4884,13 +4903,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         let tab = this.terminalTabForProfile(profile)
         if (!tab) {
             if (!autoLaunch) {
-                this.notices.notice(`« ${profile.name} » n'a pas de session ouverte`)
+                this.notices.notice(this.i18n.t('"{name}" has no open session', { name: profile.name }))
                 return
             }
             await this.launchProfile(profile)
             tab = await this.waitForTerminalTab(profile)
             if (!tab) {
-                this.notices.error(`La session de « ${profile.name} » ne s'est pas ouverte`)
+                this.notices.error(this.i18n.t('The session of "{name}" did not open', { name: profile.name }))
                 return
             }
             // Only on a session this click just opened: an already-open one has
@@ -4997,20 +5016,23 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (childCount || profileCount) {
             const reasons: string[] = []
             if (childCount) {
-                reasons.push(`${childCount} sous-dossier${childCount > 1 ? 's' : ''}`)
+                reasons.push(this.i18n.t('{count, plural, one {# subfolder} other {# subfolders}}', { count: childCount }))
             }
             if (profileCount) {
-                reasons.push(`${profileCount} profil${profileCount > 1 ? 's' : ''}`)
+                reasons.push(this.i18n.t('{count, plural, one {# profile} other {# profiles}}', { count: profileCount }))
             }
             // Said explicitly when the folder looks empty on screen: otherwise
             // the refusal reads as a bug rather than as a warning.
             const visible = (group.children?.length ?? 0) + (group.profiles?.length ?? 0)
             const hint = visible === 0
-                ? ` Ce contenu est masqué dans le workspace « ${this.activeWorkspace?.name ?? 'courant'} ».`
+                ? ' ' + this.i18n.t('This content is hidden in the workspace "{name}".', { name: this.activeWorkspace?.name ?? this.i18n.t('current') })
                 : ''
             this.notifications.error(
-                `Impossible de supprimer "${group.name}"`,
-                `Ce dossier contient encore ${reasons.join(' et ')}.${hint} Videz-le d'abord.`,
+                this.i18n.t('Cannot delete "{name}"', { name: group.name }),
+                this.i18n.t('This folder still contains {reasons}.{hint} Empty it first.', {
+                    reasons: reasons.length === 2 ? this.i18n.t('{a} and {b}', { a: reasons[0], b: reasons[1] }) : reasons[0],
+                    hint,
+                }),
             )
             this.closeContextMenu()
             return
