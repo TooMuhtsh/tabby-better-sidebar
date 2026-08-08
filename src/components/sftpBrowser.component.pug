@@ -2,9 +2,14 @@
 //- Every handler and field below is inherited — see the component's doc
 //- comment for why the template had to be ours.
 //-
-//- No expression here contains a string literal: pug escapes whichever quote
-//- style it isn't using as the attribute delimiter, which corrupts Angular
-//- expressions. Anything that needed one is a getter or a wrapper method.
+//- No expression here contains a string literal, WITH ONE DELIBERATE
+//- EXCEPTION: the `| translate` pipe needs one to translate, and pug
+//- HTML-entity-escapes whichever quote style it isn't using as the
+//- attribute delimiter, corrupting the expression. The workaround, matching
+//- tabby-better-vault: switch that one attribute's outer delimiter to
+//- double quotes so the single-quoted literal inside passes through intact
+//- — `[title]="'Refresh' | translate"`. Everything else that needed a
+//- literal before i18n existed is still a getter or a wrapper method.
 .sftp-toolbar.d-flex.align-items-center
     input.form-control.form-control-sm.flex-grow-1(
         *ngIf='editingPath !== null',
@@ -18,7 +23,7 @@
     .sftp-breadcrumb.flex-grow-1(
         *ngIf='editingPath === null',
         (dblclick)='editPath()',
-        title='Double-cliquer pour saisir un chemin'
+        [title]="'Double-click to type a path' | translate"
     )
         a.crumb((click)='goRoot()') /
         a.crumb(*ngFor='let segment of pathSegments', (click)='navigate(segment.path)') {{ segment.name }}
@@ -29,30 +34,30 @@
         type='button',
         *ngIf='editingPath === null',
         (click)='editPath()',
-        title='Saisir le chemin à la main'
+        [title]="'Type the path by hand' | translate"
     )
         .fa.fa-fw.fas.fa-pen
-    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='navigate(path)', title='Actualiser')
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='navigate(path)', [title]="'Refresh' | translate")
         .fa.fa-fw.fas.fa-sync-alt
-    button.btn.btn-link.btn-sm.sftp-tool(type='button', *ngIf='!showFilter', (click)='showFilter = true', title='Filtrer la liste')
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', *ngIf='!showFilter', (click)='showFilter = true', [title]="'Filter the list' | translate")
         .fa.fa-fw.fas.fa-filter
-    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='openCreateDirectoryModal()', title='Nouveau dossier distant')
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='openCreateDirectoryModal()', [title]="'New remote folder' | translate")
         .fa.fa-fw.fas.fa-folder-plus
-    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='upload()', title='Envoyer des fichiers vers le serveur')
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='upload()', [title]="'Send files to the server' | translate")
         .fa.fa-fw.fas.fa-file-upload
-    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='uploadFolder()', title='Envoyer un dossier vers le serveur')
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='uploadFolder()', [title]="'Send a folder to the server' | translate")
         .fa.fa-fw.fas.fa-file-import
 
 .sftp-filter-bar.d-flex.align-items-center(*ngIf='showFilter')
     input.form-control.form-control-sm.flex-grow-1(
         type='text',
-        placeholder='Filtrer...',
+        [placeholder]="'Filter...' | translate",
         autofocus,
         [(ngModel)]='filterText',
         (input)='onFilterChange()',
         (keydown.escape)='clearFilter()'
     )
-    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='clearFilter()', title='Effacer le filtre')
+    button.btn.btn-link.btn-sm.sftp-tool(type='button', (click)='clearFilter()', [title]="'Clear the filter' | translate")
         .fa.fa-fw.fas.fa-times
 
 //- Drops are handled here rather than by tabby-core's `dropZone` directive:
@@ -72,9 +77,9 @@
     (contextmenu)='onBackgroundContextMenu($event)',
     (click)='clearSelectionFromBackground($event)'
 )
-    .sftp-message(*ngIf='!sftp') Connexion...
+    .sftp-message(*ngIf='!sftp') {{ 'Connecting...' | translate }}
     ng-container(*ngIf='sftp')
-        .sftp-message(*ngIf='fileList === null') Chargement...
+        .sftp-message(*ngIf='fileList === null') {{ 'Loading...' | translate }}
         .sftp-grid(
             *ngIf='fileList !== null',
             [class.with-col-borders]='showColumnBorders',
@@ -82,7 +87,7 @@
         )
             .sftp-row.sftp-header-row([style.grid-template-columns]='gridTemplate')
                 .cell-icon
-                .cell-name Nom
+                .cell-name {{ 'Name' | translate }}
                 .cell-value(
                     *ngFor='let column of visibleColumns',
                     [class.cell-right]='column.numeric',
@@ -94,7 +99,7 @@
                 [style.grid-template-columns]='gridTemplate',
                 [class.sftp-drop-target]='dropOnUpRow',
                 (click)='goUp()',
-                title='Remonter d’un niveau'
+                [title]="'Go up one level' | translate"
             )
                 .cell-icon
                     .fa.fa-fw.fas.fa-level-up-alt
@@ -120,7 +125,7 @@
             //- date and size formats per cycle. Only the two genuinely dynamic
             //- states stay as calls, and both are a plain lookup.
             .sftp-row(
-                *ngFor='let row of rows; let i = index; trackBy: trackByRow',
+                *ngFor='let row of visibleRows; let i = index; trackBy: trackByRow',
                 [style.grid-template-columns]='gridTemplate',
                 [attr.data-path]='row.item.fullPath',
                 [class.sftp-zebra]='i % 2 === 1',
@@ -132,7 +137,7 @@
                 draggable='true',
                 (dragstart)='onDragStart(row.item, $event)',
                 (dragend)='onDragEnd($event)',
-                (click)='select(row.item)',
+                (click)='select(row.item, $event)',
                 (dblclick)='openItem(row.item)',
                 (contextmenu)='showContextMenu(row.item, $event)',
                 [title]='row.tooltip'
@@ -146,7 +151,22 @@
                     [title]='cell'
                 ) {{ cell }}
 
-        .sftp-message(*ngIf='filterFoundNothing') Aucun fichier ne correspond au filtre.
+            //- The rendered slice, bounded by `renderCount` — `rows` itself
+            //- always holds the whole sorted/filtered listing, so nothing
+            //- about sort, zebra or selection ever sees a truncated list.
+            //- Below the threshold `hasMoreRows` is false and this whole
+            //- block is absent: no sentinel, no observer, nothing different
+            //- from before chunked rendering existed.
+            //-
+            //- Deliberately not a `.sftp-row`: that class carries
+            //- `draggable`-row semantics and a `data-path`-driven grid layout
+            //- neither of which apply here, and `aimFrom()`/`clearSelection-
+            //- FromBackground()` key off the `.sftp-row` class specifically
+            //- to tell an entry from empty space — this has to read as empty
+            //- space, which it functionally is.
+            .sftp-load-more(*ngIf='hasMoreRows', #loadMoreSentinel='') {{ '… {n} more items' | translate:{ n: remainingRowCount } }}
+
+        .sftp-message(*ngIf='filterFoundNothing') {{ 'No file matches the filter.' | translate }}
 
 //- Both menus are rendered outside .sftp-body: they are `position: fixed`, and
 //- living inside the scrolling element would let them drift with the list.
@@ -159,14 +179,14 @@
 )
     a.menu-item((click)='createDirectoryFromMenu()')
         .fa.fa-fw.fas.fa-folder-plus.me-2
-        span Créer un dossier
+        span {{ 'Create a folder' | translate }}
     a.menu-item((click)='createFileFromMenu()')
         .fa.fa-fw.fas.fa-file-circle-plus.me-2
-        span Créer un fichier
+        span {{ 'Create a file' | translate }}
     .menu-separator
     a.menu-item((click)='openDisplayMenu()')
         .fa.fa-fw.fas.fa-table-columns.me-2
-        span Paramètres d’affichage
+        span {{ 'Display settings' | translate }}
 
 //- Columns and display toggles, laid out as in SFTP+: the name column first
 //- and permanently checked, then the optional ones, then the display options.
@@ -175,10 +195,10 @@
     [style.left.px]='backgroundMenuX',
     [style.top.px]='backgroundMenuY'
 )
-    .menu-title Colonnes
+    .menu-title {{ 'Columns' | translate }}
     .menu-item.menu-item-disabled
         .menu-check ✓
-        span Nom
+        span {{ 'Name' | translate }}
     a.menu-item(*ngFor='let column of availableColumns', (click)='toggleColumn(column)', [title]='column.description')
         .menu-check {{ isColumnVisible(column) ? '✓' : '' }}
         span {{ column.description }}

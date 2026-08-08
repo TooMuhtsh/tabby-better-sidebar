@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, ElementRef, Input, ViewChild } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
+import { SidebarPlusI18nService } from '../i18n'
 
 import './pasteGroupModal.component.scss'
 
@@ -39,7 +40,28 @@ export class PasteGroupModalComponent implements AfterViewInit {
 
     constructor (
         private modalInstance: NgbActiveModal,
+        private i18n: SidebarPlusI18nService,
     ) { }
+
+    /**
+     * The "folder already exists" sentence, with its `<strong>` markup bound
+     * through `[innerHTML]` in the template — the only way to have the
+     * collision's name rendered bold from a translated string.
+     *
+     * `groupName` is escaped BEFORE it reaches the translation table's ICU
+     * substitution: `setTranslation()`'s value is ours, but the parameter is
+     * a folder name the user typed, and ICU only splices it into the result
+     * string verbatim. Skipping this would let a folder literally named
+     * e.g. `<img onerror=...>` be read back as markup instead of text once
+     * bound to `[innerHTML]`.
+     */
+    get collisionSentence (): string {
+        const escaped = this.groupName
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+        return this.i18n.t('A folder named <strong>{name}</strong> already exists at the root.', { name: escaped })
+    }
 
     /**
      * Focus on the non-destructive answer, deferred by a `setTimeout` like the

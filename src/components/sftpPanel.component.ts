@@ -14,10 +14,11 @@ import {
     ViewChild,
     createComponent,
 } from '@angular/core'
-import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
+import { AppService, BaseTabComponent, ConfigService, SplitTabComponent } from 'tabby-core'
 import { SSHTabComponent } from 'tabby-ssh'
 import { getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { SidebarPlusNoticesService } from '../notices.service'
+import { SidebarPlusI18nService } from '../i18n'
 import { SidebarPlusSftpBrowserComponent } from './sftpBrowser.component'
 
 /**
@@ -73,6 +74,21 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
     }
 
     private isActive = false
+
+    /**
+     * Pins the visible panel to the session it currently shows, so a focus
+     * change elsewhere in the terminal does not pull the view out from under
+     * a navigation in progress.
+     *
+     * Transient by design (roadmap: "un geste de navigation, pas une
+     * préférence") — a plain field, never a `sidebarPlus` config key, so
+     * piège #16 (undeclared keys silently failing to persist) does not apply
+     * here: this never touches `config.store`. Reset wherever `boundTab`
+     * itself is cleared (dropDeadPanel(), pruneClosedTabs(),
+     * releaseBoundPanel()) — a freeze must never outlive the panel it points
+     * at.
+     */
+    frozen = false
 
     /** Name of the SSH tab the panel is currently bound to, for the header line. */
     boundTabTitle: string|null = null
@@ -143,7 +159,9 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         private app: AppService,
         private appRef: ApplicationRef,
         private environmentInjector: EnvironmentInjector,
+        private config: ConfigService,
         private notices: SidebarPlusNoticesService,
+        private i18n: SidebarPlusI18nService,
     ) { }
 
     ngOnInit (): void {
@@ -202,6 +220,36 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         this.boundSession = null
         this.boundTabTitle = null
         this.sessionLostSince = null
+        // Pinning a panel nobody can see is meaningless, and leaving it set
+        // would silently carry over to whichever tab happens to get bound
+        // next time the view becomes active again.
+        this.frozen = false
+    }
+
+    /**
+     * Header pin button. Guarded on `boundTab` even though the button only
+     * ever renders while a session is shown (see the template's `!waiting`
+     * guard) — a defensive belt for a state that has no meaning without a
+     * bound session, in case that ever stops being true.
+     */
+    toggleFreeze (): void {
+        if (!this.boundTab) {
+            return
+        }
+        this.frozen = !this.frozen
+    }
+
+    /**
+     * Releases a freeze from outside the toggle button — called by
+     * sidebarTree's "open this session's SFTP" shortcut (`openSessionSftp()`)
+     * before it focuses the target tab. That click names one particular
+     * session explicitly, which must win over a freeze left standing from an
+     * earlier navigation: otherwise the shortcut would silently no-op,
+     * leaving the user staring at whatever session the pin was protecting
+     * instead of the one they just asked for.
+     */
+    unfreeze (): void {
+        this.frozen = false
     }
 
     private sync (): void {
@@ -229,15 +277,50 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             if (Date.now() - this.sessionLostSince < SESSION_LOSS_GRACE_MS) {
                 return
             }
-            const label = this.boundTabTitle ? ` (${this.boundTabTitle})` : ''
+            const lostTabTitle = this.boundTabTitle
             this.dropDeadPanel()
-            this.notices.notice(`Session SSH perdue${label} — retour sur la vue Profils`)
+            this.notices.notice(lostTabTitle
+                ? this.i18n.t('SSH session lost ({tab}) — back to Profiles view', { tab: lostTabTitle })
+                : this.i18n.t('SSH session lost — back to Profiles view'))
             this.closed.emit()
             return
         }
         this.sessionLostSince = null
 
-        const tab = this.resolveFocusedSSHTab()
+        // Second, broader trigger — sidebarPlus.sftpAutoReturnToProfiles, on by
+        // default. Independent of the grace period above and of the tab this
+        // panel happens to be bound to: it is what covers the waiting
+        // placeholder (no tab bound at all), which boundSessionIsLost() cannot
+        // see since it only ever watches its own boundTab. Gated on boundTab
+        // being null on purpose — a bound tab that is still alive is itself a
+        // live tab, so noLiveSSHTabAnywhere() would already read false, and a
+        // bound tab that just died is mid-grace or already handled above. This
+        // never fires ahead of that grace period: a dying bound session keeps
+        // boundTab non-null until dropDeadPanel() clears it, so this branch
+        // only ever sees the *next* sync() after that — one path, one order,
+        // no race between the two returns. A tab that closes outright (as
+        // opposed to just losing its session) skips the grace entirely:
+        // pruneClosedTabs() nulls boundTab synchronously, ahead of the sync()
+        // the same tabClosed$/tabRemoved$ handler calls right after — so this
+        // fires on that very tick.
+        if (
+            this.boundTab === null &&
+            this.autoReturnToProfilesEnabled() &&
+            this.noLiveSSHTabAnywhere()
+        ) {
+            this.notices.notice(this.i18n.t('No more active SSH session — back to Profiles view'))
+            this.closed.emit()
+            return
+        }
+
+        // Frozen: pin `tab` to whatever is already bound instead of asking
+        // focus who's next — that's the entire effect of the freeze. The
+        // identity compare right below still runs against that same tab, so
+        // a reconnect of *this* session (a new `sshSession` object on the
+        // same `SSHTabComponent`) still rebuilds through attachPanel() as it
+        // always has: freeze withholds the panel from *other* tabs stealing
+        // focus, it does not pause upkeep of the one it is pinned to.
+        const tab = this.frozen ? this.boundTab : this.resolveFocusedSSHTab()
         if (tab === this.boundTab && tab?.sshSession === this.boundSession) {
             return
         }
@@ -270,6 +353,23 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         return !isLiveSSHTab(tab) || (this.panels.get(tab)?.instance.sftpUnavailable ?? false)
     }
 
+    private autoReturnToProfilesEnabled (): boolean {
+        return this.config.store.sidebarPlus?.sftpAutoReturnToProfiles ?? true
+    }
+
+    /**
+     * True once no SSH tab anywhere in the app — splits included, focused or
+     * not — still holds a live session.
+     *
+     * Broader than boundSessionIsLost() on purpose: that one only ever asks
+     * about the single tab this panel is bound to, which says nothing about a
+     * tab elsewhere that dropped its session in the background, or about the
+     * waiting placeholder, where nothing is bound at all.
+     */
+    private noLiveSSHTabAnywhere (): boolean {
+        return !getAllOpenTabs(this.app).some(tab => isSSHTab(tab) && isLiveSSHTab(tab))
+    }
+
     /**
      * Unlike releaseBoundPanel(), this destroys the panel instead of caching
      * it: it holds an SFTP channel on a transport that is gone, so nothing in
@@ -290,6 +390,11 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         this.boundSession = null
         this.boundTabTitle = null
         this.sessionLostSince = null
+        // The session this freeze was protecting is gone for good — a
+        // freeze must never point at a dead panel, so release it in the same
+        // gesture instead of leaving it to silently attach to whatever tab
+        // sync() resolves next.
+        this.frozen = false
     }
 
     /**
@@ -357,6 +462,9 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
                 if (this.boundTab === tab) {
                     this.boundTab = null
                     this.boundTabTitle = null
+                    // Same reasoning as dropDeadPanel(): the frozen tab just
+                    // left a split entirely, so nothing is left to pin to.
+                    this.frozen = false
                 }
             }
         }

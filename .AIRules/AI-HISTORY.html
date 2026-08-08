@@ -24,6 +24,107 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>G2, G3 et G4 — la phase 0.3.0 close, une passe de test presque tout entière pilotée, et un socle d'i18n (2026-08-08)</h2>
+<div class="callout note"><span class="callout-title">Livré le 2026-08-08 — trois groupes d'un coup, roadmap figée levée</span>
+<p>Branche <code>feat/phase-0.3.0</code>, fusion finale de la phase à roadmap figée ouverte le
+2026-08-03. G1 (2026-08-03) et G5 (2026-08-07) étaient déjà clos ; ce geste solde <strong>G2</strong>
+(sections hautes de la sidebar), <strong>G3</strong> (workspaces), <strong>G4</strong> (liste SFTP),
+plus un socle d'internationalisation et la refonte du pied de page. À la consignation, le fichier
+<code>currentwork_roadmap.html</code> et les cinq plans de test HTML jetables sont supprimés, et la
+section « roadmap figée » retirée de <code>CLAUDE.md</code> : un régime dérogatoire ne survit pas à la
+phase qu'il servait. Le détail de chaque design vit dans les fiches de la
+<a href="ROADMAP.html">roadmap</a>, qui font foi.</p></div>
+
+<p><strong>Le fait de méthode du groupe : une passe de test de trois vagues, seize contrôles pilotés
+par l'assistant via CDP</strong> (injecteur Angular racine, mutations sous <code>zone.run()</code>,
+jamais un clic simulé), sur des données jetables (<code>ZZZ …</code> / <code>grp-zzz-test-*</code>) et
+avec sauvegarde de <code>config.yaml</code> vérifiée à l'octet avant/après. Workspaces 20/20,
+sessions et gel de vue et retour-auto et récents 16/16, SFTP (multi-sélection distante fichiers
+<em>et</em> dossiers, chargement par blocs, suppression et déplacement en masse) et transferts au
+complet. <strong>Une seule case n'a pas pu être pilotée</strong> et a été déléguée à l'œil de
+l'utilisateur : la confirmation d'annulation d'un transfert en cours — le composant des transferts est
+monté par Angular en mode production, donc <strong>inatteignable par CDP</strong> (<code>window.ng</code>
+n'expose que <code>ɵcompilerFacade</code>, <code>__ngContext__</code> n'est qu'un entier vers un
+registre injoignable). Le mécanisme lui-même était déjà prouvé par ailleurs via
+<code>ConfirmModalComponent</code> pendant la passe SFTP.</p>
+
+<p><strong>Un faux négatif à ne pas rejouer : le « gel de la vue » a d'abord semblé cassé.</strong> Le
+diagnostic passait par <code>launchProfile</code>, dont le chemin composant réenveloppe les onglets ;
+capturé ainsi, l'onglet lié paraissait dériver. Un diagnostic direct
+(<code>expr-diag-freeze.js</code>) a montré que l'onglet lié restait bien épinglé et
+<code>frozen=true</code> — l'artefact venait de l'instrument, pas du code. Régle de la maison,
+reconfirmée : lire l'état écrit, pas l'écran, et se méfier de l'outil de mesure avant de conclure au
+défaut.</p>
+
+<p><strong>Le sélecteur de workspaces a été repris deux fois sur retour utilisateur</strong>, et c'est
+la deuxième reprise qui a trouvé la bonne forme. Le mode « liste » n'est plus une valeur de
+<code>contextMenuMode</code> mais un <strong>état propre</strong> (<code>workspaceSwitcherOpen</code>) :
+la liste déroulante <strong>reste affichée</strong> sous le menu de gestion et ses sous-popups, qui
+s'ouvrent désormais à un <strong>ancrage fixe</strong> au bord droit de la liste
+(<code>switcherPopupAnchor()</code>), jamais au curseur — un clic dans la liste ne fait plus
+disparaître le panneau, ce qui rendait l'usage pénible. Le choix onglets/liste est un réglage explicite
+(<code>workspaceSelectorMode</code>), la bascule automatique par <code>ResizeObserver</code> ayant été
+refusée au test. Le clamp de position exclut <code>.workspace-switcher-menu</code>, puisque deux popups
+coexistent maintenant par conception.</p>
+
+<p><strong>Le pied de page réserve enfin sa bande.</strong> L'engrenage, les lignes de transfert SFTP
+et le cadre natif se chevauchaient en bas de sidebar. Le correctif n'est pas un simple rembourrage : une
+barre de pied fixe occupe une bande réservée (<code>padding-bottom</code> du conteneur augmenté d'autant),
+l'engrenage y est agrandi et déplacé dans le flux, et la ligne libérée affiche
+<code>better-sidebar by TooMuhtsh v{{version}}</code> à gauche — la version est importée de
+<code>package.json</code> (<code>resolveJsonModule</code>). Autre réglage tranché par l'utilisateur :
+« Profils récents » (<code>showRecentProfiles</code>) est désormais <strong>désactivé par défaut</strong>,
+une meilleure présentation étant remise à un prochain lot.</p>
+
+<div class="callout warning"><span class="callout-title">i18n : un socle posé, partiel — et un incident
+qui n'apparaît qu'à l'exécution</span>
+<p>L'internationalisation est greffée sur le <code>ngx-translate</code> de Tabby : la chaîne source
+anglaise <strong>est</strong> la clé, et <code>setTranslation(lang, table, true)</code> — troisième
+argument <em>shouldMerge</em> <strong>impératif</strong> — ajoute la table sans effacer les traductions
+de Tabby. <code>@ngx-translate/core</code> reste <strong>external</strong> (fourni par tabby-core). Trois
+tables (fr-FR, es-ES, de-DE), l'anglais étant la clé elle-même ; un validateur
+<code>npm run lint:i18n</code> refuse toute clé manquante, morte, à paramètre absent, à ICU cassé ou qui
+écraserait une valeur de Tabby. <strong>Couverture actuelle : partielle</strong> — zone SFTP (lot 1) et
+modales (lot 2) faites ; <code>sidebarTree</code>, <code>transfers</code> et l'onglet de réglages
+restent à traduire (lot 3 à venir).</p>
+<p><strong>L'incident du lot 2, à ne jamais rejouer</strong> : lier une chaîne anglaise à apostrophe droite
+dans une <em>expression</em> Angular inline (<code>{{ '…' | translate }}</code>,
+<code>[title]="'…' | translate"</code>) casse la compilation <strong>JIT au runtime</strong> —
+l'apostrophe termine le littéral de chaîne. <code>npm run build</code> (webpack/tsc) ne le voit jamais :
+il ne fait pas tourner le JIT d'Angular. L'onglet de réglages, cassé ainsi, a été <strong>restauré en
+français statique</strong> (attributs <code>title="…"</code> statiques, hors i18n) et ses descriptions
+raccourcies à une phrase brève chacune ; sa ré-internationalisation propre devra passer par des
+propriétés de composant (<code>get x() { return this.i18n.t('…') }</code>) liées via <code>[title]="x"</code>,
+jamais par un littéral inline. Les tirets cadratins des <em>clés</em> anglaises ont été remplacés par
+<code>:</code> par prudence (les <em>valeurs</em> FR/ES/DE gardent leur tiret, elles vivent dans les
+<code>.ts</code> et ne passent jamais par le JIT).</p></div>
+
+<p><strong>G3 a été construit par agents séquentiels</strong> sur la branche de phase, chaque passe
+build-vert, puis repris à la main sur les deux retours utilisateur du sélecteur. Trois écarts de design
+à retenir, détaillés dans la <a href="ROADMAP.html#workspaces">fiche workspaces</a> : la <em>ligne
+d'insertion</em> du réordonnancement n'est pas livrée (placeholder CDK verrouillé à hauteur nulle contre
+l'oscillation, pièges #25/#28) ; la couleur contextuelle passe par le champ <code>color</code> natif des
+profils (icône teintée + barre sous l'onglet, palette <code>TAB_COLORS</code>), injecté par
+<code>structuredClone</code> au lancement, la couleur propre d'un profil gagnant toujours ;
+l'export/import de workspace vit dans <code>src/workspaceShare.ts</code> (ids inconnus conservés,
+piège #74, icône SVG resanitisée à l'import).</p>
+
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+
+<tr><td>2026-08-08</td><td><code>d284e62</code></td>
+<td><strong>G2</strong> : historique des profils récents (MRU, désactivé par défaut) · flèches
+d'activité ↑/↓ sur le profil · états de transfert sur la ligne de session · confirmation avant
+annulation d'un transfert. <strong>G3</strong> : icône par workspace · export/import JSON
+(<code>workspaceShare.ts</code>) · sélecteur onglets/liste (état propre, ancrage fixe) · couleurs
+contextuelles (champ <code>color</code> natif) · retour visuel réordonner/imbriquer · engrenage en pied
+de sidebar. <strong>G4</strong> : gel de la vue SFTP · retour auto sur Profils (activé par défaut) ·
+multi-sélection distante fichiers et dossiers · chargement par blocs. <strong>Socle i18n</strong>
+(fr/es/de, greffé sur ngx-translate, couverture partielle SFTP + modales, validateur
+<code>lint:i18n</code>). <strong>Pied de page</strong> réservé + marque + version. Passe de test :
+3 vagues, 16 contrôles CDP + visuels, une case déléguée à l'utilisateur.</td></tr>
+</table>
+
 <h2>G5 — transferts fiables et tunnels à état de reprise (2026-08-07)</h2>
 <div class="callout note"><span class="callout-title">Livré et validé par l'utilisateur le
 2026-08-07 — passe 24/24</span>

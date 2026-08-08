@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, ElementRef, Input, ViewChild } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
+import { SidebarPlusI18nService } from '../i18n'
 
 /**
  * Small yes/no modal, HTML/Bootstrap rather than a native OS dialog —
@@ -12,7 +13,13 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 })
 export class ConfirmModalComponent implements AfterViewInit {
     @Input() message: string
-    @Input() confirmLabel = 'Confirmer'
+    /**
+     * Set from the constructor rather than a field initializer: every real
+     * caller overwrites this right after `ngbModal.open()`, but the default
+     * still has to go through the same translation table as everything else,
+     * which needs `i18n` injected first.
+     */
+    @Input() confirmLabel: string
     @Input() danger = true
     /** Which button `Entrée` activates. The caller decides — this component has no opinion on how destructive its own confirmation is — and the fallback is the harmless answer. */
     @Input() defaultButton: 'confirm'|'cancel' = 'cancel'
@@ -22,7 +29,10 @@ export class ConfirmModalComponent implements AfterViewInit {
 
     constructor (
         private modalInstance: NgbActiveModal,
-    ) { }
+        private i18n: SidebarPlusI18nService,
+    ) {
+        this.confirmLabel = this.i18n.t('Confirm')
+    }
 
     /**
      * Puts the focus where `defaultButton` says, so `Entrée` activates it —

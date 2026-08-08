@@ -15,7 +15,7 @@
 </nav>
 
 <h1>Roadmap</h1>
-<p class="muted">Dernière revue : 2026-08-03</p>
+<p class="muted">Dernière revue : 2026-08-08</p>
 
 <p>Historique de ce qui est déjà livré dans <a href="AI-HISTORY.html">AI-HISTORY.html</a>. Pièges
 techniques et invariants du code déjà en place dans <a href="AI-CONTEXT.html">AI-CONTEXT.html</a>.
@@ -30,7 +30,7 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td>Publication npm</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td>Menu contextuel enrichi (Profils &amp; Groupes)</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td><a href="#sftp">SFTP contextuel</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Absolue</td></tr>
-<tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Absolue</td></tr>
+<tr><td><a href="#workspaces">Workspaces</a></td><td><span class="pill done">✅ Fait (2026-07-29) — icône, export/import, sélecteur et couleurs livrés (2026-08-08)</span></td><td>Absolue</td></tr>
 <tr><td><a href="#selection-multiple">Sélection multiple</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#tunnels-ssh">Tunnels SSH</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#group-exec">Ouverture groupée de dossier ("Group Exec")</a></td><td><span class="pill done">✅ Clos sans code (2026-08-03)</span></td><td>—</td></tr>
@@ -41,7 +41,7 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#feature-flags">Interrupteurs par bloc de la sidebar</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
-<tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Haute</td></tr>
+<tr><td><a href="#sessions-actives">Section "Sessions Actives"</a></td><td><span class="pill done">✅ Fait (2026-07-29) — états de transfert sur la ligne (2026-08-08)</span></td><td>Haute</td></tr>
 <tr><td><a href="#transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</a></td><td><span class="pill done">✅ Fait (2026-08-02) — les deux retours de test rendus sans objet par le marqueur (2026-08-03)</span></td><td>Haute</td></tr>
 <tr><td><a href="#panneau-etat-session">Panneau SFTP : suivre l'état réel de la session</a></td><td><span class="pill done">✅ Fait — points 1, 2 et 4 livrés, 3 sans objet (2026-08-03)</span></td><td>Haute</td></tr>
 <tr><td><a href="#sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</a></td><td><span class="pill done">✅ Fait (2026-07-30)</span></td><td>Haute</td></tr>
@@ -63,7 +63,8 @@ Ce qu'un chantier marqué « Fait » laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#clone-express">Clone Express de profil</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#menu-contextuel-long">Menu contextuel du dossier trop long</a></td><td><span class="pill planned">📋 À cadrer</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#popups-en-modales">Popups riches → modales centrées</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
-<tr><td><a href="#historique-profils">Historique des Profils Récents</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#historique-profils">Historique des Profils Récents</a></td><td><span class="pill done">✅ Fait (2026-08-08)</span></td><td>Moyenne</td></tr>
+<tr><td><a href="#i18n">Internationalisation (i18n)</a></td><td><span class="pill progress">🚧 Socle posé, couverture partielle (2026-08-08)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#quick-snippets">Quick Snippets (Macros de Sidebar)</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#icon-favorites">Favoris d'icônes (distincts des « Récentes »)</a></td><td><span class="pill done">✅ Fait (2026-07-29)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#partage-groupe">Partage rapide de groupe (Presse-papiers)</a></td><td><span class="pill done">✅ Fait (2026-08-03)</span></td><td>Basse</td></tr>
@@ -89,44 +90,52 @@ lire le même fait.</p>
 <table>
 <tr><th>Ce qui reste</th><th>Chantier</th><th>Nature</th></tr>
 
-<tr><td>Flèches d'activité <code>↑</code>/<code>↓</code> sur la ligne du profil concerné. Le
-    gestionnaire de transferts les affiche dans son propre panneau, jamais sur le profil.</td>
-    <td><a href="#sftp">SFTP contextuel</a></td><td>Différé</td></tr>
-<tr><td>Interrupteur de <strong>gel de la vue</strong> : la vue suit le pane focalisé, rien ne permet
-    de la figer pendant une navigation en cours. Porté aussi par
-    <a href="#ui-polish">Options &amp; polissage UI</a>.</td>
-    <td><a href="#sftp">SFTP contextuel</a></td><td>Différé</td></tr>
-<tr><td>Chargement de la liste par blocs (lazy loading RxJS) — à reprendre si un dossier distant très
-    peuplé fige l'interface.</td>
-    <td><a href="#sftp">SFTP contextuel</a></td><td>Différé</td></tr>
+<tr><td>Flèches d'activité <code>↑</code>/<code>↓</code> sur la ligne du profil concerné
+    (<code>profileActivity</code>).</td>
+    <td><a href="#sftp">SFTP contextuel</a></td><td>✅ Fait (2026-08-08)</td></tr>
+<tr><td><strong>Gel de la vue</strong> : livré comme épinglage automatique de l'onglet lié
+    (<code>frozen</code>), pas comme un interrupteur manuel.</td>
+    <td><a href="#sftp">SFTP contextuel</a></td><td>✅ Fait (2026-08-08)</td></tr>
+<tr><td>Chargement de la liste par blocs — listing distant paginé.</td>
+    <td><a href="#sftp">SFTP contextuel</a></td><td>✅ Fait (2026-08-08)</td></tr>
 
 <tr><td>Icône par workspace (champ <code>icon</code> sur <code>SidebarWorkspace</code>, picker ouvert
     depuis le menu contextuel de l'onglet).</td>
-    <td><a href="#workspaces">Workspaces</a></td><td>Différé</td></tr>
-<tr><td>Sélecteur adaptatif : bascule en dropdown sous une largeur seuil (<code>ResizeObserver</code>).</td>
-    <td><a href="#workspaces">Workspaces</a></td><td>Différé</td></tr>
-<tr><td>Couleurs contextuelles — bordure de terminal selon le workspace actif au lancement. Touche le
-    lancement de profil, d'où l'étape séparée.</td>
-    <td><a href="#workspaces">Workspaces</a></td><td>Différé</td></tr>
-<tr><td>Export/import JSON ponctuel des workspaces.</td>
-    <td><a href="#workspaces">Workspaces</a></td><td>Différé</td></tr>
+    <td><a href="#workspaces">Workspaces</a></td><td>✅ Fait (2026-08-08)</td></tr>
+<tr><td>Sélecteur adaptatif : abandonné au profit d'un réglage explicite <code>workspaceSelectorMode</code>
+    (<code>tabs</code>/<code>dropdown</code>), la bascule automatique par <code>ResizeObserver</code>
+    ayant été refusée au test.</td>
+    <td><a href="#workspaces">Workspaces</a></td><td>✅ Fait, redessiné (2026-08-08)</td></tr>
+<tr><td>Couleurs contextuelles — livrées via le champ <code>color</code> natif des profils (icône
+    teintée + barre sous l'onglet), pas via une bordure de terminal comme envisagé au cadrage.</td>
+    <td><a href="#workspaces">Workspaces</a></td><td>✅ Fait, redessiné (2026-08-08)</td></tr>
+<tr><td>Export/import JSON ponctuel des workspaces (<code>src/workspaceShare.ts</code>).</td>
+    <td><a href="#workspaces">Workspaces</a></td><td>✅ Fait (2026-08-08)</td></tr>
 <tr><td>Les trois propositions du test manuel du 2026-07-29 : masquage par défaut des créations dans
-    les workspaces existants, comportement configurable de la barre de filtre, levée de l'ambiguïté
-    « réordonner » / « imbriquer » au glisser-déposer.</td>
-    <td><a href="#ws-propositions">Workspaces — propositions</a></td><td>À arbitrer</td></tr>
+    les workspaces existants et comportement configurable de la barre de filtre restent écartés en
+    statu quo ; la levée de l'ambiguïté « réordonner » / « imbriquer » au glisser-déposer est livrée
+    partiellement (surbrillance ciblée sur « imbriquer », ligne d'insertion non livrée).</td>
+    <td><a href="#ws-propositions">Workspaces — propositions</a></td><td>✅ Fait, partiel (2026-08-08)</td></tr>
 
-<tr><td>États de transfert SFTP (vitesse, file d'attente) <strong>sur la ligne de session</strong>. Le
-    motif de blocage est levé depuis le 2026-08-02 : le gestionnaire existe, mais dans son panneau.</td>
-    <td><a href="#sessions-actives">Sessions actives</a></td><td>Différé</td></tr>
+<tr><td>États de transfert SFTP (vitesse, file d'attente) <strong>sur la ligne de session</strong>.</td>
+    <td><a href="#sessions-actives">Sessions actives</a></td><td>✅ Fait (2026-08-08)</td></tr>
 
 <tr><td>Chemin distant et session porteuse sur la ligne du gestionnaire de transferts — livrés en
     <strong>infobulle</strong> de la ligne (champs plats composés à l'inscription, piège #54 respecté),
     la ligne restant compacte. Contexte fourni par les appelants : le registre ne peut pas le deviner,
     <code>FileTransfer</code> n'expose que <code>getName()</code>.</td>
     <td><a href="#transferts">Transferts SFTP</a></td><td>✅ Fait (2026-08-07)</td></tr>
-<tr><td>Multi-sélection dans la liste distante : préalable au déplacement et à la
-    <a href="#suppr-sftp">suppression</a> par lot.</td>
-    <td><a href="#transferts">Transferts SFTP</a></td><td>Différé</td></tr>
+<tr><td>Multi-sélection dans la liste distante — fichiers <strong>et</strong> dossiers,
+    préalable au déplacement et à la <a href="#suppr-sftp">suppression</a> par lot.</td>
+    <td><a href="#transferts">Transferts SFTP</a></td><td>✅ Fait (2026-08-08)</td></tr>
+<tr><td>Confirmation avant annulation d'un transfert en cours (bouton poubelle/balai du gestionnaire).
+    Non pilotable par CDP — composant transferts monté par Angular en mode production, inatteignable —
+    délégué à l'œil de l'utilisateur ; mécanisme déjà prouvé via <code>ConfirmModalComponent</code>.</td>
+    <td><a href="#transferts">Transferts SFTP</a></td><td>✅ Fait, validé à l'œil (2026-08-08)</td></tr>
+<tr><td>Retour automatique sur la vue Profils quand plus aucun onglet n'a de SFTP actif — réglage
+    <code>sftpAutoReturnToProfiles</code>, <strong>activé par défaut</strong>, distinct du délai de
+    grâce de 3 s.</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>✅ Fait (2026-08-08)</td></tr>
 
 <tr><td>Bascule sur <code>exit</code> : le code la couvre (<code>isLiveSSHTab()</code> lit le shell),
     mais le <code>behaviorOnSessionEnd</code> de l'utilisateur ferme l'onglet — aucun geste n'a
@@ -259,17 +268,17 @@ gestion de modes qui n'avait pas à être résolu pour prouver le reste.</p>
 <li>Menus contextuels sur le vide de la liste (créer dossier/fichier) et sur l'en-tête (affichage).</li>
 </ul>
 
-<h4>Différé, non implémenté</h4>
+<h4>Livré (2026-08-08)</h4>
 <ul>
-<li><strong>Focus multi-split et gel de la vue</strong> : la vue suit bien le pane focalisé, mais
-  l'option de <em>geler</em> la vue active n'est pas construite.</li>
-<li><strong>Chargement par blocs</strong> (lazy loading RxJS) : la liste est chargée d'un coup. À
-  reprendre si un dossier distant très peuplé fige l'interface.</li>
-<li><strong>Suivi des transferts</strong> : repris et détaillé dans
-  <a href="#transferts">Transferts SFTP</a>, <strong>priorité relevée à Haute le 2026-07-29</strong>
-  à la demande de l'utilisateur. Le <strong>gestionnaire en bas de sidebar est livré</strong> depuis
-  le 2026-08-02 (visible dans les deux vues) ; les <strong>flèches d'activité sur la ligne du
-  profil</strong>, elles, ne sont toujours pas construites.</li>
+<li><strong>Gel de la vue</strong> : livré comme <strong>épinglage automatique de l'onglet lié</strong>
+  (<code>frozen</code>) — pas comme l'interrupteur manuel envisagé au cadrage. La vue s'accroche à
+  l'onglet SSH qui a ouvert le panneau et ne suit plus le focus tant qu'il reste vivant.</li>
+<li><strong>Chargement par blocs</strong> : listing distant paginé, plutôt que la liste chargée d'un
+  coup prévue à l'origine.</li>
+<li><strong>Flèches d'activité <code>↑</code>/<code>↓</code></strong> sur la ligne du profil
+  (<code>profileActivity</code>) : le suivi des transferts est désormais complet — le
+  <strong>gestionnaire en bas de sidebar</strong> est livré depuis le 2026-08-02, les flèches sur le
+  profil concerné depuis le 2026-08-08.</li>
 </ul>
 
 <h4>Limites connues du renvoi de fichier édité <span class="pill done">✅ Levées (2026-08-01)</span></h4>
@@ -308,15 +317,26 @@ masquage. Traité avant le SFTP (initialement prévu après) — choix explicite
 restauration, comportement de la barre de filtre, favoris cloisonnés, ordre cloisonné, imbrication
 depuis un workspace, survie à un redémarrage complet). Cinq correctifs livrés à cette occasion, voir
 <a href="AI-HISTORY.html">AI-HISTORY</a> (2026-07-29) et les pièges #30/#31. Commit
-<code>42dcb09</code>. Restent différés et non implémentés : icône par workspace, sélecteur adaptatif,
-couleurs contextuelles, export/import JSON — détaillés ci-dessous.</p></div>
+<code>42dcb09</code>.</p></div>
+
+<div class="callout note"><span class="callout-title">Complété — ✅ Fait (2026-08-08)</span>
+<p>Les quatre items différés en 2026-07-29 (icône par workspace, sélecteur, couleurs contextuelles,
+export/import JSON) sont livrés, plus le retour visuel réordonner/imbriquer et le pied de sidebar —
+détail dans chaque puce ci-dessous et dans <a href="AI-HISTORY.html">AI-HISTORY</a> (2026-08-08).
+Construit par agents séquentiels sur la branche de phase, puis repris à la main sur deux retours
+utilisateur pour le sélecteur.</p></div>
 
 <ul>
 <li><strong>Stockage dans <code>config.yaml</code></strong> via <code>ConfigProvider</code>, nouvelle clé
   <code>sidebarPlus.workspaces: SidebarWorkspace[]</code> (déclarée dans les <code>defaults</code>,
   piège #16). Pas de fichiers JSON externes séparés — option envisagée puis abandonnée, voir
-  raisonnement de portabilité ci-dessous (inchangé). Export/import JSON ponctuel toujours prévu mais
-  <strong>différé</strong> (non implémenté dans cette première passe).</li>
+  raisonnement de portabilité ci-dessous (inchangé). <strong>Export/import JSON livré (2026-08-08)</strong>
+  dans <code>src/workspaceShare.ts</code>, format <code>tabby-better-sidebar/workspace</code> : le
+  patron vient de <code>groupShare.ts</code> (purge, validation d'entrée non fiable, arbitrage de
+  collision), mais un workspace ne porte que des listes d'ids, donc la question posée n'est pas la
+  même — <strong>les ids inconnus sont conservés</strong> plutôt que purgés (piège #74 : un id qui ne
+  désigne rien chez celui qui importe n'est pas forcément mort, il peut désigner un profil fourni par
+  un provider) ; l'icône SVG du workspace est resanitisée à l'import.</li>
 <li><strong>Membership = listes d'exclusion, pas d'inclusion</strong> : chaque <code>SidebarWorkspace</code>
   porte <code>hiddenProfileIds</code>/<code>hiddenGroupIds</code>, pas une liste de membres. Décision
   actée pour que tout profil/groupe créé après coup reste visible par défaut dans tous les workspaces
@@ -366,13 +386,24 @@ couleurs contextuelles, export/import JSON — détaillés ci-dessous.</p></div>
   fichier synchronisé entre machines.</li>
 <li><strong>Sélecteur</strong> : implémenté en onglets horizontaux simples (<code>flex-wrap</code>,
   passent à la ligne s'il y en a beaucoup) + bouton "+". Le <strong>sélecteur adaptatif</strong>
-  (bascule automatique en dropdown via <code>ResizeObserver</code> sous une largeur seuil) est
-  <strong>différé</strong> — pas nécessaire tant que le nombre de workspaces reste faible en usage
-  réel.</li>
-<li><strong>Couleurs contextuelles</strong> (bordure de terminal selon le workspace actif au lancement) :
-  <strong>différé</strong>, non implémenté dans cette passe — touche le lancement de profil, jugé
-  préférable comme étape revue séparément. Design inchangé : injection via clone en mémoire
-  (<code>structuredClone</code>), jamais en mutant le profil d'origine (piège #12).</li>
+  (bascule automatique en dropdown via <code>ResizeObserver</code> sous une largeur seuil) a été
+  <strong>proposé au test le 2026-08-07 et refusé</strong> par l'utilisateur — remplacé par un réglage
+  explicite <code>workspaceSelectorMode</code> (<code>tabs</code> par défaut / <code>dropdown</code>).
+  <span class="pill done">✅ Fait, redessiné deux fois (2026-08-08)</span> En mode liste, le mode n'est
+  pas une valeur de <code>contextMenuMode</code> (première tentative, abandonnée) mais un
+  <strong>état propre</strong> <code>workspaceSwitcherOpen</code> : la liste <strong>reste
+  affichée</strong> sous le menu de gestion et ses sous-popups, qui s'ouvrent à un
+  <strong>ancrage fixe</strong> au bord droit de la liste (<code>switcherPopupAnchor()</code>), jamais
+  au curseur — deux popups coexistent par conception, et le clamp de position exclut désormais
+  <code>.workspace-switcher-menu</code>.</li>
+<li><strong>Couleurs contextuelles</strong> : livrées, mais <strong>pas</strong> comme la bordure de
+  terminal envisagée au cadrage — via le champ <strong><code>color</code> natif des profils</strong>
+  (icône teintée + barre sous l'onglet, palette <code>TAB_COLORS</code> de <code>tabby-core</code>).
+  <span class="pill done">✅ Fait (2026-08-08)</span> Injection par <code>structuredClone</code> au
+  lancement, jamais en mutant le profil d'origine (piège #12) ; la couleur propre d'un profil
+  <strong>gagne toujours</strong> sur celle du workspace, qui ne teinte que ce qu'un profil n'a pas
+  déjà réglé lui-même — « Tous » ne colore jamais rien, <code>activeWorkspace</code> y étant
+  <code>null</code>.</li>
 <li><strong>Le nom/icône/couleur d'un dossier ou son parent restent globaux</strong>, jamais
   spécifiques à un workspace (décision confirmée avec l'utilisateur le 2026-07-28) — cohérent avec le
   reste : un dossier a une seule identité et une seule position dans l'arborescence réelle ; seules sa
@@ -417,11 +448,11 @@ couleurs contextuelles, export/import JSON — détaillés ci-dessous.</p></div>
   lignes et rattrape les dépôts que CDK a résolus à tort sur la racine.</li>
 <li><strong>Surbrillance des zones de dépôt : retirée</strong> (demande utilisateur, 2026-07-28) —
   le placeholder de CDK, qui se déplace dans le dossier survolé, suffit comme retour visuel.</li>
-<li><strong>Icône par workspace</strong> : demandée par l'utilisateur, <strong>non implémentée</strong>
-  (repoussée derrière les bugs de glisser-déposer, jamais reprise depuis). Design attendu : même
-  picker que celui des profils/dossiers, ouvert par une entrée de menu contextuel sur l'onglet du
-  workspace, icône affichée à côté du nom dans l'onglet. Implique un champ <code>icon</code> sur
-  <code>SidebarWorkspace</code>.</li>
+<li><strong>Icône par workspace</strong> : demandée par l'utilisateur le 2026-07-28, longtemps repoussée
+  derrière les bugs de glisser-déposer. <span class="pill done">✅ Fait (2026-08-08)</span> Livrée
+  conforme au design attendu : champ <code>icon</code> sur <code>SidebarWorkspace</code>, même picker
+  que celui des profils/dossiers, ouvert par une entrée de menu contextuel sur l'onglet du workspace,
+  icône affichée à côté du nom dans l'onglet.</li>
 <li><strong>Bug corrigé (2026-07-28) — un nouveau workspace pouvait sembler hériter de l'état d'un
   autre workspace</strong> : condition de course entre le rechargement déclenché par
   <code>config.changed$</code> (sur chaque <code>config.save()</code>, y compris celui de la création)
@@ -432,11 +463,20 @@ couleurs contextuelles, export/import JSON — détaillés ci-dessous.</p></div>
   hériter d'une mutation faite par un appel concurrent en cours de route), et seul l'appel le plus
   récemment <em>démarré</em> committe ses résultats dans <code>this.profileGroups</code>/
   <code>this.rootGroups</code> à la fin.</li>
+<li><strong>Engrenage en pied de sidebar</strong> — déplacé depuis « Sortie de version » le
+  2026-08-07 (même zone de code que les items workspaces). <span class="pill done">✅ Fait
+  (2026-08-08)</span> Le pied de page réservait déjà mal sa bande : engrenage, lignes de transfert
+  SFTP et cadre natif se chevauchaient. Correctif : une barre de pied <strong>fixe</strong> occupe
+  désormais une bande réservée (<code>padding-bottom</code> du conteneur augmenté d'autant),
+  l'engrenage y est agrandi et déplacé dans le flux, et la ligne libérée affiche
+  <code>better-sidebar by TooMuhtsh v{{version}}</code> à gauche — la version est importée de
+  <code>package.json</code> (<code>resolveJsonModule</code>), pas recopiée à la main.</li>
 </ul>
 
-<h4 id="ws-propositions">Propositions issues du test manuel du 2026-07-29 <span class="pill planned">📋 À arbitrer</span></h4>
-<p class="muted">Consignées à la demande de l'utilisateur pour vérification de faisabilité, aucune
-n'est implémentée.</p>
+<h4 id="ws-propositions">Propositions issues du test manuel du 2026-07-29 <span class="pill done">✅ Tranchées (2026-08-07)</span></h4>
+<p class="muted">Consignées à la demande de l'utilisateur pour vérification de faisabilité. Arbitrées le
+2026-08-07 : deux écartées en statu quo, une retenue pour construction (retour visuel
+réordonner/imbriquer, livré le 2026-08-08 — voir la fiche <a href="#workspaces">Workspaces</a>).</p>
 <ul>
 <li><strong>Masquer par défaut dans les workspaces existants tout profil/dossier nouvellement
   créé</strong> (visible d'emblée uniquement dans « Tous »). Motif avancé par l'utilisateur : en
@@ -450,19 +490,33 @@ n'est implémentée.</p>
   paramètres natifs de Tabby n'emprunte aucun de ces chemins et resterait visible partout — sauf à
   détecter les nouveautés au chargement (comparaison avec un instantané des ids connus), ce qui
   suppose de stocker cet instantané et de trancher le cas « profil vu pour la première fois sur une
-  autre machine ».</p></div></li>
+  autre machine ».</p></div>
+  <div class="callout note"><span class="callout-title">Écarté le 2026-08-07 : statu quo</span>
+  <p>Reste visible par défaut dans tous les workspaces. Ne pas rouvrir sans nouvelle demande.</p>
+  </div></li>
 <li><strong>Rendre configurable le comportement de la barre de filtre</strong> vis-à-vis des éléments
   masqués. Aujourd'hui le filtre cherche délibérément partout, y compris ce que le workspace actif
   masque (confirmé comme voulu par l'utilisateur au test du 2026-07-29) ; l'option offrirait le
   comportement inverse — restreindre la recherche au périmètre visible du workspace. Réglage
-  <code>sidebarPlus</code> booléen, sans impact sur le stockage des workspaces.</li>
+  <code>sidebarPlus</code> booléen, sans impact sur le stockage des workspaces.
+  <div class="callout note"><span class="callout-title">Écarté le 2026-08-07 : statu quo</span>
+  <p>Le filtre continue de chercher partout, sans réglage. Ne pas rouvrir sans nouvelle demande.</p>
+  </div></li>
 <li><strong>Lever l'ambiguïté entre « réordonner » et « imbriquer » au glisser-déposer.</strong>
   Constat du test du 2026-07-29 : l'utilisateur pensait réordonner deux dossiers alors qu'il en
   imbriquait un dans l'autre. Ce n'est pas un défaut de cloisonnement — un re-parentage modifie
   l'arborescence réelle, donc tous les workspaces, ce qui est la conception actée — mais le geste ne
   se distingue que par quelques pixels (moitié haute d'une ligne = réordonner, moitié basse =
-  déposer dedans, cf. piège #26). Pistes : retour visuel distinct selon la moitié survolée, seuil
-  de déclenchement plus strict, ou modificateur clavier pour forcer l'imbrication.</li>
+  déposer dedans, cf. piège #26). Pistes envisagées : retour visuel distinct selon la moitié
+  survolée, seuil de déclenchement plus strict, ou modificateur clavier pour forcer l'imbrication.
+  <div class="callout note"><span class="callout-title">Retenu le 2026-08-07, livré partiellement le
+  2026-08-08</span>
+  <p>Indicateur distinct pendant le survol prévu pour les deux gestes (ligne d'insertion pour
+  réordonner, surbrillance du dossier cible pour imbriquer), sans changer le geste ni son seuil. Seul
+  « imbriquer » gagne une surbrillance ciblée : la <strong>ligne d'insertion n'est pas livrée</strong>
+  — le placeholder CDK est verrouillé à <strong>hauteur nulle</strong> contre le bug d'oscillation
+  déjà consigné (pièges #25/#28), et lui rendre une hauteur pour porter une ligne visible rouvrirait
+  cette oscillation. Reste un écart assumé, pas un oubli.</p></div></li>
 </ul>
 
 <h3 id="sessions-actives">Section "Sessions Actives" en haut de la sidebar</h3>
@@ -490,11 +544,10 @@ entièrement</em> quand rien n'est connecté plutôt qu'affichée vide ; elle n'
 cloisonnée par workspace (une session ouverte est un fait de l'app, pas du workspace regardé — la
 masquer serait un moyen de la perdre de vue) ; l'état replié va en <code>localStorage</code>, pas
 dans <code>config.yaml</code>.</p>
-<p><strong>Reste à faire sur ce chantier</strong> : l'intégration visuelle des états de transfert
-SFTP (vitesse, file d'attente) <em>sur la ligne de session elle-même</em> n'est pas livrée. Le motif
-de blocage, lui, est levé : le mini-gestionnaire dont elle dépendait est en place depuis le
-2026-08-02 (<a href="#transferts">Transferts SFTP</a>, volet 1), et affiche déjà vitesse, ETA et
-file d'attente — mais dans son propre panneau, pas sur la session.</p></div>
+<p><strong>Intégration visuelle livrée le 2026-08-08</strong> <span class="pill done">✅ Fait</span> :
+les états de transfert SFTP (vitesse, file d'attente) s'affichent désormais aussi <em>sur la ligne de
+session elle-même</em>, pas seulement dans le panneau du <a href="#transferts">gestionnaire</a>
+(volet 1, en place depuis le 2026-08-02) qui reste la source de vérité.</p></div>
 
 <h3 id="transferts">Transferts SFTP : gestionnaire horodaté &amp; glisser-déposer</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-29, avec une <strong>urgence relevée</strong> :
@@ -542,6 +595,16 @@ se manifeste — le registre les a sous la main pour nos propres transferts.</p>
 dropdown <em>et</em> <code>transfers-menu</code> — l'avertissement ci-dessous sur
 <code>container='body'</code> s'est vérifié tel quel.</p>
 </div>
+<div class="callout note"><span class="callout-title">Confirmation avant annulation — ✅ Fait
+(2026-08-08)</span>
+<p>Retirer une ligne encore active depuis le bouton poubelle/balai du gestionnaire demande désormais
+confirmation, sur le même <code>ConfirmModalComponent</code> que le reste du plugin — la sémantique
+<code>removeTransfer()</code> annonçée plus haut (retirer une ligne active <strong>annule</strong> le
+transfert) restait vraie mais silencieuse. <strong>Non pilotable par CDP</strong> à la passe de test :
+le composant transferts est monté par Angular en mode production, donc inatteignable
+(<code>window.ng</code> n'expose que <code>ɵcompilerFacade</code>, <code>__ngContext__</code> n'est
+qu'un entier vers un registre injoignable) — délégué à l'œil de l'utilisateur. Le mécanisme lui-même
+était déjà prouvé par ailleurs, dans la passe SFTP de la même vague.</p></div>
 <ul>
 <li><strong>Registre maison comme source de vérité</strong>, alimenté par notre panneau au moment où
   il lance un transfert. Motif : <code>FileTransfer</code> (tabby-core) ne porte <em>ni</em> le chemin
@@ -833,9 +896,9 @@ compilé employée jusqu'ici. Tous sous licence MIT ; rien n'a été recopié.</
   écrasement) et le cas d'un déplacement <strong>franchissant deux points de montage</strong> côté
   serveur. Faire un <code>stat()</code> préalable et demander confirmation plutôt que de déduire le
   comportement ; tester sur un chemin jetable avant de le proposer sur de vraies données.</li>
-<li><strong>Sélection multiple</strong> : la liste distante ne gère qu'une sélection simple
-  aujourd'hui. Le déplacement d'un lot est une extension naturelle mais séparée — ne pas l'embarquer
-  dans cette première passe.</li>
+<li><strong>Sélection multiple</strong> — ✅ Fait (2026-08-08) : la liste distante gère désormais la
+  multi-sélection, <strong>fichiers et dossiers</strong>, préalable au déplacement en lot et à la
+  <a href="#suppr-sftp">suppression</a> par lot (voir aussi cette fiche, mise à jour).</li>
 </ul>
 <p class="muted"><strong>Hors périmètre de ce chantier</strong> : le glisser-déposer <em>sortant</em>
 (tirer un fichier distant vers l'Explorateur Windows pour le télécharger). Ce n'est pas un oubli —
@@ -846,17 +909,18 @@ ci-dessous.</p>
 <h3 id="panneau-etat-session">Panneau SFTP : suivre l'état réel de la session
 <span class="pill done">✅ Fait (2026-08-03)</span></h3>
 <p class="muted">Ouvert le 2026-08-02 sur un bug remonté en test, élargi par ce que le diagnostic a
-mis au jour. Les quatre points ci-dessous partagent la même mécanique — savoir si la session porte
-encore un SFTP utilisable — et se traitent donc ensemble. <strong>Options tranchées avec l'utilisateur
+mis au jour. Les quatre premiers points partagent la même mécanique — savoir si la session porte
+encore un SFTP utilisable — et se sont traités ensemble. <strong>Options tranchées avec l'utilisateur
 le 2026-08-02</strong>. <strong>Points 1 et 2 livrés, testés et validés le 2026-08-02</strong>
 (branche <code>fix/sftp-session-perdue</code>, 4 commits, détail dans
 <a href="AI-HISTORY.html">AI-HISTORY</a>). <strong>Point 3 sans objet</strong> — sa prémisse était
 fausse, et ce qui a été livré à la place l'a été sur <code>fix/transferts-interrompus</code>.
 <strong>Point 4 livré, testé et validé le 2026-08-03</strong> (branche
-<code>fix/etat-transitoire</code>) : le chantier est clos. Trois constats en sont sortis sans être des
+<code>fix/etat-transitoire</code>). Trois constats en sont sortis sans être des
 manques de ce chantier — bascule sur <code>exit</code> non exercée, <code>downloadFolder</code> resté
 sur la voie héritée, contrôle d'arrivée pour les téléchargements du menu contextuel — repris dans
-<a href="#restes">Reste ouvert</a>.</p>
+<a href="#restes">Reste ouvert</a>. <strong>Point 5, un nouveau déclencheur de retour automatique,
+ajouté et livré le 2026-08-08</strong> — le chantier reste clos.</p>
 
 <h4>1. Bug : après une perte de connexion, le panneau reste mort jusqu'au kill de l'onglet</h4>
 <p>Deux causes cumulées, l'une chez nous, l'autre chez Tabby :</p>
@@ -1020,6 +1084,17 @@ transfert <em>actif</em> la laissait figée sur « remise au système » pour le
 Conséquence visible et vérifiée au test : la vider ne demande pas confirmation et ne supprime pas le
 fichier déposé.</p></div>
 
+<h4>5. Retour automatique sur Profils quand plus aucun onglet n'a de SFTP actif <span class="pill done">✅ Fait (2026-08-08)</span></h4>
+<p>Ajouté pendant G4, à ne pas confondre avec le <strong>délai de grâce de trois secondes</strong> du
+point 2 ci-dessus : celui-ci réagit à la mort de la <em>session de l'onglet lié</em>. Le nouveau
+réglage couvre l'<strong>autre</strong> déclencheur — plus aucun onglet SSH avec SFTP actif nulle
+part, quel que soit l'onglet qui a ouvert la vue. Réglage <code>sftpAutoReturnToProfiles</code>,
+<strong>activé par défaut</strong> (tranché par l'utilisateur le 2026-08-07, contrairement au « pas de
+retour automatique » retenu au point 2 — les deux décisions ne se contredisent pas, elles répondent à
+deux questions différentes). Réutilise <code>isLiveSSHTab()</code> (<code>src/tabs.ts</code>), jamais
+<code>sshSession.open</code> (<a href="AI-CONTEXT.html#piege-59">piège #59</a>) — même sonde unique de
+vivacité que le reste de ce chantier.</p>
+
 <h3 id="sessions-sftp-visibles">Sessions actives visibles aussi en vue SFTP</h3>
 <p class="muted">Demandé par l'utilisateur le 2026-07-30, avec trois autres axes UX/sécurité —
 <a href="#suppr-sftp">suppression SFTP par Suppr</a>, <a href="#editeur-force">éditeur forcé au
@@ -1062,10 +1137,10 @@ suppression au clic droit (<code>confirmDeleteProfile</code>/<code>deleteGroup</
 concerné par cette demande.</p>
 <ul>
 <li><strong>Déclencheur</strong> : élément sélectionné dans la liste distante + touche
-<kbd>Suppr</kbd>. La sélection y est simple aujourd'hui (voir <a href="#transferts">Transferts
-SFTP</a>, point 3) — cette passe s'appuie sur elle telle quelle, sans construire de multi-sélection ;
-l'extension au lot suivra si la multi-sélection distante est un jour construite pour le
-glisser-déposer interne.</li>
+<kbd>Suppr</kbd>. La sélection y était simple à la livraison de ce chantier (voir
+<a href="#transferts">Transferts SFTP</a>, point 3) — cette passe s'appuyait sur elle telle quelle.
+<strong>La multi-sélection distante (fichiers et dossiers) est livrée depuis le 2026-08-08</strong> :
+<kbd>Suppr</kbd> sur un lot supprime désormais le lot entier, même modale de confirmation.</li>
 <li><strong>Confirmation obligatoire</strong>, en modale HTML — jamais de dialogue système (cohérent
 avec <a href="#confirmations-html">l'invariant de confirmation</a>). <code>SFTPDeleteModalComponent</code>
 (natif, exporté par <code>tabby-ssh</code>) est le candidat naturel : à vérifier aux deux niveaux
@@ -1985,10 +2060,17 @@ l'avoir fait.</p>
 concerne. Et que le clic droit doit rester court et s'ouvrir sous la souris : c'est une raison de
 plus de ne pas y régler ce qui relève de l'onglet de réglages.</p></div>
 
-<h3 id="historique-profils">Historique des Profils Récents</h3>
+<h3 id="historique-profils">Historique des Profils Récents <span class="pill done">✅ Fait (2026-08-08)</span></h3>
 <p>Liste dynamique et pliable affichant les 5 derniers profils de connexion utilisés, positionnée
 juste en dessous de la zone des sessions actives pour un réengagement ultra-rapide sans navigation
 dans l'arborescence.</p>
+<div class="callout note"><span class="callout-title">Fait, désactivé par défaut</span>
+<p>Livrée en <strong>MRU</strong> : jusqu'à <code>MAX_RECENT_PROFILES</code> = 5 entrées, plus récent
+en tête, dédoublonnées, dans <code>localStorage.sidebarPlusRecentProfiles</code> — délibérément pas
+dans <code>config.yaml</code>, un historique de connexion étant local à la machine, pas à
+synchroniser. Réglage <code>sidebarPlus.showRecentProfiles</code>, <strong>désactivé par
+défaut</strong> — décision de l'utilisateur, la présentation actuelle de la section étant jugée à
+améliorer avant de l'imposer par défaut. Reste à reprendre dans un lot ultérieur.</p></div>
 
 <h3 id="quick-snippets">Quick Snippets (Macros de Sidebar)
 <span class="pill done">✅ Fait (2026-08-03)</span></h3>
@@ -2138,6 +2220,39 @@ partir « à l'aveugle » dans cette session-là.</p>
 aujourd'hui que deux entrées fixes (<code>src/hotkeys.ts</code>). Des raccourcis dynamiques, redéclarés
 à chaque changement de la bibliothèque, n'ont aucun précédent dans ce plugin — c'est là qu'est le
 risque, pas dans l'interface.</p>
+
+<h3 id="i18n">Internationalisation (i18n) <span class="pill progress">🚧 Socle posé, couverture partielle (2026-08-08)</span></h3>
+<p>Greffée sur le <code>ngx-translate</code> déjà chargé par <code>tabby-core</code>, plutôt qu'une
+dépendance i18n séparée — <code>@ngx-translate/core</code> reste <strong>external</strong> dans la
+config webpack (fourni par l'hôte, pas embarqué). La <strong>chaîne source anglaise EST la clé</strong>
+(pas de table d'ids courts) : chaque appel <code>{{ '…' | translate }}</code> porte directement le
+texte anglais par défaut, ce qui rend le rendu correct même sans traduction chargée.</p>
+<div class="callout warning"><span class="callout-title">Le 3ᵉ argument de <code>setTranslation()</code> est impératif</span>
+<p><code>translate.setTranslation(lang, table, true)</code> — le troisième argument
+<code>shouldMerge</code> <strong>doit</strong> être <code>true</code>. Sans lui,
+<code>setTranslation()</code> <strong>remplace</strong> toute la table de la langue au lieu de
+l'étendre, ce qui écraserait les traductions déjà posées par Tabby lui-même pour cette langue.</p></div>
+<ul>
+<li><strong>Trois tables</strong> — fr-FR, es-ES, de-DE — l'anglais étant la clé elle-même, aucune
+  table anglaise séparée.</li>
+<li><strong>Validateur <code>npm run lint:i18n</code></strong> : refuse toute clé manquante, morte, à
+  paramètre absent, à ICU cassé, ou qui écraserait une valeur déjà posée par Tabby.</li>
+<li><strong>Couverture actuelle : partielle.</strong> Zone SFTP (lot 1) et modales (lot 2)
+  traduites ; <code>sidebarTree</code>, <code>transfers</code> et l'onglet de réglages restent en
+  français statique, à traduire dans un lot 3.</li>
+</ul>
+<div class="callout important"><span class="callout-title">Piège appris — une apostrophe droite dans une expression inline casse le JIT au runtime, invisible au build</span>
+<p>Lier une chaîne anglaise à apostrophe droite dans une <em>expression</em> Angular inline
+(<code>{{ '…' | translate }}</code>, <code>[title]="'…' | translate"</code>) casse la compilation
+<strong>JIT au runtime</strong> — l'apostrophe termine prématurément le littéral de chaîne.
+<code>npm run build</code> (webpack/tsc) ne le voit <strong>jamais</strong>, puisqu'il ne fait pas
+tourner le JIT d'Angular. C'est ce qui a cassé l'onglet de réglages pendant le lot 2 : il a été
+<strong>restauré en français statique</strong> (attributs <code>title="…"</code> statiques, hors i18n)
+plutôt que réparé sur place. Sa ré-internationalisation propre devra passer par des propriétés de
+composant (<code>get x() { return this.i18n.t('…') }</code>) liées via <code>[title]="x"</code>,
+jamais par un littéral inline. Les tirets cadratins des <em>clés</em> anglaises ont par prudence été
+remplacés par <code>:</code> — les <em>valeurs</em> FR/ES/DE, elles, gardent leur tiret : elles vivent
+dans les fichiers <code>.ts</code> et ne passent jamais par le JIT.</p></div>
 
 <h3 id="icon-favorites">Favoris d'icônes (distincts des « Récentes »)</h3>
 <p>Demandé directement par l'utilisateur (2026-07-28) après usage du picker d'icônes existant.

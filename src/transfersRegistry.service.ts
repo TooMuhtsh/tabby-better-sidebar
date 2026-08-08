@@ -1,5 +1,5 @@
 import { filesize } from 'filesize'
-import { Injectable, NgZone } from '@angular/core'
+import { EventEmitter, Injectable, NgZone } from '@angular/core'
 import { ConfigService, FileDownload, FileTransfer, PlatformService } from 'tabby-core'
 
 export type TransferDirection = 'up'|'down'
@@ -107,6 +107,17 @@ const HANDOVER_MIN_MS = 400
 /** Ceiling, so a mis-estimate cannot leave a line stuck short of done. */
 const HANDOVER_MAX_MS = 120_000
 
+/**
+ * The one formatting of a transfer's speed — a plain `bytes/s` reading, blank
+ * while nothing has moved yet. Exported rather than kept private: the active
+ * sessions list's compact aggregate (sidebarTree.component.ts) reuses it for
+ * its own combined-speed segment instead of duplicating the `filesize()` call
+ * with its own rounding.
+ */
+export function formatSpeed (bytesPerSecond: number): string {
+    return bytesPerSecond > 0 ? `${filesize(bytesPerSecond, { round: 1 })}/s` : ''
+}
+
 /** `1:07`, `12:05`, `1:02:33` — minutes and seconds, hours only when there are any. */
 function formatDuration (totalSeconds: number): string {
     const s = Math.max(0, Math.round(totalSeconds))
@@ -139,6 +150,24 @@ export class SidebarPlusTransfersService {
     summaryTitle = ''
     private counter = 0
     private timer: ReturnType<typeof setInterval>|null = null
+
+    /**
+     * Fires whenever an entry is added or leaves the `active` state, and when
+     * one is dropped or the list is cleared — never on the tick's per-entry
+     * percent/speed refresh, which nothing outside this service needs to react
+     * to. Consumed by the sidebar tree's per-profile activity arrows, so they
+     * can recompute their own precomputed map without polling the registry
+     * from a template getter (piège #54).
+     *
+     * Emitted from inside code that already runs in the Angular zone — `track()`
+     * wraps its body in `zone.run()`, `finish()` only ever runs from `tick()`
+     * (itself scheduled from inside that same `zone.run()`) or from
+     * `markFailed()`/`markUnsound()` (their own `zone.run()`), and `remove()`/
+     * `clear()` are only ever called from a template click binding. A subscriber
+     * outside this service should still not assume that and re-enter the zone
+     * itself if it mutates state a template reads (piège #41).
+     */
+    readonly changed = new EventEmitter<void>()
 
     constructor (
         platform: PlatformService,
@@ -229,6 +258,7 @@ export class SidebarPlusTransfersService {
             this.entries.unshift(entry)
             this.refreshSummary()
             this.startTicking()
+            this.changed.emit()
         })
     }
 
@@ -432,7 +462,7 @@ export class SidebarPlusTransfersService {
         }
         entry.lastBytes = completed
         entry.lastTickAt = now
-        entry.speedLabel = entry.speed > 0 ? `${filesize(entry.speed, { round: 1 })}/s` : ''
+        entry.speedLabel = formatSpeed(entry.speed)
 
         // Left blank rather than guessed: with no size there is nothing to
         // subtract from, and a stalled transfer would otherwise show an ETA
@@ -455,6 +485,10 @@ export class SidebarPlusTransfersService {
         entry.elapsedLabel = formatDuration((now - entry.startedAtMs) / 1000)
         entry.etaLabel = ''
         entry.speedLabel = ''
+        // Every route here leaves `active`, including the `handover` branch in
+        // `tick()`: the per-profile arrows only ever count `active`, so this is
+        // the one place that has to say so regardless of which state is next.
+        this.changed.emit()
     }
 
     private stopTicking (): void {
@@ -480,6 +514,7 @@ export class SidebarPlusTransfersService {
         if (!this.runningCount) {
             this.stopTicking()
         }
+        this.changed.emit()
     }
 
     /** Clears the list. Live transfers are cancelled — the caller asks first. */
@@ -492,5 +527,6 @@ export class SidebarPlusTransfersService {
         this.entries = []
         this.refreshSummary()
         this.stopTicking()
+        this.changed.emit()
     }
 }

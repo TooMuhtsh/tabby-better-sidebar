@@ -3,16 +3,24 @@
 //- this one ships no `src/i18n/`, so a `| translate` would resolve to the
 //- source string anyway.
 //-
-//- Two rules hold this page together, both the user's:
+//- Three rules hold this page together:
 //-
 //- 1. A setting lives with the switch of the feature it belongs to, so
 //-    switching that feature off takes its options off the page with it. Only
 //-    what applies to the whole plugin — or to Tabby itself — stays on the
 //-    general page. A setting outliving its feature on screen reads as broken
 //-    rather than as irrelevant.
-//- 2. Descriptions are one or two lines. What a setting does and what its
-//-    default is, nothing more: the reasoning behind each one belongs in
-//-    .AIRules, not in front of someone trying to flip a switch.
+//- 2. Descriptions and tooltips are ONE short sentence each (user's rule,
+//-    2026-08-08): the setting's label already says what it is, so the
+//-    sentence says only what it does, never the internal justification —
+//-    that belongs in .AIRules, not in front of someone trying to flip a
+//-    switch. Plain static title attributes, never bound through a translate
+//-    pipe: this page has no i18n, and an Angular expression literal is
+//-    parsed at runtime by the JIT compiler, unlike a plain HTML attribute —
+//-    a long sentence with a straight apostrophe or an em dash inside one
+//-    broke that parser across the whole tab (piège vécu ici même, 2026-08-08).
+//- 3. Every setting keeps working exactly as before: only the wording here
+//-    got shorter.
 .sidebar-plus-settings
   ul.nav.nav-tabs.sidebar-plus-settings-nav
     li.nav-item
@@ -31,8 +39,8 @@
 
       .form-line
         .header
-          .title Afficher la sidebar #[i.fas.fa-info-circle.info-hint(title="Le plugin retire son nœud du DOM et rend à Tabby tout ce qu il masquait. Rien n est désinstallé ni perdu.")]
-          .description Décoché, la sidebar est retirée et Tabby retrouve son état d'origine. Cette page reste accessible.
+          .title Afficher la sidebar #[i.fas.fa-info-circle.info-hint(title="Retire la sidebar sans rien désinstaller.")]
+          .description Décochez pour la masquer ; cette page reste accessible.
         .control
           toggle(
             [ngModel]='enabled',
@@ -41,8 +49,8 @@
 
       .form-line
         .header
-          .title Masquer le menu des transferts de Tabby #[i.fas.fa-info-circle.info-hint(title="Le menu natif est téléporté dans le body : c est lui qui est visé, pas seulement son bouton. Ses lignes ne s effacent qu une par une, à la main.")]
-          .description Le gestionnaire de la sidebar montre les mêmes transferts. Laissé visible, le menu natif s'ouvre de lui-même à chaque transfert.
+          .title Masquer le menu des transferts de Tabby #[i.fas.fa-info-circle.info-hint(title="Sinon le menu natif de Tabby s'ouvre à chaque transfert.")]
+          .description Le panneau de la sidebar affiche déjà les mêmes transferts.
         .control
           toggle(
             [ngModel]='hideNativeTransfersMenu',
@@ -52,9 +60,7 @@
   ng-container(*ngIf="section === 'features'")
     .settings-section
       .section-intro
-        | Chaque bloc s'allume et s'éteint ici, avec ses réglages sous son
-        | interrupteur. Éteindre coupe aussi ce qui l'alimente — rien n'est
-        | supprimé, tout revient en rallumant.
+        | Chaque bloc s'active indépendamment. Rien n'est supprimé en l'éteignant.
 
 
     //- Les blocs sans réglage propre, groupés et resserrés en tête : ce sont
@@ -63,8 +69,8 @@
     .settings-section.compact-blocks
       .form-line.block-switch
         .header
-          .title Tunnels actifs #[i.fas.fa-info-circle.info-hint(title="Reflet de l état du moteur de port-forwarding de Tabby. Pastille allumée quand des tunnels sont montés, estompée quand le profil en porte seulement en configuration.")]
-          .description Le panneau des redirections de ports, et les pastilles « maillon » sur les profils.
+          .title Tunnels actifs #[i.fas.fa-info-circle.info-hint(title="Reflète l'état du port-forwarding de Tabby.")]
+          .description Panneau des redirections de ports et pastilles sur les profils.
           .description.text-warning(*ngIf="!hostHas('ssh-tab')") Indisponible sur cette version de Tabby. Votre réglage est conservé.
         .control
           toggle(
@@ -75,18 +81,31 @@
 
       .form-line.block-switch
         .header
-          .title Workspaces #[i.fas.fa-info-circle.info-hint(title="Les workspaces filtrent la visibilité, ils ne suppriment rien. « Tous » est le cas sans exclusion. La barre de filtrage, elle, cherche partout quoi qu il arrive.")]
-          .description La barre des espaces de travail. Éteinte, la sidebar revient sur « Tous » et tout redevient visible.
+          .title Workspaces #[i.fas.fa-info-circle.info-hint(title="« Tous » n'exclut rien ; la barre de filtrage cherche partout.")]
+          .description Barre des espaces de travail, au-dessus de la liste.
         .control
           toggle(
             [ngModel]="blockOn('showWorkspaces')",
             (ngModelChange)="setBlock('showWorkspaces', $event)"
           )
 
+      .block-options(*ngIf="blockOn('showWorkspaces')")
+        .form-line
+          .header
+            .title Présentation #[i.fas.fa-info-circle.info-hint(title="Onglets ou liste compacte, au choix.")]
+            .description Change l'affichage de la barre des workspaces.
+          .control
+            select#sidebar-plus-workspace-selector-mode.form-control(
+              [ngModel]='workspaceSelectorMode',
+              (ngModelChange)='setWorkspaceSelectorMode($event)'
+            )
+              option(value='tabs') Onglets (passent à la ligne)
+              option(value='dropdown') Liste déroulante
+
       .form-line.block-switch
         .header
-          .title Barre de filtrage #[i.fas.fa-info-circle.info-hint(title="Cherche le nom, la description, l hôte et l utilisateur, et ignore délibérément le masquage du workspace actif. Éteinte, le raccourci reste sans effet plutôt que de paraître cassé.")]
-          .description Le champ de recherche et son raccourci #[kbd Ctrl+F].
+          .title Barre de filtrage #[i.fas.fa-info-circle.info-hint(title="Cherche le nom, la description, l'hôte et l'utilisateur.")]
+          .description Champ de recherche et raccourci #[kbd Ctrl+F].
         .control
           toggle(
             [ngModel]="blockOn('showFilter')",
@@ -95,8 +114,8 @@
 
       .form-line.block-switch
         .header
-          .title Snippets #[i.fas.fa-info-circle.info-hint(title="Une bibliothèque de commandes rattachées aux profils et aux dossiers. Éteint, l onglet de la bibliothèque disparaît aussi, et une session qui s ouvre ne vérifie plus les variables. Rien n est supprimé : tout revient en rallumant.")]
-          .description L'entrée « Snippets… » du clic droit, et l'onglet de la bibliothèque.
+          .title Snippets #[i.fas.fa-info-circle.info-hint(title="Bibliothèque de commandes attachées aux profils et aux dossiers.")]
+          .description Entrée « Snippets… » du clic droit et onglet dédié.
         .control
           toggle(
             [ngModel]="blockOn('showSnippets')",
@@ -105,20 +124,30 @@
 
       .form-line.block-switch
         .header
-          .title Notes #[i.fas.fa-info-circle.info-hint(title="Un mémento libre par profil ou dossier. Éteintes, les pastilles disparaissent et la barre de filtrage cesse de chercher dedans. Les notes écrites sont conservées.")]
-          .description L'entrée « note » du clic droit, et la pastille sur les lignes concernées.
+          .title Notes #[i.fas.fa-info-circle.info-hint(title="Un mémento libre par profil ou dossier.")]
+          .description Entrée « note » du clic droit et pastille associée.
         .control
           toggle(
             [ngModel]="blockOn('showNotes')",
             (ngModelChange)="setBlock('showNotes', $event)"
           )
 
+      .form-line.block-switch
+        .header
+          .title Profils récents #[i.fas.fa-info-circle.info-hint(title="Les 5 derniers profils lancés, tous types confondus.")]
+          .description Liste affichée sous les sessions actives.
+        .control
+          toggle(
+            [ngModel]="blockOn('showRecentProfiles')",
+            (ngModelChange)="setBlock('showRecentProfiles', $event)"
+          )
+
     //- SESSIONS ACTIVES
     .settings-section
       .form-line.block-switch
         .header
-          .title Sessions actives #[i.fas.fa-info-circle.info-hint(title="Une ligne par pane, pas par onglet. Le clic déplace le focus sur la session, y compris dans un split. Éteinte, le balayage des onglets toutes les 2 s s arrête.")]
-          .description La liste des connexions SSH ouvertes, en haut de la sidebar.
+          .title Sessions actives #[i.fas.fa-info-circle.info-hint(title="Une ligne par pane, pas par onglet.")]
+          .description Connexions SSH ouvertes, en haut de la sidebar.
           .description.text-warning(*ngIf="!hostHas('ssh-tab')") Indisponible sur cette version de Tabby. Votre réglage est conservé.
         .control
           toggle(
@@ -130,8 +159,8 @@
       .block-options(*ngIf="blockOn('showActiveSessions', 'ssh-tab')")
         .form-line
           .header
-            .title Mesure de latence, en secondes #[i.fas.fa-info-circle.info-hint(title="Aller-retour SFTP sur la session elle-même, donc le délai ressenti à la frappe — pas un ping ICMP vers l hôte, que bien des pare-feux bloquent. Pastille verte sous 80 ms, orange sous 250 ms, rouge au-delà, grise sans mesure. Un serveur sans sous-système SFTP n est plus sollicité.")]
-            .description Colore la pastille de chaque session. 0 désactive — chaque mesure est une vraie requête au serveur.
+            .title Mesure de latence, en secondes #[i.fas.fa-info-circle.info-hint(title="Aller-retour SFTP réel, pas un ping ICMP.")]
+            .description Colore la pastille de chaque session. 0 désactive.
           .control
             input#sidebar-plus-ping-interval.form-control(
               type='number',
@@ -145,8 +174,8 @@
     .settings-section
       .form-line.block-switch
         .header
-          .title Vue SFTP #[i.fas.fa-info-circle.info-hint(title="Éteinte, les panneaux gardés en cache sont libérés et l onglet disparaît de la barre de mode. La rallumer rouvre un canal SFTP par session réellement parcourue.")]
-          .description L'onglet SFTP de la sidebar et son panneau.
+          .title Vue SFTP #[i.fas.fa-info-circle.info-hint(title="Un canal SFTP par session réellement parcourue.")]
+          .description Onglet SFTP de la sidebar et son panneau.
           .description.text-warning(*ngIf="!hostHas('sftp-panel')") Indisponible sur cette version de Tabby. Votre réglage est conservé.
         .control
           toggle(
@@ -161,8 +190,8 @@
             quelques caractères visibles — un chemin d'exécutable n'y tenait pas.
         .form-line.stacked
           .header
-            .title Éditeur des fichiers distants #[i.fas.fa-info-circle.info-hint(title="Le fichier est copié en local, ouvert, puis renvoyé au serveur à chaque enregistrement, avec détection de conflit. L association du système exécuterait un programme au lieu de l éditer — d où l éditeur imposé.")]
-            .description Le double-clic ouvre toujours ce programme, jamais l'association du système. Vide, Windows demande à chaque fois.
+            .title Éditeur des fichiers distants #[i.fas.fa-info-circle.info-hint(title="Le fichier est copié, édité, puis renvoyé au serveur.")]
+            .description Programme ouvert au double-clic. Vide, Windows décide.
           .control
             input#sidebar-plus-editor-path.form-control(
               type='text',
@@ -186,8 +215,8 @@
         //- that wrapper and matches the switches of Tabby's own settings pages.
         .form-line
           .header
-            .title Glisser un dossier vers l'Explorateur #[i.fas.fa-info-circle.info-hint(title="Un fichier part en un seul geste, sans copie préalable. Un dossier passe par un marqueur déposé à la destination pour la retrouver, puis est livré par SFTP.")]
-            .description Un dossier est téléchargé en entier avant le dépôt. Au-delà de 25 fichiers ou 20 Mo, une confirmation est demandée.
+            .title Glisser un dossier vers l'Explorateur #[i.fas.fa-info-circle.info-hint(title="Le dossier est téléchargé en entier avant le dépôt.")]
+            .description Au-delà de 25 fichiers ou 20 Mo, confirmation demandée.
           .control
             toggle(
               [ngModel]='dragOutFolders',
@@ -196,8 +225,8 @@
 
         .form-line
           .header
-            .title Rafraîchissement automatique, en secondes #[i.fas.fa-info-circle.info-hint(title="Seules les entrées qui ont changé sont redessinées. Le cycle est sauté tant qu un menu est ouvert, qu un chemin se saisit ou qu une suppression est en cours.")]
-            .description SFTP ne signale aucun changement. 0 désactive — chaque cycle relit tout le dossier.
+            .title Rafraîchissement automatique, en secondes #[i.fas.fa-info-circle.info-hint(title="Seules les entrées modifiées sont redessinées.")]
+            .description 0 désactive ; chaque cycle relit le dossier.
           .control
             input#sidebar-plus-auto-refresh.form-control(
               type='number',
@@ -209,8 +238,18 @@
 
         .form-line
           .header
-            .title Suppression : bouton activé par Entrée #[i.fas.fa-info-circle.info-hint(title="La confirmation est une modale HTML, jamais un dialogue système. Le défaut prudent évite qu une frappe réflexe supprime : il n y a pas d annulation.")]
-            .description S'applique à la touche #[kbd Suppr] comme au clic droit. #[kbd Échap] annule toujours.
+            .title Revenir sur Profils quand plus aucune session SSH n'est ouverte #[i.fas.fa-info-circle.info-hint(title="Couvre aussi l'écran d'attente du panneau SFTP.")]
+            .description Attend la fin du délai de grâce de la session affichée.
+          .control
+            toggle(
+              [ngModel]='autoReturnToProfiles',
+              (ngModelChange)='setAutoReturnToProfiles($event)'
+            )
+
+        .form-line
+          .header
+            .title Suppression : bouton activé par Entrée #[i.fas.fa-info-circle.info-hint(title="Aucune suppression n'est annulable ensuite.")]
+            .description S'applique à #[kbd Suppr] et au clic droit. #[kbd Échap] annule toujours.
           .control
             select#sidebar-plus-delete-default.form-control(
               [ngModel]='deleteDefaultButton',
@@ -221,8 +260,8 @@
 
         .form-line
           .header
-            .title Gestionnaire de transferts #[i.fas.fa-info-circle.info-hint(title="Reflète tous les transferts de l application, y compris ceux du panneau SFTP natif et des autres plugins — d où sa dépendance à la vue SFTP, qui est leur source habituelle. Éteint, ni historique ni minuterie ne tournent, et le menu de transferts de Tabby cesse d être masqué pour qu il reste un affichage.")]
-            .description Le panneau en bas de sidebar. Éteint, plus rien n'est suivi.
+            .title Gestionnaire de transferts #[i.fas.fa-info-circle.info-hint(title="Reflète aussi les transferts du panneau SFTP natif.")]
+            .description Panneau affiché en bas de sidebar.
           .control
             toggle(
               [ngModel]="blockOn('showTransfers')",
@@ -240,10 +279,7 @@
   ng-container(*ngIf="section === 'snippets' && blockOn('showSnippets')")
     .settings-section
       .section-intro
-        | Une commande écrite une fois, rattachée aux profils et aux dossiers où
-        | elle sert. La modifier ici la corrige partout. Ce qui change d'un
-        | serveur à l'autre s'écrit #[code {{ '{{variable}}' }}] et se renseigne
-        | par le clic droit sur le profil.
+        | Une commande écrite une fois, utilisable partout où elle est attachée.
 
       .snippet-library(*ngIf='!draft')
         .snippet-empty(*ngIf='!snippets.length')
@@ -279,12 +315,8 @@
           .header
             .title Commande
             .description
-              | Écrivez #[code {{ '{{nom}}' }}] pour une valeur attendue du profil, ou
-              | #[code {{ '{{nom=valeur}}' }}] pour une valeur par défaut. Sans défaut,
-              | la variable est obligatoire : le snippet refuse de partir tant qu'elle
-              | n'est pas renseignée. Entourez de guillemets — #[code cd "{{ '{{dir}}' }}"] —
-              | toute variable pouvant contenir un espace ; l'écran des variables le
-              | signale au cas par cas.
+              | Utilisez #[code {{ '{{nom}}' }}] pour une valeur requise, ou
+              | #[code {{ '{{nom=valeur}}' }}] pour une valeur par défaut.
           .control
             textarea.form-control.snippet-editor-command(rows='6', [(ngModel)]='draft.command', placeholder='sudo systemctl restart nginx')
         //- No behaviour settings here: they belong to the pairing of a snippet

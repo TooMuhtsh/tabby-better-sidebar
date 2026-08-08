@@ -3,7 +3,12 @@
   "version": "0.3.0",
   "description": "Enhanced connection sidebar for Tabby: a contextual SFTP browser inside the sidebar itself, pinned favorites, live connection status, active sessions, workspaces, SSH tunnels, drag & drop (including dragging remote files out to the OS), a transfer manager, and a custom icon picker.",
   "keywords": [
-    "tabby-plugin"
+    "tabby-plugin",
+    "tabby",
+    "sidebar",
+    "sftp",
+    "ssh",
+    "terminal"
   ],
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -20,6 +25,7 @@
     "build:prod": "webpack --progress --color --mode production && node scripts/strip-source-maps.js",
     "watch": "webpack --progress --color --watch",
     "lint:airules": "html-validate \".AIRules/**/*.html\"",
+    "lint:i18n": "node scripts/lint-i18n.js",
     "prepublishOnly": "npm run build:prod"
   },
   "files": [

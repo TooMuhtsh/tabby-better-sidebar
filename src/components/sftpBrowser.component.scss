@@ -160,6 +160,18 @@ sidebar-plus-sftp-browser .sftp-row {
     }
 }
 
+// The lazy-loading sentinel — discreet on purpose, it is not a row and
+// should not read as one: no hover, no pointer cursor, no drag semantics,
+// just a quiet marker that more is on its way while the IntersectionObserver
+// watches it.
+sidebar-plus-sftp-browser .sftp-load-more {
+    padding: .3rem .3rem;
+    opacity: .5;
+    font-size: .7rem;
+    font-style: italic;
+    text-align: center;
+}
+
 // Background over --theme-bg, not --theme-bg-more-2: the latter is the
 // sidebar's own colour, which made floating menus invisible on top of it
 // (fixed once already for the tree's menus, commit a2f6a58).

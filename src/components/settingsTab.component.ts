@@ -189,6 +189,15 @@ export class SidebarPlusSettingsTabComponent {
         await this.config.save()
     }
 
+    get workspaceSelectorMode (): string {
+        return this.config.store.sidebarPlus?.workspaceSelectorMode ?? 'tabs'
+    }
+
+    async setWorkspaceSelectorMode (value: string): Promise<void> {
+        this.config.store.sidebarPlus.workspaceSelectorMode = value
+        await this.config.save()
+    }
+
     get dragOutFolders (): boolean {
         return !!this.config.store.sidebarPlus?.sftpDragOutFolders
     }
@@ -228,6 +237,15 @@ export class SidebarPlusSettingsTabComponent {
     async setAutoRefreshSeconds (value: unknown): Promise<void> {
         const seconds = Math.max(0, Math.round(Number(value) || 0))
         this.config.store.sidebarPlus.sftpAutoRefreshSeconds = seconds
+        await this.config.save()
+    }
+
+    get autoReturnToProfiles (): boolean {
+        return this.config.store.sidebarPlus?.sftpAutoReturnToProfiles ?? true
+    }
+
+    async setAutoReturnToProfiles (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.sftpAutoReturnToProfiles = value
         await this.config.save()
     }
 

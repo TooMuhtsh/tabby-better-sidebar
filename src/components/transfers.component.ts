@@ -33,9 +33,24 @@ export class SidebarPlusTransfersComponent {
         window.localStorage.sidebarPlusTransfersCollapsed = this.collapsed ? 'true' : 'false'
     }
 
-    remove (entry: TransferEntry, event: MouseEvent): void {
+    /**
+     * Asks before removing a still-running line, because removing one cancels
+     * it (see `SidebarPlusTransfersService.remove()`). A finished/cancelled/
+     * failed line has nothing left to lose, so it is removed outright — same
+     * split as `clear()` below.
+     */
+    async remove (entry: TransferEntry, event: MouseEvent): Promise<void> {
         event.preventDefault()
         event.stopPropagation()
+        if (entry.state === 'active') {
+            const modal = this.ngbModal.open(ConfirmModalComponent)
+            modal.componentInstance.message = `Annuler « ${entry.name} » en cours ?`
+            modal.componentInstance.confirmLabel = 'Annuler le transfert'
+            modal.componentInstance.defaultButton = 'cancel'
+            if (!await modal.result.catch(() => false)) {
+                return
+            }
+        }
         this.transfers.remove(entry)
     }
 

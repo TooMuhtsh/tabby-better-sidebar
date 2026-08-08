@@ -1,5 +1,5 @@
 .modal-header
-    h5.modal-title.no-wrap Note — {{ targetName }}
+    h5.modal-title.no-wrap {{ 'Note: {name}' | translate:{ name: targetName } }}
     button.btn-close((click)='cancel()')
 
 .modal-body
@@ -9,11 +9,11 @@
         #field,
         rows='10',
         [(ngModel)]='text',
-        placeholder='Commandes de relance, rappels de maintenance, numéros de tickets…',
+        [placeholder]="'Restart commands, maintenance reminders, ticket numbers…' | translate",
         (keydown.control.enter)='save()'
     )
-    .text-muted.small.mt-2 Vider le champ retire la note.
+    .text-muted.small.mt-2 {{ 'Clearing the field removes the note.' | translate }}
 
 .modal-footer
-    button.btn.btn-secondary((click)='cancel()') Annuler
-    button.btn.btn-primary((click)='save()') Enregistrer
+    button.btn.btn-secondary((click)='cancel()') {{ 'Cancel' | translate }}
+    button.btn.btn-primary((click)='save()') {{ 'Save' | translate }}

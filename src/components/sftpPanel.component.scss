@@ -73,3 +73,25 @@ sidebar-plus-sftp .sftp-bound-tab {
     }
 }
 
+// Sits inside `.sftp-bound-tab`, whose own `opacity: .7` above applies to
+// this whole subtree — the `.active` state below relies on `--theme-primary`
+// itself (not on reaching full opacity) to still read as clearly "on".
+sidebar-plus-sftp .sftp-freeze-toggle {
+    flex: 0 0 auto;
+    color: inherit;
+    opacity: .7;
+    padding: 0 .2rem;
+    border-radius: .2rem;
+    text-decoration: none;
+
+    &:hover {
+        opacity: 1;
+        background-color: var(--theme-secondary);
+    }
+
+    &.active {
+        opacity: 1;
+        color: var(--theme-primary);
+    }
+}
+
