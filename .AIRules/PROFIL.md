@@ -5,7 +5,8 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 
 - **Profil de départ** : `complet`
 - **Charte au moment du cadrage** : `20260731-204511`
-- **Dernière revue de ce profil** : 2026-08-03 (entretien complet relu ; seule `seuil` a changé)
+- **Dernière revue de ce profil** : 2026-08-08 (remise à niveau vers la charte `20260804-071239` ;
+  les deux options qu'elle ajoute, `registre-livrés` et `journal-format`, ont été tranchées)
 
 ## Choix
 
@@ -13,6 +14,8 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 |---|---|---|
 | `format` | `html` | quatre documents HTML statiques et une feuille de style partagée, en place depuis l'origine du projet ; confirmé au cadrage |
 | `documents` | `4` | `README` · `AI-CONTEXT` · `AI-HISTORY` · `ROADMAP`, séparés depuis l'origine |
+| `registre-livrés` | `oui` | tranché le 2026-08-08 à la remise à niveau vers `20260804-071239` : la roadmap dépassait 3 300 lignes et décrivait surtout des chantiers déjà livrés — le registre `annexes/REALISE.html` lui rend son rôle de « ce qui reste à faire ». Les chantiers `Écarté` restent en roadmap, seul endroit qui évite qu'une idée déjà tranchée soit reproposée |
+| `journal-format` | `tableau` | statu quo confirmé le 2026-08-08 : le journal est déjà en sections par chantier ; aucune conversion, l'exception de format d'A-4 reste inutilisée |
 | `fichier-instructions` | `CLAUDE.md` | seul assistant qui consomme ce dépôt aujourd'hui |
 | `statuts` | `complet` | « À revérifier » sert déjà aux pièges suspendus au comportement non contractuel de Tabby ; « Adopté » devient utilisable avec `outillage = oui` |
 | `outillage` | `oui` | le plugin est d'abord l'outil quotidien de son auteur : « Adopté » distingue une fonctionnalité qui marche d'une fonctionnalité réellement utilisée dans le flux de travail |
@@ -36,10 +39,11 @@ Réponses de cadrage de ce projet. La charte qui les rend nécessaires est
 
 ## Questions non tranchées
 
-Aucune. Les vingt-deux options ont reçu une réponse explicite au cadrage du 2026-07-31 ;
-aucune ligne ne porte « défaut appliqué, non tranché ». Les vingt-deux ont été relues le
-2026-08-03 sous la charte `20260731-204511` : les clés de la charte et celles de ce tableau
-correspondent une à une, et seule `seuil` a changé de valeur.
+Aucune. Les vingt-deux options du cadrage du 2026-07-31 ont reçu une réponse explicite,
+relues en entier le 2026-08-03 sous la charte `20260731-204511` (seule `seuil` a changé de
+valeur). Les deux options ajoutées par la charte `20260804-071239` — `registre-livrés` et
+`journal-format` — ont été tranchées le 2026-08-08 ; aucune ligne ne porte « défaut
+appliqué, non tranché ».
 
 ## Historique des changements
 
