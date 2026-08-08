@@ -86,9 +86,9 @@ be **frozen** on one session so it stops following the focused tab.
 ## 🌍 Languages
 
 The interface follows Tabby's language — English, plus French, Spanish and
-German. **Translation is currently partial and in progress**: the SFTP browser
-and dialogs are already translated, and the rest of the sidebar is being
-converted lot by lot in the coming releases.
+German. Since 0.4.0 the whole sidebar is covered: profiles tree, context
+menus, active sessions and tunnels, SFTP browser, dialogs, transfers and the
+settings tab. Any other locale falls back to English.
 
 ## Elsewhere
 
