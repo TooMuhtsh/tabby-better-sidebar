@@ -181,6 +181,16 @@ sidebar-plus-tree .active-sessions {
             opacity: .5;
         }
 
+        // Same box as .session-uptime, which it replaces on the row while a
+        // transfer is running — a touch more opaque since it is live activity
+        // rather than ambient elapsed time.
+        .session-transfer {
+            flex: 0 0 auto;
+            margin-left: .4rem;
+            font-size: .65rem;
+            opacity: .75;
+        }
+
         .fw-20 {
             width: 20px;
         }
@@ -223,6 +233,7 @@ sidebar-plus-tree .active-sessions {
     margin-bottom: .35rem;
 
     .workspace-tab {
+        position: relative; // anchors .workspace-color-dot below
         display: inline-flex;
         align-items: center;
         max-width: 110px;
@@ -246,11 +257,144 @@ sidebar-plus-tree .active-sessions {
             color: var(--theme-bg);
             border-color: var(--theme-primary);
         }
+
+        // Sized to the tab's own font-size/line-height rather than the
+        // 15px used elsewhere in this file (tree rows, drag previews): those
+        // sit in a taller row, this one must add zero height to a tab whose
+        // whole box is .15rem padding + .75rem text.
+        profile-icon {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+        }
+
+        // Discreet marker only — never a filled background, which would make
+        // an active/inactive tab and a colored/uncolored one indistinguishable
+        // at a glance. Absolutely positioned over the tab's own right padding
+        // so it takes no part in the flex layout: a workspace gaining a color
+        // must not grow its tab by even one pixel.
+        .workspace-color-dot {
+            position: absolute;
+            top: 3px;
+            right: 4px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+            pointer-events: none;
+        }
     }
 
     .workspace-tab-add {
         max-width: none;
         padding: .15rem .4rem;
+    }
+}
+
+// The 'dropdown' alternative to .workspace-bar above (workspaceSelectorMode,
+// an explicit setting — see the getter's own comment in the .ts). Same box
+// language as a single .workspace-tab rather than a copy-paste of it: this
+// isn't a tab, it is the one row that replaces the whole strip, so it
+// stretches full width and ends in a chevron instead of clipping at a fixed
+// max-width.
+.workspace-bar-compact {
+    width: 100%;
+    margin-bottom: .35rem;
+    padding: .15rem .5rem;
+    border-radius: .2rem;
+    font-size: .75rem;
+    color: inherit;
+    text-decoration: none;
+    background-color: var(--theme-bg-more-2);
+    border: 1px solid var(--theme-secondary);
+
+    &:hover {
+        background-color: var(--theme-secondary);
+    }
+
+    // Same reasoning as .workspace-tab profile-icon above: sized to this
+    // row's own .75rem text/.15rem padding rather than the 15px used by the
+    // tree rows and context menus elsewhere in this file.
+    profile-icon {
+        width: 12px;
+        height: 12px;
+        flex: 0 0 auto;
+    }
+
+    .fa-chevron-down {
+        flex: 0 0 auto;
+        font-size: .65rem;
+        opacity: .6;
+    }
+}
+
+// .workspace-color-dot's real rule lives nested under .workspace-bar
+// .workspace-tab above — reusing the bare class name here would inherit
+// nothing at all (piège #56: a selector that is descendant of another
+// component/context gives the illusion of sharing while silently applying no
+// style). Both contexts below want the dot laid out inline next to the name
+// instead of .workspace-tab's absolutely-positioned corner badge — .workspace-
+// bar-compact has a chevron after the name, and .workspace-switcher-menu's
+// rows are a vertical list, neither of which has a "corner" to pin a badge to.
+.workspace-bar-compact .workspace-color-dot,
+.workspace-switcher-menu .workspace-color-dot {
+    position: static;
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    margin-left: .3rem;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+}
+
+// The popup opened by .workspace-bar-compact — same box as any other
+// .group-context-menu, just capped and scrollable: unlike the fixed-length
+// menus elsewhere in this file, its row count is the user's own workspace
+// count, and clampInViewport() only ever repositions a popup, it never
+// shrinks one.
+.workspace-switcher-menu {
+    max-height: 320px;
+    overflow-y: auto;
+
+    // No dedicated "current workspace" treatment exists yet on
+    // .group-context-menu-item elsewhere in this file — an inset bar rather
+    // than a filled background, so it stays legible layered under the
+    // existing :hover background instead of one flat color overriding
+    // another.
+    .group-context-menu-item.active {
+        box-shadow: inset 2px 0 0 var(--theme-primary);
+        font-weight: 600;
+    }
+
+    // The "⋯" management entry point — see onWorkspaceTabContextMenu()'s own
+    // comment for why it, not a right-click on the row, is the one wired to
+    // it in this popup. Dimmed at rest (present but clearly secondary to the
+    // row's own click-to-select) and brought up to full opacity only once
+    // the *row* is hovered, not the button itself — discoverable by moving
+    // the mouse onto the row at all, not by having to find the button first.
+    .group-context-menu-item-btn {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        margin-left: .3rem;
+        border-radius: .2rem;
+        opacity: .35;
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+
+        &:hover {
+            opacity: 1;
+            background-color: var(--theme-primary);
+            color: var(--theme-bg);
+        }
+    }
+
+    .group-context-menu-item:hover .group-context-menu-item-btn {
+        opacity: .75;
     }
 }
 
@@ -448,6 +592,23 @@ sidebar-plus-tree .active-sessions {
                     color: #e8b923;
                 }
             }
+        }
+
+        // "Imbriquer" feedback, distinct from the plain reorder CDK already
+        // shows: the one folder row currently under the pointer in nest mode
+        // — lower half of its own row for a folder dragged onto it, or the
+        // folder whose profile list a dragged profile has entered — see
+        // isNestTarget() in the component, which decides which. Kept last in
+        // this block so it wins the specificity tie against :hover/.selected
+        // above through source order alone.
+        //
+        // Background + inset box-shadow only, same reasoning as `.selected`
+        // above: neither affects layout, so CDK's cached drop-list rects stay
+        // valid while this toggles mid-drag (piège #25/#28) — no border, no
+        // min-height/margin change, ever.
+        &.sidebar-plus-nest-target {
+            background-color: color-mix(in srgb, var(--theme-primary) 22%, transparent);
+            box-shadow: inset 0 0 0 1.5px var(--theme-primary);
         }
     }
 
@@ -717,6 +878,38 @@ sidebar-plus-tree .grabber {
     }
 }
 
+// Workspace color picker — same swatch-grid idea as .icon-picker-grid above,
+// but the tiles are plain color circles (no profile-icon glyph) and live
+// inside a .create-popup rather than .icon-picker (it has no search box or
+// favorites/recent sections to make room for).
+.color-picker-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-bottom: .4rem;
+
+    .color-picker-item {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        // Every swatch gets a hairline outline of its own regardless of
+        // theme/hover/active state — without it the lightest colors (yellow)
+        // would blend straight into a light background with no boundary at
+        // all, active or not.
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25);
+
+        &:hover {
+            border-color: var(--theme-secondary);
+        }
+
+        &.active {
+            border-color: var(--theme-primary);
+        }
+    }
+}
+
 .btn-hidden-toggle {
     flex: 0 0 auto;
     display: flex;
@@ -852,6 +1045,39 @@ sidebar-plus-tree .active-tunnels {
     }
 }
 
+// Reuses .active-sessions-header/-count like .active-tunnels above, for the
+// same "one family" reason — scoped to the plugin's tag, same rationale as
+// the two blocks above it.
+sidebar-plus-tree .recent-profiles {
+    flex: 0 0 auto;
+    margin-bottom: .35rem;
+
+    .recent-profile {
+        display: flex;
+        align-items: center;
+        padding: .25rem;
+        line-height: 1.25rem;
+        border-radius: .3rem;
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        overflow: hidden;
+
+        &:hover {
+            background-color: var(--theme-secondary);
+        }
+
+        .fw-20 {
+            width: 20px;
+        }
+
+        profile-icon {
+            width: 15px;
+            height: 15px;
+        }
+    }
+}
+
 .tunnel-badge {
     font-size: .6rem;
     opacity: .75;
@@ -863,6 +1089,16 @@ sidebar-plus-tree .active-tunnels {
         opacity: .35;
         color: inherit;
     }
+}
+
+// Discreet on purpose, same size/opacity register as .tunnel-badge next to
+// it: an ↑/↓ is only ever shown for an `active` transfer (see
+// transferActivity() in the component), so unlike the tunnel badge it never
+// needs a dimmed "configured but idle" twin.
+.transfer-activity {
+    font-size: .6rem;
+    opacity: .75;
+    color: var(--theme-primary);
 }
 
 .tunnels-popup {
@@ -1033,6 +1269,69 @@ sidebar-plus-tree .active-tunnels {
                 width: 15px;
                 height: 15px;
             }
+        }
+    }
+}
+
+// Footer bar pinned to the very bottom of the sidebar, anchored to the tag's
+// own position: relative (top of this file). It is absolute so it never enters
+// the flex column's flow; the container below reserves a matching strip via
+// padding-bottom so the tree and the transfer rows stop above it instead of
+// running under it (the overlap this replaces — gear was 19px tall at
+// bottom: 4px, i.e. reaching 23px up, while content stopped at 8px).
+$footer-height: 26px;
+
+// The strip reserved under the content. The container is the tag's single
+// child (.p-2), padded 8px all round by Bootstrap; only the bottom is grown,
+// to footer height plus its border and a few px of air.
+sidebar-plus-tree > .p-2 {
+    padding-bottom: $footer-height + 5px;
+}
+
+sidebar-plus-tree .sidebar-plus-footer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    height: $footer-height;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 6px 0 10px;
+    // Same ground as the sidebar so it reads as chrome, with a hairline to lift
+    // it off the content that stops just above.
+    background-color: var(--theme-bg-more-2);
+    border-top: 1px solid var(--theme-secondary);
+
+    .sidebar-plus-footer-brand {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
+        color: var(--theme-fg, inherit);
+        opacity: 0.55;
+
+        .footer-name { font-weight: 600; }
+        .footer-by { opacity: 0.85; }
+        .footer-version { margin-left: 4px; opacity: 0.85; }
+    }
+
+    // Now lives in the footer flow, no longer absolute. Enlarged from 14px on
+    // the user's call; translucent at rest, full on hover.
+    .sidebar-plus-gear {
+        flex: 0 0 auto;
+        font-size: 17px;
+        line-height: 1;
+        padding: 2px;
+        color: inherit;
+        opacity: 0.55;
+        text-decoration: none;
+
+        &:hover {
+            opacity: 1;
+            color: inherit;
         }
     }
 }

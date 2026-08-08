@@ -67,14 +67,46 @@
                 //- Uptime on the row rather than in the tooltip only: it is the
                 //- kind of thing one reads by scanning the list, not by aiming
                 //- at a dot. Covered by .actions on hover, which is fine — the
-                //- tooltip repeats it.
-                span.session-uptime.no-wrap {{ sessionUptime(session) }}
+                //- tooltip repeats it. Swapped for the compact transfer segment
+                //- while one is running (session.transferLabel, precomposed by
+                //- refreshSessionTransfers() — piège #54) — uptime comes back
+                //- the moment the last transfer on this session leaves `active`.
+                span.session-uptime.no-wrap(*ngIf='!session.transferCount') {{ sessionUptime(session) }}
+                span.session-transfer.no-wrap(*ngIf='session.transferCount') {{ session.transferLabel }}
                 .actions
                     .action(
                         (click)='openSessionSftp(session, $event)',
                         title='Ouvrir le SFTP de cette session'
                     )
                         .fa.fa-fw.fas.fa-folder-open
+
+    //- Réengagement rapide sur les 5 derniers profils lancés, tous types
+    //- confondus, jamais cloisonné par workspace — un lancement est un fait de
+    //- l'app, même raisonnement que Sessions actives ci-dessus (ROADMAP
+    //- #historique-profils). Un id non résolu (profil supprimé, provider pas
+    //- encore chargé) est simplement sauté par recentProfiles, pas retiré de
+    //- l'historique. Vue Profils seulement, comme les tunnels : la fiche parle
+    //- de relance, pas de suivi de ce qui tourne.
+    .recent-profiles(*ngIf='showRecentProfiles && !sftpMode && recentProfiles.length')
+        a.active-sessions-header((click)='toggleRecentProfiles()', href='#')
+            .fa.fa-fw.fas.me-1(
+                [class.fa-chevron-down]='!recentProfilesCollapsed',
+                [class.fa-chevron-right]='recentProfilesCollapsed'
+            )
+            span.me-auto Récents
+            span.active-sessions-count {{ recentProfiles.length }}
+        div(*ngIf='!recentProfilesCollapsed')
+            //- Pas de menu contextuel, pas de favori, pas de statut : une rampe
+            //- de relance et rien d'autre.
+            a.recent-profile(
+                *ngFor='let profile of recentProfiles',
+                (click)='launchRecentProfile(profile, $event)',
+                [title]='profile.name',
+                href='#'
+            )
+                .fw-20
+                    profile-icon.ms-1([icon]='profile.icon', [color]='profile.color')
+                span.ms-2.no-wrap {{ profile.name }}
 
     //- Mirrors Tabby's own forwarding state, never drives it: the roadmap frames
     //- this chantier as a "surcouche visuelle" over the native engine. Sits
@@ -163,7 +195,11 @@
     //- sight of it there would be the one moment it matters.
     sidebar-plus-transfers(*ngIf='showTransfers')
 
-    .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='showWorkspaces && !sftpMode')
+    //- Which of the two blocks below renders is an explicit per-user setting
+    //- (workspaceSelectorMode, next to showWorkspaces in the settings tab),
+    //- never auto-detected — see the getter's own comment in the .ts for why
+    //- an earlier ResizeObserver-driven version was dropped.
+    .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='showWorkspaces && !sftpMode && workspaceSelectorMode === "tabs"')
         a.workspace-tab(
             [class.active]='activeWorkspaceId === "all"',
             (click)='selectWorkspace("all")',
@@ -176,13 +212,33 @@
             (contextmenu)='onWorkspaceTabContextMenu($event, ws)',
             [title]='ws.name',
             href='#'
-        ) {{ ws.name }}
+        )
+            profile-icon.me-1(*ngIf='ws.icon', [icon]='ws.icon')
+            span {{ ws.name }}
+            //- Absolutely positioned (see .workspace-color-dot in the SCSS)
+            //- so it adds zero width of its own — a colored workspace must
+            //- render at the exact same tab size as one without.
+            .workspace-color-dot(*ngIf='ws.color', [style.background-color]='ws.color')
         a.workspace-tab.workspace-tab-add(
             (click)='openCreateWorkspacePrompt($event)',
             title='Nouveau workspace',
             href='#'
         )
             .fa.fa-fw.fas.fa-plus
+
+    //- The 'dropdown' alternative to the strip above — active workspace only
+    //- (same icon/dot rendering a tab would use), the full list lives in the
+    //- popup opened by openWorkspaceSwitcher() below.
+    a.workspace-bar-compact.d-flex.align-items-center(
+        *ngIf='showWorkspaces && !sftpMode && workspaceSelectorMode === "dropdown"',
+        (click)='openWorkspaceSwitcher($event)',
+        [title]='activeWorkspace?.name ?? "Tous"',
+        href='#'
+    )
+        profile-icon.me-1(*ngIf='activeWorkspace?.icon', [icon]='activeWorkspace?.icon')
+        span.me-auto.no-wrap {{ activeWorkspace?.name ?? 'Tous' }}
+        .workspace-color-dot(*ngIf='activeWorkspace?.color', [style.background-color]='activeWorkspace?.color')
+        .fa.fa-fw.fas.fa-chevron-down.ms-1
 
     .d-flex.align-items-center.gap-1.mb-1(*ngIf='showFilter && !sftpMode')
         //- `#filterInput=''`, not `#filterInput`: in pug a leading `#` is id
@@ -258,6 +314,7 @@
             ng-template(#recursiveGroup let-group let-depth='depth')
                 a.tree-item(
                     [attr.data-group-id]='group.id',
+                    [class.sidebar-plus-nest-target]='isNestTarget(group)',
                     (click)='toggleGroupCollapse(group)',
                     (contextmenu)='onGroupContextMenu($event, group)',
                     [style.paddingLeft.px]='depth * 20',
@@ -280,7 +337,9 @@
                     [id]='"profiles-" + group.id',
                     [cdkDropListData]='group.profiles',
                     [cdkDropListConnectedTo]='profileListIds',
-                    (cdkDropListDropped)='onProfileDrop($event, group)'
+                    (cdkDropListDropped)='onProfileDrop($event, group)',
+                    (cdkDropListEntered)='onProfileListEntered(group)',
+                    (cdkDropListExited)='onProfileListExited(group)'
                 )
                     ng-container(*ngIf='!group.collapsed')
                         ng-container(*ngFor='let profile of group.profiles')
@@ -338,6 +397,15 @@
                                     [title]='configuredTunnelCount(profile) + " tunnel(s) configuré(s) — montés au lancement de la session"'
                                 )
                                     .fa.fa-fw.fas.fa-link
+                                //- Only while a transfer is `active` — never for
+                                //- a finished/failed one, which the transfers
+                                //- panel already carries. One badge per
+                                //- direction, since a session can serve both at
+                                //- once.
+                                .transfer-activity.ms-1(*ngIf='transferActivity(profile)?.up', title='Envoi en cours')
+                                    .fa.fa-fw.fas.fa-arrow-up
+                                .transfer-activity.ms-1(*ngIf='transferActivity(profile)?.down', title='Réception en cours')
+                                    .fa.fa-fw.fas.fa-arrow-down
 
                                 .actions
                                     .action((click)='toggleFavorite(profile, $event)')
@@ -525,7 +593,7 @@
         | Supprimer
 
 .icon-picker(
-    *ngIf='isIconPickerMode && (contextMenuGroup || contextMenuProfile)',
+    *ngIf='isIconPickerMode && (contextMenuGroup || contextMenuProfile || contextMenuWorkspace)',
     [style.left.px]='contextMenuX',
     [style.top.px]='contextMenuY',
     (click)='$event.stopPropagation()'
@@ -533,6 +601,15 @@
     .icon-picker-header
         span Choisir une icône
         a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+
+    //- Workspace-only: folders/profiles have no "back to no icon" entry to
+    //- share this with (verified — neither offers one), so this stays gated
+    //- to contextMenuWorkspace rather than becoming a general picker feature.
+    a.small.d-block.mb-1(
+        *ngIf='contextMenuWorkspace && contextMenuWorkspace.icon',
+        (click)='clearWorkspaceIcon()',
+        href='#'
+    ) Retirer l'icône
 
     .text-muted.small(*ngIf='!iconQuery') Favoris
     .icon-picker-grid(*ngIf='favoriteIcons.length && !iconQuery')
@@ -745,9 +822,68 @@
     a.group-context-menu-item((click)='openRenameWorkspacePrompt()', href='#')
         .fa.fa-fw.fas.fa-i-cursor.me-2
         | Renommer...
+    a.group-context-menu-item((click)='openIconPicker()', href='#')
+        .fa.fa-fw.fas.fa-icons.me-2
+        | Icône...
+    a.group-context-menu-item((click)='openWorkspaceColorPicker()', href='#')
+        .fa.fa-fw.fas.fa-palette.me-2
+        | Couleur...
+    a.group-context-menu-item((click)='copyWorkspace()', href='#')
+        .fa.fa-fw.fas.fa-copy.me-2
+        | Copier (JSON)
     a.group-context-menu-item((click)='confirmDeleteWorkspacePrompt()', href='#')
         .fa.fa-fw.fas.fa-trash.me-2
         | Supprimer
+
+//- Opened by .workspace-bar-compact (openWorkspaceSwitcher()) — the same
+//- entries .workspace-bar itself would show, one per row instead of one per
+//- tab. NOT a contextMenuMode popup: it has its own flag and its own fixed
+//- coordinates (anchored under the compact bar), so the manage popups opened
+//- from its "⋯" buttons render BESIDE it while it stays on screen — see the
+//- workspaceSwitcherOpen field's comment in the .ts. Left-click on a row
+//- switches workspace and closes it (terminal action, inside
+//- selectWorkspace()). Management goes through the row's own "⋯" button, not
+//- a right-click on the row — see onWorkspaceTabContextMenu()'s comment for
+//- why that was tried and reverted.
+.group-context-menu.workspace-switcher-menu(
+    *ngIf='workspaceSwitcherOpen',
+    [style.left.px]='workspaceSwitcherX',
+    [style.top.px]='workspaceSwitcherY',
+    (click)='$event.stopPropagation()'
+)
+    a.group-context-menu-item(
+        [class.active]='activeWorkspaceId === "all"',
+        (click)='selectWorkspace("all")',
+        href='#'
+    ) Tous
+    a.group-context-menu-item(
+        *ngFor='let ws of workspaces',
+        [class.active]='activeWorkspaceId === ws.id',
+        (click)='selectWorkspace(ws.id)',
+        [title]='ws.name',
+        href='#'
+    )
+        profile-icon.me-2(*ngIf='ws.icon', [icon]='ws.icon')
+        span.me-auto.no-wrap {{ ws.name }}
+        .workspace-color-dot(*ngIf='ws.color', [style.background-color]='ws.color')
+        //- A `div`, not a nested `a`: the row itself is already `a.group-
+        //- context-menu-item`, and an anchor inside an anchor is invalid HTML
+        //- that the parser silently un-nests (same reasoning as the SFTP
+        //- drag shortcut and the profile row's own .action buttons — see
+        //- .actions/.action above for the established pattern). The event is
+        //- passed for its stopPropagation() only — it keeps this from also
+        //- bubbling into the row's own (click)='selectWorkspace(...)' above
+        //- (same pattern as focusTunnelSession()) — never for its
+        //- coordinates: the menu anchors on the switcher's edge, one fixed
+        //- spot for every row (see switcherPopupAnchor()).
+        .group-context-menu-item-btn(
+            (click)='openWorkspaceMenuFromSwitcher($event, ws)',
+            title='Gérer ce workspace'
+        )
+            .fa.fa-fw.fas.fa-ellipsis-h
+    a.group-context-menu-item((click)='openCreateWorkspaceFromSwitcher($event)', href='#')
+        .fa.fa-fw.fas.fa-plus.me-2
+        | Nouveau workspace...
 
 .create-popup(
     *ngIf='isCreateWorkspaceMode',
@@ -765,6 +901,7 @@
         (keydown.enter)='createWorkspace()'
     )
     button.btn.btn-sm.btn-primary.mt-2((click)='createWorkspace()') Créer
+    button.btn.btn-sm.btn-secondary.mt-1((click)='importWorkspaceFromClipboard()') Importer du presse-papiers
 
 .create-popup(
     *ngIf='isRenameWorkspaceMode && contextMenuWorkspace',
@@ -784,6 +921,30 @@
     button.btn.btn-sm.btn-primary.mt-2((click)='confirmRenameWorkspace()') Renommer
 
 .create-popup(
+    *ngIf='isWorkspaceColorMode && contextMenuWorkspace',
+    [style.left.px]='contextMenuX',
+    [style.top.px]='contextMenuY',
+    (click)='$event.stopPropagation()'
+)
+    .icon-picker-header
+        span Couleur du workspace
+        a.icon-picker-close((click)='closeContextMenu()', href='#') ×
+    a.small.d-block.mb-1(
+        *ngIf='contextMenuWorkspace.color',
+        (click)='clearWorkspaceColor()',
+        href='#'
+    ) Retirer la couleur
+    .color-picker-grid
+        a.color-picker-item(
+            *ngFor='let c of workspaceColors',
+            [class.active]='contextMenuWorkspace.color === c.value',
+            [style.background-color]='c.value',
+            (click)='applyWorkspaceColor(c.value)',
+            [title]='c.name',
+            href='#'
+        )
+
+.create-popup(
     *ngIf='isConfirmDeleteWorkspaceMode && contextMenuWorkspace',
     [style.left.px]='contextMenuX',
     [style.top.px]='contextMenuY',
@@ -796,3 +957,21 @@
     .d-flex.gap-2
         button.btn.btn-sm.btn-danger((click)='deleteWorkspace()') Supprimer
         button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') Annuler
+
+//- Footer bar pinned to the bottom of the sidebar, in both views. Plugin
+//- signature + version on the left, settings gear on the right. Deliberately
+//- outside the profiles/SFTP *ngIf blocks: it belongs to the plugin, not to
+//- either view. It is absolute, and the container reserves a matching strip
+//- below its content (padding-bottom in the SCSS) so the tree and the transfer
+//- rows never run under it — the overlap this replaces.
+.sidebar-plus-footer
+    .sidebar-plus-footer-brand.no-wrap
+        span.footer-name better-sidebar
+        span.footer-by  by TooMuhtsh
+        span.footer-version v{{ pluginVersion }}
+    a.sidebar-plus-gear(
+        (click)='openPluginSettings()',
+        title='Réglages de Better Sidebar',
+        href='#'
+    )
+        .fa.fa-fw.fas.fa-cog

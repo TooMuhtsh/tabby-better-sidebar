@@ -3,6 +3,20 @@ import { ConfigProvider } from 'tabby-core'
 export interface SidebarWorkspace {
     id: string
     name: string
+    // Same picker as a profile/group (contextMenuMode = 'icon' in
+    // sidebarTree.component.ts), pointed at contextMenuWorkspace instead —
+    // absent (not a default string) until the user picks one, exactly like
+    // a profile/group's own optional `icon`.
+    icon?: string
+    // Same picker as a profile/group's own optional `color` (contextMenuMode
+    // = 'workspaceColor' in sidebarTree.component.ts, gated to the workspace
+    // tab's own menu rather than shared with the profile/group one — see
+    // openWorkspaceColorPicker()). Absent until chosen, exactly like `icon`
+    // above. Consumed two ways: launchProfile() injects it into a *clone* of
+    // any profile launched while this workspace is active and the profile
+    // carries no color of its own (never the live profile — piège #12), and
+    // the workspace tab itself renders a small dot next to its name when set.
+    color?: string
     // Exclusion lists, not inclusion lists: a profile/group created after a
     // workspace exists must stay visible by default in every workspace
     // (matches the roadmap's "masquer = décocher" framing — hiding is an
@@ -132,6 +146,15 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // refresh is a full readdir, which is not free on a large
             // directory.
             sftpAutoRefreshSeconds: 0,
+            // Whether the sidebar leaves the SFTP view for the profile tree on
+            // its own once no SSH tab anywhere in the app — splits included —
+            // still holds a live session, including from the panel's waiting
+            // placeholder (no tab bound at all). On by default: a stale SFTP
+            // view with nothing left to browse is not a state worth defending
+            // as a user choice. See SidebarPlusSftpComponent.sync() for the
+            // trigger itself, and the grace period it deliberately does not
+            // shortcut.
+            sftpAutoReturnToProfiles: true,
             // Seconds between two latency probes of each live SSH session, 0 to
             // disable. Off by default, like the SFTP auto-refresh above and for
             // a comparable reason: a probe is a real request sent to a real
@@ -167,10 +190,37 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // never persists (piège #23), and every key must be declared here
             // to survive a restart at all (piège #16).
             showActiveSessions: true,
+            // The MRU trail itself lives in localStorage
+            // (sidebarPlusRecentProfiles — see SidebarPlusTreeComponent), not
+            // here: it is per-machine usage, the same reasoning as
+            // sidebarPlusActiveWorkspace (ROADMAP #historique-profils —
+            // switching machines should not carry "what I last opened" along
+            // with it). This key only gates the block, like its siblings —
+            // off means the launch trail stops being recorded too, not just
+            // hidden (piège du switch de bloc, see below).
+            //
+            // OFF by default, unlike its block siblings (user call, 2026-08-08):
+            // the first cut is a bare relaunch ramp, and the user wants it out
+            // of the way until a later pass makes it earn its place. Turning it
+            // on starts recording; the block appears once something is on it.
+            showRecentProfiles: false,
             showTunnels: true,
             showSftp: true,
             showTransfers: true,
             showWorkspaces: true,
+            // How `.workspace-bar` itself is shown once showWorkspaces is on:
+            // 'tabs' is the original flex-wrap strip (wraps onto more rows as
+            // workspaces pile up); 'dropdown' swaps it for a single-line
+            // "active workspace + chevron" trigger that opens the full list as
+            // a popup instead — see workspaceSelectorMode in
+            // sidebarTree.component.ts and its radio in the settings tab.
+            //
+            // A deliberate, explicit choice rather than an auto-detected one:
+            // an earlier version switched modes on its own past a measured
+            // width (ResizeObserver-driven), and was rejected in testing
+            // (2026-08-07) for picking the layout out from under the user
+            // mid-session instead of letting them choose it once.
+            workspaceSelectorMode: 'tabs' as 'tabs'|'dropdown',
             showFilter: true,
             // Éteints, les deux retirent leur entrée du menu contextuel et ce
             // qu'ils posent sur les lignes — sans toucher à ce qui est stocké :

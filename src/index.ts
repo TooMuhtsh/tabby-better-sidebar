@@ -20,6 +20,7 @@ import { SidebarPlusSettingsTabProvider } from './settings'
 import { SidebarPlusMountService } from './mount.service'
 import { SidebarPlusHotkeyProvider, SidebarPlusHotkeyService } from './hotkeys'
 import { SidebarPlusTempFilesService } from './tempFiles.service'
+import { SidebarPlusI18nService } from './i18n'
 import { BetterPanelContribution, SIDEBAR_PANEL_TOKEN } from './betterPanel'
 
 /**
@@ -73,9 +74,12 @@ export default class SidebarPlusModule {
         mount: SidebarPlusMountService,
         hotkeys: SidebarPlusHotkeyService,
         temp: SidebarPlusTempFilesService,
+        i18n: SidebarPlusI18nService,
     ) {
         void mount
         void hotkeys
         void temp
+        // Subscription only — nothing that can block Tabby's startup path.
+        i18n.install()
     }
 }

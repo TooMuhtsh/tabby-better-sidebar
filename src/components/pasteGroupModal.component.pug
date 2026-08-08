@@ -1,30 +1,31 @@
 .modal-header
-    h5.modal-title.no-wrap Coller le groupe — {{ groupName }}
+    h5.modal-title.no-wrap {{ 'Paste the folder: {name}' | translate:{ name: groupName } }}
     button.btn-close((click)='cancel()')
 
 .modal-body.paste-group-modal
-    p Un dossier nommé <strong>{{ groupName }}</strong> existe déjà à la racine.
-    p.paste-group-count
-        | À coller : {{ folders }} dossier{{ folders > 1 ? 's' : '' }},
-        |  {{ profiles }} profil{{ profiles > 1 ? 's' : '' }}.
+    //- The name's own bold styling only survives translation via
+    //- [innerHTML] — see the `collisionSentence` getter for why the value is
+    //- escaped there rather than trusted straight from the input.
+    p([innerHTML]='collisionSentence')
+    p.paste-group-count {{ 'To paste: {folders, plural, one {# folder} other {# folders}}, {profiles, plural, one {# profile} other {# profiles}}.' | translate:{ folders: folders, profiles: profiles } }}
     //- The purge is stated here and not only in the notice afterwards: it says
     //- what will have to be re-entered, which is part of deciding whether to
     //- merge into a folder that already works.
     .paste-group-purge(*ngIf='purged')
         .fa.fa-fw.fas.fa-shield-halved.me-2
-        span Retiré à l'export : {{ purged }}. À ressaisir après le collage.
+        span {{ 'Removed from the export: {info}. Re-enter after pasting.' | translate:{ info: purged } }}
 
     .paste-group-choice
         button.btn.btn-primary.w-100(#suffixButton, (click)='choose("suffix")')
             .fa.fa-fw.fas.fa-plus.me-2
-            | Coller à côté
-        .paste-group-hint Un nouveau dossier « {{ suffixedName }} ». Rien de ce qui existe n'est touché.
+            | {{ 'Paste alongside' | translate }}
+        .paste-group-hint {{ 'A new folder "{name}". Nothing existing is touched.' | translate:{ name: suffixedName } }}
 
     .paste-group-choice
         button.btn.btn-secondary.w-100((click)='choose("merge")')
             .fa.fa-fw.fas.fa-code-merge.me-2
-            | Fusionner dans le dossier existant
-        .paste-group-hint Profils et sous-dossiers ajoutés à « {{ groupName }} ». Les doublons ne sont pas détectés.
+            | {{ 'Merge into the existing folder' | translate }}
+        .paste-group-hint {{ 'Profiles and subfolders added to "{name}". Duplicates are not detected.' | translate:{ name: groupName } }}
 
 .modal-footer
-    button.btn.btn-secondary((click)='cancel()') Annuler
+    button.btn.btn-secondary((click)='cancel()') {{ 'Cancel' | translate }}

@@ -1,4 +1,7 @@
 import './sidebarTree.component.scss'
+// Shown in the footer bar. Imported from package.json (resolveJsonModule) so it
+// tracks the real version at every bump rather than a hand-kept copy.
+import { version as PLUGIN_VERSION } from '../../package.json'
 import FuzzySearch from 'fuzzy-search'
 import { merge, Subscription, timer } from 'rxjs'
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop'
@@ -18,10 +21,12 @@ import {
     ProfileProvider,
     ProfilesService,
     SplitTabComponent,
+    TAB_COLORS,
 } from 'tabby-core'
 import { SettingsTabComponent } from 'tabby-settings'
 import { BaseTerminalTabComponent } from 'tabby-terminal'
 import { SidebarPlusSettingsTabComponent } from './settingsTab.component'
+import { SidebarPlusSftpComponent } from './sftpPanel.component'
 import { SnippetsModalComponent, SnippetsModalResult } from './snippetsModal.component'
 import { NoteModalComponent } from './noteModal.component'
 import { PasteGroupModalComponent, PasteResolution } from './pasteGroupModal.component'
@@ -44,9 +49,11 @@ import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { hostSupports } from '../hostCompat'
 import { readProfileGroups } from '../profileGroups'
 import { buildPayload, countPayload, describePurge, isEmptyReport, parsePayload, PurgeLevel, SharedGroup } from '../groupShare'
+import { buildWorkspacePayload, generateWorkspaceId, parseWorkspacePayload, uniqueWorkspaceName } from '../workspaceShare'
 import { BetterPanelContribution, electBetterPanelHost, SIDEBAR_PANEL_TOKEN } from '../betterPanel'
 import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
 import { clampInViewport } from '../viewport'
+import { formatSpeed, SidebarPlusTransfersService } from '../transfersRegistry.service'
 
 interface CollapsableProfileGroup extends ProfileGroup {
     collapsed: boolean
@@ -144,6 +151,20 @@ interface ActiveSession {
     /** The tab's live title (usually `user@host: cwd`), shown as a tooltip since it moves around too much to be the label. */
     title: string
     focused: boolean
+    /**
+     * Number of the registry's `active` entries whose `sessionLabel` matches
+     * this session's own `name` — see refreshSessionTransfers(). Zero means
+     * nothing is moving on this session right now.
+     */
+    transferCount: number
+    /** Combined speed of those entries, already formatted (shared formatSpeed()) — blank while count is 0 or no tick has produced a figure yet. */
+    transferSpeedLabel: string
+    /**
+     * The row's whole compact segment ("3 ⇅ 2,4 Mo/s"), precomposed here
+     * rather than concatenated in the template (piège #54) — blank when
+     * transferCount is 0, in which case the row falls back to the uptime.
+     */
+    transferLabel: string
 }
 
 @Component({
@@ -151,6 +172,8 @@ interface ActiveSession {
     template: require('./sidebarTree.component.pug'),
 })
 export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChecked {
+    /** Shown in the footer bar next to the plugin name. */
+    readonly pluginVersion = PLUGIN_VERSION
     profileGroups: PartialProfileGroup<ProfileGroup>[] = []
     rootGroups: PartialProfileGroup<ProfileGroup>[] = []
 
@@ -163,6 +186,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * absent while the sidebar shows the SFTP view.
      */
     @ViewChild('filterInput') filterInput?: ElementRef<HTMLInputElement>
+    /**
+     * Reference to the mounted SFTP panel, so openSessionSftp() can reach
+     * past its own focus-follows-tab handshake and unfreeze a pin left
+     * standing from an earlier navigation. Optional: absent whenever
+     * `showSftp` is off, since the tag itself is `*ngIf`'d out then.
+     */
+    @ViewChild(SidebarPlusSftpComponent) private sftpPanel?: SidebarPlusSftpComponent
     private hotkeySubscription: Subscription|null = null
 
     ////// WORKSPACES //////
@@ -175,6 +205,29 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     renameWorkspaceValue = ''
     /** Toggles the sidebar between the normal tree and the "hidden items of this workspace" panel — see hiddenGroupsInWorkspace/hiddenProfilesInWorkspace. */
     showHiddenPanel = false
+
+    /**
+     * 'tabs' (the original `.workspace-bar` strip, wraps onto more rows as
+     * workspaces pile up) or 'dropdown' (a single-line "active workspace +
+     * chevron" trigger opening the full list as a popup) — an explicit
+     * per-user setting (workspaceSelectorMode in configProvider.ts's
+     * defaults, exposed in the settings tab next to showWorkspaces), not an
+     * auto-detected one. An earlier pass here drove this off a
+     * ResizeObserver instead and was rejected in testing (2026-08-07): it
+     * picked the layout out from under the user mid-session, and its
+     * right-click handling inside the dropdown popup — opening a *second*
+     * `.group-context-menu`-classed popup as a side effect of the very click
+     * that removed the first one, both matched by the same
+     * `document.querySelector()` in clampContextMenuPosition() — turned out
+     * unreliable (the same class of ambiguity as piège #30, just never
+     * exercised by any earlier feature the way this one does). See
+     * openWorkspaceMenuFromSwitcher() below for how list mode manages a
+     * workspace instead (each row's "⋯" button, fixed anchor, list kept
+     * open underneath — not a right-click).
+     */
+    get workspaceSelectorMode (): 'tabs'|'dropdown' {
+        return this.config.store.sidebarPlus?.workspaceSelectorMode ?? 'tabs'
+    }
 
     ////// SFTP //////
     /**
@@ -229,6 +282,71 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     /** Per-machine UI state (localStorage, like sftpMode) rather than a `sidebarPlus.*` config key — nothing worth syncing across machines, and it sidesteps piège #16 entirely. */
     activeSessionsCollapsed = window.localStorage.sidebarPlusActiveSessionsCollapsed === 'true'
 
+    ////// TRANSFER ACTIVITY ARROWS //////
+    /**
+     * profileId → whether it currently carries an `active` upload/download,
+     * precomputed rather than read from a template getter (piège #54): the
+     * `.transfer-activity` badge is on every profile row, and a getter there
+     * would rescan the whole registry on every change detection pass.
+     *
+     * Rebuilt by refreshTransferActivity(), never mutated in place.
+     */
+    profileActivity = new Map<string, { up: boolean, down: boolean }>()
+    /**
+     * Session display name → the profile that launched it, built by
+     * refreshActiveSessions() from the same live SSH tabs it already walks.
+     *
+     * The registry's entries carry a `sessionLabel` (G5's plain-field
+     * principle: composed by whoever starts the transfer, the only party that
+     * knows) but no profile id — nothing upstream of it needs one. This is the
+     * join back to a profile row, by the one string both sides compute the
+     * same way: `tab.customTitle || tab.topmostParent?.customTitle ||
+     * profile.name || tab.title`, mirrored in sftpPanel.component.ts's own
+     * `sessionLabel` assignment. A tab renamed *after* a transfer started, or
+     * one that closed before this map's next refresh, is the accepted gap —
+     * the alternative was stamping a profile id at every registration site,
+     * several of which live in sftpBrowser.component.ts (off limits here).
+     */
+    private sessionLabelToProfileId = new Map<string, string>()
+    private transfersActivitySubscription: Subscription|null = null
+
+    ////// RECENT PROFILES //////
+    /**
+     * Ids of the last profiles launched through launchProfile() — the single
+     * point every launch path in this component funnels through — most
+     * recent first, deduplicated, capped at MAX_RECENT_PROFILES.
+     *
+     * Persisted to `localStorage.sidebarPlusRecentProfiles`, deliberately
+     * *not* `config.store.sidebarPlus`: this is per-machine usage, not
+     * something a synced config.yaml should carry between machines — the
+     * exact reasoning documented for `sidebarPlusActiveWorkspace` (switching
+     * what you're looking at, here what you last launched, must not follow
+     * you to another machine). See ROADMAP #historique-profils.
+     *
+     * Also deliberately not filtered by workspace, neither on write nor on
+     * read: a launch is a fact of the app, the same reasoning already applied
+     * to `activeSessions` above.
+     */
+    private recentProfileIds: string[] = SidebarPlusTreeComponent.loadRecentProfileIds()
+    /** Per-machine UI state, same pattern as activeSessionsCollapsed. */
+    recentProfilesCollapsed = window.localStorage.sidebarPlusRecentProfilesCollapsed === 'true'
+    private static readonly MAX_RECENT_PROFILES = 5
+
+    private static loadRecentProfileIds (): string[] {
+        try {
+            const raw = window.localStorage.sidebarPlusRecentProfiles
+            if (!raw) {
+                return []
+            }
+            const parsed = JSON.parse(raw)
+            return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
+        } catch {
+            // Malformed localStorage (hand-edited, older format…) — worth
+            // starting empty rather than throwing the sidebar's constructor.
+            return []
+        }
+    }
+
     ////// SSH TUNNELS //////
     /**
      * Live port forwards, flattened across every open SSH session, and the
@@ -266,9 +384,23 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     contextMenuY = 0
     contextMenuMode:
         'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename'|'tunnels'|
-        'workspaceMenu'|'createWorkspace'|'renameWorkspace'|'confirmDeleteWorkspace' = 'menu'
+        'workspaceMenu'|'createWorkspace'|'renameWorkspace'|'confirmDeleteWorkspace'|'workspaceColor'
+        = 'menu'
     /** Set whenever a context menu/popup opens or switches mode — checked once in ngAfterViewChecked() to clamp it back on-screen after Angular renders it at its real size. */
     private menuPositionDirty = false
+
+    ////// WORKSPACE SWITCHER (list mode) //////
+    // Deliberately NOT a contextMenuMode value: the modes are mutually
+    // exclusive, so as one the switcher died the moment any popup it spawned
+    // opened (the "⋯" menu, rename, colour…) — every step of a manage flow
+    // dismissed the panel underneath it, which is exactly what the user
+    // rejected in testing (2026-08-07, "au moindre clic le panneau précédent
+    // disparaît"). As its own flag it stays put while the ordinary
+    // contextMenuMode machinery opens and closes popups NEXT to it, and
+    // closeContextMenu() landing back on 'menu' leaves the list on screen.
+    workspaceSwitcherOpen = false
+    workspaceSwitcherX = 0
+    workspaceSwitcherY = 0
 
     ////// ICON TILE CONTEXT MENU //////
     /** The icon a right-click opened the pin/unpin menu on, or null. Kept outside contextMenuMode on purpose — see onIconContextMenu(). */
@@ -337,6 +469,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return this.contextMenuMode === 'confirmDeleteWorkspace'
     }
 
+    get isWorkspaceColorMode (): boolean {
+        return this.contextMenuMode === 'workspaceColor'
+    }
+
     iconQuery = ''
     iconMatches: PickerIcon[] = []
     showCustomSvgInput = false
@@ -363,6 +499,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private notices: SidebarPlusNoticesService,
         @Inject(ProfileProvider) private profileProviders: ProfileProvider<Profile>[],
         private injector: Injector,
+        private transfers: SidebarPlusTransfersService,
     ) { }
 
     async ngOnInit (): Promise<void> {
@@ -378,6 +515,14 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // what loadTreeItems() is supposed to build.
             this.reconcileHiddenBlocks()
             void this.loadTreeItems()
+            // showTransfers can have just flipped — refreshTransferActivity()
+            // reads it directly and clears the map rather than waiting for the
+            // next registry event, which may never come if nothing is running.
+            this.refreshTransferActivity()
+            // Same reasoning for the sessions list's own compact segment: the
+            // switch has to fall back to the uptime immediately, not on the
+            // next 2s poll or registry event.
+            this.refreshSessionTransfers()
         })
 
         // hotkey$, not unfilteredHotkey$: the filtered stream stays quiet while
@@ -392,6 +537,21 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.refreshProfileStatuses()
         this.refreshActiveSessions()
         this.watchSplitFocus()
+        // Recomputes on every meaningful registry change (an entry starting or
+        // leaving `active`) rather than polling it — see `changed` on the
+        // registry. `enabled`/`showTransfers` gates both this subscription's
+        // effect and the source itself (piège: "un interrupteur de bloc coupe
+        // la source, pas seulement la vue") — refreshTransferActivity() below
+        // clears the map instead of computing anything while the block is off.
+        this.transfersActivitySubscription = this.transfers.changed.subscribe(() => {
+            this.zone.run(() => {
+                this.refreshTransferActivity()
+                // Same event, same reasoning as the arrows above: a transfer
+                // starting or leaving `active` should show up on the session
+                // row right away rather than waiting for the next 2s poll.
+                this.refreshSessionTransfers()
+            })
+        })
         this.statusSubscription = merge(
             this.app.tabsChanged$,
             this.app.tabOpened$,
@@ -419,6 +579,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.configSubscription?.unsubscribe()
         this.hotkeySubscription?.unsubscribe()
         this.splitFocusSubscription?.unsubscribe()
+        this.transfersActivitySubscription?.unsubscribe()
         if (this.selectionNoticeTimer) {
             clearTimeout(this.selectionNoticeTimer)
         }
@@ -465,7 +626,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     /** Keeps whichever context menu/popup is currently open fully within the viewport — a right-click near the bottom/right edge of a tall sidebar would otherwise render partially under the taskbar or off-screen and be unusable. */
     private clampContextMenuPosition (): void {
-        const menu = document.querySelector<HTMLElement>('.group-context-menu, .icon-picker, .create-popup')
+        // :not(.workspace-switcher-menu): the switcher has its own fixed
+        // anchor and its own coordinates, and can be on screen at the same
+        // time as the contextMenuMode popup this clamp is aimed at — without
+        // the exclusion, whichever comes first in DOM order would be measured
+        // and the other one nudged to its position (piège #30's ambiguity,
+        // made permanent now that the two coexist by design).
+        const menu = document.querySelector<HTMLElement>('.group-context-menu:not(.workspace-switcher-menu), .icon-picker, .create-popup')
         if (!menu) {
             return
         }
@@ -681,7 +848,106 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     async launchProfile<P extends Profile> (profile: PartialProfile<P>): Promise<any> {
         this.noticeUnansweredVariables(profile)
-        return this.profilesService.launchProfile(profile)
+        this.recordRecentProfile(profile)
+        return this.profilesService.launchProfile(this.withWorkspaceColor(profile))
+    }
+
+    /**
+     * Pushes a launch onto the MRU trail — gated on showRecentProfiles so
+     * that switching the block off stops the recording, not just the
+     * display (the project's "un interrupteur de bloc coupe la source" rule).
+     * Silently does nothing for a profile with no id (a template preview,
+     * never actually reachable through launchProfile(), but nothing here
+     * should assume it).
+     */
+    private recordRecentProfile (profile: PartialProfile<Profile>): void {
+        if (!this.showRecentProfiles || !profile.id) {
+            return
+        }
+        const id = profile.id
+        this.recentProfileIds = [id, ...this.recentProfileIds.filter(existing => existing !== id)]
+            .slice(0, SidebarPlusTreeComponent.MAX_RECENT_PROFILES)
+        window.localStorage.sidebarPlusRecentProfiles = JSON.stringify(this.recentProfileIds)
+    }
+
+    /**
+     * Resolves the MRU ids against the same in-memory profile list the tree
+     * itself is built from — `rawGroupsSnapshot`, the workspace-*unfiltered*
+     * snapshot `loadTreeItems()` refreshes on every reload — rather than
+     * `config.store.profiles`, which omits provider-supplied profiles
+     * entirely (piège #74: testing existence there would silently drop a
+     * still-live entry, not just fail to show a dead one).
+     *
+     * An id that fails to resolve is skipped here, never removed from
+     * `recentProfileIds`: unlike a deleted profile (which forgetDeletedId()
+     * actively forgets from every workspace's state), a provider-supplied
+     * profile can be resolvable again the next time its provider lists it,
+     * so dropping it from the trail on one miss would be premature.
+     *
+     * Not filtered by the active workspace, on purpose — same "fact of the
+     * app" reasoning as `activeSessions`, see ROADMAP #historique-profils.
+     */
+    get recentProfiles (): PartialProfile<Profile>[] {
+        if (!this.showRecentProfiles || !this.recentProfileIds.length) {
+            return []
+        }
+        const byId = new Map<string, PartialProfile<Profile>>()
+        for (const group of this.rawGroupsSnapshot) {
+            for (const profile of group.profiles ?? []) {
+                if (profile.id) {
+                    byId.set(profile.id, profile)
+                }
+            }
+        }
+        const resolved: PartialProfile<Profile>[] = []
+        for (const id of this.recentProfileIds) {
+            const profile = byId.get(id)
+            if (profile) {
+                resolved.push(profile)
+            }
+        }
+        return resolved
+    }
+
+    toggleRecentProfiles (): void {
+        this.recentProfilesCollapsed = !this.recentProfilesCollapsed
+        window.localStorage.sidebarPlusRecentProfilesCollapsed = this.recentProfilesCollapsed
+    }
+
+    /** The row's whole click target — a relaunch, nothing else (no context menu, no favorite, no status: a pure re-engagement shortcut, per ROADMAP #historique-profils). */
+    launchRecentProfile (profile: PartialProfile<Profile>, event: MouseEvent): void {
+        event.preventDefault()
+        void this.launchProfile(profile)
+    }
+
+    /**
+     * Tints a launch with the active workspace's color — on a *clone*, never
+     * the live profile (piège #12: a mutation of the profile the tree still
+     * renders is exactly what corrupted the user's config.yaml once).
+     *
+     * No new coloring mechanism: `ProfilesService.newTabParametersForProfile()`
+     * (tabby-core, services/profiles.service.ts) already reads
+     * `fullProfile.color` and forwards it as the new tab's `color` input —
+     * the same field `profile-icon` colors its glyph with and
+     * `TabHeaderComponent` draws a `.colorbar` from. `TAB_COLORS`
+     * (tabby-core/utils.ts) is the very palette this plugin's workspace color
+     * picker offers, so a workspace-tinted session looks identical to one
+     * colored by hand from a tab's own native menu. This only decides which
+     * value reaches that existing field.
+     *
+     * "Tous" never colors anything — `activeWorkspace` is already null there
+     * — and a profile's own explicit color always wins: the workspace only
+     * fills in what the profile left blank, it never overrides a choice
+     * already made on the profile itself.
+     */
+    private withWorkspaceColor<P extends Profile> (profile: PartialProfile<P>): PartialProfile<P> {
+        const workspace = this.activeWorkspace
+        if (!workspace?.color || profile.color) {
+            return profile
+        }
+        const tinted = structuredClone(profile)
+        tinted.color = workspace.color
+        return tinted
     }
 
     /**
@@ -912,6 +1178,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         window.localStorage.sidebarPlusActiveWorkspace = id
         this.showHiddenPanel = false
         this.closeContextMenu()
+        // Picking a workspace is the switcher's terminal action — unlike the
+        // manage flows, which keep the list open underneath (see the field's
+        // own comment). No-op when the pick came from a tab.
+        this.workspaceSwitcherOpen = false
         this.refreshTree()
     }
 
@@ -923,6 +1193,26 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
     }
 
+    /**
+     * Opens the Renommer/Icône/Couleur/Copier/Supprimer menu for one
+     * workspace, anchored at `event.clientX/Y`. One call site in the .pug: a
+     * tab's own `(contextmenu)` in tabs mode, where at-the-cursor is the OS
+     * convention. List mode goes through openWorkspaceMenuFromSwitcher()
+     * below instead — same menu, fixed anchor.
+     *
+     * List mode does *not* wire this to a row's `(contextmenu)` either —
+     * tried and reported unreliable in testing (2026-08-07), reverted
+     * without a live repro to confirm the exact mechanism. The prime
+     * suspect: the row that received the `contextmenu` event sat inside the
+     * switcher popup, which (as a contextMenuMode value at the time) was
+     * torn down by the very mutation its own handler made; the incoming
+     * workspaceMenu popup shares the plain `.group-context-menu` class that
+     * `document.querySelector()` in clampContextMenuPosition() matches on.
+     * Same *kind* of outgoing-vs-incoming ambiguity as piège #30. The
+     * switcher no longer being a mode removes the teardown half of that
+     * race, but the right-click stays unwired: the "⋯" button is the one
+     * documented entry, and it is a plain click with nothing to race.
+     */
     onWorkspaceTabContextMenu (event: MouseEvent, workspace: SidebarWorkspace): void {
         event.preventDefault()
         event.stopPropagation()
@@ -944,6 +1234,80 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.newWorkspaceName = ''
         this.contextMenuX = event.clientX
         this.contextMenuY = event.clientY
+        this.menuPositionDirty = true
+    }
+
+    /**
+     * Toggles the workspace list popup that stands in for `.workspace-bar`
+     * in 'dropdown' mode (see workspaceSelectorMode). Anchored to the compact
+     * bar itself, never to the click position: the popup replaces the tab
+     * strip, so it belongs under the control that opened it, and reopening it
+     * must land in the same place every time (user request, 2026-08-07 —
+     * fixed positions, not wherever the mouse happened to be).
+     *
+     * Left-click on an entry calls selectWorkspace(), which closes the popup
+     * as its terminal action. Managing a workspace (Renommer/Icône/Couleur/
+     * Copier/Supprimer) goes through each row's own "⋯" button, wired to
+     * openWorkspaceMenuFromSwitcher() — which opens NEXT to this popup and
+     * leaves it on screen underneath.
+     */
+    openWorkspaceSwitcher (event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        if (this.workspaceSwitcherOpen) {
+            this.workspaceSwitcherOpen = false
+            return
+        }
+        const bar = (event.currentTarget as HTMLElement).getBoundingClientRect()
+        this.workspaceSwitcherX = Math.round(bar.left)
+        this.workspaceSwitcherY = Math.round(bar.bottom + 2)
+        this.workspaceSwitcherOpen = true
+    }
+
+    /**
+     * Where popups spawned FROM the switcher anchor: flush against its right
+     * edge, level with its top. One fixed spot for every "⋯" row and for
+     * "Nouveau workspace...", so a manage flow reads as a stable second
+     * column next to the list instead of hopping to wherever each click
+     * landed. The sub-popups a manage flow then opens (rename, colour,
+     * delete…) never touch contextMenuX/Y, so they inherit the same spot.
+     * Falls back to the switcher's own anchor if the popup is somehow not in
+     * the DOM; ngAfterViewChecked's clamp pulls it back on-screen when the
+     * right edge has no room.
+     */
+    private switcherPopupAnchor (): { x: number, y: number } {
+        const popup = document.querySelector<HTMLElement>('.workspace-switcher-menu')
+        const rect = popup?.getBoundingClientRect()
+        return rect
+            ? { x: Math.round(rect.right + 4), y: Math.round(rect.top) }
+            : { x: this.workspaceSwitcherX, y: this.workspaceSwitcherY }
+    }
+
+    /** The switcher-side twin of onWorkspaceTabContextMenu(): same menu, fixed anchor beside the list, list kept open underneath. */
+    openWorkspaceMenuFromSwitcher (event: MouseEvent, workspace: SidebarWorkspace): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.contextMenuGroup = null
+        this.contextMenuProfile = null
+        this.contextMenuRoot = false
+        this.contextMenuWorkspace = workspace
+        this.contextMenuMode = 'workspaceMenu'
+        const anchor = this.switcherPopupAnchor()
+        this.contextMenuX = anchor.x
+        this.contextMenuY = anchor.y
+        this.menuPositionDirty = true
+    }
+
+    /** The switcher-side twin of openCreateWorkspacePrompt(), same fixed anchor as the manage menu. */
+    openCreateWorkspaceFromSwitcher (event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.contextMenuWorkspace = null
+        this.contextMenuMode = 'createWorkspace'
+        this.newWorkspaceName = ''
+        const anchor = this.switcherPopupAnchor()
+        this.contextMenuX = anchor.x
+        this.contextMenuY = anchor.y
         this.menuPositionDirty = true
     }
 
@@ -969,6 +1333,59 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         await this.config.save()
         this.closeContextMenu()
         this.selectWorkspace(id)
+    }
+
+    /**
+     * "Importer du presse-papiers", from the workspace creation popup.
+     *
+     * Nothing here trusts the payload — same discipline as `pasteGroup()`:
+     * the JSON is clipboard text, hand-editable, and only checked on the way
+     * in (`parseWorkspacePayload()`). The id is always minted fresh
+     * (`generateWorkspaceId()`), never the one the payload carries, even when
+     * it looks clean — reusing an id copied from another machine risks
+     * colliding with one already in use locally.
+     *
+     * A name collision is silently suffixed rather than asked about, unlike a
+     * folder paste: a workspace has no contents for "merge" to mean anything
+     * against, it is a name plus a handful of exclusion/order lists, so there
+     * is nothing to choose between beyond the name itself.
+     *
+     * Deliberately does not select the imported workspace — it lands in the
+     * tab bar (via `refreshTree()`, which re-reads `this.workspaces` from
+     * config without touching `activeWorkspaceId`) and waits to be clicked,
+     * same as any workspace created by hand.
+     */
+    async importWorkspaceFromClipboard (): Promise<void> {
+        const { payload, error } = parseWorkspacePayload(this.platform.readClipboard())
+        if (!payload) {
+            this.notices.error(error ?? 'Le presse-papiers ne contient pas un workspace exporté.')
+            return
+        }
+        this.config.store.sidebarPlus ??= {}
+        const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
+        const name = uniqueWorkspaceName(payload.workspace.name?.trim() || 'Workspace importé', workspaces.map(w => w.name))
+        const created: SidebarWorkspace = {
+            id: generateWorkspaceId(),
+            name,
+            hiddenProfileIds: payload.workspace.hiddenProfileIds,
+            hiddenGroupIds: payload.workspace.hiddenGroupIds,
+            favorites: payload.workspace.favorites,
+            favoriteGroups: payload.workspace.favoriteGroups,
+            groupOrder: payload.workspace.groupOrder,
+            profileOrder: payload.workspace.profileOrder,
+        }
+        if (payload.workspace.icon !== undefined) {
+            created.icon = payload.workspace.icon
+        }
+        if (payload.workspace.color !== undefined) {
+            created.color = payload.workspace.color
+        }
+        workspaces.push(created)
+        this.config.store.sidebarPlus.workspaces = workspaces
+        await this.config.save()
+        this.closeContextMenu()
+        await this.refreshTree()
+        this.notices.notice(`Workspace « ${name} » importé.`)
     }
 
     openRenameWorkspacePrompt (): void {
@@ -1011,6 +1428,27 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (this.activeWorkspaceId === id) {
             this.selectWorkspace('all')
         }
+    }
+
+    /**
+     * "Copier (JSON)", from a workspace tab's context menu.
+     *
+     * Exports everything the workspace carries except its id — an id is
+     * always minted fresh on import (`generateWorkspaceId()`), exactly like a
+     * pasted folder's own id. No purge level to choose between, unlike
+     * `copyGroupStructure()`: a workspace holds only ids (an exclusion list
+     * and a couple of order maps), never a profile's `options`, so there is
+     * nothing secret in it to begin with.
+     */
+    async copyWorkspace (): Promise<void> {
+        const workspace = this.contextMenuWorkspace
+        this.closeContextMenu()
+        if (!workspace) {
+            return
+        }
+        const payload = buildWorkspacePayload(workspace)
+        this.platform.setClipboard({ text: JSON.stringify(payload, null, 2) })
+        this.notices.notice(`Workspace « ${workspace.name} » copié.`)
     }
 
     ////// WORKSPACE VISIBILITY (hide from the profile/group context menu, restore from the hidden-items panel) //////
@@ -1107,6 +1545,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      */
     get showActiveSessions (): boolean {
         return (this.config.store.sidebarPlus?.showActiveSessions ?? true) && hostSupports('ssh-tab')
+    }
+
+    /**
+     * No `hostSupports(...)` gate, unlike its neighbours: a relaunch is a
+     * generic profile action (SSH, local, whatever a provider offers), not
+     * tied to the SSH tab or the SFTP panel the other blocks depend on.
+     */
+    get showRecentProfiles (): boolean {
+        return this.config.store.sidebarPlus?.showRecentProfiles ?? true
     }
 
     get showTunnels (): boolean {
@@ -1237,6 +1684,18 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     /** Same pair for profile rows, driving multi-selection reorder placement — see updateHoveredProfile(). */
     private draggedProfileId: string|null = null
     private hoveredProfileId: string|null = null
+    /**
+     * Folder whose own profile list the dragged profile is currently over —
+     * feeds isNestTarget() below, kept apart from hoveredProfileId (which
+     * drives *where in the list* it lands, not *which folder*). Set from
+     * CDK's own (cdkDropListEntered)/(cdkDropListExited) on that list rather
+     * than a live hit-test: unlike the folder-on-folder case there is no
+     * upper/lower-half ambiguity to rescue here, CDK already resolves this
+     * container correctly.
+     */
+    private hoveredProfileTargetGroupId: string|null = null
+    /** The folder the dragged profile started in, captured once at drag start — tells a genuine cross into another folder apart from re-entering its own list. */
+    private draggedProfileSourceGroupId: string|null = null
 
     onGroupDragStarted (group: PartialProfileGroup<CollapsableProfileGroup>): void {
         this.draggedGroupId = group.id
@@ -1492,6 +1951,30 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     private refreshActiveSessions (): void {
         const wantSessions = this.showActiveSessions
         const wantTunnels = this.showTunnels
+
+        // Kept outside the early return below: it is a plain per-tab pass, not
+        // the per-split forward scan that return exists to skip, and the
+        // transfer arrows are a property of the profile row itself — they do
+        // not depend on the "Sessions actives"/"Tunnels" blocks being shown.
+        const sessionLabelToProfileId = new Map<string, string>()
+        for (const tab of getAllOpenTabs(this.app)) {
+            if (!isSSHTab(tab) || !isLiveSSHTab(tab)) {
+                continue
+            }
+            const profile = (tab as unknown as ProfileBackedTab).profile
+            if (!profile?.id) {
+                continue
+            }
+            // Same precedence as sftpPanel.component.ts's own `sessionLabel`
+            // assignment — the string a transfer's `TransferEntry.sessionLabel`
+            // was stamped with at registration, so this map is the join back.
+            const renamedTitle = tab.customTitle || tab.topmostParent?.customTitle
+            const sessionName = renamedTitle || profile.name || tab.title || 'Session SSH'
+            sessionLabelToProfileId.set(sessionName, profile.id)
+        }
+        this.sessionLabelToProfileId = sessionLabelToProfileId
+        this.refreshTransferActivity()
+
         if (!wantSessions && !wantTunnels) {
             // Neither block is on: this whole scan — every tab of every split,
             // twice a second — produces nothing anybody can see. Drop what was
@@ -1576,6 +2059,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                     color: profile?.color ?? tab.color ?? null,
                     title: tab.title,
                     focused: tab === focused,
+                    // Filled in by refreshSessionTransfers() below, whichever
+                    // array (this fresh one or the kept-in-place previous one)
+                    // ends up as this.activeSessions — placeholder only.
+                    transferCount: 0,
+                    transferSpeedLabel: '',
+                    transferLabel: '',
                 })
             }
 
@@ -1681,6 +2170,69 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // dropping the `:hover` the action buttons live in. The template reads
         // it through pingState()/pingLabel() instead.
         this.ping.poll(sessions.map(session => session.tab))
+
+        // Refreshes the compact transfer segment on whichever array is now
+        // current — see refreshSessionTransfers() for why this mutates the
+        // existing ActiveSession objects rather than relying on the block
+        // above to have swapped in fresh ones.
+        this.refreshSessionTransfers()
+    }
+
+    /**
+     * Recomputes each active session's transfer aggregate: how many of the
+     * registry's `active` entries carry this session's own name as their
+     * `sessionLabel`, and their combined speed — G5's plain-string join
+     * (`entry.sessionLabel === session.name`), no profile id involved.
+     *
+     * Mutates the existing `ActiveSession` objects **in place** rather than
+     * going through `this.activeSessions = …`: that reassignment is gated by
+     * `sameSessions()` precisely to keep the array's identity stable across
+     * the 2s poll, so that `*ngFor` does not tear down and rebuild every row
+     * — which would drop the `:hover` state `.actions` lives in (see the
+     * comment above `sameSessions()`). A transfer's speed moves on the
+     * registry's own 500 ms tick, far more often than that guard would
+     * tolerate if these fields were part of what it compares; mutating the
+     * fields on the objects that are already there sidesteps the question
+     * entirely, the same way the registry itself mutates `TransferEntry`
+     * fields in place instead of replacing `entries`.
+     *
+     * Called from refreshActiveSessions() (2s cadence — plenty for ambient
+     * reading, deliberately not the registry's own 500 ms tick) and from the
+     * registry's `changed` event, so a transfer starting or ending shows up
+     * without waiting up to 2s. The speed shown here can therefore trail the
+     * transfers panel's own figure by up to 2s — accepted, and worth saying
+     * here rather than leaving it to look like a bug: this is a row glanced
+     * at in passing, not the panel itself.
+     */
+    private refreshSessionTransfers (): void {
+        if (!this.showTransfers) {
+            for (const session of this.activeSessions) {
+                if (session.transferCount !== 0) {
+                    session.transferCount = 0
+                    session.transferSpeedLabel = ''
+                    session.transferLabel = ''
+                }
+            }
+            return
+        }
+        const bySessionName = new Map<string, { count: number, speed: number }>()
+        for (const entry of this.transfers.entries) {
+            if (entry.state !== 'active' || !entry.sessionLabel) {
+                continue
+            }
+            const agg = bySessionName.get(entry.sessionLabel) ?? { count: 0, speed: 0 }
+            agg.count++
+            agg.speed += entry.speed
+            bySessionName.set(entry.sessionLabel, agg)
+        }
+        for (const session of this.activeSessions) {
+            const agg = bySessionName.get(session.name)
+            session.transferCount = agg?.count ?? 0
+            session.transferSpeedLabel = agg ? formatSpeed(agg.speed) : ''
+            session.transferLabel = session.transferCount > 0
+                ? `${session.transferCount} ⇅${session.transferSpeedLabel ? ` ${session.transferSpeedLabel}` : ''}`
+                : ''
+        }
     }
 
     /**
@@ -1754,11 +2306,20 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     private buildSessionTooltip (session: ActiveSession): string {
         const latency = this.ping.latencyMs(session.tab)
-        return [
+        const line = [
             session.name,
             latency === null ? null : `${latency} ms`,
             SidebarPlusTreeComponent.formatUptimePrecise(this.uptimeMs(session)),
         ].filter(Boolean).join(' | ')
+        // A second line, only when there is something to say — the native
+        // `title` attribute renders `\n` as an actual line break (same as
+        // TransferEntry.tooltip in transfersRegistry.service.ts), so this
+        // does not have to fight the ' | '-joined line above for room.
+        if (session.transferCount <= 0) {
+            return line
+        }
+        const detail = session.transferSpeedLabel ? `, vitesse totale ${session.transferSpeedLabel}` : ''
+        return `${line}\nTransferts : ${session.transferCount} en cours${detail}`
     }
 
     /**
@@ -2058,6 +2619,55 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return (profile.options as { forwardedPorts?: ForwardedPortConfig[] }|undefined)?.forwardedPorts?.length ?? 0
     }
 
+    ////// TRANSFER ACTIVITY ARROWS //////
+    /** Backs the ↑/↓ badge in the tree — read from the precomputed map, never scanning the registry here (piège #54). */
+    transferActivity (profile: PartialProfile<Profile>): { up: boolean, down: boolean }|null {
+        return (profile.id && this.profileActivity.get(profile.id)) || null
+    }
+
+    /**
+     * Recomputes profileId → {up, down} from the registry's entries and the
+     * sessionLabel → profileId map refreshActiveSessions() just rebuilt.
+     *
+     * Called on every `changed` event from the registry (an entry starting or
+     * leaving `active`) and every `refreshActiveSessions()` pass (a session's
+     * label may now resolve, or no longer). Not a getter: the row for every
+     * profile in the tree would otherwise rescan the whole registry on every
+     * change detection pass.
+     */
+    private refreshTransferActivity (): void {
+        // `showTransfers` is this component's own mirror of the registry's
+        // `enabled` (it additionally gates on `hostSupports`) — the switch
+        // that is supposed to cut the source, not just the view. The registry
+        // itself already declines to track *new* entries while off; this is
+        // what keeps an arrow from lingering, drawn from an entry that was
+        // already active when the switch flipped.
+        if (!this.showTransfers) {
+            if (this.profileActivity.size) {
+                this.profileActivity = new Map()
+            }
+            return
+        }
+        const activity = new Map<string, { up: boolean, down: boolean }>()
+        for (const entry of this.transfers.entries) {
+            if (entry.state !== 'active' || !entry.sessionLabel) {
+                continue
+            }
+            const profileId = this.sessionLabelToProfileId.get(entry.sessionLabel)
+            if (!profileId) {
+                continue
+            }
+            const row = activity.get(profileId) ?? { up: false, down: false }
+            if (entry.direction === 'up') {
+                row.up = true
+            } else {
+                row.down = true
+            }
+            activity.set(profileId, row)
+        }
+        this.profileActivity = activity
+    }
+
     toggleActiveTunnels (): void {
         this.activeTunnelsCollapsed = !this.activeTunnelsCollapsed
         window.localStorage.sidebarPlusActiveTunnelsCollapsed = this.activeTunnelsCollapsed
@@ -2323,6 +2933,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     openSessionSftp (session: ActiveSession, event: MouseEvent): void {
         event.preventDefault()
         event.stopPropagation()
+        // A freeze left over from an earlier navigation must not swallow
+        // this click: naming one particular session here is a more explicit
+        // gesture than the pin it might be overriding, and letting the pin
+        // win would make the shortcut silently do nothing. Unfreeze before
+        // focusTab() — sync() runs off the resulting focus change, so the
+        // panel is free to follow by the time it fires.
+        this.sftpPanel?.unfreeze()
         focusTab(this.app, session.tab)
         this.setSftpMode(true)
     }
@@ -2576,6 +3193,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         this.draggedProfileId = profile.id ?? null
         this.hoveredProfileId = null
+        this.draggedProfileSourceGroupId = profile.group ?? 'ungrouped'
+        this.hoveredProfileTargetGroupId = null
     }
 
     /**
@@ -2583,9 +3202,36 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * the same reason as onGroupDragEnded(): CDK emits `cdkDragEnded` *before*
      * `cdkDropListDropped` (piège #29), so clearing it here would wipe the value
      * a moment before the drop handler reads it.
+     *
+     * `hoveredProfileTargetGroupId` has no such reader downstream — it only
+     * drives the nest highlight — so it is safe to clear right away.
      */
     onProfileDragEnded (): void {
         this.draggedProfileId = null
+        this.hoveredProfileTargetGroupId = null
+    }
+
+    /**
+     * CDK fires this on a folder's own profile list when the dragged profile's
+     * pointer crosses into it — not for the list the drag started in, only for
+     * a genuine move into a different container — which is exactly "this
+     * folder is about to receive it". `zone.run()` guards against CDK's
+     * pointer tracking running outside NgZone (piège #41): its own
+     * `dropped`/`started`/`ended` outputs already re-enter the zone and are
+     * relied upon elsewhere in this file, but this pair is new here.
+     */
+    onProfileListEntered (group: PartialProfileGroup<CollapsableProfileGroup>): void {
+        this.zone.run(() => {
+            this.hoveredProfileTargetGroupId = group.id
+        })
+    }
+
+    onProfileListExited (group: PartialProfileGroup<CollapsableProfileGroup>): void {
+        this.zone.run(() => {
+            if (this.hoveredProfileTargetGroupId === group.id) {
+                this.hoveredProfileTargetGroupId = null
+            }
+        })
     }
 
     /**
@@ -2626,6 +3272,33 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 return
             }
         }
+    }
+
+    /**
+     * Whether `group`'s row should carry the "drop inside" highlight right
+     * now, as opposed to CDK's own reorder feedback. Purely a read of state
+     * already tracked for other purposes — `hoveredGroupId`/`draggedGroupId`
+     * drive the folder-on-folder rescue below, `hoveredProfileTargetGroupId`
+     * tracks a profile crossing into a foreign folder — so this adds no new
+     * hit-testing, and the class it feeds (`.sidebar-plus-nest-target`) is
+     * background/outline only: no geometry (piège #25/#28).
+     *
+     * `isSelfOrDescendant` is declared further down the file; order does not
+     * matter for class members.
+     */
+    isNestTarget (group: PartialProfileGroup<CollapsableProfileGroup>): boolean {
+        if (this.draggedGroupId) {
+            return this.hoveredGroupId === group.id &&
+                group.id !== this.draggedGroupId &&
+                !!group.editable &&
+                !this.isSelfOrDescendant(group.id, this.draggedGroupId)
+        }
+        if (this.draggedProfileId) {
+            return this.hoveredProfileTargetGroupId === group.id &&
+                group.id !== this.draggedProfileSourceGroupId &&
+                (!!group.editable || group.id === 'ungrouped')
+        }
+        return false
     }
 
     ////// DRAG & DROP //////
@@ -3348,6 +4021,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // the picker underneath — that click means "I'm done with this menu",
         // and the picker must survive it (it is what the menu acts upon).
         this.closeIconMenu()
+        // The switcher survives clicks inside ANY popup — the "⋯" menu and
+        // its sub-popups all render beside it and act on it, so a click in
+        // them is part of the same interaction. It dies only on a truly
+        // outside click, checked here BEFORE the popup guard below returns
+        // early. The compact bar is excluded so its own toggle stays the one
+        // in charge of open/close (piège #15: its stopPropagation() cannot be
+        // trusted to keep this HostListener from firing).
+        if (!target.closest('.workspace-switcher-menu, .workspace-bar-compact, .group-context-menu, .icon-picker, .create-popup')) {
+            this.workspaceSwitcherOpen = false
+        }
         if (target.closest('.group-context-menu, .icon-picker, .create-popup')) {
             return
         }
@@ -3606,10 +4289,105 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // object (see roadmap piège #12: that's exactly how a past bug
             // leaked computed fields into config.yaml).
             await this.profilesService.writeProfileGroup({ id: this.contextMenuGroup.id, icon } as PartialProfileGroup<ProfileGroup>)
+        } else if (this.contextMenuWorkspace) {
+            // Same shape as confirmRenameWorkspace(): find the live entry in
+            // the stored array and mutate it in place, then reassign the
+            // array itself (piège #23 — a nested in-place mutation alone
+            // never persists).
+            this.config.store.sidebarPlus ??= {}
+            const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
+            const target = workspaces.find(w => w.id === this.contextMenuWorkspace!.id)
+            if (target) {
+                target.icon = icon
+            }
+            this.config.store.sidebarPlus.workspaces = workspaces
         } else {
             return
         }
         this.recordRecentIcon(icon)
+        await this.config.save()
+        this.closeContextMenu()
+    }
+
+    /** Picker entry offered only for a workspace (see the *ngIf on the icon-picker block) — folders/profiles have no equivalent "back to no icon" entry to mirror. */
+    async clearWorkspaceIcon (): Promise<void> {
+        if (!this.contextMenuWorkspace) {
+            return
+        }
+        this.config.store.sidebarPlus ??= {}
+        const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
+        const target = workspaces.find(w => w.id === this.contextMenuWorkspace!.id)
+        if (target) {
+            delete target.icon
+        }
+        this.config.store.sidebarPlus.workspaces = workspaces
+        await this.config.save()
+        this.closeContextMenu()
+    }
+
+    ////// WORKSPACE COLOR (context menu) //////
+    /**
+     * Standard Tabby palette (TAB_COLORS, tabby-core/utils.ts) minus its own
+     * "No color" entry — that one is offered separately below, as the
+     * "Retirer la couleur" link mirroring clearWorkspaceIcon(), not folded
+     * into the swatch grid. Re-labelled in French: TAB_COLORS' own `name`
+     * fields are wrapped in `_()` for Tabby's own translation extraction and
+     * come through unresolved ("Blue", "Green"...) since this plugin never
+     * calls into that pipeline.
+     */
+    private static readonly WORKSPACE_COLOR_NAMES: Record<string, string> = {
+        '#0275d8': 'Bleu',
+        '#5cb85c': 'Vert',
+        '#f0ad4e': 'Orange',
+        '#613d7c': 'Violet',
+        '#d9534f': 'Rouge',
+        '#ffd500': 'Jaune',
+    }
+
+    get workspaceColors (): { name: string, value: string }[] {
+        return TAB_COLORS
+            .filter(c => c.value !== null)
+            .map(c => ({
+                name: SidebarPlusTreeComponent.WORKSPACE_COLOR_NAMES[c.value as string] ?? c.name,
+                value: c.value as string,
+            }))
+    }
+
+    openWorkspaceColorPicker (): void {
+        this.contextMenuMode = 'workspaceColor'
+        this.menuPositionDirty = true
+    }
+
+    async applyWorkspaceColor (color: string): Promise<void> {
+        if (!this.contextMenuWorkspace) {
+            return
+        }
+        // Same shape as confirmRenameWorkspace()/applyIcon(): find the live
+        // entry in the stored array, mutate in place, then reassign the array
+        // itself (piège #23 — a nested in-place mutation alone never persists).
+        this.config.store.sidebarPlus ??= {}
+        const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
+        const target = workspaces.find(w => w.id === this.contextMenuWorkspace!.id)
+        if (target) {
+            target.color = color
+        }
+        this.config.store.sidebarPlus.workspaces = workspaces
+        await this.config.save()
+        this.closeContextMenu()
+    }
+
+    /** Mirrors clearWorkspaceIcon() — deletes the field rather than storing an empty string, so every truthiness check on it (withWorkspaceColor()'s injection guard, the tab's color dot) stays a single `if (workspace.color)`. */
+    async clearWorkspaceColor (): Promise<void> {
+        if (!this.contextMenuWorkspace) {
+            return
+        }
+        this.config.store.sidebarPlus ??= {}
+        const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
+        const target = workspaces.find(w => w.id === this.contextMenuWorkspace!.id)
+        if (target) {
+            delete target.color
+        }
+        this.config.store.sidebarPlus.workspaces = workspaces
         await this.config.save()
         this.closeContextMenu()
     }
@@ -4054,19 +4832,28 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         if (result.action === 'library') {
             SidebarPlusSettingsTabComponent.requestedSection = 'snippets'
-            // The tab id depends on who hosts the shared "Better Tabby" tab —
-            // 'better-tabby' when unified, 'better-sidebar' when this plugin is alone.
-            const election = electBetterPanelHost(this.injector)
-            if (election.unified) {
-                // Whichever plugin hosts the panel reads this at construction
-                // and pre-selects our tab, so the section request above lands
-                // even when the vault carries the settings.
-                this.injector.get<BetterPanelContribution>(SIDEBAR_PANEL_TOKEN as any).openRequested = true
-            }
-            this.openSettingsTab(election.settingsTabId)
+            this.openPluginSettings()
             return
         }
         await this.runSnippet(result.snippet, profile)
+    }
+
+    /**
+     * Opens the plugin's settings tab, resolving whichever tab id currently
+     * hosts it — 'better-tabby' when the "Better *" family is unified,
+     * 'better-sidebar' when this plugin is alone. Never hardcode the id (see
+     * `electBetterPanelHost()`); callers that want a specific section set
+     * `SidebarPlusSettingsTabComponent.requestedSection` first.
+     */
+    openPluginSettings (): void {
+        const election = electBetterPanelHost(this.injector)
+        if (election.unified) {
+            // Whichever plugin hosts the panel reads this at construction
+            // and pre-selects our tab, so a section request above lands
+            // even when the vault carries the settings.
+            this.injector.get<BetterPanelContribution>(SIDEBAR_PANEL_TOKEN as any).openRequested = true
+        }
+        this.openSettingsTab(election.settingsTabId)
     }
 
     /**

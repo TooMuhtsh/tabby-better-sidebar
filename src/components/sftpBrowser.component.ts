@@ -1,7 +1,7 @@
 import './sftpBrowser.component.scss'
 import { posix } from 'path'
 import { filesize } from 'filesize'
-import { AfterViewChecked, Component, ElementRef, HostListener, Inject, NgZone, OnDestroy } from '@angular/core'
+import { AfterViewChecked, Component, ElementRef, HostListener, Inject, NgZone, OnDestroy, ViewChild } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService, HTMLFileUpload, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
@@ -13,6 +13,7 @@ import { OpenMode, SftpRemoteEditor } from '../sftpRemoteEdit'
 import { SidebarPlusDragOutServer } from '../dragOutServer.service'
 import { freeLocalName } from '../localNames'
 import { SidebarPlusNoticesService } from '../notices.service'
+import { SidebarPlusI18nService } from '../i18n'
 import { readRemoteEntry, resolveRemoteSymlink } from '../remoteEntry'
 import { downloadRemoteTree } from '../remoteTree'
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
@@ -154,34 +155,63 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * fullPath, isDirectory, isSymlink, mode, size and modified, so there is
      * no owner/group column to offer however much an SFTP client usually has
      * one.
+     *
+     * Translated through explicit calls to `i18n.t()`, each with its own
+     * string written out in full, rather than the template's `| translate`
+     * pipe: this list is consumed as a bound property
+     * (`*ngFor='let column of availableColumns'`), never a literal, and the
+     * i18n lint script's extraction is lexical — it only recognises a
+     * literal immediately piped to `translate` in a `.pug` file or passed
+     * directly to `i18n.t()` in a `.ts` file (piping `column.label` came
+     * back CLÉ MORTE while building this lot). A getter rather than a field
+     * computed once keeps a live language change picked up on the next read
+     * — this is six entries, read only while the rarely-open display menu is
+     * on screen, nothing like the row list `visibleColumns`/`rows` below
+     * guard against.
      */
-    static readonly AVAILABLE_COLUMNS: SftpColumn[] = [
-        { id: 'size', label: 'Taille', description: 'Taille du fichier', width: '3.9rem', numeric: true },
-        { id: 'date', label: 'Date', description: 'Date de modification', width: '4.5rem' },
-        { id: 'mode', label: 'Perm.', description: 'Permissions en octal (755)', width: '2.1rem' },
-        { id: 'modeLong', label: 'Droits', description: 'Permissions en format long (drwxr-xr-x)', width: '5.2rem' },
-        { id: 'type', label: 'Type', description: 'Nature de l’élément', width: '4rem' },
-        { id: 'ext', label: 'Ext.', description: 'Extension du fichier', width: '2.6rem' },
-    ]
-
-    availableColumns = SidebarPlusSftpBrowserComponent.AVAILABLE_COLUMNS
+    get availableColumns (): SftpColumn[] {
+        return [
+            { id: 'size', label: this.i18n.t('Size'), description: this.i18n.t('File size'), width: '3.9rem', numeric: true },
+            { id: 'date', label: this.i18n.t('Date'), description: this.i18n.t('Date modified'), width: '4.5rem' },
+            { id: 'mode', label: this.i18n.t('Perm.'), description: this.i18n.t('Permissions in octal (755)'), width: '2.1rem' },
+            { id: 'modeLong', label: this.i18n.t('Rights'), description: this.i18n.t('Permissions in long form (drwxr-xr-x)'), width: '5.2rem' },
+            { id: 'type', label: this.i18n.t('Type'), description: this.i18n.t('Item type'), width: '4rem' },
+            { id: 'ext', label: this.i18n.t('Ext.'), description: this.i18n.t('File extension'), width: '2.6rem' },
+        ]
+    }
 
     /**
      * The display toggles that sit under the column list in the header menu,
      * modelled on SFTP+'s. Each is a `sidebarPlus` key, declared in the
-     * ConfigProvider defaults (piège #16).
+     * ConfigProvider defaults (piège #16). Same translation reasoning as
+     * `availableColumns` above.
      */
-    static readonly DISPLAY_TOGGLES = [
-        { key: 'sftpFoldersFirst', label: 'Dossiers en premier' },
-        { key: 'sftpShowHidden', label: 'Afficher les fichiers cachés' },
-        { key: 'sftpColumnBorders', label: 'Bordures de colonnes' },
-        { key: 'sftpZebra', label: 'Lignes alternées' },
-    ]
+    get displayToggles (): { key: string, label: string }[] {
+        return [
+            { key: 'sftpFoldersFirst', label: this.i18n.t('Folders first') },
+            { key: 'sftpShowHidden', label: this.i18n.t('Show hidden files') },
+            { key: 'sftpColumnBorders', label: this.i18n.t('Column borders') },
+            { key: 'sftpZebra', label: this.i18n.t('Alternating rows') },
+        ]
+    }
 
-    displayToggles = SidebarPlusSftpBrowserComponent.DISPLAY_TOGGLES
+    /**
+     * Full paths of every selected entry — files and folders mixed freely.
+     * `Set` rather than an array: `isSelected()` runs for every row on every
+     * change-detection pass (see the doc comment above `rows`), and a `Set`
+     * lookup is the O(1) that requires.
+     */
+    private selection = new Set<string>()
 
-    /** Full path of the selected entry, or null. Single selection only — there is no bulk action to justify more. */
-    selectedPath: string|null = null
+    /**
+     * The last entry clicked *without* Shift — a plain click or a Ctrl/Cmd
+     * click, both of which start a fresh anchor by the usual desktop
+     * convention. A Shift+click ranges from here to the clicked row, in
+     * **displayed** order, and never moves the anchor itself: a second
+     * Shift+click extends or shrinks the same range instead of restarting it
+     * from wherever the previous one landed.
+     */
+    private selectionAnchor: string|null = null
 
     private editor: SftpRemoteEditor
     private dragOut: SftpDragOut
@@ -206,6 +236,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         platform: PlatformService,
         temp: SidebarPlusTempFilesService,
         private notices: SidebarPlusNoticesService,
+        private i18n: SidebarPlusI18nService,
         private dragServer: SidebarPlusDragOutServer,
         private registry: SidebarPlusTransfersService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
@@ -282,6 +313,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // The one listener this component puts on `document` — a panel torn
         // down mid-gesture would otherwise leave it there for good.
         this.stopWatchingWindowExit()
+        // Belt and braces alongside `loadMoreSentinelRef`'s own teardown: a
+        // component destroyed outright — the SSH tab closing, say — never
+        // runs that setter with `undefined`, Angular just tears the view
+        // down, so the observer has to be told here too.
+        this.teardownLoadMoreObserver()
     }
 
     /**
@@ -369,8 +405,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             return
         }
         const base = await this.platformSvc.pickDirectory(
-            `Dossier de destination pour ${folder.name}`,
-            'Télécharger ici',
+            this.i18n.t('Destination folder for {name}', { name: folder.name }),
+            this.i18n.t('Download here'),
         )
         if (!base) {
             return
@@ -381,12 +417,12 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
                 this.sftp, folder.fullPath, target,
                 (remote, local, item) => this.fileTransfers.download(this.sftp, remote, local, item.name, item.size, item.mode),
             )
-            this.notices.notice(`${folder.name} téléchargé dans ${base}`)
+            this.notices.notice(this.i18n.t('{name} downloaded to {base}', { name: folder.name, base }))
         } catch (error) {
             // The lines already say which file failed and why; the toast says
             // the folder as a whole is not to be trusted yet.
             this.notices.error(
-                `${folder.name} : téléchargement incomplet`,
+                this.i18n.t('{name}: incomplete download', { name: folder.name }),
                 String((error as Error)?.message ?? error),
             )
         }
@@ -541,7 +577,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // settings — one click instead of two, as in SFTP+. Elsewhere in the
         // empty area, the create actions.
         const onHeader = !!target.closest('.sftp-header-row')
-        this.selectedPath = null
+        this.clearSelection()
         this.backgroundMenuX = event.clientX
         this.backgroundMenuY = event.clientY
         this.backgroundMenuOpen = !onHeader
@@ -610,14 +646,14 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     async createFileFromMenu (): Promise<void> {
         this.backgroundMenuOpen = false
         const modal = this.ngbModalService.open(PromptModalComponent)
-        modal.componentInstance.prompt = 'Nom du nouveau fichier'
+        modal.componentInstance.prompt = this.i18n.t('New file name')
         const result = await modal.result.catch(() => null)
         const name = result?.value?.trim()
         if (!name) {
             return
         }
         if (name.includes('/')) {
-            this.notify.error('Le nom ne peut pas contenir de « / »')
+            this.notify.error(this.i18n.t('The name cannot contain "/"'))
             return
         }
 
@@ -629,7 +665,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // the name as free — and the create then clobbered the link. Same check
         // as `renameEntry()` makes, by the same route.
         if (await readRemoteEntry(this.sftp, fullPath)) {
-            this.notify.error(`${name} existe déjà`)
+            this.notify.error(this.i18n.t('{name} already exists', { name }))
             return
         }
 
@@ -637,17 +673,119 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             await this.sftp.upload(fullPath, new EmptyFileUpload(name, 0o644))
             await this.navigate(this.path)
         } catch (e) {
-            this.notify.error(`Impossible de créer ${name}`, String(e))
+            this.notify.error(this.i18n.t('Could not create {name}', { name }), String(e))
         }
     }
 
     ////// SELECTION & OPENING //////
-    select (item: SFTPFile): void {
-        this.selectedPath = item.fullPath
+    /**
+     * Row click. Plain click replaces the whole selection with this entry;
+     * Ctrl/Cmd+click toggles it in/out without touching the rest; Shift+click
+     * ranges from the anchor to here, in the order the list is rendered in
+     * (`displayedFiles`), replacing whatever was selected before. `event` is
+     * optional so every non-interactive caller — `openEntry()` navigating
+     * into a directory, for instance — keeps making a plain single selection
+     * without having to fake one.
+     */
+    select (item: SFTPFile, event?: MouseEvent): void {
+        const path = item.fullPath
+        if (event?.shiftKey && this.selectionAnchor !== null) {
+            this.selectRange(this.selectionAnchor, path)
+            return
+        }
+        if (event && (event.ctrlKey || event.metaKey)) {
+            if (this.selection.has(path)) {
+                this.selection.delete(path)
+            } else {
+                this.selection.add(path)
+            }
+            this.selectionAnchor = path
+            return
+        }
+        this.selection.clear()
+        this.selection.add(path)
+        this.selectionAnchor = path
+    }
+
+    /** The Shift+click range: replaces the selection with the anchor→target span, in display order. */
+    private selectRange (anchorPath: string, targetPath: string): void {
+        const files = this.displayedFiles
+        const anchorIndex = files.findIndex(f => f.fullPath === anchorPath)
+        const targetIndex = files.findIndex(f => f.fullPath === targetPath)
+        if (anchorIndex === -1 || targetIndex === -1) {
+            // The anchor is no longer part of what is on screen — filtered out,
+            // or the directory changed under it. Ranging over rows that are not
+            // there would be arbitrary, so this falls back to a plain single
+            // selection instead, exactly as a click without Shift would.
+            this.selection.clear()
+            this.selection.add(targetPath)
+            this.selectionAnchor = targetPath
+            return
+        }
+        const [start, end] = anchorIndex <= targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex]
+        this.selection.clear()
+        for (let i = start; i <= end; i++) {
+            this.selection.add(files[i].fullPath)
+        }
     }
 
     isSelected (item: SFTPFile): boolean {
-        return this.selectedPath === item.fullPath
+        return this.selection.has(item.fullPath)
+    }
+
+    /** Every selected entry still present in the current listing, in display order. Feeds bulk delete/move and the `Suppr` shortcut. */
+    private selectedItems (): SFTPFile[] {
+        if (this.selection.size === 0) {
+            return []
+        }
+        return this.displayedFiles.filter(f => this.selection.has(f.fullPath))
+    }
+
+    /** Empties the selection and forgets the Shift+click anchor — background click, navigating away, or anything else where what was selected stops meaning anything. */
+    private clearSelection (): void {
+        this.selection.clear()
+        this.selectionAnchor = null
+    }
+
+    /**
+     * Overridden purely to clear the selection when the directory actually
+     * changes. `goUp()`, the breadcrumb links and every other navigation
+     * `SFTPPanelComponent` offers all funnel through this one inherited
+     * method, so overriding it is the single point that catches all of them
+     * at once rather than threading a clear through each call site. A
+     * same-path call — what the "Actualiser" button sends — is a refresh, not
+     * a move to somewhere else, and leaves the selection alone.
+     *
+     * The rendered chunk resets unconditionally though, same-path call
+     * included: `navigate()` clears `fileList` before rereading it, which is
+     * what already sends the panel's scroll back to the top today (the
+     * `.sftp-grid` disappears behind "Chargement…" and comes back empty) —
+     * resetting `renderCount` here just keeps the two in step rather than
+     * leaving the previous chunk size to briefly outlive a listing it no
+     * longer describes.
+     */
+    override async navigate (newPath: string, fallbackOnError?: boolean): Promise<void> {
+        if (newPath !== this.path) {
+            this.clearSelection()
+        }
+        this.resetRenderChunk()
+        await super.navigate(newPath, fallbackOnError)
+    }
+
+    /**
+     * Overridden purely to reset the rendered chunk: the search bar can turn
+     * a five-thousand-entry directory into fifty matches, and what was on
+     * screen before has nothing to do with what belongs on screen now.
+     */
+    override onFilterChange (): void {
+        super.onFilterChange()
+        this.resetRenderChunk()
+    }
+
+    /** Same reasoning as `onFilterChange()` above, for the reverse direction. */
+    override clearFilter (): void {
+        super.clearFilter()
+        this.resetRenderChunk()
     }
 
     /**
@@ -718,11 +856,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             try {
                 target = await this.resolveSymlink(item)
             } catch (e) {
-                this.notify.error(`Impossible de suivre le lien ${item.name}`, String(e))
+                this.notify.error(this.i18n.t('Could not follow the link {name}', { name: item.name }), String(e))
                 return
             }
             if (!target) {
-                this.notices.error(`${item.name} pointe vers une cible introuvable`)
+                this.notices.error(this.i18n.t('{name} points to a target that cannot be found', { name: item.name }))
                 return
             }
             if (this.isDirectoryEntry(target)) {
@@ -734,7 +872,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             // Said out loud when the names differ: the editor is about to open
             // something else than the row that was double-clicked.
             if (target.name !== item.name) {
-                this.notices.notice(`${item.name} → ${target.fullPath}`)
+                this.notices.notice(this.i18n.t('{name} → {target}', { name: item.name, target: target.fullPath }))
             }
             await this.editor.edit(this.sftp, target, mode)
             return
@@ -794,8 +932,20 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // is what makes an internal move possible, and it costs nothing when
         // the drop lands outside — Chromium hands custom types to the source
         // window only.
-        event.dataTransfer?.setData(INTERNAL_DRAG_TYPE, item.fullPath)
-        this.internalDragSource = item
+        //
+        // The whole selection rides along when the grabbed row is part of one
+        // with more than one entry; otherwise only the grabbed row does — this
+        // is the one place selection size decides what a drag carries, and it
+        // is deliberately read-only here: grabbing a row outside the selection
+        // does not change what is selected, only what this one gesture moves.
+        // The outbound OS drag below (`DownloadURL`/`startDrag`) stays strictly
+        // single-element regardless — pièges #58/#65 — and keeps reading `item`
+        // directly, never this set.
+        const dragSources = this.selection.size > 1 && this.selection.has(item.fullPath)
+            ? this.displayedFiles.filter(f => this.selection.has(f.fullPath))
+            : [item]
+        this.internalDragSources = dragSources
+        event.dataTransfer?.setData(INTERNAL_DRAG_TYPE, JSON.stringify(dragSources.map(f => f.fullPath)))
 
         // The real drag-and-drop path: announce the file and let Chromium claim
         // its content when — and only when — the drop lands. `preventDefault()`
@@ -852,7 +1002,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         event.preventDefault()
         // No HTML drag from here on, so there is no internal move to be had
         // either — and no `dragend` coming to clear this.
-        this.internalDragSource = null
+        this.internalDragSources = []
         this.copyToOS(item, false)
     }
 
@@ -972,16 +1122,18 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
                 SidebarPlusSftpBrowserComponent.DRAG_OUT_MAX_BYTES,
             )
         } catch (e) {
-            this.notify.error(`Impossible de lire le contenu de ${item.name}`, String(e))
+            this.notify.error(this.i18n.t('Could not read the contents of {name}', { name: item.name }), String(e))
             return false
         }
         if (!weight.truncated) {
             return true
         }
         return await this.ask(
-            `"${item.name}" contient plus de ${weight.files} fichiers (${filesize(weight.bytes)} au moins). `
-            + 'Tout sera téléchargé avant que le glisser-déposer ne devienne possible, sans progression ni annulation. Continuer ?',
-            'Télécharger',
+            this.i18n.t(
+                '"{name}" contains more than {count} files ({size} at least). Everything will be downloaded before drag-and-drop becomes possible, with no progress and no way to cancel. Continue?',
+                { name: item.name, count: weight.files, size: filesize(weight.bytes) },
+            ),
+            this.i18n.t('Download'),
         )
     }
 
@@ -1161,12 +1313,12 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         event.preventDefault()
         event.stopPropagation()
         const aimed = this.aimFrom(event.target as HTMLElement)
-        const source = this.internalDragSource
+        const sources = this.internalDragSources
         this.clearDropTarget()
         if (internal) {
             // Read while the event is still being dispatched — `getData()`
             // answers nothing once the handler has returned.
-            void this.receiveMove(source, event.dataTransfer?.getData(INTERNAL_DRAG_TYPE) ?? '', aimed)
+            void this.receiveMove(sources, event.dataTransfer?.getData(INTERNAL_DRAG_TYPE) ?? '', aimed)
             return
         }
         void this.receiveDrop(this.claimEntries(event), aimed)
@@ -1211,7 +1363,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             try {
                 plan = await this.planFromEntries(entries, destination)
             } catch (e) {
-                this.notices.error('Impossible de lire ce qui a été déposé', String(e))
+                this.notices.error(this.i18n.t('Could not read what was dropped'), String(e))
                 return
             }
             if (!plan.files.length && !plan.directories.length) {
@@ -1257,8 +1409,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // the directory on screen, whereas a move to it is no move at all,
         // since that is where the dragged row already lives.
         this.notices.notice(intent === 'move'
-            ? `${aimed.name} n’est pas un dossier — rien n’a été déplacé`
-            : `${aimed.name} n’est pas un dossier — envoi dans ${this.path}`)
+            ? this.i18n.t('{name} is not a folder — nothing was moved', { name: aimed.name })
+            : this.i18n.t('{name} is not a folder — sending to {path}', { name: aimed.name, path: this.path }))
         return this.path
     }
 
@@ -1333,11 +1485,19 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     private async confirmOverwrite (collisions: string[], destination: string): Promise<boolean> {
         const named = collisions.slice(0, SidebarPlusSftpBrowserComponent.COLLISIONS_NAMED)
         const rest = collisions.length - named.length
-        const list = named.join(', ') + (rest > 0 ? `, et ${rest} autre${rest > 1 ? 's' : ''}` : '')
-        const head = collisions.length > 1
-            ? `${collisions.length} fichiers existent déjà sous ${destination} et seront écrasés`
-            : `Un fichier existe déjà sous ${destination} et sera écrasé`
-        return await this.ask(`${head} : ${list}. Continuer ?`, 'Écraser')
+        const list = rest > 0
+            ? this.i18n.t('{names}, and {rest, plural, one {# more} other {# more}}', { names: named.join(', '), rest })
+            : named.join(', ')
+        const message = collisions.length > 1
+            ? this.i18n.t(
+                '{count} files already exist under {destination} and will be overwritten: {list}. Continue?',
+                { count: collisions.length, destination, list },
+            )
+            : this.i18n.t(
+                'A file already exists under {destination} and will be overwritten: {list}. Continue?',
+                { destination, list },
+            )
+        return await this.ask(message, this.i18n.t('Overwrite'))
     }
 
     /**
@@ -1383,16 +1543,27 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         const sent = plan.files.length - failed.length
         const folders = plan.directories.length
         if (sent > 0) {
-            this.notices.notice(
-                `${sent} fichier${sent > 1 ? 's' : ''} envoyé${sent > 1 ? 's' : ''} vers ${destination}`
-                + (folders > 0 ? ` (${folders} dossier${folders > 1 ? 's' : ''})` : ''),
-            )
+            this.notices.notice(folders > 0
+                ? this.i18n.t(
+                    '{sent, plural, one {# file} other {# files}} sent to {destination} ({folders, plural, one {# folder} other {# folders}})',
+                    { sent, destination, folders },
+                )
+                : this.i18n.t(
+                    '{sent, plural, one {# file} other {# files}} sent to {destination}',
+                    { sent, destination },
+                ))
         } else if (folders > 0 && !failed.length) {
-            this.notices.notice(`${folders} dossier${folders > 1 ? 's' : ''} créé${folders > 1 ? 's' : ''} dans ${destination}`)
+            this.notices.notice(this.i18n.t(
+                '{folders, plural, one {# folder} other {# folders}} created in {destination}',
+                { folders, destination },
+            ))
         }
         if (failed.length) {
             this.notices.error(
-                `${failed.length} fichier${failed.length > 1 ? 's' : ''} sur ${plan.files.length} n’${failed.length > 1 ? 'ont' : 'a'} pas pu être envoyé${failed.length > 1 ? 's' : ''}`,
+                this.i18n.t(
+                    'Could not send {failed, plural, one {# file} other {# files}} of {total}',
+                    { failed: failed.length, total: plan.files.length },
+                ),
                 failed.slice(0, SidebarPlusSftpBrowserComponent.COLLISIONS_NAMED).join(', '),
             )
         }
@@ -1400,24 +1571,26 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
 
     ////// MOVING A ROW WITHIN THE SERVER //////
     /**
-     * The row a drag started from, for as long as the gesture lasts.
+     * The rows a drag started from, for as long as the gesture lasts — the
+     * whole selection when the grabbed row was part of one with more than one
+     * entry, just that row otherwise (see `onDragStart()`).
      *
      * Kept here rather than read from the `DataTransfer` because `getData()` is
      * write-only until the drop: during `dragover` the engine exposes the list
      * of types and nothing else, and the target highlight has to be decided on
-     * every one of those events. Null while nothing is being dragged, and null
-     * as well for the gestures that call `preventDefault()` — those have no HTML
-     * drag, hence no move to offer and no `dragend` to clean up after.
+     * every one of those events. Empty while nothing is being dragged, and
+     * empty as well for the gestures that call `preventDefault()` — those have
+     * no HTML drag, hence no move to offer and no `dragend` to clean up after.
      *
      * A panel can only ever see its own: `detachPanel()` takes the whole root
      * node out of the document, so only the focused tab's browser is there to
      * receive a drop.
      */
-    private internalDragSource: SFTPFile|null = null
+    private internalDragSources: SFTPFile[] = []
 
-    /** Dims the row being moved, so the gesture reads as coming from somewhere. */
+    /** Dims every row being moved, so the gesture reads as coming from somewhere. */
     isDragSource (item: SFTPFile): boolean {
-        return this.internalDragSource?.fullPath === item.fullPath
+        return this.internalDragSources.some(f => f.fullPath === item.fullPath)
     }
 
     /**
@@ -1432,7 +1605,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         const candidate = this.windowExitCandidate
         const leftWindow = this.wasAimedOutOfWindow(event)
         this.stopWatchingWindowExit()
-        this.internalDragSource = null
+        this.internalDragSources = []
         this.clearDropTarget()
         if (candidate && leftWindow) {
             this.askedToLeave(candidate)
@@ -1453,7 +1626,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             // Kept from the gesture this replaced: without it, dragging a
             // directory to the desktop does nothing and says nothing, and the
             // setting that governs it is undiscoverable.
-            this.notices.notice('Le glisser-déposer des dossiers vers l’extérieur est désactivé — activez-le dans Paramètres → Better Sidebar')
+            this.notices.notice(this.i18n.t('Dragging folders out is disabled — enable it in Settings → Better Sidebar'))
             return
         }
         this.dragOutIntent = item.fullPath
@@ -1479,8 +1652,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * than by an error message after the fact.
      */
     private canMoveTo (aimed: SFTPFile|'up'|null): boolean {
-        const source = this.internalDragSource
-        if (!source) {
+        const sources = this.internalDragSources
+        if (!sources.length) {
             return false
         }
         const destination = aimed === null
@@ -1488,11 +1661,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             : aimed === 'up' ? posix.dirname(this.path) : aimed.fullPath
         // Already there. The common one by far: the pointer spends most of a
         // drag over rows that are not directories, all of which aim at the
-        // directory the entry is already in.
-        if (posix.dirname(source.fullPath) === destination) {
+        // directory the entry is already in. Every dragged row comes from the
+        // same listing, so they share that parent — checking the first is
+        // checking them all.
+        if (posix.dirname(sources[0].fullPath) === destination) {
             return false
         }
-        return !this.isSelfOrDescendant(source.fullPath, destination)
+        return sources.every(source => !this.isSelfOrDescendant(source.fullPath, destination))
     }
 
     /**
@@ -1509,7 +1684,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     /**
-     * Moves the dragged entry into the aimed directory.
+     * Moves every dragged entry into the aimed directory.
      *
      * `rename()` on a server-side move costs nothing and transfers nothing —
      * within one filesystem it is a directory entry being rewritten. Across two
@@ -1517,51 +1692,97 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * rather than guessed at beforehand: SFTP has no way to ask where a path is
      * mounted.
      *
-     * The announced path is checked against the remembered row rather than
-     * used: a mismatch means the drag did not come from this panel's own state,
-     * and the safe answer to a move whose source is uncertain is not to make it.
+     * The announced payload is checked against the remembered rows rather than
+     * used on its own: a mismatch means the drag did not come from this
+     * panel's own state, and the safe answer to a move whose source is
+     * uncertain is not to make it. Compared as sets, not as an ordered pair —
+     * `JSON.stringify()` on the sending side and the engine's own string
+     * transport give no guarantee the order survives, and membership is all
+     * this check is for.
      */
-    private async receiveMove (source: SFTPFile|null, announcedPath: string, aimed: SFTPFile|'up'|null): Promise<void> {
-        if (!source || announcedPath !== source.fullPath) {
+    private async receiveMove (sources: SFTPFile[], announcedPayload: string, aimed: SFTPFile|'up'|null): Promise<void> {
+        if (!sources.length) {
             return
         }
-        const destination = await this.resolveDestination(aimed, 'move')
-        // Both re-run against the *resolved* destination: a symlink is judged
-        // on its own path while the cursor moves, so this is the first point at
-        // which a link leading back into the dragged directory — or back into
-        // the directory on screen — is visible at all.
-        if (destination === posix.dirname(source.fullPath)) {
-            return
-        }
-        if (this.isSelfOrDescendant(source.fullPath, destination)) {
-            this.notices.error(`${source.name} ne peut pas être déplacé dans lui-même`)
-            return
-        }
-
-        const target = posix.join(destination, source.name)
-        // Refused rather than overwritten, exactly as `renameEntry()` does:
-        // SFTP v3 leaves it to the server to decide what a rename onto an
-        // existing name does, and some replace it. Refusing is the one answer
-        // that cannot destroy anything.
-        if (await readRemoteEntry(this.sftp, target)) {
-            this.notices.error(`${source.name} existe déjà dans ${destination}`)
-            return
-        }
-
+        let announcedPaths: unknown
         try {
-            await this.sftp.rename(source.fullPath, target)
-        } catch (e) {
-            this.notices.error(`Impossible de déplacer ${source.name} vers ${destination}`, String(e))
+            announcedPaths = JSON.parse(announcedPayload)
+        } catch {
+            return
+        }
+        if (!Array.isArray(announcedPaths) || !announcedPaths.every(p => typeof p === 'string')) {
+            return
+        }
+        const remembered = new Set(sources.map(s => s.fullPath))
+        if (announcedPaths.length !== remembered.size || announcedPaths.some(p => !remembered.has(p))) {
             return
         }
 
-        // The entry has left the directory on screen, so the selection has
-        // nothing left to point at — unlike a rename, where it follows.
-        if (this.selectedPath === source.fullPath) {
-            this.selectedPath = null
+        const destination = await this.resolveDestination(aimed, 'move')
+        // Every dragged row comes from the same listing, so they share a
+        // parent — "already there" is an all-or-nothing question, exactly as
+        // `canMoveTo()` already treated it. Re-run against the *resolved*
+        // destination: a symlink is judged on its own path while the cursor
+        // moves, so this is the first point at which a link leading back into
+        // the directory on screen is visible at all.
+        if (destination === posix.dirname(sources[0].fullPath)) {
+            return
         }
+
+        // Sequential, not parallel, and each entry gets the same per-entry
+        // conflict arbitration the single-item move always had: a name clash,
+        // a link resolving back into the dragged entry itself (only visible now,
+        // against the *resolved* destination), or a rename the server refused
+        // skips that one entry and moves on to the rest, rather than aborting
+        // entries that were perfectly fine.
+        let succeeded = 0
+        let firstError: string|null = null
+        for (const source of sources) {
+            if (this.isSelfOrDescendant(source.fullPath, destination)) {
+                firstError = firstError ?? this.i18n.t('{name} cannot be moved into itself', { name: source.name })
+                continue
+            }
+            const target = posix.join(destination, source.name)
+            // Refused rather than overwritten, exactly as `renameEntry()` does:
+            // SFTP v3 leaves it to the server to decide what a rename onto an
+            // existing name does, and some replace it. Refusing is the one
+            // answer that cannot destroy anything.
+            if (await readRemoteEntry(this.sftp, target)) {
+                firstError = firstError ?? this.i18n.t('{name} already exists in {destination}', { name: source.name, destination })
+                continue
+            }
+            try {
+                await this.sftp.rename(source.fullPath, target)
+            } catch (e) {
+                firstError = firstError ?? this.i18n.t('Could not move {name}: {error}', { name: source.name, error: String(e) })
+                continue
+            }
+            // The entry has left the directory on screen, so the selection has
+            // nothing left to point at — unlike a rename, where it follows.
+            succeeded++
+            this.selection.delete(source.fullPath)
+        }
+
         await this.refreshListing()
-        this.notices.notice(`${source.name} déplacé vers ${destination}`)
+
+        const failed = sources.length - succeeded
+        if (sources.length === 1) {
+            // Same wording as before there was a batch to speak of.
+            if (succeeded === 1) {
+                this.notices.notice(this.i18n.t('{name} moved to {destination}', { name: sources[0].name, destination }))
+            } else {
+                this.notices.error(
+                    this.i18n.t('Could not move {name} to {destination}', { name: sources[0].name, destination }),
+                    firstError ?? undefined,
+                )
+            }
+        } else if (failed === 0) {
+            this.notices.notice(this.i18n.t('{count} items moved to {destination}', { count: succeeded, destination }))
+        } else if (succeeded === 0) {
+            this.notices.error(this.i18n.t('No move succeeded'), firstError ?? undefined)
+        } else {
+            this.notices.error(this.i18n.t('{succeeded} moved, {failed} failed', { succeeded, failed }), firstError ?? undefined)
+        }
     }
 
     ////// DELETE //////
@@ -1587,6 +1808,12 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * than gating the removal on a translation string this plugin doesn't
      * control (the installed app has no French catalog entry for it — it
      * would render in English regardless of this plugin's own locale).
+     *
+     * Every entry pushed below — "Ouvrir avec...", "Renommer...", "Supprimer"
+     * — acts on `item`, the row that was right-clicked, never on the
+     * selection as a whole; same for the double-click handler above. Only the
+     * bulk delete entry appended last is selection-aware, and only appears
+     * when `item` itself is part of one.
      */
     async showContextMenu (item: SFTPFile, event: MouseEvent): Promise<void> {
         event.preventDefault()
@@ -1602,18 +1829,25 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // no equivalent elsewhere, and this plugin is published publicly.
         if (!this.isDirectoryEntry(item) && this.editors.canOpenWith) {
             items.push({
-                label: 'Ouvrir avec...',
+                label: this.i18n.t('Open with...'),
                 click: () => { void this.openEntry(item, 'openWith') },
             })
         }
         items.push({
-            label: 'Renommer...',
+            label: this.i18n.t('Rename...'),
             click: () => { void this.renameEntry(item) },
         })
         items.push({
-            label: 'Supprimer',
+            label: this.i18n.t('Delete'),
             click: () => { void this.confirmAndDelete(item) },
         })
+        const selected = this.selectedItems()
+        if (selected.length > 1 && this.selection.has(item.fullPath)) {
+            items.push({
+                label: this.i18n.t('Delete selection ({count})', { count: selected.length }),
+                click: () => { void this.confirmAndDeleteSelection(selected) },
+            })
+        }
         this.platform.popupContextMenu(items, event)
     }
 
@@ -1633,7 +1867,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         if ((event.target as HTMLElement).closest('.sftp-row')) {
             return
         }
-        this.selectedPath = null
+        this.clearSelection()
     }
 
     /**
@@ -1650,7 +1884,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      */
     private async renameEntry (item: SFTPFile): Promise<void> {
         const modal = this.ngbModalService.open(PromptModalComponent)
-        modal.componentInstance.prompt = `Nouveau nom de « ${item.name} »`
+        modal.componentInstance.prompt = this.i18n.t('New name for "{name}"', { name: item.name })
         modal.componentInstance.value = item.name
         const result = await modal.result.catch(() => null)
         const name = result?.value?.trim()
@@ -1658,7 +1892,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             return
         }
         if (name.includes('/')) {
-            this.notices.error('Le nom ne peut pas contenir de « / » — ceci renomme, cela ne déplace pas')
+            this.notices.error(this.i18n.t('The name cannot contain "/" — this renames, it does not move'))
             return
         }
 
@@ -1668,30 +1902,34 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // some overwrite it. Refusing outright is the only answer that cannot
         // destroy something.
         if (await readRemoteEntry(this.sftp, target)) {
-            this.notices.error(`${name} existe déjà dans ce dossier`)
+            this.notices.error(this.i18n.t('{name} already exists in this folder', { name }))
             return
         }
 
         try {
             await this.sftp.rename(item.fullPath, target)
         } catch (e) {
-            this.notices.error(`Impossible de renommer ${item.name}`, String(e))
+            this.notices.error(this.i18n.t('Could not rename {name}', { name: item.name }), String(e))
             return
         }
 
         // The selection follows the entry rather than being dropped: the file
         // the user was working on is still the one they are working on.
-        if (this.selectedPath === item.fullPath) {
-            this.selectedPath = target
+        if (this.selection.has(item.fullPath)) {
+            this.selection.delete(item.fullPath)
+            this.selection.add(target)
+            if (this.selectionAnchor === item.fullPath) {
+                this.selectionAnchor = target
+            }
         }
         await this.refreshListing()
-        this.notices.notice(`${item.name} renommé en ${name}`)
+        this.notices.notice(this.i18n.t('{old} renamed to {new}', { old: item.name, new: name }))
     }
 
-    /** `Suppr` on the selected entry — same confirm-then-delete path as the context menu entry above. */
+    /** `Suppr` on the selection — a single entry takes the same confirm-then-delete path as the context menu's "Supprimer", several take the bulk one further down. */
     @HostListener('document:keydown', ['$event'])
     onDocumentKeydown (event: KeyboardEvent): void {
-        if (event.key !== 'Delete' || event.repeat || !this.selectedPath || this.deleteInFlight) {
+        if (event.key !== 'Delete' || event.repeat || this.selection.size === 0 || this.deleteInFlight) {
             return
         }
         // Guards against firing while this panel is cached-but-detached for a
@@ -1706,9 +1944,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         if (target.closest('input, textarea, [contenteditable]')) {
             return
         }
-        const item = this.fileList?.find(f => f.fullPath === this.selectedPath)
-        if (item) {
-            void this.confirmAndDelete(item)
+        const items = this.selectedItems()
+        if (items.length === 1) {
+            void this.confirmAndDelete(items[0])
+        } else if (items.length > 1) {
+            void this.confirmAndDeleteSelection(items)
         }
     }
 
@@ -1727,9 +1967,9 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     private async runDeleteConfirmation (item: SFTPFile): Promise<void> {
         const modal = this.ngbModalService.open(ConfirmModalComponent)
         modal.componentInstance.message = item.isDirectory
-            ? `Supprimer le dossier "${item.name}" et tout son contenu ?`
-            : `Supprimer "${item.name}" ?`
-        modal.componentInstance.confirmLabel = 'Supprimer'
+            ? this.i18n.t('Delete folder "{name}" and everything in it?', { name: item.name })
+            : this.i18n.t('Confirm deletion of "{name}"?', { name: item.name })
+        modal.componentInstance.confirmLabel = this.i18n.t('Delete')
         // Which button `Entrée` hits, from the settings tab. Applied to both
         // triggers, not just the `Suppr` key that prompted the request: the
         // same modal answering the same question differently depending on how
@@ -1741,15 +1981,72 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         }
         try {
             await this.deleteRecursive(item)
-            this.notices.notice(`${item.name} supprimé`)
-            this.selectedPath = null
+            this.notices.notice(this.i18n.t('{name} deleted', { name: item.name }))
+            this.selection.delete(item.fullPath)
             await this.navigate(this.path)
         } catch (e) {
-            this.notify.error(`Impossible de supprimer ${item.name}`, String(e))
+            this.notify.error(this.i18n.t('Could not delete {name}', { name: item.name }), String(e))
         }
     }
 
-    /** Same recursion as the native (non-exported) `SFTPDeleteModalComponent.run()` — no progress UI, single-item selection makes it unnecessary in this pass. */
+    /**
+     * `Suppr` / context menu "Supprimer la sélection (N)" when more than one
+     * entry is selected. One confirmation for the whole batch — a count and
+     * an irreversibility reminder, since it now stands in for every item —
+     * then the same `deleteRecursive()` as the single-entry path above,
+     * sequentially rather than in parallel: a directory recursion already
+     * issues many requests of its own, and racing several of those against
+     * the same SFTP session is not a trade worth making for a background
+     * operation. Same `deleteInFlight` guard as `confirmAndDelete()`, held for
+     * the whole batch rather than re-acquired per entry.
+     */
+    async confirmAndDeleteSelection (items: SFTPFile[]): Promise<void> {
+        if (this.deleteInFlight || items.length < 2) {
+            return
+        }
+        this.deleteInFlight = true
+        try {
+            await this.runBulkDeleteConfirmation(items)
+        } finally {
+            this.deleteInFlight = false
+        }
+    }
+
+    private async runBulkDeleteConfirmation (items: SFTPFile[]): Promise<void> {
+        const modal = this.ngbModalService.open(ConfirmModalComponent)
+        modal.componentInstance.message = this.i18n.t('Delete {count} items? This action is irreversible.', { count: items.length })
+        modal.componentInstance.confirmLabel = this.i18n.t('Delete')
+        modal.componentInstance.defaultButton = this.config.store.sidebarPlus?.sftpDeleteDefaultButton ?? 'cancel'
+        const confirmed = await modal.result.catch(() => false)
+        if (!confirmed) {
+            return
+        }
+
+        // Per-entry arbitration, exactly as the single-item path above: one
+        // failure is reported and skipped rather than aborting entries that
+        // were perfectly fine.
+        let succeeded = 0
+        let firstError: string|null = null
+        for (const item of items) {
+            try {
+                await this.deleteRecursive(item)
+                succeeded++
+                this.selection.delete(item.fullPath)
+            } catch (e) {
+                firstError = firstError ?? this.i18n.t('{name}: {error}', { name: item.name, error: String(e) })
+            }
+        }
+
+        const failed = items.length - succeeded
+        if (failed === 0) {
+            this.notices.notice(this.i18n.t('{count} items deleted', { count: succeeded }))
+        } else {
+            this.notices.error(this.i18n.t('{succeeded} deleted, {failed} failed', { succeeded, failed }), firstError ?? undefined)
+        }
+        await this.navigate(this.path)
+    }
+
+    /** Same recursion as the native (non-exported) `SFTPDeleteModalComponent.run()` — no progress UI. Shared by the single-entry and the bulk delete above, entry by entry either way. */
     private async deleteRecursive (item: SFTPFile): Promise<void> {
         if (item.isDirectory) {
             for (const child of await this.sftp.readdir(item.fullPath)) {
@@ -1762,7 +2059,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     ////// COLUMNS //////
-    /** Configured columns, in the order declared in AVAILABLE_COLUMNS, ignoring ids that no longer exist. */
+    /** Configured columns, in the order declared by `availableColumns`, ignoring ids that no longer exist. */
     private columnCache: { key: string, result: SftpColumn[] }|null = null
 
     /**
@@ -1771,11 +2068,15 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * This getter feeds an `*ngFor` inside every row and the grid template of
      * every row. Returning a fresh array each time made Angular re-diff the
      * columns of each row on every cycle — the single biggest cost on a large
-     * directory. The config's own column list is the invalidation key.
+     * directory. The config's own column list is the invalidation key — the
+     * active locale rides along in it too, since `availableColumns` now
+     * translates its labels on every read: without this, a language change
+     * would sit uninvalidated behind an unchanged column selection and the
+     * header row would keep showing the previous locale's captions.
      */
     get visibleColumns (): SftpColumn[] {
         const selected: string[] = this.config.store.sidebarPlus?.sftpColumns ?? []
-        const key = selected.join('\0')
+        const key = `${selected.join('\0')}\0${this.locale.getLocale()}`
         if (this.columnCache?.key === key) {
             return this.columnCache.result
         }
@@ -1812,6 +2113,12 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     toggleDisplayOption (key: string): void {
         this.config.store.sidebarPlus[key] = !this.isToggleOn(key)
         this.config.save()
+        // Folders-first reorders the listing and hidden-files resizes it —
+        // both belong on the reset list on their own merits. The other two
+        // (zebra, column borders) are purely cosmetic and never touch which
+        // rows exist, but resetting alongside them is harmless: this only
+        // ever runs from an explicit menu click, never from the background.
+        this.resetRenderChunk()
     }
 
     private displayCache: {
@@ -1902,6 +2209,115 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         return result
     }
 
+    ////// RENDER CHUNKING (lazy list) //////
+    /**
+     * How many rows a single growth step adds — first paint included, since
+     * `renderCount` starts at exactly this value. Large enough to fill a tall
+     * sidebar without the sentinel showing up immediately, small enough that
+     * a directory of several thousand entries never lays out more than a
+     * handful of chunks' worth of DOM at once. This bounds the *rendering*
+     * cost only — `readdir` already brought the whole listing over the wire,
+     * `displayedFiles`/`rows` above are computed over all of it, and
+     * scrolling still reaches every entry; nothing here is a cap on what can
+     * be browsed.
+     */
+    private static readonly RENDER_CHUNK = 200
+
+    /**
+     * How many of `rows` the template currently renders. Everything past it
+     * still exists in `rows` — sorted, formatted, zebra-striped, selected,
+     * exactly as if the whole directory were on screen — it simply has no
+     * DOM node yet. That is what keeps `selectRange()` correct without any
+     * change on its part: a Shift+click can only ever land on a row that is
+     * actually rendered, so ranging over `displayedFiles` up to that row is
+     * already bounded to what is visible, and the multi-selection `Set`
+     * itself is never bounded by this at all — entries scrolled past stay
+     * selected.
+     */
+    private renderCount = SidebarPlusSftpBrowserComponent.RENDER_CHUNK
+
+    /** The observer watching the "load more" sentinel — created and torn down by `loadMoreSentinelRef`'s setter below as the sentinel itself appears and disappears. */
+    private loadMoreObserver: IntersectionObserver|null = null
+
+    /**
+     * What the template's `*ngFor` actually loops over. Bounding the DOM
+     * node count is the entire point of this section, so the slice has to be
+     * what is consumed, not `rows` itself — sort, zebra, columns and
+     * selection all stay computed over the full list upstream of this.
+     * `slice()` on an array that never grew past `renderCount` costs nothing
+     * of note, and a short directory never pays for anything past this call.
+     */
+    get visibleRows (): SftpRow[] {
+        return this.rows.slice(0, this.renderCount)
+    }
+
+    /** Whether more of `rows` exists past what is rendered — gates the sentinel row and, through it, the observer. False for any listing at or under `RENDER_CHUNK`, which is what makes a short directory render exactly as it did before this feature existed: no sentinel, no observer, nothing new. */
+    get hasMoreRows (): boolean {
+        return this.renderCount < this.rows.length
+    }
+
+    /** What the sentinel's "… encore X éléments" line reports. */
+    get remainingRowCount (): number {
+        return Math.max(0, this.rows.length - this.renderCount)
+    }
+
+    /**
+     * Back to the first chunk. Called from every action that changes *which*
+     * entries belong on screen — `navigate()` (a real move, or the
+     * "Actualiser" button rereading the same path), the filter box, and the
+     * display toggles that reorder, restrict or resize the listing — rather
+     * than from a single shared cache-invalidation branch on `rows` or
+     * `displayedFiles`, tempting as that looks. Those getters also recompute
+     * on the *background* auto-refresh diff `applyListing()` merges in every
+     * few seconds, which is deliberately built to update quietly in place —
+     * `trackBy` keeps the rows already on screen, and nothing about the view
+     * is supposed to jump (see the doc comment on `applyListing()`).
+     * Resetting the chunk there would silently undo exactly that.
+     */
+    private resetRenderChunk (): void {
+        this.renderCount = SidebarPlusSftpBrowserComponent.RENDER_CHUNK
+    }
+
+    /**
+     * `#loadMoreSentinel` lives under `*ngIf='hasMoreRows'`, so a plain
+     * `@ViewChild` field — the pattern `filterInput` uses on the tree — would
+     * go stale the moment the sentinel is added or removed: nothing would
+     * tell this component to start or stop watching it. The setter form
+     * fires on *both* transitions instead, which is what lets the observer's
+     * lifecycle track the sentinel's exactly: built the moment the node
+     * exists, torn down the moment it does not. `filterInput` never needed
+     * this because it is only ever read on demand, never reacted to.
+     */
+    @ViewChild('loadMoreSentinel') set loadMoreSentinelRef (ref: ElementRef<HTMLElement>|undefined) {
+        this.teardownLoadMoreObserver()
+        if (!ref) {
+            return
+        }
+        // `.sftp-body` is the element with `overflow-y: auto` — the actual
+        // scrolling ancestor. The component's own host merely flexes to fill
+        // the sidebar and never scrolls itself.
+        const root = this.elementRef.nativeElement.querySelector<HTMLElement>('.sftp-body')
+        this.loadMoreObserver = new IntersectionObserver(entries => {
+            if (!entries.some(entry => entry.isIntersecting)) {
+                return
+            }
+            // `IntersectionObserver` is a native browser API zone.js does not
+            // patch (piège #41) — this callback runs outside Angular, so the
+            // mutation that actually grows the rendered slice has to be
+            // wrapped for the extra rows to be painted.
+            this.zone.run(() => {
+                this.renderCount += SidebarPlusSftpBrowserComponent.RENDER_CHUNK
+            })
+        }, { root, rootMargin: '200px' })
+        this.loadMoreObserver.observe(ref.nativeElement)
+    }
+
+    /** Shared by the setter above (every appearance/disappearance of the sentinel) and `ngOnDestroy()` (a component torn down outright, which never runs that setter with `undefined`). */
+    private teardownLoadMoreObserver (): void {
+        this.loadMoreObserver?.disconnect()
+        this.loadMoreObserver = null
+    }
+
     toggleColumn (column: SftpColumn): void {
         const selected: string[] = [...(this.config.store.sidebarPlus?.sftpColumns ?? [])]
         const at = selected.indexOf(column.id)
@@ -1912,6 +2328,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         }
         this.config.store.sidebarPlus.sftpColumns = selected
         this.config.save()
+        this.resetRenderChunk()
     }
 
     cellValue (column: SftpColumn, item: SFTPFile): string {
@@ -1987,13 +2404,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
 
     typeLabel (item: SFTPFile): string {
         if (item.isSymlink) {
-            return 'Lien'
+            return this.i18n.t('Link')
         }
         if (item.isDirectory) {
-            return 'Dossier'
+            return this.i18n.t('Folder')
         }
         const ext = this.extension(item)
-        return ext === '' ? 'Fichier' : ext.toUpperCase()
+        return ext === '' ? this.i18n.t('File') : ext.toUpperCase()
     }
 
     extension (item: SFTPFile): string {
@@ -2023,16 +2440,16 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     rowTooltip (item: SFTPFile): string {
         const lines = [item.name]
         if (!item.isDirectory) {
-            lines.push(`Taille : ${this.humanSize(item.size)} (${item.size.toLocaleString()} octets)`)
+            lines.push(this.i18n.t('Size: {size} ({bytes} bytes)', { size: this.humanSize(item.size), bytes: item.size.toLocaleString() }))
         }
         const modified = this.fullDate(item.modified)
         if (modified !== '') {
-            lines.push(`Modifié : ${modified}`)
+            lines.push(this.i18n.t('Modified: {date}', { date: modified }))
         }
-        lines.push(`Permissions : ${this.octalMode(item)} — ${this.longMode(item)}`)
-        lines.push(`Type : ${this.typeLabel(item)}`)
+        lines.push(this.i18n.t('Permissions: {octal} — {long}', { octal: this.octalMode(item), long: this.longMode(item) }))
+        lines.push(this.i18n.t('Type: {type}', { type: this.typeLabel(item) }))
         if (item.isSymlink) {
-            lines.push('Lien symbolique')
+            lines.push(this.i18n.t('Symbolic link'))
         }
         return lines.join('\n')
     }
