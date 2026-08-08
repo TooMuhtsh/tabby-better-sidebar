@@ -855,6 +855,7 @@ sidebar-plus-tree .grabber {
         margin-bottom: .4rem;
 
         .icon-picker-item {
+            position: relative; // anchors .icon-picker-variant-dots below
             display: flex;
             align-items: center;
             justify-content: center;
@@ -873,6 +874,46 @@ sidebar-plus-tree .grabber {
             profile-icon {
                 width: 16px;
                 height: 16px;
+            }
+
+            // dashboard-icons entries with more than one rendering (see
+            // icons.ts PickerIcon.variants) only — a row of tiny dots in the
+            // tile's corner, each its own click target picking that variant
+            // instead of the tile's default. Deliberately not on the right
+            // click: that gesture is already the tile's own favorite-toggle
+            // (onIconContextMenu), and both live comfortably on one 28px
+            // tile without conflicting — the dots are a plain (click), the
+            // favorite toggle a (contextmenu), never the same event.
+            .icon-picker-variant-dots {
+                position: absolute;
+                right: 1px;
+                bottom: 1px;
+                display: flex;
+                gap: 1px;
+
+                .icon-picker-variant-dot {
+                    width: 5px;
+                    height: 5px;
+                    border-radius: 50%;
+                    border: 1px solid var(--theme-bg);
+                    cursor: pointer;
+
+                    &.variant-light {
+                        background-color: #fff;
+                    }
+
+                    &.variant-dark {
+                        background-color: #000;
+                    }
+
+                    &.variant-default {
+                        background-color: var(--theme-primary);
+                    }
+
+                    &:hover {
+                        transform: scale(1.6);
+                    }
+                }
             }
         }
     }

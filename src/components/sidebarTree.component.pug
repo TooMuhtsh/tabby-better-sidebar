@@ -650,6 +650,22 @@
             href='#'
         )
             profile-icon([icon]='e.value')
+            //- Dashboard-icons entries with more than one rendering (light/
+            //- dark, occasionally a third "default") only: a small on-tile
+            //- dot per variant, picked with its own left click. Deliberately
+            //- NOT the right click — that already opens the favorite-toggle
+            //- menu for the tile's default value (onIconContextMenu below),
+            //- and a variant dot sits well inside that same tile.
+            .icon-picker-variant-dots(*ngIf='e.variants')
+                a.icon-picker-variant-dot(
+                    *ngFor='let v of e.variants',
+                    [class.variant-light]="v.key === 'light'",
+                    [class.variant-dark]="v.key === 'dark'",
+                    [class.variant-default]="v.key === 'default'",
+                    (click)='selectIconVariant(v.value, $event)',
+                    [title]="v.key === 'light' ? ('Light variant' | translate) : v.key === 'dark' ? ('Dark variant' | translate) : ('Default variant' | translate)",
+                    href='#'
+                )
 
     hr
 

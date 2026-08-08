@@ -48,6 +48,23 @@ The icon picker's search results are sourced, in addition to Font Awesome
 - **Tabler Icons** (https://github.com/tabler/tabler-icons), licensed under
   the MIT License.
 
+## dashboard-icons (self-hosted service logos)
+
+The icon picker's search results also include
+[homarr-labs/dashboard-icons](https://github.com/homarr-labs/dashboard-icons),
+licensed under the Apache License 2.0. No npm package exists for this set —
+it is vendored straight from the GitHub repository by
+`scripts/vendor-dashboard-icons.js` into `src/dashboardIcons.json`, embedded
+as static, offline data (no network access at runtime). See
+`src/dashboardIcons.PROVENANCE.md` for the exact upstream commit, the size
+cap applied, and how to regenerate.
+
+The logos and marks depicted by these icons remain the property of their
+respective owners; their inclusion here is solely to let a user identify a
+self-hosted service by its own logo when naming an SSH profile or folder, not
+an endorsement or affiliation of any kind, by either this plugin or the
+services depicted.
+
 ## Font Awesome icon names (via Tabby)
 
 `src/icons.json` is extracted from Tabby's own `tabby-core` source
