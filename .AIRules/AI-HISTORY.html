@@ -24,6 +24,33 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>i18n lot 3 — sidebarTree, Transferts et onglet de réglages traduits (2026-08-08)</h2>
+<p>Dernier gros lot de l'internationalisation (issue GitHub #1) : les trois surfaces restées en
+français statique après les lots 1-2 passent aux clés anglaises + tables fr/es/de. L'onglet de
+réglages, cassé au lot 2 par le JIT (apostrophe dans un littéral inline), est refait selon le motif
+imposé par la fiche : <strong>tout en propriétés <code>lbl*</code></strong>, aucun littéral inline.
+Branche <code>feat/i18n-lot-3</code>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><strong>Passe visuelle utilisateur 12/12</strong> (support de passe dédié, version testée
+<code>dbdcf21</code>) : JIT sain sur les trois surfaces, es/de vérifiés, langue non couverte
+retombe sur l'anglais, retour français sans écart. Fusion sur <code>master</code>. Reste un
+<strong>lot 4 mineur</strong> consigné dans la fiche : messages d'erreur de
+<code>groupShare.ts</code>, <code>workspaceShare.ts</code>, <code>svgSanitizer.ts</code>,
+<code>profileModal.ts</code>.</td></tr>
+<tr><td>2026-08-08</td><td>dbdcf21</td>
+<td><code>sidebarTree</code> (81 clés template + 51 côté TypeScript : menus, notices, tooltips,
+tunnels, uptime en méthodes d'instance) et onglet de réglages (83 clés en getters
+<code>lbl*</code>) convertis. Tables à 390 clés, complètes dans les trois langues ;
+<strong>trois collisions de msgid Tabby esquivées par reformulation</strong>
+(<code>Recently launched</code>, <code>Modify</code>, <code>Erase</code>) ;
+<code>lint:i18n</code> et build verts.</td></tr>
+<tr><td>2026-08-08</td><td>ee07b54</td>
+<td>Bloc Transferts converti : template, confirmations d'annulation, badge et infobulle du
+registre en pluriels ICU, <code>Session : {label}</code> dans l'infobulle des lignes.</td></tr>
+</table>
+
 <h2>Remise à niveau 20260804-071239 : deux options tranchées, registre du réalisé créé (2026-08-08)</h2>
 <p>Les branches de sync du 2026-08-04, créées avant la fusion de la phase 0.3.0, étaient
 périmées — les fusionner aurait annulé la phase. Elles ont été supprimées (avec
