@@ -40,7 +40,6 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#menu-contextuel-long">Menu contextuel du dossier trop long</a></td><td><span class="pill planned">📋 À cadrer</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#popups-en-modales">Popups riches → modales centrées</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#icones-dashboard">Icônes dashboard-icons (logos de services IT)</a></td><td><span class="pill progress">🚧 En cours (2026-08-08)</span></td><td>Moyenne</td></tr>
-<tr><td><a href="#i18n">Internationalisation (i18n)</a></td><td><span class="pill progress">🚧 Socle posé, couverture partielle (2026-08-08)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
     <td><span class="pill done">✅ À jour — remise à niveau <code>20260804-071239</code> (2026-08-08)</span></td>
     <td>Entretien récurrent</td></tr>
@@ -268,46 +267,7 @@ plus de ne pas y régler ce qui relève de l'onglet de réglages.</p></div>
 
 <p id="quick-snippets"><a href="annexes/REALISE.html#quick-snippets">Quick Snippets (Macros de Sidebar)</a> — au registre du réalisé.</p>
 
-<h3 id="i18n">Internationalisation (i18n) <span class="pill progress">🚧 Socle posé, couverture partielle (2026-08-08)</span></h3>
-<p>Greffée sur le <code>ngx-translate</code> déjà chargé par <code>tabby-core</code>, plutôt qu'une
-dépendance i18n séparée — <code>@ngx-translate/core</code> reste <strong>external</strong> dans la
-config webpack (fourni par l'hôte, pas embarqué). La <strong>chaîne source anglaise EST la clé</strong>
-(pas de table d'ids courts) : chaque appel <code>{{ '…' | translate }}</code> porte directement le
-texte anglais par défaut, ce qui rend le rendu correct même sans traduction chargée.</p>
-<div class="callout warning"><span class="callout-title">Le 3ᵉ argument de <code>setTranslation()</code> est impératif</span>
-<p><code>translate.setTranslation(lang, table, true)</code> — le troisième argument
-<code>shouldMerge</code> <strong>doit</strong> être <code>true</code>. Sans lui,
-<code>setTranslation()</code> <strong>remplace</strong> toute la table de la langue au lieu de
-l'étendre, ce qui écraserait les traductions déjà posées par Tabby lui-même pour cette langue.</p></div>
-<ul>
-<li><strong>Trois tables</strong> — fr-FR, es-ES, de-DE — l'anglais étant la clé elle-même, aucune
-  table anglaise séparée.</li>
-<li><strong>Validateur <code>npm run lint:i18n</code></strong> : refuse toute clé manquante, morte, à
-  paramètre absent, à ICU cassé, ou qui écraserait une valeur déjà posée par Tabby.</li>
-<li><strong>Couverture : lot 3 codé le 2026-08-08</strong> (branche <code>feat/i18n-lot-3</code>) —
-  <code>sidebarTree</code>, bloc Transferts et onglet de réglages convertis (216 clés ajoutées,
-  tables à 390 clés complètes, l'onglet de réglages entièrement porté par des propriétés
-  <code>lbl*</code> conformément au motif imposé ci-dessous). <strong>Passe visuelle utilisateur
-  12/12 le 2026-08-08</strong> (support de passe dédié, version <code>dbdcf21</code>) — le JIT,
-  seul juge des expressions inline, est sain sur les trois surfaces.
-  Trois collisions de msgid Tabby esquivées par reformulation (<code>Recently launched</code>,
-  <code>Modify</code>, <code>Erase</code>). Restera un lot 4 mineur : les messages d'erreur portés
-  par <code>groupShare.ts</code>, <code>workspaceShare.ts</code>, <code>svgSanitizer.ts</code> et
-  <code>profileModal.ts</code>, qui transitent par la sidebar mais vivent hors des fichiers du
-  lot 3.</li>
-</ul>
-<div class="callout important"><span class="callout-title">Piège appris — une apostrophe droite dans une expression inline casse le JIT au runtime, invisible au build</span>
-<p>Lier une chaîne anglaise à apostrophe droite dans une <em>expression</em> Angular inline
-(<code>{{ '…' | translate }}</code>, <code>[title]="'…' | translate"</code>) casse la compilation
-<strong>JIT au runtime</strong> — l'apostrophe termine prématurément le littéral de chaîne.
-<code>npm run build</code> (webpack/tsc) ne le voit <strong>jamais</strong>, puisqu'il ne fait pas
-tourner le JIT d'Angular. C'est ce qui a cassé l'onglet de réglages pendant le lot 2 : il a été
-<strong>restauré en français statique</strong> (attributs <code>title="…"</code> statiques, hors i18n)
-plutôt que réparé sur place. Sa ré-internationalisation propre devra passer par des propriétés de
-composant (<code>get x() { return this.i18n.t('…') }</code>) liées via <code>[title]="x"</code>,
-jamais par un littéral inline. Les tirets cadratins des <em>clés</em> anglaises ont par prudence été
-remplacés par <code>:</code> — les <em>valeurs</em> FR/ES/DE, elles, gardent leur tiret : elles vivent
-dans les fichiers <code>.ts</code> et ne passent jamais par le JIT.</p></div>
+<p id="i18n"><a href="annexes/REALISE.html#i18n">Internationalisation (i18n)</a> — au registre du réalisé.</p>
 
 <p id="icon-favorites"><a href="annexes/REALISE.html#icon-favorites">Favoris d'icônes (distincts des « Récentes »)</a> — au registre du réalisé.</p>
 
