@@ -1,4 +1,5 @@
 import { SidebarWorkspace } from './configProvider'
+import { TranslatableMessage } from './i18nMessage'
 import { sanitizeSvgIcon } from './svgSanitizer'
 
 /**
@@ -83,8 +84,12 @@ export function buildWorkspacePayload (workspace: SidebarWorkspace): WorkspaceSh
 
 export interface ParseWorkspaceResult {
     payload?: WorkspaceSharePayload
-    /** Why it was refused, ready to show. Set when `payload` is not. */
-    error?: string
+    /**
+     * Why it was refused, as a message key and its params — same discipline
+     * as `groupShare.ts`'s `ParseResult.error`, this module has no injector
+     * access either. Set when `payload` is not.
+     */
+    error?: TranslatableMessage
 }
 
 function asString (value: unknown): string|undefined {
@@ -173,31 +178,31 @@ function sanitiseWorkspace (raw: Record<string, unknown>): SharedWorkspace {
  */
 export function parseWorkspacePayload (text: string): ParseWorkspaceResult {
     if (!text || !text.trim()) {
-        return { error: 'Le presse-papiers est vide.' }
+        return { error: { message: 'The clipboard is empty.' } }
     }
     if (text.length > MAX_PAYLOAD_BYTES) {
-        return { error: 'Le contenu du presse-papiers est trop volumineux pour être un workspace exporté.' }
+        return { error: { message: 'The clipboard content is too large to be an exported workspace.' } }
     }
     let raw: unknown
     try {
         raw = JSON.parse(text)
     } catch {
-        return { error: "Le presse-papiers ne contient pas de JSON — copiez d'abord un workspace exporté." }
+        return { error: { message: 'The clipboard does not contain JSON — copy an exported workspace first.' } }
     }
     if (!raw || typeof raw !== 'object') {
-        return { error: 'Le presse-papiers ne contient pas un workspace exporté.' }
+        return { error: { message: 'The clipboard does not contain an exported workspace.' } }
     }
     // Typed as a bag of unknowns rather than as a `Partial<WorkspaceSharePayload>`:
     // it is not one until every field below has been checked.
     const candidate = raw as Record<string, unknown>
     if (candidate.format !== SHARE_FORMAT) {
-        return { error: 'Le presse-papiers ne contient pas un workspace exporté.' }
+        return { error: { message: 'The clipboard does not contain an exported workspace.' } }
     }
     if (typeof candidate.version !== 'number' || candidate.version > SHARE_VERSION) {
-        return { error: `Ce workspace a été exporté par une version plus récente du plugin (format ${String(candidate.version)}).` }
+        return { error: { message: 'This workspace was exported by a newer version of the plugin (format {version}).', params: { version: String(candidate.version) } } }
     }
     if (!candidate.workspace || typeof candidate.workspace !== 'object' || Array.isArray(candidate.workspace)) {
-        return { error: 'Ce workspace exporté est incomplet.' }
+        return { error: { message: 'This exported workspace is incomplete.' } }
     }
     return {
         payload: {

@@ -501,6 +501,39 @@ const es_ES: Record<string, string> = {
     'Delete the snippet "{name}"? It is attached to {count} item(s), which will lose it.': '¿Eliminar «{name}»? Está asociado a {count} elemento(s), que lo perderán.',
     'Delete the snippet "{name}"?': '¿Eliminar «{name}»?',
 
+    // profileModal.ts — PROFILE_MODAL_UNAVAILABLE
+    'The Tabby profile window has changed — profile creation and editing are unavailable in this version':
+        'La ventana de perfil de Tabby ha cambiado — creación y edición de perfiles no disponibles en esta versión',
+
+    // groupShare.ts — parsePayload() errors, describePurge() clauses
+    'The clipboard is empty.': 'El portapapeles está vacío.',
+    'The clipboard content is too large to be a shared folder.': 'El contenido del portapapeles es demasiado grande para ser una carpeta compartida.',
+    'The clipboard does not contain JSON — copy a folder from the sidebar first.': 'El portapapeles no contiene JSON — copie antes una carpeta desde la barra lateral.',
+    'The clipboard does not contain a shared folder.': 'El portapapeles no contiene una carpeta compartida.',
+    'This JSON was not produced by "Copy the structure" from this sidebar.': 'Este JSON no fue generado por «Copiar la estructura» desde esta barra lateral.',
+    'This folder was exported by a newer version of the plugin (format {version}).': 'Esta carpeta fue exportada por una versión más reciente del plugin (formato {version}).',
+    'This shared folder is incomplete: it contains no group.': 'Esta carpeta compartida está incompleta: no contiene ningún grupo.',
+    '{count, plural, one {# password} other {# passwords}}': '{count, plural, one {# contraseña} other {# contraseñas}}',
+    '{count, plural, one {# login script} other {# login scripts}}': '{count, plural, one {# script de inicio de sesión} other {# scripts de inicio de sesión}}',
+    '{count, plural, one {# vault key} other {# vault keys}}': '{count, plural, one {# clave de la caja fuerte} other {# claves de la caja fuerte}}',
+    '{count, plural, one {# key path} other {# key paths}}': '{count, plural, one {# ruta de clave} other {# rutas de clave}}',
+    '{count, plural, one {# credential} other {# credentials and routes}}': '{count, plural, one {# credencial} other {# credenciales y rutas}}',
+    '{count, plural, one {# sensitive field} other {# sensitive fields}}': '{count, plural, one {# campo sensible} other {# campos sensibles}}',
+
+    // workspaceShare.ts — parseWorkspacePayload() errors
+    'The clipboard content is too large to be an exported workspace.': 'El contenido del portapapeles es demasiado grande para ser un workspace exportado.',
+    'The clipboard does not contain JSON — copy an exported workspace first.': 'El portapapeles no contiene JSON — copie antes un workspace exportado.',
+    'The clipboard does not contain an exported workspace.': 'El portapapeles no contiene un workspace exportado.',
+    'This workspace was exported by a newer version of the plugin (format {version}).': 'Este workspace fue exportado por una versión más reciente del plugin (formato {version}).',
+    'This exported workspace is incomplete.': 'Este workspace exportado está incompleto.',
+
+    // svgSanitizer.ts — sanitizeSvgIcon()
+    'The SVG is empty.': 'El SVG está vacío.',
+    'SVG too large (limit: {limit} characters).': 'SVG demasiado grande (límite: {limit} caracteres).',
+    'Invalid SVG, or entirely rejected by sanitisation.': 'SVG no válido, o completamente rechazado por la sanitización.',
+    'The root must be a single <svg> tag.': 'La raíz debe ser una única etiqueta <svg>.',
+    '{count} disallowed element(s) or attribute(s) removed.': '{count} elemento(s) o atributo(s) no permitido(s) eliminados.',
+
 }
 
 export default es_ES

@@ -21,6 +21,59 @@ daté de chaque livraison est dans le <a href="../AI-HISTORY.html">journal</a>. 
 post-livraison s'ajoutent ici en une ligne chacune ; dès qu'une évolution touche l'architecture,
 une convention ou plus d'un fichier, elle rouvre un chantier dans l'actif.</p>
 
+<h3 id="i18n">Internationalisation (i18n) <span class="pill done">✅ Livré (2026-08-08)</span></h3>
+<p>Greffée sur le <code>ngx-translate</code> déjà chargé par <code>tabby-core</code>, plutôt qu'une
+dépendance i18n séparée — <code>@ngx-translate/core</code> reste <strong>external</strong> dans la
+config webpack (fourni par l'hôte, pas embarqué). La <strong>chaîne source anglaise EST la clé</strong>
+(pas de table d'ids courts) : chaque appel <code>{{ '…' | translate }}</code> porte directement le
+texte anglais par défaut, ce qui rend le rendu correct même sans traduction chargée.</p>
+<div class="callout warning"><span class="callout-title">Le 3ᵉ argument de <code>setTranslation()</code> est impératif</span>
+<p><code>translate.setTranslation(lang, table, true)</code> — le troisième argument
+<code>shouldMerge</code> <strong>doit</strong> être <code>true</code>. Sans lui,
+<code>setTranslation()</code> <strong>remplace</strong> toute la table de la langue au lieu de
+l'étendre, ce qui écraserait les traductions déjà posées par Tabby lui-même pour cette langue.</p></div>
+<ul>
+<li><strong>Trois tables</strong> — fr-FR, es-ES, de-DE — l'anglais étant la clé elle-même, aucune
+  table anglaise séparée.</li>
+<li><strong>Validateur <code>npm run lint:i18n</code></strong> : refuse toute clé manquante, morte, à
+  paramètre absent, à ICU cassé, ou qui écraserait une valeur déjà posée par Tabby.</li>
+<li><strong>Lot 3 livré le 2026-08-08</strong> (branche <code>feat/i18n-lot-3</code>) —
+  <code>sidebarTree</code>, bloc Transferts et onglet de réglages convertis (216 clés ajoutées,
+  l'onglet de réglages entièrement porté par des propriétés
+  <code>lbl*</code> conformément au motif imposé ci-dessous). <strong>Passe visuelle utilisateur
+  12/12 le 2026-08-08</strong> (support de passe dédié, version <code>dbdcf21</code>) — le JIT,
+  seul juge des expressions inline, est sain sur les trois surfaces.
+  Trois collisions de msgid Tabby esquivées par reformulation (<code>Recently launched</code>,
+  <code>Modify</code>, <code>Erase</code>).</li>
+<li><strong>Lot 4 livré le 2026-08-08</strong> (branche <code>feat/i18n-lot-4</code>), clôturant la
+  couverture : les messages d'erreur des modules purs (<code>groupShare.ts</code>,
+  <code>workspaceShare.ts</code>, <code>svgSanitizer.ts</code>, <code>profileModal.ts</code>)
+  rendent un <code>TranslatableMessage</code> (<code>src/i18nMessage.ts</code>) traduit <em>au
+  point d'affichage</em> par <code>sidebarTree.component.ts</code> — aucun singleton, modules
+  restés purs ; l'extraction de <code>lint-i18n.js</code> reconnaît le motif. Tables à 414 clés,
+  complètes. <strong>Fusion directe sur décision utilisateur</strong> (chemins d'erreur froids,
+  aucun template touché, risque JIT nul) — sans passe visuelle.</li>
+</ul>
+<div class="callout important"><span class="callout-title">Piège appris — une apostrophe droite dans une expression inline casse le JIT au runtime, invisible au build</span>
+<p>Lier une chaîne anglaise à apostrophe droite dans une <em>expression</em> Angular inline
+(<code>{{ '…' | translate }}</code>, <code>[title]="'…' | translate"</code>) casse la compilation
+<strong>JIT au runtime</strong> — l'apostrophe termine prématurément le littéral de chaîne.
+<code>npm run build</code> (webpack/tsc) ne le voit <strong>jamais</strong>, puisqu'il ne fait pas
+tourner le JIT d'Angular. C'est ce qui a cassé l'onglet de réglages pendant le lot 2 : il a été
+<strong>restauré en français statique</strong> (attributs <code>title="…"</code> statiques, hors i18n)
+plutôt que réparé sur place. Sa ré-internationalisation propre devra passer par des propriétés de
+composant (<code>get x() { return this.i18n.t('…') }</code>) liées via <code>[title]="x"</code>,
+jamais par un littéral inline. Les tirets cadratins des <em>clés</em> anglaises ont par prudence été
+remplacés par <code>:</code> — les <em>valeurs</em> FR/ES/DE, elles, gardent leur tiret : elles vivent
+dans les fichiers <code>.ts</code> et ne passent jamais par le JIT.</p></div>
+
+<p class="muted">Livré le 2026-08-08 · Journal : <a href="../AI-HISTORY.html">« i18n lot 3 » et
+« i18n lot 4 » (2026-08-08) ; socle et lots 1-2 dans « G2, G3 et G4 — la phase 0.3.0 close »
+(2026-08-08)</a> · Pièges issus du chantier : le piège JIT ci-dessus (encadré) · Commits :
+<code>e96ee51</code> (phase 0.3.0 : socle + lots 1-2), <code>ee07b54</code>, <code>dbdcf21</code>,
+<code>32c8da2</code>, <code>9810173</code> <em>(les hashs de phase sont partagés avec ses autres
+chantiers)</em></p>
+
 <h3 id="sftp">SFTP contextuel</h3>
 <p>Bascule Profils/SFTP dans l'espace de la sidebar elle-même (pas un panneau séparé ancré à
 droite, façon FileZilla — plan initial abandonné). Volet fichiers locaux masqué par défaut.

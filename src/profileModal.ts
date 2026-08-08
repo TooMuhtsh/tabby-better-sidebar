@@ -41,8 +41,15 @@ export type ProfileModalVerdict =
     /** Angular listed the component's inputs, and at least one of ours is gone. */
     |'missing'
 
-/** Shown to the user when the modal is refused. */
-export const PROFILE_MODAL_UNAVAILABLE = 'La fenêtre de profil de Tabby a changé — création et édition de profils indisponibles sur cette version'
+/**
+ * Shown to the user when the modal is refused.
+ *
+ * This module has no injector access, so what is exported is the message
+ * KEY — the English source string, doubling as the i18n table key — not a
+ * translated string. The two call sites in `sidebarTree.component.ts` run it
+ * through `this.i18n.t()` before handing it to `notifications.error()`.
+ */
+export const PROFILE_MODAL_UNAVAILABLE = 'The Tabby profile window has changed — profile creation and editing are unavailable in this version'
 
 /**
  * Only a verdict that settles the question is kept.

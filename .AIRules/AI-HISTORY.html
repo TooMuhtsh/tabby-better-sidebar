@@ -24,6 +24,27 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>i18n lot 4 — modules purs, clôture de la couverture (2026-08-08)</h2>
+<p>Dernier lot de l'internationalisation, mené par un agent (Sonnet) dans un worktree isolé sur
+consigne de l'utilisateur, puis relu et revalidé. Les modules purs sans accès à l'injecteur
+rendent un <code>TranslatableMessage</code> (<code>src/i18nMessage.ts</code>) — clé anglaise +
+paramètres — traduit <em>au point d'affichage</em> par <code>sidebarTree.component.ts</code>, seul
+appelant. Le chantier i18n est <strong>terminal</strong> : fiche basculée au
+<a href="annexes/REALISE.html#i18n">registre du réalisé</a>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><strong>Fusion directe sur décision de l'utilisateur, sans passe visuelle</strong> — chemins
+d'erreur froids, aucun template touché, risque JIT nul ; <code>lint:i18n</code> (414 clés,
+complet) et build revalidés hors agent. Bascule de la fiche au registre dans le même geste.</td></tr>
+<tr><td>2026-08-08</td><td>9810173</td>
+<td>24 clés : erreurs de <code>parsePayload()</code>/<code>parseWorkspacePayload()</code>/<code>sanitizeSvgIcon()</code>,
+clauses de <code>describePurge()</code> en pluriels ICU, <code>PROFILE_MODAL_UNAVAILABLE</code>.
+<code>describePurge()</code> rend désormais la liste des clauses, jointes et traduites côté
+composant. L'extraction de <code>lint-i18n.js</code> reconnaît le motif
+<code>message: '…'</code> — générique pour tout futur <code>TranslatableMessage</code>.</td></tr>
+</table>
+
 <h2>Publication npm v0.4.0 (2026-08-08)</h2>
 <p>Publication demandée par l'utilisateur dans la foulée de deux validations du jour. Ce que la
 0.4.0 apporte depuis la 0.3.0 : <strong>couverture i18n complète de la sidebar</strong> (lot 3 —

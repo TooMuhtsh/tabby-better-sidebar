@@ -57,14 +57,18 @@ jetables ont été supprimés à la consignation ; le détail vit dans
 [`.AIRules/ROADMAP.html`](./.AIRules/ROADMAP.html) et l'entrée de journal du
 2026-08-08.
 
-**Reste ouvert après 0.3.0** : l'internationalisation est **partielle** — zone
-SFTP et modales traduites (fr/es/de), mais `sidebarTree`, `transfers` et l'onglet
-de réglages restent à convertir (lot 3). L'onglet de réglages est repassé en
-**français statique** après l'incident du lot 2 (une apostrophe droite dans une
-expression `| translate` inline casse le JIT Angular au runtime, invisible au
-build webpack) : sa ré-internationalisation propre passera par des propriétés de
-composant liées via `[title]="x"`, jamais par un littéral inline. Voir la fiche
-i18n de la roadmap.
+**L'internationalisation est complète depuis le 2026-08-08** (lots 3 et 4,
+0.4.0 publiée) : toute la sidebar est couverte en fr/es/de, l'anglais servant
+de clé et de repli. Deux invariants à ne pas casser : **jamais d'apostrophe
+droite ni de tiret cadratin dans un littéral d'expression Angular inline**
+(`{{ '…' | translate }}` — casse le JIT au runtime, invisible au build
+webpack) — l'onglet de réglages est entièrement porté par des propriétés
+`lbl*` pour cette raison ; et les modules purs (`groupShare`, `workspaceShare`,
+`svgSanitizer`, `profileModal`) rendent un `TranslatableMessage`
+(`src/i18nMessage.ts`) traduit au point d'affichage — ne pas y réintroduire de
+chaîne pré-traduite. `npm run lint:i18n` après toute modification de chaîne
+visible. Détail : fiche i18n au registre du réalisé
+(`.AIRules/annexes/REALISE.html#i18n`).
 
 ## Contexte
 

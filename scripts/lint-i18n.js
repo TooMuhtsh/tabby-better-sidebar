@@ -14,9 +14,9 @@
  *
  * Différence avec le vault : l'extraction balaie TOUT src/ (le vault liste
  * ses fichiers un à un) — littéraux `'...' | translate` dans les .pug,
- * `i18n.t('...')` dans les .ts. Limite assumée identique : extraction
- * lexicale, une chaîne rangée dans une constante puis traduite ailleurs se
- * déclare dans EXTRA_SOURCES.
+ * `i18n.t('...')` et `message: '...'` (voir `src/i18nMessage.ts`) dans les
+ * .ts. Limite assumée identique : extraction lexicale, une chaîne rangée
+ * dans une constante puis traduite ailleurs se déclare dans EXTRA_SOURCES.
  */
 
 const fs = require('fs')
@@ -33,7 +33,11 @@ const read = f => fs.readFileSync(path.join(SRC, f), 'utf8')
 const unescape = s => s.replace(/\\'/g, "'").replace(/\\\\/g, '\\')
 
 /** Chaînes que l'extraction lexicale ne peut pas voir : { file, constant }. */
-const EXTRA_SOURCES = []
+const EXTRA_SOURCES = [
+    // profileModal.ts a délibérément aucun accès à l'injecteur — la clé sort
+    // telle quelle, traduite par les deux appelants de sidebarTree.component.ts.
+    { file: 'profileModal.ts', constant: 'PROFILE_MODAL_UNAVAILABLE' },
+]
 
 /** Tous les fichiers sous src/ (récursif) filtrés par extension, chemins relatifs à src/. */
 function walk (dir = SRC) {
@@ -66,6 +70,16 @@ function collectSources () {
             }
         } else if (f.endsWith('.ts')) {
             for (const m of read(f).matchAll(new RegExp('i18n\\.t\\(\\s*' + STR, 'g'))) {
+                add(m[1], f)
+            }
+            // `TranslatableMessage` literals (src/i18nMessage.ts): pure
+            // modules with no injector access — groupShare.ts,
+            // workspaceShare.ts, svgSanitizer.ts — hand back
+            // `{ message: '...', params: {...} }` instead of calling
+            // `i18n.t()` themselves, translated at the point of display.
+            // Same extraction as the pipe/`i18n.t()` cases above, just a
+            // different literal shape.
+            for (const m of read(f).matchAll(new RegExp('message:\\s*' + STR, 'g'))) {
                 add(m[1], f)
             }
         }
