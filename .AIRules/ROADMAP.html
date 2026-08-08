@@ -137,10 +137,10 @@ lire le même fait.</p>
     grâce de 3 s.</td>
     <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>✅ Fait (2026-08-08)</td></tr>
 
-<tr><td>Bascule sur <code>exit</code> : le code la couvre (<code>isLiveSSHTab()</code> lit le shell),
-    mais le <code>behaviorOnSessionEnd</code> de l'utilisateur ferme l'onglet — aucun geste n'a
-    parcouru ce chemin. À vérifier le jour où un profil garde l'onglet ouvert.</td>
-    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>Non exercé</td></tr>
+<tr><td>Bascule sur <code>exit</code> : le code la couvre (<code>isLiveSSHTab()</code> lit le shell).
+    <strong>Exercée et validée par l'utilisateur le 2026-08-07</strong> (profil gardant l'onglet ouvert
+    en fin de session).</td>
+    <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>✅ Validé (2026-08-07)</td></tr>
 <tr><td><code>downloadFolder</code> ne passe plus par la voie héritée : « Download directory » ouvre
     notre <code>pickDirectory()</code>, descend l'arbre par <code>downloadRemoteTree()</code> (4 fichiers
     de front, une ligne de transfert chacun), refuse les collisions à la façon Explorateur
@@ -162,9 +162,9 @@ lire le même fait.</p>
     serveur local qui sert le fichier.</td>
     <td><a href="#panneau-etat-session">Panneau SFTP — état de session</a></td><td>Écart assumé (2026-08-07)</td></tr>
 
-<tr><td>Repli du marqueur — livraison dans <code>~/Downloads</code> quand il n'est pas retrouvé. Le
-    code est en place, aucun geste ne l'a parcouru.</td>
-    <td><a href="#marqueur-depot">Marqueur de dépôt</a></td><td>Non exercé</td></tr>
+<tr><td>Repli du marqueur — livraison dans <code>~/Downloads</code> quand il n'est pas retrouvé.
+    <strong>Exercé et validé par l'utilisateur le 2026-08-07</strong>.</td>
+    <td><a href="#marqueur-depot">Marqueur de dépôt</a></td><td>✅ Validé (2026-08-07)</td></tr>
 
 <tr><td>État de reprise sur micro-coupure : livré, avec le dédoublonnage des tunnels multiplexés
     (la vraie cause des lignes en 3-4 exemplaires) — détail dans la fiche
