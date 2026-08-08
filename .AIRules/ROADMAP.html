@@ -603,8 +603,9 @@ confirmation, sur le même <code>ConfirmModalComponent</code> que le reste du pl
 transfert) restait vraie mais silencieuse. <strong>Non pilotable par CDP</strong> à la passe de test :
 le composant transferts est monté par Angular en mode production, donc inatteignable
 (<code>window.ng</code> n'expose que <code>ɵcompilerFacade</code>, <code>__ngContext__</code> n'est
-qu'un entier vers un registre injoignable) — délégué à l'œil de l'utilisateur. Le mécanisme lui-même
-était déjà prouvé par ailleurs, dans la passe SFTP de la même vague.</p></div>
+qu'un entier vers un registre injoignable) — délégué à l'œil de l'utilisateur, qui l'a
+<strong>validé le 2026-08-08</strong>. Le mécanisme lui-même était déjà prouvé par ailleurs, dans la
+passe SFTP de la même vague.</p></div>
 <ul>
 <li><strong>Registre maison comme source de vérité</strong>, alimenté par notre panneau au moment où
   il lance un transfert. Motif : <code>FileTransfer</code> (tabby-core) ne porte <em>ni</em> le chemin
