@@ -45,30 +45,26 @@ faut faire la MAJ du README », « MAJ des dépendances ». Ce sont des demandes
 travail, pas le mot de clôture. Seul un message qui **se réduit** à `MAJ`
 déclenche la chaîne.
 
-## Phase en cours — roadmap figée (depuis le 2026-08-03)
+## Phase 0.3.0 — close et publiée (2026-08-08)
 
-**Régime temporaire, décidé par l'utilisateur.** La roadmap est figée : ce qui est
-demandé et réalisable de suite se fait de suite, sans ouvrir de fiche. Et **rien
-ne se consigne au fil de l'eau** — ni `.AIRules/`, ni journal, ni commit par
-chantier : tout est consigné **en une seule fois à la fin de la phase**.
+La phase à roadmap figée ouverte le 2026-08-03 est **soldée** : G1 (2026-08-03),
+G5 (2026-08-07), puis G2, G3 et G4 fusionnés sur `master` le 2026-08-08, avec un
+socle d'internationalisation (couverture partielle) et la refonte du pied de
+page. Le régime figé est **levé** — on revient à la consignation au fil de l'eau
+(roadmap libre, journal sous feu vert, `.AIRules/` poussé à chaque modification).
+Le tableau de bord temporaire `currentwork_roadmap.html` et les plans de test HTML
+jetables ont été supprimés à la consignation ; le détail vit dans
+[`.AIRules/ROADMAP.html`](./.AIRules/ROADMAP.html) et l'entrée de journal du
+2026-08-08.
 
-L'état vit dans [`.AIRules/currentwork_roadmap.html`](./.AIRules/currentwork_roadmap.html) :
-les **17 items restants** (G1 est clos depuis le 2026-08-03, G5 depuis le
-2026-08-07), leur difficulté, leur jauge, et un journal de phase. **Le détail de ce qui est fait n'y est pas** :
-il part dans la roadmap et le journal à chaque lot consigné, pour qu'il n'y ait
-jamais deux endroits où lire le même fait.
-
-Le travail de cette phase vit sur une **branche unique** — l'option `branches`
-n'est pas suspendue, elle est ce qui rend le reste possible : `master` ne porte
-jamais de code que la gouvernance ne décrit pas, et la fusion finale amène le
-code et sa documentation d'un seul geste.
-
-**Condition de sortie, à ne pas laisser se perdre** : à la consignation finale,
-`currentwork_roadmap.html` est **supprimé**, la roadmap et le journal reprennent
-tout, et **cette section disparaît de ce fichier**. Un régime dérogatoire qui
-survit à la raison qui l'a fait naître devient une règle par simple oubli — c'est
-le même piège que le contournement décrit plus bas, à propos de l'édition de
-profil.
+**Reste ouvert après 0.3.0** : l'internationalisation est **partielle** — zone
+SFTP et modales traduites (fr/es/de), mais `sidebarTree`, `transfers` et l'onglet
+de réglages restent à convertir (lot 3). L'onglet de réglages est repassé en
+**français statique** après l'incident du lot 2 (une apostrophe droite dans une
+expression `| translate` inline casse le JIT Angular au runtime, invisible au
+build webpack) : sa ré-internationalisation propre passera par des propriétés de
+composant liées via `[title]="x"`, jamais par un littéral inline. Voir la fiche
+i18n de la roadmap.
 
 ## Contexte
 
