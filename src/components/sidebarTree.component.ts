@@ -49,10 +49,11 @@ import { PingState, SidebarPlusPingService } from '../ping.service'
 import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { hostSupports } from '../hostCompat'
 import { readProfileGroups } from '../profileGroups'
-import { buildPayload, countPayload, describePurge, isEmptyReport, parsePayload, PurgeLevel, SharedGroup } from '../groupShare'
+import { buildPayload, countPayload, describePurge, isEmptyReport, parsePayload, PurgeLevel, PurgeReport, SharedGroup } from '../groupShare'
 import { buildWorkspacePayload, generateWorkspaceId, parseWorkspacePayload, uniqueWorkspaceName } from '../workspaceShare'
 import { BetterPanelContribution, electBetterPanelHost, SIDEBAR_PANEL_TOKEN } from '../betterPanel'
 import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
+import { TranslatableMessage } from '../i18nMessage'
 import { clampInViewport } from '../viewport'
 import { formatSpeed, SidebarPlusTransfersService } from '../transfersRegistry.service'
 
@@ -503,6 +504,25 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private transfers: SidebarPlusTransfersService,
         private i18n: SidebarPlusI18nService,
     ) { }
+
+    /**
+     * Translates a `{ message, params }` handed back by a module with no
+     * injector access of its own — `profileModal.ts`, `groupShare.ts`,
+     * `workspaceShare.ts`, `svgSanitizer.ts` — at the one place that holds
+     * `this.i18n`.
+     */
+    private tMsg (msg: TranslatableMessage): string {
+        return this.i18n.t(msg.message, msg.params)
+    }
+
+    /**
+     * `describePurge()`'s clauses, translated and joined — the sentence that
+     * function used to build itself before it lost injector access. Empty
+     * string when nothing was taken out, same as before.
+     */
+    private describePurgeText (report: PurgeReport): string {
+        return describePurge(report).map(part => this.tMsg(part)).join(', ')
+    }
 
     async ngOnInit (): Promise<void> {
         await this.loadTreeItems()
@@ -1360,7 +1380,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     async importWorkspaceFromClipboard (): Promise<void> {
         const { payload, error } = parseWorkspacePayload(this.platform.readClipboard())
         if (!payload) {
-            this.notices.error(error ?? this.i18n.t('The clipboard does not hold an exported workspace.'))
+            this.notices.error(error ? this.tMsg(error) : this.i18n.t('The clipboard does not hold an exported workspace.'))
             return
         }
         this.config.store.sidebarPlus ??= {}
@@ -4137,7 +4157,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
         const modal = openProfileModal(this.ngbModal, base, entry.provider)
         if (!modal) {
-            this.notifications.error(PROFILE_MODAL_UNAVAILABLE)
+            this.notifications.error(this.i18n.t(PROFILE_MODAL_UNAVAILABLE))
             return
         }
 
@@ -4277,12 +4297,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     async applyCustomSvg (): Promise<void> {
         const result = sanitizeSvgIcon(this.customSvgText)
         if (!result.ok || !result.svg) {
-            this.customSvgError = result.error ?? this.i18n.t('SVG rejected.')
+            this.customSvgError = result.error ? this.tMsg(result.error) : this.i18n.t('SVG rejected.')
             this.customSvgWarning = null
             return
         }
         this.customSvgError = null
-        this.customSvgWarning = result.warning ?? null
+        this.customSvgWarning = result.warning ? this.tMsg(result.warning) : null
         await this.applyIcon(result.svg)
     }
 
@@ -4454,7 +4474,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // for the same reason.
         const modal = openProfileModal(this.ngbModal, structuredClone(profile), provider)
         if (!modal) {
-            this.notifications.error(PROFILE_MODAL_UNAVAILABLE)
+            this.notifications.error(this.i18n.t(PROFILE_MODAL_UNAVAILABLE))
             return
         }
 
@@ -4646,7 +4666,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.platform.setClipboard({ text: JSON.stringify(payload, null, 2) })
 
         const { folders, profiles } = countPayload(payload.group)
-        const purged = describePurge(payload.removed)
+        const purged = this.describePurgeText(payload.removed)
         this.notices.notice(
             this.i18n.t(
                 'Folder "{name}" copied: {folders, plural, one {# folder} other {# folders}}, {profiles, plural, one {# profile} other {# profiles}}.',
@@ -4672,13 +4692,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.closeContextMenu()
         const { payload, error } = parsePayload(this.platform.readClipboard())
         if (!payload) {
-            this.notices.error(error ?? this.i18n.t('The clipboard does not hold a shared folder.'))
+            this.notices.error(error ? this.tMsg(error) : this.i18n.t('The clipboard does not hold a shared folder.'))
             return
         }
 
         const name = payload.group.name?.trim() || this.i18n.t('Pasted folder')
         const { folders, profiles } = countPayload(payload.group)
-        const purged = describePurge(payload.removed)
+        const purged = this.describePurgeText(payload.removed)
 
         // Against the root folders as *displayed*, from the unfiltered
         // snapshot: a folder hidden in the active workspace still occupies its
@@ -4736,7 +4756,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!isEmptyReport(payload.strippedOnImport)) {
             this.notices.error(
                 this.i18n.t('This JSON still carried secrets its own header declared removed.'),
-                this.i18n.t('Removed at paste: {purged}.', { purged: describePurge(payload.strippedOnImport!) }),
+                this.i18n.t('Removed at paste: {purged}.', { purged: this.describePurgeText(payload.strippedOnImport!) }),
             )
         }
     }

@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify'
+import { TranslatableMessage } from './i18nMessage'
 
 const ALLOWED_TAGS = ['svg', 'g', 'path', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'rect']
 const ALLOWED_ATTR = [
@@ -12,8 +13,13 @@ const MAX_LENGTH = 20_000
 export interface SvgSanitizeResult {
     ok: boolean
     svg?: string
-    warning?: string
-    error?: string
+    /**
+     * Message key and params, not a shown string — this module has no
+     * injector access. Translated at the point of display in
+     * `sidebarTree.component.ts`.
+     */
+    warning?: TranslatableMessage
+    error?: TranslatableMessage
 }
 
 /**
@@ -36,17 +42,17 @@ export interface SvgSanitizeResult {
 export function sanitizeSvgIcon(raw: string): SvgSanitizeResult {
     const text = raw.trim()
     if (!text) {
-        return { ok: false, error: 'Le SVG est vide.' }
+        return { ok: false, error: { message: 'The SVG is empty.' } }
     }
     if (text.length > MAX_LENGTH) {
-        return { ok: false, error: `SVG trop volumineux (limite : ${MAX_LENGTH} caractères).` }
+        return { ok: false, error: { message: 'SVG too large (limit: {limit} characters).', params: { limit: MAX_LENGTH } } }
     }
 
     const clean = DOMPurify.sanitize(text, { USE_PROFILES: { svg: true }, ALLOWED_TAGS, ALLOWED_ATTR }).trim()
     const removedCount = DOMPurify.removed.length
 
     if (!clean) {
-        return { ok: false, error: 'SVG invalide, ou entièrement rejeté par la sanitisation.' }
+        return { ok: false, error: { message: 'Invalid SVG, or entirely rejected by sanitisation.' } }
     }
 
     // DOMPurify.sanitize() returns a serialized fragment, not a validated
@@ -55,12 +61,12 @@ export function sanitizeSvgIcon(raw: string): SvgSanitizeResult {
     // sibling roots, e.g. an injected second <svg>, fails XML parsing here).
     const doc = new DOMParser().parseFromString(clean, 'image/svg+xml')
     if (doc.querySelector('parsererror') || doc.documentElement?.tagName.toLowerCase() !== 'svg') {
-        return { ok: false, error: 'La racine doit être une unique balise <svg>.' }
+        return { ok: false, error: { message: 'The root must be a single <svg> tag.' } }
     }
 
     return {
         ok: true,
         svg: clean,
-        warning: removedCount > 0 ? `${removedCount} élément(s) ou attribut(s) non autorisé(s) ont été retirés.` : undefined,
+        warning: removedCount > 0 ? { message: '{count} disallowed element(s) or attribute(s) removed.', params: { count: removedCount } } : undefined,
     }
 }

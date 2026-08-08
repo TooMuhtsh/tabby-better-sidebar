@@ -1,4 +1,5 @@
 import { PartialProfile, PartialProfileGroup, Profile, ProfileGroup } from 'tabby-core'
+import { TranslatableMessage } from './i18nMessage'
 
 /**
  * Sharing a folder as JSON: what goes out, what is stripped on the way, and how
@@ -323,8 +324,12 @@ export function buildPayload (
 
 export interface ParseResult {
     payload?: SharePayload
-    /** Why it was refused, ready to show. Set when `payload` is not. */
-    error?: string
+    /**
+     * Why it was refused, as a message key and its params rather than an
+     * already-shown string — this module has no injector access, translation
+     * happens at the call site. Set when `payload` is not.
+     */
+    error?: TranslatableMessage
 }
 
 /**
@@ -338,32 +343,32 @@ export interface ParseResult {
  */
 export function parsePayload (text: string): ParseResult {
     if (!text || !text.trim()) {
-        return { error: 'Le presse-papiers est vide.' }
+        return { error: { message: 'The clipboard is empty.' } }
     }
     if (text.length > MAX_PAYLOAD_BYTES) {
-        return { error: 'Le contenu du presse-papiers est trop volumineux pour être un dossier partagé.' }
+        return { error: { message: 'The clipboard content is too large to be a shared folder.' } }
     }
     let raw: unknown
     try {
         raw = JSON.parse(text)
     } catch {
-        return { error: "Le presse-papiers ne contient pas de JSON — copiez d'abord un dossier depuis la sidebar." }
+        return { error: { message: 'The clipboard does not contain JSON — copy a folder from the sidebar first.' } }
     }
     if (!raw || typeof raw !== 'object') {
-        return { error: 'Le presse-papiers ne contient pas un dossier partagé.' }
+        return { error: { message: 'The clipboard does not contain a shared folder.' } }
     }
     // Typed as a bag of unknowns rather than as a `Partial<SharePayload>`: it
     // is not one until every field below has been checked, and calling it one
     // first is how a cast ends up standing in for a validation.
     const candidate = raw as Record<string, unknown>
     if (candidate.format !== SHARE_FORMAT) {
-        return { error: "Ce JSON n'a pas été produit par « Copier la structure » de cette sidebar." }
+        return { error: { message: 'This JSON was not produced by "Copy the structure" from this sidebar.' } }
     }
     if (typeof candidate.version !== 'number' || candidate.version > SHARE_VERSION) {
-        return { error: `Ce dossier a été exporté par une version plus récente du plugin (format ${String(candidate.version)}).` }
+        return { error: { message: 'This folder was exported by a newer version of the plugin (format {version}).', params: { version: String(candidate.version) } } }
     }
     if (!candidate.group || typeof candidate.group !== 'object') {
-        return { error: 'Ce dossier partagé est incomplet : il ne contient aucun groupe.' }
+        return { error: { message: 'This shared folder is incomplete: it contains no group.' } }
     }
     const level: PurgeLevel = candidate.purge === 'credentials' ? 'credentials' : 'secrets'
     // Two reports, and the distinction matters. `removed` is what the export
@@ -475,30 +480,33 @@ export function countPayload (group: SharedGroup): { folders: number, profiles: 
 }
 
 /**
- * The purge, in one sentence, or empty when nothing was taken out.
+ * The purge, as a list of clauses ready to be translated and joined —
+ * "in one sentence" used to be this function's own job, but it has no
+ * injector access, so it hands back the parts instead and the join happens
+ * where `this.i18n` is reachable (`sidebarTree.component.ts`).
  *
  * Written for the person on the other end: what is missing and has to be
- * re-entered, not what the algorithm did.
+ * re-entered, not what the algorithm did. Empty when nothing was taken out.
  */
-export function describePurge (report: PurgeReport): string {
-    const parts: string[] = []
+export function describePurge (report: PurgeReport): TranslatableMessage[] {
+    const parts: TranslatableMessage[] = []
     if (report.passwords) {
-        parts.push(report.passwords > 1 ? `${report.passwords} mots de passe` : '1 mot de passe')
+        parts.push({ message: '{count, plural, one {# password} other {# passwords}}', params: { count: report.passwords } })
     }
     if (report.scripts) {
-        parts.push(report.scripts > 1 ? `${report.scripts} scripts de login` : '1 script de login')
+        parts.push({ message: '{count, plural, one {# login script} other {# login scripts}}', params: { count: report.scripts } })
     }
     if (report.vaultKeys) {
-        parts.push(report.vaultKeys > 1 ? `${report.vaultKeys} clés du coffre-fort` : '1 clé du coffre-fort')
+        parts.push({ message: '{count, plural, one {# vault key} other {# vault keys}}', params: { count: report.vaultKeys } })
     }
     if (report.privateKeys) {
-        parts.push(report.privateKeys > 1 ? `${report.privateKeys} chemins de clé` : '1 chemin de clé')
+        parts.push({ message: '{count, plural, one {# key path} other {# key paths}}', params: { count: report.privateKeys } })
     }
     if (report.credentials) {
-        parts.push(report.credentials > 1 ? `${report.credentials} identifiants et routes` : '1 identifiant')
+        parts.push({ message: '{count, plural, one {# credential} other {# credentials and routes}}', params: { count: report.credentials } })
     }
     if (report.suspicious) {
-        parts.push(report.suspicious > 1 ? `${report.suspicious} champs sensibles` : '1 champ sensible')
+        parts.push({ message: '{count, plural, one {# sensitive field} other {# sensitive fields}}', params: { count: report.suspicious } })
     }
-    return parts.join(', ')
+    return parts
 }
