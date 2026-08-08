@@ -39,6 +39,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill out">⛔ Hors périmètre (2026-08-03)</span></td><td>Utilité à établir avant tout portage</td></tr>
 <tr><td><a href="#menu-contextuel-long">Menu contextuel du dossier trop long</a></td><td><span class="pill planned">📋 À cadrer</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#popups-en-modales">Popups riches → modales centrées</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
+<tr><td><a href="#icones-dashboard">Icônes dashboard-icons (logos de services IT)</a></td><td><span class="pill planned">📋 Prévu — design tranché (2026-08-08)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#i18n">Internationalisation (i18n)</a></td><td><span class="pill progress">🚧 Socle posé, couverture partielle (2026-08-08)</span></td><td>Moyenne</td></tr>
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
     <td><span class="pill done">✅ À jour — remise à niveau <code>20260804-071239</code> (2026-08-08)</span></td>
@@ -283,9 +284,17 @@ l'étendre, ce qui écraserait les traductions déjà posées par Tabby lui-mêm
   table anglaise séparée.</li>
 <li><strong>Validateur <code>npm run lint:i18n</code></strong> : refuse toute clé manquante, morte, à
   paramètre absent, à ICU cassé, ou qui écraserait une valeur déjà posée par Tabby.</li>
-<li><strong>Couverture actuelle : partielle.</strong> Zone SFTP (lot 1) et modales (lot 2)
-  traduites ; <code>sidebarTree</code>, <code>transfers</code> et l'onglet de réglages restent en
-  français statique, à traduire dans un lot 3.</li>
+<li><strong>Couverture : lot 3 codé le 2026-08-08</strong> (branche <code>feat/i18n-lot-3</code>) —
+  <code>sidebarTree</code>, bloc Transferts et onglet de réglages convertis (216 clés ajoutées,
+  tables à 390 clés complètes, l'onglet de réglages entièrement porté par des propriétés
+  <code>lbl*</code> conformément au motif imposé ci-dessous). <strong>Passe visuelle utilisateur
+  12/12 le 2026-08-08</strong> (support de passe dédié, version <code>dbdcf21</code>) — le JIT,
+  seul juge des expressions inline, est sain sur les trois surfaces.
+  Trois collisions de msgid Tabby esquivées par reformulation (<code>Recently launched</code>,
+  <code>Modify</code>, <code>Erase</code>). Restera un lot 4 mineur : les messages d'erreur portés
+  par <code>groupShare.ts</code>, <code>workspaceShare.ts</code>, <code>svgSanitizer.ts</code> et
+  <code>profileModal.ts</code>, qui transitent par la sidebar mais vivent hors des fichiers du
+  lot 3.</li>
 </ul>
 <div class="callout important"><span class="callout-title">Piège appris — une apostrophe droite dans une expression inline casse le JIT au runtime, invisible au build</span>
 <p>Lier une chaîne anglaise à apostrophe droite dans une <em>expression</em> Angular inline
@@ -303,6 +312,43 @@ dans les fichiers <code>.ts</code> et ne passent jamais par le JIT.</p></div>
 <p id="icon-favorites"><a href="annexes/REALISE.html#icon-favorites">Favoris d'icônes (distincts des « Récentes »)</a> — au registre du réalisé.</p>
 
 <h2>Non daté — à faire quand utile</h2>
+
+<h3 id="icones-dashboard">Icônes dashboard-icons (logos de services IT)
+<span class="pill planned">📋 Prévu — design tranché le 2026-08-08, implémentation sur consigne</span></h3>
+<p>Ajouter <a href="https://github.com/homarr-labs/dashboard-icons">homarr-labs/dashboard-icons</a>
+(~1 800 logos de services auto-hébergés — Proxmox, Pi-hole, Nextcloud… — SVG source, variantes
+<code>-light</code>/<code>-dark</code>, manifeste <code>metadata.json</code>, Apache-2.0 avec
+disclaimer sur les marques) comme <strong>troisième source</strong> de la recherche unifiée du
+picker, aux côtés de FontAwesome et des collections Iconify — bien plus parlant pour nommer les
+profils SSH d'un parc que des glyphes génériques. Pas de paquet npm : <strong>vendoring depuis le
+dépôt GitHub</strong> par un script de génération (JSON <code>nom → corps SVG + variantes</code>,
+alias de recherche tirés de <code>metadata.json</code>), avec <code>PROVENANCE.md</code> et entrée
+dans <code>THIRD-PARTY-NOTICES.md</code>.</p>
+<ul>
+<li><strong>Ajouter, pas remplacer</strong> (tranché) : MDI/Tabler restent pour les glyphes
+  génériques (dossiers, workspaces). Les icônes déjà posées ne dépendent de rien : stockées
+  <strong>par valeur</strong> dans <code>config.yaml</code>.</li>
+<li><strong>Tout embarquer, en chunk webpack séparé</strong> (tranché) : même motif de chargement à
+  la première recherche que les collections Iconify ; hors-ligne préservé, zéro coût au démarrage.
+  Le CDN jsDelivr est écarté — le picker est délibérément « entirely offline ».</li>
+<li><strong>Variantes par icône dans le picker</strong> (tranché) : chaque tuile propose ses
+  variantes (base / <code>-light</code> / <code>-dark</code>) ; le choix se fige à l'assignation —
+  écart assumé, un changement de thème ultérieur ne re-choisit pas la variante.</li>
+<li>Données bundlées, pas d'entrée utilisateur : <strong>pas de passe DOMPurify</strong> au
+  chargement, même règle et même motif que les collections Iconify (voir <code>src/icons.ts</code>).</li>
+</ul>
+<p><strong>Poids, mesuré le 2026-08-08</strong> (API GitHub, arbre <code>main</code>) : le
+<code>svg/</code> amont fait <strong>3 295 fichiers pour 40,5 Mo bruts</strong>, mais la médiane est
+à 1,9 Ko — <strong>44 fichiers aberrants</strong> (du bitmap incrusté dans du SVG, jusqu'à 4 Mo
+pour <code>dilg.svg</code>) portent à eux seuls 26,7 Mo. <strong>Plafonné à 50 Ko par fichier :
+3 215 icônes (98,7 %) pour 11,4 Mo bruts</strong>, soit ~3-4 Mo gzip estimés dans le tarball.
+Référence actuelle : le chunk <code>icon-sets.js</code> (MDI + Tabler) pèse 5,1 Mo bruts /
+~1,1 Mo gzip. Cumul des trois sources avec le plafond : <strong>~16,5 Mo bruts embarqués,
+~4,5 Mo compressés</strong> côté icônes.</p>
+<p class="muted">À vérifier à l'implémentation : le plafond d'exclusion exact (50 Ko proposé — les
+exclus restent accessibles par l'import SVG perso) ; gzip réel au moment du vendoring ; forme des
+tuiles multi-variantes sans alourdir le picker ; cadence de rafraîchissement du vendoring (le dépôt
+amont bouge vite).</p>
 
 <h3 id="ui-polish">Options &amp; polissage UI
 <span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02) — le reste ouvert</span></h3>

@@ -2,6 +2,7 @@ import './transfers.component.scss'
 import { Component } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { SidebarPlusTransfersService, TransferEntry } from '../transfersRegistry.service'
+import { SidebarPlusI18nService } from '../i18n'
 import { ConfirmModalComponent } from './confirmModal.component'
 
 /**
@@ -25,6 +26,7 @@ export class SidebarPlusTransfersComponent {
     constructor (
         public transfers: SidebarPlusTransfersService,
         private ngbModal: NgbModal,
+        private i18n: SidebarPlusI18nService,
     ) { }
 
     toggle (event: MouseEvent): void {
@@ -44,8 +46,8 @@ export class SidebarPlusTransfersComponent {
         event.stopPropagation()
         if (entry.state === 'active') {
             const modal = this.ngbModal.open(ConfirmModalComponent)
-            modal.componentInstance.message = `Annuler « ${entry.name} » en cours ?`
-            modal.componentInstance.confirmLabel = 'Annuler le transfert'
+            modal.componentInstance.message = this.i18n.t('Cancel "{name}" while it is running?', { name: entry.name })
+            modal.componentInstance.confirmLabel = this.i18n.t('Cancel the transfer')
             modal.componentInstance.defaultButton = 'cancel'
             if (!await modal.result.catch(() => false)) {
                 return
@@ -64,9 +66,9 @@ export class SidebarPlusTransfersComponent {
         if (active > 0) {
             const modal = this.ngbModal.open(ConfirmModalComponent)
             modal.componentInstance.message = active === 1
-                ? 'Un transfert est encore en cours. Vider la liste l\'annulera. Continuer ?'
-                : `${active} transferts sont encore en cours. Vider la liste les annulera. Continuer ?`
-            modal.componentInstance.confirmLabel = 'Vider et annuler'
+                ? this.i18n.t('One transfer is still running. Clearing the list will cancel it. Continue?')
+                : this.i18n.t('{count} transfers are still running. Clearing the list will cancel them. Continue?', { count: active })
+            modal.componentInstance.confirmLabel = this.i18n.t('Clear and cancel')
             modal.componentInstance.defaultButton = 'cancel'
             if (!await modal.result.catch(() => false)) {
                 return

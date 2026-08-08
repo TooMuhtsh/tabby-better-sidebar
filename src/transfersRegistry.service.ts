@@ -1,6 +1,7 @@
 import { filesize } from 'filesize'
 import { EventEmitter, Injectable, NgZone } from '@angular/core'
 import { ConfigService, FileDownload, FileTransfer, PlatformService } from 'tabby-core'
+import { SidebarPlusI18nService } from './i18n'
 
 export type TransferDirection = 'up'|'down'
 /**
@@ -173,6 +174,7 @@ export class SidebarPlusTransfersService {
         platform: PlatformService,
         private config: ConfigService,
         private zone: NgZone,
+        private i18n: SidebarPlusI18nService,
     ) {
         platform.fileTransferStarted$.subscribe(transfer => this.track(transfer))
     }
@@ -254,7 +256,7 @@ export class SidebarPlusTransfersService {
                 sessionLabel: context?.sessionLabel ?? '',
                 tooltip: '',
             }
-            entry.tooltip = SidebarPlusTransfersService.composeTooltip(entry)
+            entry.tooltip = this.composeTooltip(entry)
             this.entries.unshift(entry)
             this.refreshSummary()
             this.startTicking()
@@ -278,17 +280,17 @@ export class SidebarPlusTransfersService {
         }
         entry.remotePath = context.remotePath ?? entry.remotePath
         entry.sessionLabel = context.sessionLabel ?? entry.sessionLabel
-        entry.tooltip = SidebarPlusTransfersService.composeTooltip(entry)
+        entry.tooltip = this.composeTooltip(entry)
     }
 
     /** One line each, present parts only: the tooltip is read on hover, not parsed. */
-    private static composeTooltip (entry: TransferEntry): string {
+    private composeTooltip (entry: TransferEntry): string {
         const parts = [entry.name]
         if (entry.remotePath) {
             parts.push(entry.remotePath)
         }
         if (entry.sessionLabel) {
-            parts.push(`Session : ${entry.sessionLabel}`)
+            parts.push(this.i18n.t('Session: {label}', { label: entry.sessionLabel }))
         }
         return parts.join('\n')
     }
@@ -363,23 +365,25 @@ export class SidebarPlusTransfersService {
         // A failure outranks the plain total even when nothing is running: it is
         // the one state the user has to know about without opening the list.
         this.summary = active > 0
-            ? `${active} en cours`
-            : failed > 0 ? `${failed} interrompu${failed > 1 ? 's' : ''}` : String(this.entries.length)
+            ? this.i18n.t('{count} running', { count: active })
+            : failed > 0
+                ? this.i18n.t('{count, plural, one {# interrupted} other {# interrupted}}', { count: failed })
+                : String(this.entries.length)
         const parts: string[] = []
         if (active > 0) {
-            parts.push(`${active} en cours`)
+            parts.push(this.i18n.t('{count} running', { count: active }))
         }
         if (done > 0) {
-            parts.push(done > 1 ? `${done} terminés` : '1 terminé')
+            parts.push(this.i18n.t('{count, plural, one {# finished} other {# finished}}', { count: done }))
         }
         if (cancelled > 0) {
-            parts.push(cancelled > 1 ? `${cancelled} annulés` : '1 annulé')
+            parts.push(this.i18n.t('{count, plural, one {# cancelled} other {# cancelled}}', { count: cancelled }))
         }
         if (failed - unsound > 0) {
-            parts.push(failed - unsound > 1 ? `${failed - unsound} interrompus` : '1 interrompu')
+            parts.push(this.i18n.t('{count, plural, one {# interrupted} other {# interrupted}}', { count: failed - unsound }))
         }
         if (unsound > 0) {
-            parts.push(unsound > 1 ? `${unsound} incomplets à destination` : '1 incomplet à destination')
+            parts.push(this.i18n.t('{count, plural, one {# incomplete at destination} other {# incomplete at destination}}', { count: unsound }))
         }
         this.summaryTitle = parts.join(', ')
     }
