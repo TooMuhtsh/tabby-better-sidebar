@@ -139,8 +139,11 @@ since Tabby's plugin loader state is global to the process.
 
 ## AI governance docs
 
-The [`.AIRules/`](./.AIRules/) folder holds this project's full documentation,
-as static HTML pages you can open directly in a browser: build status and
+This plugin is developed with an AI assistant under a written governance
+charter, and the full working dossier is public — browsable as a small static
+site at
+[**toomuhtsh.github.io/tabby-better-sidebar**](https://toomuhtsh.github.io/tabby-better-sidebar/.AIRules/README.html),
+or straight from the [`.AIRules/`](./.AIRules/) folder: build status and
 remaining work in [`ROADMAP.html`](./.AIRules/ROADMAP.html), a per-worksite
 journal in [`AI-HISTORY.html`](./.AIRules/AI-HISTORY.html), and — most useful if
 you intend to hack on this — [`AI-CONTEXT.html`](./.AIRules/AI-CONTEXT.html),
