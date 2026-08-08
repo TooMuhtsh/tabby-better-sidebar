@@ -6,7 +6,13 @@
 // without it, .grabber's `position: absolute` had no positioned ancestor to
 // anchor to and fell back to the viewport as its containing block.
 sidebar-plus-tree {
-    display: block;
+    // A column of two flow members — the content region and the footer. The
+    // footer used to be absolute over a padding-bottom reserve, which was a
+    // *geometric* convention: any overflow (short window, capped lists) slid
+    // under it, visibly so with a translucent theme. In flow, the footer owns
+    // its strip structurally — nothing can enter it.
+    display: flex;
+    flex-direction: column;
     background-color: var(--theme-bg-more-2);
     position: relative;
     border-right: 1px solid var(--theme-secondary);
@@ -1273,36 +1279,33 @@ sidebar-plus-tree .recent-profiles {
     }
 }
 
-// Footer bar pinned to the very bottom of the sidebar, anchored to the tag's
-// own position: relative (top of this file). It is absolute so it never enters
-// the flex column's flow; the container below reserves a matching strip via
-// padding-bottom so the tree and the transfer rows stop above it instead of
-// running under it (the overlap this replaces — gear was 19px tall at
-// bottom: 4px, i.e. reaching 23px up, while content stopped at 8px).
+// Footer bar at the very bottom of the sidebar, a flow member of the tag's
+// flex column (see the top of this file for why it is no longer absolute).
 $footer-height: 26px;
 
-// The strip reserved under the content. The container is the tag's single
-// child (.p-2), padded 8px all round by Bootstrap; only the bottom is grown,
-// to footer height plus its border and a few px of air.
-sidebar-plus-tree > .p-2 {
-    padding-bottom: $footer-height + 5px;
+// The content region: everything except the footer. It takes all the height
+// the footer leaves, and clips what it cannot fit — rows can no longer slide
+// under the footer, they stop existing above it. min-height: 0 is what lets
+// a flex child actually shrink below its content size.
+sidebar-plus-tree > .sidebar-plus-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
 }
 
 sidebar-plus-tree .sidebar-plus-footer {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 5;
+    flex: 0 0 auto;
     height: $footer-height;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     padding: 0 6px 0 10px;
-    // Same ground as the sidebar so it reads as chrome, with a hairline to lift
-    // it off the content that stops just above.
-    background-color: var(--theme-bg-more-2);
+    // Opaque whatever the theme: a solid base under the themed tint. A
+    // vibrancy/rgba theme color alone would let the desktop (or anything
+    // else) show through — the user asked for none of that, on both views.
+    background-color: #000;
+    background-image: linear-gradient(var(--theme-bg-more-2), var(--theme-bg-more-2));
     border-top: 1px solid var(--theme-secondary);
 
     .sidebar-plus-footer-brand {

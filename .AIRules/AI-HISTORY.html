@@ -24,6 +24,27 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Pied de page inviolable — colonne flex, contenu clippé, fond opaque (2026-08-08)</h2>
+<p>Signalé par l'utilisateur pendant la passe i18n : une ligne de transfert chevauchait le pied de
+page (fenêtre courte + fond translucide). La réserve par <code>padding-bottom</code> sous un pied
+de page absolu était une convention <em>géométrique</em> que tout débordement contournait.
+Exigence posée : <strong>rien ne doit entrer dans la zone, et aucune transparence</strong>, sur les
+deux vues. Branche <code>fix/pied-de-page-intouchable</code>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><strong>Validé visuellement par l'utilisateur</strong> (les deux vues, fenêtre courte,
+non-régression menus/popups/glissoir), fusion sur <code>master</code>.</td></tr>
+<tr><td>2026-08-08</td><td>befba34</td>
+<td>Le tag passe en <strong>colonne flex de deux membres de flux</strong> : une zone de contenu
+(<code>flex: 1 1 auto; min-height: 0; overflow: hidden</code>) qui clippe ce qu'elle ne peut pas
+afficher, et le pied de page (<code>flex: 0 0 auto</code>), plus jamais recouvert par
+construction. Fond rendu <strong>opaque quel que soit le thème</strong> : base pleine sous la
+teinte <code>--theme-bg-more-2</code> (un thème vibrancy la rend translucide). Les popups
+(<code>fixed</code>) et le glissoir (<code>absolute</code> ancré au tag) restent hors flux et hors
+clip — vérifié sélecteur par sélecteur.</td></tr>
+</table>
+
 <h2>i18n lot 3 — sidebarTree, Transferts et onglet de réglages traduits (2026-08-08)</h2>
 <p>Dernier gros lot de l'internationalisation (issue GitHub #1) : les trois surfaces restées en
 français statique après les lots 1-2 passent aux clés anglaises + tables fr/es/de. L'onglet de

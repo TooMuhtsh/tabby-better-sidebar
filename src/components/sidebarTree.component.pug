@@ -1,4 +1,4 @@
-.p-2.h-100.d-flex.flex-column
+.p-2.sidebar-plus-content.d-flex.flex-column
     //- Kept as the very first row, above the workspace bar, so it stays put
     //- when switching modes instead of sliding around under the cursor.
     .view-mode-bar.d-flex.align-items-center
@@ -958,12 +958,12 @@
         button.btn.btn-sm.btn-danger((click)='deleteWorkspace()') {{ 'Delete' | translate }}
         button.btn.btn-sm.btn-secondary((click)='closeContextMenu()') {{ 'Cancel' | translate }}
 
-//- Footer bar pinned to the bottom of the sidebar, in both views. Plugin
-//- signature + version on the left, settings gear on the right. Deliberately
-//- outside the profiles/SFTP *ngIf blocks: it belongs to the plugin, not to
-//- either view. It is absolute, and the container reserves a matching strip
-//- below its content (padding-bottom in the SCSS) so the tree and the transfer
-//- rows never run under it — the overlap this replaces.
+//- Footer bar at the bottom of the sidebar, in both views. Plugin signature +
+//- version on the left, settings gear on the right. Deliberately outside the
+//- profiles/SFTP *ngIf blocks: it belongs to the plugin, not to either view.
+//- A flow member of the tag's flex column, below the clipped content region —
+//- nothing can geometrically enter its strip, and its background is opaque by
+//- construction (see the SCSS), translucent themes included.
 .sidebar-plus-footer
     .sidebar-plus-footer-brand.no-wrap
         span.footer-name better-sidebar
