@@ -329,9 +329,18 @@ dans <code>THIRD-PARTY-NOTICES.md</code>.</p>
 <li>Données bundlées, pas d'entrée utilisateur : <strong>pas de passe DOMPurify</strong> au
   chargement, même règle et même motif que les collections Iconify (voir <code>src/icons.ts</code>).</li>
 </ul>
-<p class="muted">À vérifier à l'implémentation : poids réel du chunk et du tarball npm (estimation
-+4-6 Mo compressés, à mesurer avant toute publication) ; forme des tuiles multi-variantes sans
-alourdir le picker ; cadence de rafraîchissement du vendoring (le dépôt amont bouge vite).</p>
+<p><strong>Poids, mesuré le 2026-08-08</strong> (API GitHub, arbre <code>main</code>) : le
+<code>svg/</code> amont fait <strong>3 295 fichiers pour 40,5 Mo bruts</strong>, mais la médiane est
+à 1,9 Ko — <strong>44 fichiers aberrants</strong> (du bitmap incrusté dans du SVG, jusqu'à 4 Mo
+pour <code>dilg.svg</code>) portent à eux seuls 26,7 Mo. <strong>Plafonné à 50 Ko par fichier :
+3 215 icônes (98,7 %) pour 11,4 Mo bruts</strong>, soit ~3-4 Mo gzip estimés dans le tarball.
+Référence actuelle : le chunk <code>icon-sets.js</code> (MDI + Tabler) pèse 5,1 Mo bruts /
+~1,1 Mo gzip. Cumul des trois sources avec le plafond : <strong>~16,5 Mo bruts embarqués,
+~4,5 Mo compressés</strong> côté icônes.</p>
+<p class="muted">À vérifier à l'implémentation : le plafond d'exclusion exact (50 Ko proposé — les
+exclus restent accessibles par l'import SVG perso) ; gzip réel au moment du vendoring ; forme des
+tuiles multi-variantes sans alourdir le picker ; cadence de rafraîchissement du vendoring (le dépôt
+amont bouge vite).</p>
 
 <h3 id="ui-polish">Options &amp; polissage UI
 <span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02) — le reste ouvert</span></h3>
