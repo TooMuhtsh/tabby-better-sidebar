@@ -1,6 +1,6 @@
 {
   "name": "tabby-better-sidebar",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Enhanced connection sidebar for Tabby: a contextual SFTP browser inside the sidebar itself, pinned favorites, live connection status, active sessions, workspaces, SSH tunnels, drag & drop (including dragging remote files out to the OS), a transfer manager, and a custom icon picker.",
   "keywords": [
     "tabby-plugin",
