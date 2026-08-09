@@ -1,5 +1,6 @@
 import { PartialProfile, PartialProfileGroup, Profile, ProfileGroup } from 'tabby-core'
 import { TranslatableMessage } from './i18nMessage'
+import { sanitiseIcon } from './iconSanitize'
 
 /**
  * Sharing a folder as JSON: what goes out, what is stripped on the way, and how
@@ -11,7 +12,12 @@ import { TranslatableMessage } from './i18nMessage'
  * the same move for the same reason, one refactor too late.
  *
  * **The purge is a security question, not a convenience one.** Read
- * `purgeOptions()` before adding a field to any of the lists below.
+ * `purgeOptions()` before adding a field to any of the lists below, and
+ * `PROFILE_OPTION_WHITELISTS` before adding a profile type: what a type does
+ * *not* list is dropped, not merely left unstripped — a field a future Tabby
+ * adds, or a type this plugin has never heard of, is refused rather than
+ * trusted. That whitelist is checked on both ends: a profile whose options
+ * this plugin cannot vouch for does not leave either.
  */
 
 export const SHARE_FORMAT = 'tabby-better-sidebar/group'
@@ -43,6 +49,12 @@ export interface PurgeReport {
     credentials: number
     /** Fields caught by the name heuristic rather than by an explicit rule. */
     suspicious: number
+    /** Fields that launch a local process on connect — `proxyCommand` — removed at every level, like `scripts`. */
+    commands: number
+    /** Options present on a profile or `defaults` block but absent from that type's whitelist. */
+    unknownOptions: number
+    /** Profiles, or `defaults` blocks, of a type this plugin does not have a whitelist for — dropped whole. */
+    rejectedTypes: number
 }
 
 export interface SharedProfile {
@@ -95,21 +107,29 @@ export interface SharePayload {
  * script that does that is indistinguishable from one that does not. It goes,
  * and the count says so — a login script is quick to rewrite, a leaked secret
  * is not.
+ *
+ * `proxyCommand` is here for the same reason, not a milder one: `tabby-ssh`
+ * hands it straight to `SshTransport.newCommand()`, a local process launched
+ * at connect time. A field that runs something is indistinguishable, on
+ * sight, from one that only configures something — sitting it in
+ * `CREDENTIAL_FIELDS`, stripped only at the `credentials` level, meant a
+ * folder shared at `secrets` between one's own machines carried a command
+ * that runs unasked the moment the pasted profile connects.
  */
-const ALWAYS_REMOVED = ['password', 'scripts'] as const
+const ALWAYS_REMOVED = ['password', 'scripts', 'proxyCommand'] as const
 
 /**
  * Removed at level `credentials`.
  *
- * The last five are not secrets, they are the shape of a private network:
- * a jump host and a set of forwarded ports describe how someone's estate is
- * laid out, which is the part one does not hand to a third party.
+ * `user` and `privateKeys` are what the credentials themselves are. The rest
+ * is the shape of a private network, not a secret as such: a jump host, a
+ * pair of proxies and a set of forwarded ports describe how someone's estate
+ * is laid out, which is the part one does not hand to a third party.
  */
 const CREDENTIAL_FIELDS = [
     'user',
     'privateKeys',
     'jumpHost',
-    'proxyCommand',
     'socksProxyHost',
     'socksProxyPort',
     'httpProxyHost',
@@ -134,6 +154,57 @@ const CREDENTIAL_FIELDS = [
  */
 const SUSPICIOUS_NAME = /pass(word|phrase)|secret|token|credential|apikey|api_key/i
 
+/**
+ * The actual defence: which `options` fields a profile of a given type may
+ * carry at all, read against the shipped Tabby sources rather than guessed —
+ * `SSHProfileOptions` (`tabby-ssh/src/api/interfaces.ts`), `TelnetProfileOptions`
+ * (`tabby-telnet/src/session.ts`), `SerialProfileOptions` (`tabby-serial/src/api.ts`),
+ * from `resources/builtin-plugins/*\/src/` of the installed app. `password`,
+ * `scripts` and `proxyCommand` are deliberately absent from all three: they
+ * never reach this check, `ALWAYS_REMOVED`/`CREDENTIAL_FIELDS` catch them
+ * first, and listing them here too would suggest this is where they are kept
+ * out, when it is not.
+ *
+ * This replaces a blacklist that only ever knew what to remove with a list of
+ * what is allowed to stay — the fix the three holes below all trace back to:
+ * `proxyCommand` surviving level `secrets` (it did not have a rule of its
+ * own), and a `local` profile's `command`/`args`/`cwd`/`env`/
+ * `runAsAdministrator` surviving every level (nothing had ever written a rule
+ * against a type this purge had never heard of). A blacklist is only ever as
+ * complete as the day it was written; a type or a field missing from *this*
+ * list is refused on sight instead of quietly let through.
+ *
+ * **`local` is deliberately not a key here.** `SessionOptions`
+ * (`tabby-local/src/api.ts`) is `command`, `args`, `cwd`, `env` and
+ * `runAsAdministrator` (UAC elevation) — every one of them a way to run
+ * something, none of them a thing a shared folder has a legitimate reason to
+ * carry. There is no safe subset to whitelist, so the type itself is refused:
+ * a `local` profile does not survive a share, on either end, whichever purge
+ * level is asked for. `purgeDefaults()` applies the same refusal to
+ * `defaults.local`.
+ *
+ * Checked at the top level of an options block only, exactly like the lists
+ * above it — see `purgeOptions()`.
+ */
+const PROFILE_OPTION_WHITELISTS: Record<string, readonly string[]> = {
+    ssh: [
+        'host', 'port', 'user', 'auth', 'privateKeys',
+        'keepaliveInterval', 'keepaliveCountMax', 'readyTimeout',
+        'x11', 'skipBanner', 'jumpHost', 'agentForward', 'warnOnClose',
+        'algorithms', 'forwardedPorts',
+        'socksProxyHost', 'socksProxyPort', 'httpProxyHost', 'httpProxyPort',
+        'reuseSession', 'input',
+    ],
+    telnet: [
+        'host', 'port', 'inputMode', 'inputNewlines', 'outputMode', 'outputNewlines', 'input',
+    ],
+    serial: [
+        'port', 'baudrate', 'databits', 'stopbits', 'parity',
+        'rtscts', 'xon', 'xoff', 'xany', 'slowSend', 'input',
+        'inputMode', 'inputNewlines', 'outputMode', 'outputNewlines',
+    ],
+}
+
 /** Private key entries that live in Tabby's vault — `VaultFileProvider.prefix`. */
 const VAULT_PREFIX = 'vault://'
 
@@ -149,18 +220,26 @@ const MAX_DEPTH = 20
 const MAX_PAYLOAD_BYTES = 4 * 1024 * 1024
 
 export function emptyReport (): PurgeReport {
-    return { passwords: 0, scripts: 0, vaultKeys: 0, privateKeys: 0, credentials: 0, suspicious: 0 }
+    return { passwords: 0, scripts: 0, vaultKeys: 0, privateKeys: 0, credentials: 0, suspicious: 0, commands: 0, unknownOptions: 0, rejectedTypes: 0 }
 }
 
 /**
  * Strips one options block, in place on a copy, counting as it goes.
  *
+ * `whitelist` is the type's entry in `PROFILE_OPTION_WHITELISTS` — always
+ * supplied by the caller, never looked up here: resolving it is what decides
+ * whether a profile or a `defaults` block survives at all (see
+ * `shareProfile()`/`sanitiseGroup()`/`purgeDefaults()`), so by the time this
+ * runs the type is already known-good and the whitelist is not optional.
+ *
  * Recurses into nested objects for the name heuristic only: the explicit lists
  * describe the top level of an options block, which is where Tabby puts them,
  * and running them at depth would strip a `user` field out of some unrelated
- * nested structure.
+ * nested structure. The whitelist is checked at the same depth, for the same
+ * reason — `options.input.backspace` is not a top-level field, and nothing
+ * in `InputProcessingOptions` needs a rule of its own.
  */
-function purgeOptions (options: Record<string, unknown>, level: PurgeLevel, report: PurgeReport, depth = 0): Record<string, unknown> {
+function purgeOptions (options: Record<string, unknown>, level: PurgeLevel, report: PurgeReport, whitelist: readonly string[], depth = 0): Record<string, unknown> {
     const out: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(options)) {
         if (depth === 0 && (ALWAYS_REMOVED as readonly string[]).includes(key)) {
@@ -169,6 +248,9 @@ function purgeOptions (options: Record<string, unknown>, level: PurgeLevel, repo
             }
             if (key === 'scripts' && Array.isArray(value)) {
                 report.scripts += value.length
+            }
+            if (key === 'proxyCommand' && value) {
+                report.commands++
             }
             continue
         }
@@ -186,6 +268,18 @@ function purgeOptions (options: Record<string, unknown>, level: PurgeLevel, repo
             }
             continue
         }
+        // The whitelist itself: a field the profile's type is not documented
+        // to have. Checked after the explicit removals above (so a stripped
+        // `password` is counted as a password, not as "unknown") and before
+        // the `privateKeys` vault filter below (so a `privateKeys` array on a
+        // type that has no such option — telnet, serial — is dropped whole
+        // rather than filtered as if it belonged there).
+        if (depth === 0 && !whitelist.includes(key)) {
+            if (value !== undefined && value !== null && value !== '') {
+                report.unknownOptions++
+            }
+            continue
+        }
         // A key stored in the vault is a `vault://<id>` pointer, and that id
         // means nothing in anyone else's vault — including one's own on another
         // machine. Dropping it beats pasting a profile that silently fails to
@@ -199,7 +293,7 @@ function purgeOptions (options: Record<string, unknown>, level: PurgeLevel, repo
             continue
         }
         if (value && typeof value === 'object' && !Array.isArray(value)) {
-            out[key] = purgeOptions(value as Record<string, unknown>, level, report, depth + 1)
+            out[key] = purgeOptions(value as Record<string, unknown>, level, report, whitelist, depth + 1)
             continue
         }
         out[key] = value
@@ -222,35 +316,64 @@ function purgeOptions (options: Record<string, unknown>, level: PurgeLevel, repo
  * Found by the bench rather than by reading: the export looked right, and only
  * counting what came out showed a password filed under "suspicious" instead of
  * "password" — which is what said the explicit rules had never run on it.
+ *
+ * **The provider key is also checked against `PROFILE_OPTION_WHITELISTS`
+ * before the block is purged at all.** `defaults.local` is exactly as
+ * dangerous as a `local` profile's own options — Tabby merges it into every
+ * profile of the folder — so it is refused the same way: the whole block is
+ * dropped, counted, never purged field by field. A provider this plugin does
+ * not recognise gets the same refusal, for the same reason a profile of an
+ * unknown type does in `sanitiseGroup()`.
  */
 function purgeDefaults (defaults: Record<string, unknown>, level: PurgeLevel, report: PurgeReport): Record<string, unknown> {
     const out: Record<string, unknown> = {}
     for (const [providerId, block] of Object.entries(defaults)) {
-        out[providerId] = block && typeof block === 'object' && !Array.isArray(block)
-            ? purgeOptions(block as Record<string, unknown>, level, report)
-            : block
+        if (!(block && typeof block === 'object' && !Array.isArray(block))) {
+            out[providerId] = block
+            continue
+        }
+        const whitelist = PROFILE_OPTION_WHITELISTS[providerId]
+        if (!whitelist) {
+            report.rejectedTypes++
+            continue
+        }
+        out[providerId] = purgeOptions(block as Record<string, unknown>, level, report, whitelist)
     }
     return out
 }
 
 /**
- * One profile, as it travels.
+ * One profile, as it travels — or does not.
  *
- * A whitelist of top-level fields rather than "everything minus a few": these
- * are few, well known and none of them is a secret, whereas a field a future
- * Tabby adds is an unknown — and the wrong side to be wrong on here is the one
- * that lets an unknown through. `id` and `group` are left behind because both
- * are minted afresh on paste; `isBuiltin`/`isTemplate` because a pasted profile
- * belongs to whoever pasted it, exactly as `duplicateProfile()` decided.
+ * A whitelist of top-level *fields* rather than "everything minus a few":
+ * these are few, well known and none of them is a secret, whereas a field a
+ * future Tabby adds is an unknown — and the wrong side to be wrong on here is
+ * the one that lets an unknown through. `id` and `group` are left behind
+ * because both are minted afresh on paste; `isBuiltin`/`isTemplate` because a
+ * pasted profile belongs to whoever pasted it, exactly as `duplicateProfile()`
+ * decided.
+ *
+ * `type` is checked against a second whitelist, of *types* —
+ * `PROFILE_OPTION_WHITELISTS` — before any of that: a profile whose type this
+ * plugin cannot vouch for (an unrecognised provider, or `local`, refused
+ * outright — see that constant) does not leave at all, counted rather than
+ * silently kept whole. This runs on export too, not only on the way back in:
+ * the risk a `local` profile's `command`/`args`/`runAsAdministrator` poses is
+ * in what a *paste* of it would do, and nothing tells this function whether
+ * today's export will be pasted back on this machine or handed to someone
+ * else's.
  */
-function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, report: PurgeReport): SharedProfile {
+function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, report: PurgeReport): SharedProfile|null {
+    const whitelist = profile.type !== undefined ? PROFILE_OPTION_WHITELISTS[profile.type] : undefined
+    if (!whitelist) {
+        report.rejectedTypes++
+        return null
+    }
     const out: SharedProfile = {}
     if (profile.name !== undefined) {
         out.name = profile.name
     }
-    if (profile.type !== undefined) {
-        out.type = profile.type
-    }
+    out.type = profile.type
     if (profile.icon !== undefined) {
         out.icon = profile.icon
     }
@@ -261,7 +384,7 @@ function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, repo
         out.weight = profile.weight
     }
     if (profile.options && typeof profile.options === 'object') {
-        out.options = purgeOptions(profile.options as Record<string, unknown>, level, report)
+        out.options = purgeOptions(profile.options as Record<string, unknown>, level, report, whitelist)
     }
     return out
 }
@@ -288,7 +411,8 @@ export function shareGroup (
     const out: SharedGroup = {
         profiles: (group.profiles ?? [])
             .filter(p => !(p as PartialProfile<Profile> & { isTemplate?: boolean }).isTemplate)
-            .map(p => shareProfile(p, level, report)),
+            .map(p => shareProfile(p, level, report))
+            .filter((p): p is SharedProfile => p !== null),
         children: [],
     }
     if (group.name !== undefined) {
@@ -432,32 +556,50 @@ function asString (value: unknown): string|undefined {
  * string would be written to `config.yaml` and read back by Tabby forever
  * after. What the whitelist drops is a field the paste does without; what a
  * blind copy would let in is unbounded.
+ *
+ * `icon` goes through `sanitiseIcon()`, not `asString()`: Tabby renders an
+ * icon starting with `<` through `innerHTML` (see `iconSanitize.ts`), and a
+ * pasted JSON is exactly the untrusted input that check exists for — a plain
+ * type check let an `<img onerror=…>` through unchanged. A profile whose
+ * `type` has no entry in `PROFILE_OPTION_WHITELISTS` — an unrecognised
+ * provider, or `local` — is dropped whole rather than partly sanitised: see
+ * that constant for why a `local` profile in particular has no safe subset of
+ * itself left to keep.
  */
 function sanitiseGroup (raw: Record<string, unknown>, level: PurgeLevel, report: PurgeReport, depth: number): SharedGroup {
     const out: SharedGroup = { profiles: [], children: [] }
     out.name = asString(raw.name)
-    out.icon = asString(raw.icon)
+    out.icon = sanitiseIcon(raw.icon)
     out.color = asString(raw.color)
     if (raw.defaults && typeof raw.defaults === 'object' && !Array.isArray(raw.defaults)) {
         out.defaults = purgeDefaults(raw.defaults as Record<string, unknown>, level, report)
     }
     if (Array.isArray(raw.profiles)) {
-        out.profiles = raw.profiles
-            .filter((p): p is Record<string, unknown> => !!p && typeof p === 'object' && !Array.isArray(p))
-            .map(p => {
-                const profile: SharedProfile = {}
-                profile.name = asString(p.name)
-                profile.type = asString(p.type)
-                profile.icon = asString(p.icon)
-                profile.color = asString(p.color)
-                if (typeof p.weight === 'number') {
-                    profile.weight = p.weight
-                }
-                if (p.options && typeof p.options === 'object' && !Array.isArray(p.options)) {
-                    profile.options = purgeOptions(p.options as Record<string, unknown>, level, report)
-                }
-                return profile
-            })
+        const profiles: SharedProfile[] = []
+        for (const p of raw.profiles) {
+            if (!p || typeof p !== 'object' || Array.isArray(p)) {
+                continue
+            }
+            const rec = p as Record<string, unknown>
+            const type = asString(rec.type)
+            const whitelist = type !== undefined ? PROFILE_OPTION_WHITELISTS[type] : undefined
+            if (!whitelist) {
+                report.rejectedTypes++
+                continue
+            }
+            const profile: SharedProfile = { type }
+            profile.name = asString(rec.name)
+            profile.icon = sanitiseIcon(rec.icon)
+            profile.color = asString(rec.color)
+            if (typeof rec.weight === 'number') {
+                profile.weight = rec.weight
+            }
+            if (rec.options && typeof rec.options === 'object' && !Array.isArray(rec.options)) {
+                profile.options = purgeOptions(rec.options as Record<string, unknown>, level, report, whitelist)
+            }
+            profiles.push(profile)
+        }
+        out.profiles = profiles
     }
     if (Array.isArray(raw.children) && depth < MAX_DEPTH) {
         out.children = raw.children
@@ -507,6 +649,15 @@ export function describePurge (report: PurgeReport): TranslatableMessage[] {
     }
     if (report.suspicious) {
         parts.push({ message: '{count, plural, one {# sensitive field} other {# sensitive fields}}', params: { count: report.suspicious } })
+    }
+    if (report.commands) {
+        parts.push({ message: '{count, plural, one {# proxy command} other {# proxy commands}}', params: { count: report.commands } })
+    }
+    if (report.unknownOptions) {
+        parts.push({ message: '{count, plural, one {# unrecognised option} other {# unrecognised options}}', params: { count: report.unknownOptions } })
+    }
+    if (report.rejectedTypes) {
+        parts.push({ message: '{count, plural, one {# profile of an unsupported type} other {# profiles of an unsupported type}}', params: { count: report.rejectedTypes } })
     }
     return parts
 }

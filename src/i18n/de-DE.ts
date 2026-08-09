@@ -523,6 +523,9 @@ const de_DE: Record<string, string> = {
     '{count, plural, one {# key path} other {# key paths}}': '{count, plural, one {# Schlüsselpfad} other {# Schlüsselpfade}}',
     '{count, plural, one {# credential} other {# credentials and routes}}': '{count, plural, one {# Zugangsdaten-Eintrag} other {# Zugangsdaten und Routen}}',
     '{count, plural, one {# sensitive field} other {# sensitive fields}}': '{count, plural, one {# sensibles Feld} other {# sensible Felder}}',
+    '{count, plural, one {# proxy command} other {# proxy commands}}': '{count, plural, one {# Proxy-Befehl} other {# Proxy-Befehle}}',
+    '{count, plural, one {# unrecognised option} other {# unrecognised options}}': '{count, plural, one {# unbekannte Option} other {# unbekannte Optionen}}',
+    '{count, plural, one {# profile of an unsupported type} other {# profiles of an unsupported type}}': '{count, plural, one {# Profil eines nicht unterstützten Typs} other {# Profile eines nicht unterstützten Typs}}',
 
     // workspaceShare.ts — parseWorkspacePayload() errors
     'The clipboard content is too large to be an exported workspace.': 'Der Inhalt der Zwischenablage ist zu groß, um ein exportierter Workspace zu sein.',
