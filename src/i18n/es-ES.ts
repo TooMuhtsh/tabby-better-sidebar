@@ -539,6 +539,10 @@ const es_ES: Record<string, string> = {
     'The root must be a single <svg> tag.': 'La raíz debe ser una única etiqueta <svg>.',
     '{count} disallowed element(s) or attribute(s) removed.': '{count} elemento(s) o atributo(s) no permitido(s) eliminados.',
 
+    // sidebarTree.component.pug — submenús laterales "Manage"/"More" (menús de carpeta y de perfil)
+    'Manage': 'Gestionar',
+    'More': 'Más',
+
 }
 
 export default es_ES

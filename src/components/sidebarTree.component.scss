@@ -749,6 +749,7 @@ sidebar-plus-tree .grabber {
 }
 
 .group-context-menu,
+.group-context-submenu,
 .icon-context-menu {
     position: fixed;
     z-index: 100;
@@ -802,6 +803,25 @@ sidebar-plus-tree .grabber {
             height: 15px;
         }
     }
+
+    // Thin rule between logical groups (top-level actions / Manage /More /
+    // Delete) in the folder and profile menus — the same shade used for the
+    // header's own border, kept out of .group-context-submenu on purpose:
+    // the two submenu panels are single flat lists, nothing in them to split.
+    .group-context-menu-separator {
+        height: 1px;
+        margin: .25rem .2rem;
+        background-color: var(--theme-secondary);
+    }
+}
+
+// The carrying entry ("Manage"/"More") ends in a chevron pinned to the right
+// edge by .me-auto on the label right before it — never on the chevron
+// itself, so a short label still leaves the chevron flush right rather than
+// right after the text.
+.group-context-menu-item .fa-chevron-right {
+    opacity: .6;
+    font-size: .75rem;
 }
 
 // Shared box styling for the small floating popups anchored at

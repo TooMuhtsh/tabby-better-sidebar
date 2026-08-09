@@ -568,6 +568,10 @@ const fr_FR: Record<string, string> = {
     'The root must be a single <svg> tag.': 'La racine doit être une unique balise <svg>.',
     '{count} disallowed element(s) or attribute(s) removed.': '{count} élément(s) ou attribut(s) non autorisé(s) ont été retirés.',
 
+    // sidebarTree.component.pug — "Manage"/"More" lateral submenus (folder + profile menus)
+    'Manage': 'Gérer',
+    'More': 'Plus',
+
 }
 
 export default fr_FR

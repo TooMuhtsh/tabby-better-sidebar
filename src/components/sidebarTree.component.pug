@@ -481,9 +481,59 @@
     a.group-context-menu-item((click)='launchGroupSessions(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | {{ 'Launch all sessions' | translate }}
-    a.group-context-menu-item(*ngIf='showSnippets', (click)='openSnippetsModal()', href='#')
-        .fa.fa-fw.fas.fa-terminal.me-2
-        | Snippets...
+    a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
+        .fa.fa-fw.fas.fa-folder-plus.me-2
+        | {{ 'New folder...' | translate }}
+    a.group-context-menu-item((click)='openCreateProfilePicker()', href='#')
+        .fa.fa-fw.fas.fa-plus.me-2
+        | {{ 'New profile...' | translate }}
+    .group-context-menu-separator
+    //- Lateral submenus, Windows-style: hover opens (with a short close delay
+    //- on mouseleave, see scheduleSubmenuClose()), click opens too. The panel
+    //- itself is NOT a descendant of this <a> — it is a sibling top-level
+    //- block further down (piège #38: an <a> inside an <a> is silently
+    //- un-nested by the parser).
+    a.group-context-menu-item(
+        (click)='openSubmenuPanel("manage", $event)',
+        (mouseenter)='openSubmenuPanel("manage", $event)',
+        (mouseleave)='scheduleSubmenuClose()',
+        href='#'
+    )
+        .fa.fa-fw.fas.fa-sliders.me-2
+        span.me-auto {{ 'Manage' | translate }}
+        .fa.fa-fw.fas.fa-chevron-right
+    a.group-context-menu-item(
+        (click)='openSubmenuPanel("more", $event)',
+        (mouseenter)='openSubmenuPanel("more", $event)',
+        (mouseleave)='scheduleSubmenuClose()',
+        href='#'
+    )
+        .fa.fa-fw.fas.fa-ellipsis-h.me-2
+        span.me-auto {{ 'More' | translate }}
+        .fa.fa-fw.fas.fa-chevron-right
+    .group-context-menu-separator
+    a.group-context-menu-item((click)='deleteGroup(contextMenuGroup)', href='#')
+        .fa.fa-fw.fas.fa-trash.me-2
+        | {{ 'Delete' | translate }}
+
+//- "Manage" submenu, folder menu — identity (rename/icon), note, favorite.
+//- Gated on the exact same condition as the folder menu above (editable
+//- folders only): activeSubmenu alone isn't enough, a stale value must not
+//- render this once contextMenuGroup no longer matches (see resetSubmenu()).
+.group-context-submenu(
+    *ngIf='activeSubmenu === "manage" && contextMenuGroup && isMenuMode && contextMenuGroup.editable',
+    [style.left.px]='submenuX',
+    [style.top.px]='submenuY',
+    (click)='$event.stopPropagation()',
+    (mouseenter)='cancelSubmenuClose()',
+    (mouseleave)='scheduleSubmenuClose()'
+)
+    a.group-context-menu-item((click)='openRenamePrompt()', href='#')
+        .fa.fa-fw.fas.fa-i-cursor.me-2
+        | {{ 'Rename...' | translate }}
+    a.group-context-menu-item((click)='openIconPicker()', href='#')
+        .fa.fa-fw.fas.fa-icons.me-2
+        | {{ 'Change the icon...' | translate }}
     a.group-context-menu-item(*ngIf='showNotes', (click)='openNoteModal()', href='#')
         .fa.fa-fw.fas.fa-note-sticky.me-2
         | {{ hasNote(contextMenuGroup.id) ? ('Edit the note...' | translate) : ('Add a note...' | translate) }}
@@ -494,18 +544,19 @@
             class='fa-star'
         )
         | {{ isFavoriteGroup(contextMenuGroup) ? ('Remove from favorites' | translate) : ('Add to favorites' | translate) }}
-    a.group-context-menu-item((click)='openRenamePrompt()', href='#')
-        .fa.fa-fw.fas.fa-i-cursor.me-2
-        | {{ 'Rename...' | translate }}
-    a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
-        .fa.fa-fw.fas.fa-folder-plus.me-2
-        | {{ 'New folder...' | translate }}
-    a.group-context-menu-item((click)='openCreateProfilePicker()', href='#')
-        .fa.fa-fw.fas.fa-plus.me-2
-        | {{ 'New profile...' | translate }}
-    a.group-context-menu-item((click)='openIconPicker()', href='#')
-        .fa.fa-fw.fas.fa-icons.me-2
-        | {{ 'Change the icon...' | translate }}
+
+//- "More" submenu, folder menu — snippets, structure export, workspace hide.
+.group-context-submenu(
+    *ngIf='activeSubmenu === "more" && contextMenuGroup && isMenuMode && contextMenuGroup.editable',
+    [style.left.px]='submenuX',
+    [style.top.px]='submenuY',
+    (click)='$event.stopPropagation()',
+    (mouseenter)='cancelSubmenuClose()',
+    (mouseleave)='scheduleSubmenuClose()'
+)
+    a.group-context-menu-item(*ngIf='showSnippets', (click)='openSnippetsModal()', href='#')
+        .fa.fa-fw.fas.fa-terminal.me-2
+        | Snippets...
     //- Two entries and not one setting: the purge level belongs to the gesture.
     //- The second keeps the host and port — what it drops is the username, the
     //- keys and the route in (jump host, proxies, forwarded ports).
@@ -518,9 +569,6 @@
     a.group-context-menu-item(*ngIf='activeWorkspace', (click)='hideInActiveWorkspace()', href='#')
         .fa.fa-fw.fas.fa-eye-slash.me-2
         | {{ 'Hide in this workspace' | translate }}
-    a.group-context-menu-item((click)='deleteGroup(contextMenuGroup)', href='#')
-        .fa.fa-fw.fas.fa-trash.me-2
-        | {{ 'Delete' | translate }}
 
 .group-context-menu(
     *ngIf='contextMenuRoot && isMenuMode',
@@ -554,9 +602,54 @@
     a.group-context-menu-item((click)='launchProfileFromMenu(contextMenuProfile)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | {{ 'Launch the session' | translate }}
-    a.group-context-menu-item(*ngIf='showSnippets', (click)='openSnippetsModal()', href='#')
-        .fa.fa-fw.fas.fa-terminal.me-2
-        | Snippets...
+    a.group-context-menu-item((click)='editProfile(contextMenuProfile)', href='#')
+        .fa.fa-fw.fas.fa-pen.me-2
+        | {{ 'Edit...' | translate }}
+    a.group-context-menu-item((click)='duplicateProfile(contextMenuProfile)', href='#')
+        .fa.fa-fw.fas.fa-copy.me-2
+        | {{ 'Duplicate' | translate }}
+    .group-context-menu-separator
+    //- Lateral submenus, Windows-style — see the folder menu above for the
+    //- full explanation of the mechanics (hover/click open, close delay,
+    //- panel kept out of this <a> per piège #38).
+    a.group-context-menu-item(
+        (click)='openSubmenuPanel("manage", $event)',
+        (mouseenter)='openSubmenuPanel("manage", $event)',
+        (mouseleave)='scheduleSubmenuClose()',
+        href='#'
+    )
+        .fa.fa-fw.fas.fa-sliders.me-2
+        span.me-auto {{ 'Manage' | translate }}
+        .fa.fa-fw.fas.fa-chevron-right
+    a.group-context-menu-item(
+        (click)='openSubmenuPanel("more", $event)',
+        (mouseenter)='openSubmenuPanel("more", $event)',
+        (mouseleave)='scheduleSubmenuClose()',
+        href='#'
+    )
+        .fa.fa-fw.fas.fa-ellipsis-h.me-2
+        span.me-auto {{ 'More' | translate }}
+        .fa.fa-fw.fas.fa-chevron-right
+    .group-context-menu-separator
+    a.group-context-menu-item((click)='confirmDeleteProfile()', href='#')
+        .fa.fa-fw.fas.fa-trash.me-2
+        | {{ 'Delete' | translate }}
+
+//- "Manage" submenu, profile menu — identity (rename/icon), note, favorite.
+.group-context-submenu(
+    *ngIf='activeSubmenu === "manage" && contextMenuProfile && isMenuMode',
+    [style.left.px]='submenuX',
+    [style.top.px]='submenuY',
+    (click)='$event.stopPropagation()',
+    (mouseenter)='cancelSubmenuClose()',
+    (mouseleave)='scheduleSubmenuClose()'
+)
+    a.group-context-menu-item((click)='openRenamePrompt()', href='#')
+        .fa.fa-fw.fas.fa-i-cursor.me-2
+        | {{ 'Rename...' | translate }}
+    a.group-context-menu-item((click)='openIconPicker()', href='#')
+        .fa.fa-fw.fas.fa-icons.me-2
+        | {{ 'Change the icon...' | translate }}
     a.group-context-menu-item(*ngIf='showNotes', (click)='openNoteModal()', href='#')
         .fa.fa-fw.fas.fa-note-sticky.me-2
         | {{ hasNote(contextMenuProfile.id) ? ('Edit the note...' | translate) : ('Add a note...' | translate) }}
@@ -567,30 +660,28 @@
             class='fa-star'
         )
         | {{ isFavorite(contextMenuProfile) ? ('Remove from favorites' | translate) : ('Add to favorites' | translate) }}
+
+//- "More" submenu, profile menu — snippets, tunnels, workspace hide.
+.group-context-submenu(
+    *ngIf='activeSubmenu === "more" && contextMenuProfile && isMenuMode',
+    [style.left.px]='submenuX',
+    [style.top.px]='submenuY',
+    (click)='$event.stopPropagation()',
+    (mouseenter)='cancelSubmenuClose()',
+    (mouseleave)='scheduleSubmenuClose()'
+)
+    a.group-context-menu-item(*ngIf='showSnippets', (click)='openSnippetsModal()', href='#')
+        .fa.fa-fw.fas.fa-terminal.me-2
+        | Snippets...
     //- Single entry, editing the profile's own configuration. Handing over to
     //- Tabby's native modal for live sessions was built and then dropped at the
     //- user's request — see openProfileTunnels() for what that costs.
     a.group-context-menu-item(*ngIf='isSshProfileMenu', (click)='openProfileTunnels()', href='#')
         .fa.fa-fw.fas.fa-link.me-2
         | {{ 'Profile tunnels...' | translate }}
-    a.group-context-menu-item((click)='openRenamePrompt()', href='#')
-        .fa.fa-fw.fas.fa-i-cursor.me-2
-        | {{ 'Rename...' | translate }}
-    a.group-context-menu-item((click)='editProfile(contextMenuProfile)', href='#')
-        .fa.fa-fw.fas.fa-pen.me-2
-        | {{ 'Edit...' | translate }}
-    a.group-context-menu-item((click)='duplicateProfile(contextMenuProfile)', href='#')
-        .fa.fa-fw.fas.fa-copy.me-2
-        | {{ 'Duplicate' | translate }}
-    a.group-context-menu-item((click)='openIconPicker()', href='#')
-        .fa.fa-fw.fas.fa-icons.me-2
-        | {{ 'Change the icon...' | translate }}
     a.group-context-menu-item(*ngIf='activeWorkspace', (click)='hideInActiveWorkspace()', href='#')
         .fa.fa-fw.fas.fa-eye-slash.me-2
         | {{ 'Hide in this workspace' | translate }}
-    a.group-context-menu-item((click)='confirmDeleteProfile()', href='#')
-        .fa.fa-fw.fas.fa-trash.me-2
-        | {{ 'Delete' | translate }}
 
 .icon-picker(
     *ngIf='isIconPickerMode && (contextMenuGroup || contextMenuProfile || contextMenuWorkspace)',
