@@ -1,0 +1,93 @@
+// Scoped under one class rather than styling `.modal-body` at large: this
+// stylesheet is injected as plain global CSS like every other one in this
+// plugin (side-effect import), so a bare `.modal-body` rule would reach every
+// modal Tabby opens. Same reason `:host` is absent — it does nothing here
+// (piège #14).
+.icon-picker-modal {
+    // Placeholder shown while no icon is pinned — the "Favoris" section stays
+    // visible even when empty so the feature is discoverable, which it would
+    // not be if the section only appeared once something had been pinned.
+    .icon-picker-empty {
+        margin-bottom: .4rem;
+        font-size: .75rem;
+        font-style: italic;
+        opacity: .6;
+    }
+
+    .icon-picker-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .3rem;
+        max-height: 180px;
+        overflow-y: auto;
+        margin-bottom: .4rem;
+
+        .icon-picker-item {
+            position: relative; // anchors .icon-picker-variant-dots below
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: .25rem;
+            color: inherit;
+            text-decoration: none;
+            cursor: pointer;
+
+            &:hover {
+                background-color: var(--theme-secondary);
+            }
+
+            profile-icon {
+                width: 18px;
+                height: 18px;
+            }
+
+            // dashboard-icons entries with more than one rendering (see
+            // icons.ts PickerIcon.variants) only — a row of tiny dots in the
+            // tile's corner, each its own click target picking that variant
+            // instead of the tile's default. Deliberately not on the right
+            // click: that gesture is already the tile's own favorite-toggle
+            // (onIconContextMenu), and both live comfortably on one tile
+            // without conflicting — the dots are a plain (click), the
+            // favorite toggle a (contextmenu), never the same event.
+            .icon-picker-variant-dots {
+                position: absolute;
+                right: 1px;
+                bottom: 1px;
+                display: flex;
+                gap: 1px;
+
+                .icon-picker-variant-dot {
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    border: 1px solid var(--theme-bg);
+                    cursor: pointer;
+
+                    &.variant-light {
+                        background-color: #fff;
+                    }
+
+                    &.variant-dark {
+                        background-color: #000;
+                    }
+
+                    &.variant-default {
+                        background-color: var(--theme-primary);
+                    }
+
+                    &:hover {
+                        transform: scale(1.6);
+                    }
+                }
+            }
+        }
+    }
+
+    .icon-picker-custom textarea {
+        font-family: monospace;
+        font-size: .8rem;
+        resize: vertical;
+    }
+}
