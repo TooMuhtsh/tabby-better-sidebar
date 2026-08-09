@@ -30,6 +30,8 @@ import { SidebarPlusSftpComponent } from './sftpPanel.component'
 import { SnippetsModalComponent, SnippetsModalResult } from './snippetsModal.component'
 import { NoteModalComponent } from './noteModal.component'
 import { PasteGroupModalComponent, PasteResolution } from './pasteGroupModal.component'
+import { TunnelsModalComponent } from './tunnelsModal.component'
+import { IconPickerModalComponent } from './iconPickerModal.component'
 import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh'
 
 /**
@@ -38,8 +40,6 @@ import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh
  * that publicly exposes it, same pattern as `SftpSession` in transfers.ts.
  */
 type LiveForward = NonNullable<SSHTabComponent['sshSession']>['forwardedPorts'][number]
-import { loadIconEntries, PickerIcon } from '../icons'
-import { sanitizeSvgIcon } from '../svgSanitizer'
 import { SidebarSnippet, SidebarWorkspace } from '../configProvider'
 import { SidebarPlusI18nService } from '../i18n'
 import { SidebarPlusSnippetsService } from '../snippets.service'
@@ -51,6 +51,7 @@ import { hostSupports } from '../hostCompat'
 import { readProfileGroups } from '../profileGroups'
 import { buildPayload, countPayload, describePurge, isEmptyReport, parsePayload, PurgeLevel, PurgeReport, SharedGroup } from '../groupShare'
 import { buildWorkspacePayload, generateWorkspaceId, parseWorkspacePayload, uniqueWorkspaceName } from '../workspaceShare'
+import { formatTunnel, tunnelKey } from '../tunnels'
 import { BetterPanelContribution, electBetterPanelHost, SIDEBAR_PANEL_TOKEN } from '../betterPanel'
 import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
 import { TranslatableMessage } from '../i18nMessage'
@@ -68,21 +69,6 @@ type ProfileConnectionStatus = 'connected' | 'error'
 interface ProfileBackedTab {
     profile?: { id?: string, name?: string, icon?: string, color?: string }
     session?: unknown
-}
-
-/**
- * The tunnel form's working copy. Ports are nullable here where
- * `ForwardedPortConfig` types them as `number`: a numeric input bound to 0
- * renders a literal "0" the user has to clear before typing, so the draft
- * starts empty and only becomes a ForwardedPortConfig once validated.
- */
-interface TunnelDraft {
-    type: PortForwardType
-    host: string
-    port: number|null
-    targetAddress: string
-    targetPort: number|null
-    description: string
 }
 
 /** One row of the "Tunnels actifs" section — a single live port forward, tied back to the session carrying it. */
@@ -367,12 +353,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     private liveTunnelKeys = new Map<string, Set<string>>()
     activeTunnelsCollapsed = window.localStorage.sidebarPlusActiveTunnelsCollapsed === 'true'
 
-    /** The profile whose configured tunnels the popup is editing, and its working copy. */
-    tunnelDraft: TunnelDraft = SidebarPlusTreeComponent.emptyTunnel()
-    tunnelError: string|null = null
-    /** Index of the tunnel the form is editing, or null when it is adding a new one. */
-    editingTunnelIndex: number|null = null
-
     profileStatuses = new Map<string, ProfileConnectionStatus>()
     private statusSubscription: Subscription|null = null
     private configSubscription: Subscription|null = null
@@ -385,7 +365,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     contextMenuX = 0
     contextMenuY = 0
     contextMenuMode:
-        'menu'|'icon'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename'|'tunnels'|
+        'menu'|'createGroup'|'createProfile'|'confirmDeleteProfile'|'rename'|
         'workspaceMenu'|'createWorkspace'|'renameWorkspace'|'confirmDeleteWorkspace'|'workspaceColor'
         = 'menu'
     /** Set whenever a context menu/popup opens or switches mode — checked once in ngAfterViewChecked() to clamp it back on-screen after Angular renders it at its real size. */
@@ -436,13 +416,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     workspaceSwitcherX = 0
     workspaceSwitcherY = 0
 
-    ////// ICON TILE CONTEXT MENU //////
-    /** The icon a right-click opened the pin/unpin menu on, or null. Kept outside contextMenuMode on purpose — see onIconContextMenu(). */
-    iconMenuIcon: string|null = null
-    iconMenuX = 0
-    iconMenuY = 0
-    private iconMenuPositionDirty = false
-
     newGroupName = ''
     renameValue = ''
     profileTemplates: { provider: ProfileProvider<Profile>, template: PartialProfile<Profile> }[] = []
@@ -463,10 +436,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return this.contextMenuMode === 'menu'
     }
 
-    get isIconPickerMode (): boolean {
-        return this.contextMenuMode === 'icon'
-    }
-
     get isCreateGroupMode (): boolean {
         return this.contextMenuMode === 'createGroup'
     }
@@ -481,10 +450,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     get isRenameMode (): boolean {
         return this.contextMenuMode === 'rename'
-    }
-
-    get isTunnelsMode (): boolean {
-        return this.contextMenuMode === 'tunnels'
     }
 
     get isWorkspaceMenuMode (): boolean {
@@ -506,15 +471,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     get isWorkspaceColorMode (): boolean {
         return this.contextMenuMode === 'workspaceColor'
     }
-
-    iconQuery = ''
-    iconMatches: PickerIcon[] = []
-    showCustomSvgInput = false
-    customSvgText = ''
-    customSvgError: string|null = null
-    customSvgWarning: string|null = null
-
-    private static readonly MAX_RECENT_ICONS = 20
 
     constructor (
         private config: ConfigService,
@@ -640,20 +596,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     ngAfterViewChecked (): void {
-        if (this.iconMenuPositionDirty) {
-            this.iconMenuPositionDirty = false
-            setTimeout(() => {
-                const menu = document.querySelector<HTMLElement>('.icon-context-menu')
-                if (!menu) {
-                    return
-                }
-                const { x, y } = clampInViewport(menu, this.iconMenuX, this.iconMenuY)
-                this.iconMenuX = x
-                this.iconMenuY = y
-                menu.style.left = `${x}px`
-                menu.style.top = `${y}px`
-            })
-        }
         if (this.submenuPositionDirty) {
             this.submenuPositionDirty = false
             setTimeout(() => this.clampSubmenuPosition())
@@ -690,7 +632,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // the exclusion, whichever comes first in DOM order would be measured
         // and the other one nudged to its position (piège #30's ambiguity,
         // made permanent now that the two coexist by design).
-        const menu = document.querySelector<HTMLElement>('.group-context-menu:not(.workspace-switcher-menu), .icon-picker, .create-popup')
+        const menu = document.querySelector<HTMLElement>('.group-context-menu:not(.workspace-switcher-menu), .create-popup')
         if (!menu) {
             return
         }
@@ -708,7 +650,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // is opened on `contextmenu`, which is followed by `mouseup` —
             // that extra event ran another pass and the corrected position
             // landed by luck. A popup opened from a menu item (new folder,
-            // rename, delete confirmation, icon picker) is opened on `click`,
+            // rename, delete confirmation) is opened on `click`,
             // the LAST event of its sequence, so nothing ever repainted it and
             // it stayed wherever it first rendered, off-screen included.
             // Assigning the style here makes the clamp land on the same frame
@@ -2161,7 +2103,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                     continue
                 }
                 seenForwards.add(forward)
-                const key = SidebarPlusTreeComponent.tunnelKey(forward)
+                const key = tunnelKey(forward)
                 // Real duplicate: two *distinct* sessions each mounted the same
                 // forward — several tabs on one profile do exactly that, since
                 // every session start replays the profile's list, and Windows
@@ -2179,7 +2121,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                     }
                     localOwners.set(key, sessionName)
                 }
-                const detail = SidebarPlusTreeComponent.formatTunnel(forward)
+                const detail = formatTunnel(forward)
                 tabRows.push({
                     tab,
                     sessionName,
@@ -2509,38 +2451,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     ////// SSH TUNNELS //////
-    /**
-     * Formatted here rather than through `ForwardedPort.toString()`: inheriting
-     * a display helper from Tabby also inherits whatever it gets wrong, and a
-     * wrong rendering raises no error (piège #35). The shapes follow ssh(1)'s
-     * own -L/-R/-D notation, which is what anyone reading a tunnel list expects.
-     */
-    private static formatTunnel (forward: ForwardedPortConfig): string {
-        if (forward.type === PortForwardType.Dynamic) {
-            return `D ${forward.host}:${forward.port} (SOCKS)`
-        }
-        const arrow = forward.type === PortForwardType.Remote ? 'R' : 'L'
-        return `${arrow} ${forward.host}:${forward.port} → ${forward.targetAddress}:${forward.targetPort}`
-    }
-
-    /**
-     * Identity of a forward across the config/live boundary. The two sides are
-     * different objects — the modal builds a fresh `ForwardedPort` from the
-     * config values — so they can only be matched on what they describe.
-     * `description` is left out: it is a label, editing it does not make it a
-     * different tunnel.
-     */
-    private static tunnelKey (forward: ForwardedPortConfig): string {
-        return [forward.type, forward.host, forward.port, forward.targetAddress, forward.targetPort].join('|')
-    }
-
     /** Whether this configured tunnel is one Tabby currently has mounted — the only kind whose deletion is withheld. */
-    isTunnelLive (forward: ForwardedPortConfig): boolean {
-        const profileId = this.contextMenuProfile?.id
+    isTunnelLive (forward: ForwardedPortConfig, profileId: string|undefined): boolean {
         if (!profileId) {
             return false
         }
-        return this.liveTunnelKeys.get(profileId)?.has(SidebarPlusTreeComponent.tunnelKey(forward)) ?? false
+        return this.liveTunnelKeys.get(profileId)?.has(tunnelKey(forward)) ?? false
     }
 
     private static sameTunnels (a: ActiveTunnel[], b: ActiveTunnel[]): boolean {
@@ -2649,7 +2565,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
         this.dismountedForwards.add(forward)
-        const detail = SidebarPlusTreeComponent.formatTunnel(forward)
+        const detail = formatTunnel(forward)
         tab.sshSession?.removePortForward(forward).catch(() => {
             // The listener may already be gone with its session; either way the
             // next poll re-reads reality rather than trusting this call.
@@ -2789,7 +2705,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return null
     }
 
-    ////// PROFILE TUNNEL CONFIGURATION (popup) //////
+    ////// PROFILE TUNNEL CONFIGURATION (modal) //////
     /**
      * The plugin's own tunnel editor, and — by the user's explicit choice —
      * the only one. An entry handing over to Tabby's native
@@ -2805,207 +2721,34 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * export at runtime (checked against the installed bundle, piège #13).
      * Rebuilding one from an existing forward's prototype would only work once
      * the user already had a tunnel, which is circular.
+     *
+     * The form itself — draft, validation, add/edit/remove — lives in
+     * `TunnelsModalComponent` (a centred modal, like the snippets and note
+     * editors) rather than in the anchored popup it used to be. What stays
+     * here is what the modal cannot know on its own: whether a given forward
+     * is one Tabby currently has mounted (`isTunnelLive`, fed by the same
+     * poll that drives the tree's own "Tunnels actifs" section) and whether
+     * the profile has a live session at all — both handed to the modal as
+     * callbacks bound to `profile` below, rather than as a one-time snapshot,
+     * so they stay accurate even if a session opens or closes while the modal
+     * is open.
      */
-    private static emptyTunnel (): TunnelDraft {
-        return {
-            type: PortForwardType.Local,
-            // Hosts keep a sensible default — they are almost always these —
-            // while both ports start empty rather than at 0, which would have
-            // to be cleared by hand before typing.
-            host: '127.0.0.1',
-            port: null,
-            targetAddress: 'localhost',
-            targetPort: null,
-            description: '',
-        }
-    }
-
     /** Port forwarding is an SSH-profile notion — the menu entries stay hidden on local/serial/telnet profiles rather than offering a setting Tabby would ignore. */
     get isSshProfileMenu (): boolean {
         return this.contextMenuProfile?.type === 'ssh'
     }
 
-    /** Tunnels stored on the profile itself. Empty for a non-SSH profile, which simply has no such option. */
-    get profileTunnels (): ForwardedPortConfig[] {
-        return (this.contextMenuProfile?.options as { forwardedPorts?: ForwardedPortConfig[] }|undefined)?.forwardedPorts ?? []
-    }
-
-    /**
-     * Whether the profile this popup is editing has a live session.
-     *
-     * Everything written here lands in the profile's configuration and is only
-     * read when a session starts, so on a running session: added and edited
-     * tunnels stay dormant until relaunch, and deleting one would remove the
-     * configuration while the forward Tabby already mounted keeps running —
-     * the user would believe it gone. Deletion of a *mounted* tunnel is
-     * therefore withheld until the session is closed; see isTunnelLive(), which
-     * is what narrows that rule to the forwards actually running.
-     */
-    get hasLiveSessionForMenuProfile (): boolean {
-        return !!this.contextMenuProfile && !!this.connectedTabForProfile(this.contextMenuProfile)
-    }
-
-    get tunnelTypes (): PortForwardType[] {
-        return [PortForwardType.Local, PortForwardType.Remote, PortForwardType.Dynamic]
-    }
-
-    formatTunnelRow (forward: ForwardedPortConfig): string {
-        return SidebarPlusTreeComponent.formatTunnel(forward)
-    }
-
-    openProfileTunnels (): void {
-        this.tunnelDraft = SidebarPlusTreeComponent.emptyTunnel()
-        this.tunnelError = null
-        this.editingTunnelIndex = null
-        this.contextMenuMode = 'tunnels'
-        this.menuPositionDirty = true
-    }
-
-    /**
-     * Loads an existing tunnel back into the form (double-click on its row).
-     * Ports come back as null when zero so the field reads empty rather than
-     * "0" — same reason the draft keeps them nullable in the first place; a
-     * Dynamic forward is stored with an empty destination, and editing one
-     * should not show a phantom port.
-     */
-    startEditTunnel (index: number): void {
-        const forward = this.profileTunnels[index]
-        if (!forward) {
-            return
-        }
-        this.tunnelDraft = {
-            type: forward.type,
-            host: forward.host,
-            port: forward.port || null,
-            targetAddress: forward.targetAddress || 'localhost',
-            targetPort: forward.targetPort || null,
-            description: forward.description ?? '',
-        }
-        this.editingTunnelIndex = index
-        this.tunnelError = null
-    }
-
-    cancelEditTunnel (): void {
-        this.tunnelDraft = SidebarPlusTreeComponent.emptyTunnel()
-        this.editingTunnelIndex = null
-        this.tunnelError = null
-    }
-
-    get isDynamicDraft (): boolean {
-        return this.tunnelDraft.type === PortForwardType.Dynamic
-    }
-
-    /**
-     * Which side of the connection each field refers to — it *inverts* between
-     * Local and Remote, and the destination is always resolved from the far end
-     * of the tunnel, so `localhost` means the server for a Local forward. Left
-     * implicit, this is the kind of thing that gets a forward pointed at the
-     * wrong machine on real infrastructure.
-     */
-    get tunnelHint (): string {
-        if (this.tunnelDraft.type === PortForwardType.Remote) {
-            return this.i18n.t('Listens on the remote server. The destination is resolved from your PC.')
-        }
-        if (this.tunnelDraft.type === PortForwardType.Dynamic) {
-            return this.i18n.t('Opens a SOCKS proxy on your PC, with no fixed destination.')
-        }
-        return this.i18n.t('Listens on your PC. The destination is resolved from the server, so "localhost" there means the server.')
-    }
-
-    async addProfileTunnel (): Promise<void> {
+    async openProfileTunnels (): Promise<void> {
         const profile = this.contextMenuProfile
+        this.closeContextMenu()
         if (!profile) {
             return
         }
-        const draft = this.tunnelDraft
-        if (!draft.port) {
-            this.tunnelError = this.i18n.t('Enter a listening port.')
-            return
-        }
-        if (!this.isDynamicDraft && (!draft.targetAddress || !draft.targetPort)) {
-            this.tunnelError = this.i18n.t('Enter the destination host and port.')
-            return
-        }
-        this.tunnelError = null
-
-        // Dynamic forwards have no destination — Tabby still expects the fields
-        // to exist, so they are written as empty/0 rather than left undefined.
-        const forward: ForwardedPortConfig = {
-            type: draft.type,
-            host: draft.host,
-            port: draft.port,
-            targetAddress: this.isDynamicDraft ? '' : draft.targetAddress,
-            targetPort: this.isDynamicDraft ? 0 : draft.targetPort!,
-            description: draft.description,
-        }
-
-        const options = (profile.options ??= {}) as { forwardedPorts?: ForwardedPortConfig[] }
-        // Reassigned rather than pushed into: writeProfile() replaces the
-        // stored profile wholesale, so what matters is that `profile` carries
-        // the final array — but a fresh array also keeps the rendered list from
-        // sharing structure with the draft.
-        const forwards = [...(options.forwardedPorts ?? [])]
-        if (this.editingTunnelIndex !== null && forwards[this.editingTunnelIndex]) {
-            forwards[this.editingTunnelIndex] = forward
-        } else {
-            forwards.push(forward)
-        }
-        options.forwardedPorts = forwards
-        const wasEditing = this.editingTunnelIndex !== null
-        await this.profilesService.writeProfile(profile)
-        await this.config.save()
-        this.tunnelDraft = SidebarPlusTreeComponent.emptyTunnel()
-        this.editingTunnelIndex = null
-
-        // Said once, when it actually matters, rather than as a banner sitting
-        // permanently above the form: what is written here is configuration,
-        // and Tabby only reads it when a session starts.
-        //
-        // info() rather than notice(): the latter hard-codes `timeOut: 1000` in
-        // tabby-core, a second being far too short for a sentence explaining
-        // *why* nothing seems to have happened. info() leaves ngx-toastr its
-        // own timeout and splits the message into title and detail.
-        if (this.hasLiveSessionForMenuProfile) {
-            this.notifications.info(
-                wasEditing ? this.i18n.t('Tunnel updated') : this.i18n.t('Tunnel saved'),
-                wasEditing
-                    ? this.i18n.t('The current session keeps the old one until it is relaunched.')
-                    : this.i18n.t('It will be mounted at the next launch of this session.'),
-            )
-        }
-    }
-
-    async removeProfileTunnel (index: number): Promise<void> {
-        const profile = this.contextMenuProfile
-        if (!profile) {
-            return
-        }
-        // Only a tunnel Tabby has actually mounted resists deletion: removing
-        // its configuration would leave the forward running while the user
-        // believes it gone. One merely written down — added since the session
-        // started, or never launched — deletes freely. Guarded here as well as
-        // in the template: the rule belongs with the data.
-        const target = this.profileTunnels[index]
-        if (target && this.isTunnelLive(target)) {
-            this.tunnelError = this.i18n.t('This tunnel is mounted on the current session. Close the session to be able to delete it.')
-            return
-        }
-        const options = (profile.options ??= {}) as { forwardedPorts?: ForwardedPortConfig[] }
-        const forwards = [...(options.forwardedPorts ?? [])]
-        forwards.splice(index, 1)
-        options.forwardedPorts = forwards
-        // A pending edit is indexed into the list that just shifted: cancel it
-        // if its target is gone, and follow the shift otherwise — saving
-        // against a stale index would overwrite the wrong tunnel.
-        if (this.editingTunnelIndex !== null) {
-            if (this.editingTunnelIndex === index) {
-                this.cancelEditTunnel()
-            } else if (this.editingTunnelIndex > index) {
-                this.editingTunnelIndex--
-            }
-        }
-        await this.profilesService.writeProfile(profile)
-        await this.config.save()
+        const modal = this.ngbModal.open(TunnelsModalComponent, { size: 'lg' })
+        modal.componentInstance.profile = profile
+        modal.componentInstance.isLive = (forward: ForwardedPortConfig) => this.isTunnelLive(forward, profile.id)
+        modal.componentInstance.hasLiveSession = () => !!this.connectedTabForProfile(profile)
+        await modal.result.catch(() => null)
     }
 
     toggleActiveSessions (): void {
@@ -4094,7 +3837,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.contextMenuWorkspace = null
         this.contextMenuMode = 'menu'
         this.resetSubmenu()
-        this.closeIconMenu()
     }
 
     /**
@@ -4147,13 +3889,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     @HostListener('document:click', ['$event'])
     onDocumentClick (event: MouseEvent): void {
         const target = event.target as HTMLElement
-        if (target.closest('.icon-context-menu')) {
-            return
-        }
-        // Closed on any click outside itself, including clicks landing inside
-        // the picker underneath — that click means "I'm done with this menu",
-        // and the picker must survive it (it is what the menu acts upon).
-        this.closeIconMenu()
         // The switcher survives clicks inside ANY popup — the "⋯" menu and
         // its sub-popups all render beside it and act on it, so a click in
         // them is part of the same interaction. It dies only on a truly
@@ -4161,7 +3896,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // early. The compact bar is excluded so its own toggle stays the one
         // in charge of open/close (piège #15: its stopPropagation() cannot be
         // trusted to keep this HostListener from firing).
-        if (!target.closest('.workspace-switcher-menu, .workspace-bar-compact, .group-context-menu, .group-context-submenu, .icon-picker, .create-popup')) {
+        if (!target.closest('.workspace-switcher-menu, .workspace-bar-compact, .group-context-menu, .group-context-submenu, .create-popup')) {
             this.workspaceSwitcherOpen = false
         }
         // .group-context-submenu (the Manage/More lateral panels) is a
@@ -4172,17 +3907,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // via the menu's. Left out, opening a submenu closes the whole menu
         // from under it (piège #15: stopPropagation() on its own click
         // binding does not stop this HostListener).
-        if (target.closest('.group-context-menu, .group-context-submenu, .icon-picker, .create-popup')) {
+        if (target.closest('.group-context-menu, .group-context-submenu, .create-popup')) {
             return
         }
-        // The tunnels popup is the only one holding a form the user may have
-        // half filled in, and losing it to a stray click is destructive in a
-        // way none of the other popups are (they either hold nothing or a
-        // single field). It closes on its ✕ or on Escape, never on an outside
-        // click.
-        if (!this.isTunnelsMode) {
-            this.closeContextMenu()
-        }
+        this.closeContextMenu()
         // Clicking anywhere that is not a profile row drops the selection
         // (empty space, a folder row, the workspace bar) — the OS-standard
         // "click away to deselect". Profile rows are excluded because
@@ -4215,10 +3943,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             this.contextMenuProfile.name = name
             await this.profilesService.writeProfile(this.contextMenuProfile)
         } else if (this.contextMenuGroup) {
-            // Minimal {id, name} object only — see applyIcon() above for why
-            // (never pass contextMenuGroup itself, it carries plugin-computed
-            // fields that writeProfileGroup() would Object.assign() straight
-            // into config.yaml, roadmap piège #12).
+            // Minimal {id, name} object only — see IconPickerModalComponent's
+            // applyIcon() for why (never pass contextMenuGroup itself, it
+            // carries plugin-computed fields that writeProfileGroup() would
+            // Object.assign() straight into config.yaml, roadmap piège #12).
             await this.profilesService.writeProfileGroup({ id: this.contextMenuGroup.id, name } as PartialProfileGroup<ProfileGroup>)
         } else {
             return
@@ -4305,181 +4033,29 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.menuPositionDirty = true
     }
 
-    ////// ICON PICKER (context menu) //////
-    openIconPicker (): void {
-        this.contextMenuMode = 'icon'
-        this.iconQuery = ''
-        this.iconMatches = []
-        this.showCustomSvgInput = false
-        this.customSvgText = ''
-        this.customSvgError = null
-        this.customSvgWarning = null
-        this.menuPositionDirty = true
-    }
-
-    get recentIcons (): string[] {
-        return this.config.store.sidebarPlus?.recentIcons ?? []
-    }
-
-    ////// ICON FAVORITES //////
-    // Permanent counterpart to recentIcons: an entry stays until explicitly
-    // unpinned, where "Récentes" is a usage trail that evicts its oldest entry
-    // past MAX_RECENT_ICONS. Not workspace-scoped — an icon is a rendering
-    // choice, not part of what a workspace shows or hides.
-    get favoriteIcons (): string[] {
-        return this.config.store.sidebarPlus?.favoriteIcons ?? []
-    }
-
-    isFavoriteIcon (icon: string): boolean {
-        return this.favoriteIcons.includes(icon)
-    }
-
+    ////// ICON PICKER (modal) //////
     /**
-     * Right-click on an icon tile. Deliberately NOT routed through
-     * contextMenuMode like every other menu in this component: those modes are
-     * mutually exclusive, so switching to one would unmount the picker the
-     * menu is supposed to act upon. This small menu therefore has its own
-     * open-state and its own coordinates — sharing contextMenuX/Y would move
-     * the picker itself, which is positioned from them.
+     * Opens the icon picker on whichever of the three targets the current
+     * menu carries — a profile, a folder, or (from the workspace menu) a
+     * workspace, always exactly one. Everything the picker shows and writes
+     * — search, favorites, recents, the custom-SVG import, the per-tile
+     * favorite toggle — now lives in `IconPickerModalComponent`, a centred
+     * modal like the snippets and note editors, rather than in the anchored
+     * popup it used to be.
      */
-    onIconContextMenu (event: MouseEvent, icon: string): void {
-        event.preventDefault()
-        event.stopPropagation()
-        this.iconMenuIcon = icon
-        this.iconMenuX = event.clientX
-        this.iconMenuY = event.clientY
-        this.iconMenuPositionDirty = true
-    }
-
-    closeIconMenu (): void {
-        this.iconMenuIcon = null
-    }
-
-    toggleFavoriteIconFromMenu (event: Event): void {
-        if (this.iconMenuIcon) {
-            this.toggleFavoriteIcon(this.iconMenuIcon, event)
-        }
-        this.closeIconMenu()
-    }
-
-    toggleFavoriteIcon (icon: string, event: Event): void {
-        event.preventDefault()
-        event.stopPropagation()
-        this.config.store.sidebarPlus ??= {}
-        const favorites: string[] = [...this.favoriteIcons]
-        const index = favorites.indexOf(icon)
-        if (index === -1) {
-            favorites.push(icon)
-        } else {
-            favorites.splice(index, 1)
-        }
-        // Explicit reassignment, like every other write in this file — a
-        // nested in-place mutation is never picked up as a change to persist
-        // (piège #23).
-        this.config.store.sidebarPlus.favoriteIcons = favorites
-        this.config.save()
-    }
-
-    async onIconQueryChange (): Promise<void> {
-        const q = this.iconQuery.trim().toLowerCase()
-        if (!q) {
-            this.iconMatches = []
-            return
-        }
-        const entries = await loadIconEntries()
-        // The icon sets load once, so only the very first search can await
-        // anything — but that one await is long enough (5 MB of JSON to decode
-        // and sort) for the user to keep typing, or to close the picker. Drop
-        // the result if the query has moved on, otherwise a stale list would
-        // overwrite the current one.
-        if (this.iconQuery.trim().toLowerCase() !== q) {
-            return
-        }
-        this.iconMatches = entries
-            .filter(e => e.name.includes(q) || e.searchTerms?.some(t => t.includes(q)))
-            .slice(0, 40)
-    }
-
-    toggleCustomSvgInput (): void {
-        this.showCustomSvgInput = !this.showCustomSvgInput
-    }
-
-    async selectIconClass (iconClass: string): Promise<void> {
-        await this.applyIcon(iconClass)
-    }
-
-    /**
-     * A tile's small variant dots (dashboard-icons' light/dark palettes,
-     * see icons.ts) — deliberately its own handler rather than reusing
-     * selectIconClass() with a different argument, so the click can be
-     * stopped from also bubbling into the tile's own (click), which would
-     * immediately re-apply the tile's *default* variant right after this one.
-     */
-    async selectIconVariant (value: string, event: Event): Promise<void> {
-        event.preventDefault()
-        event.stopPropagation()
-        await this.applyIcon(value)
-    }
-
-    async applyCustomSvg (): Promise<void> {
-        const result = sanitizeSvgIcon(this.customSvgText)
-        if (!result.ok || !result.svg) {
-            this.customSvgError = result.error ? this.tMsg(result.error) : this.i18n.t('SVG rejected.')
-            this.customSvgWarning = null
-            return
-        }
-        this.customSvgError = null
-        this.customSvgWarning = result.warning ? this.tMsg(result.warning) : null
-        await this.applyIcon(result.svg)
-    }
-
-    private async applyIcon (icon: string): Promise<void> {
-        if (this.contextMenuProfile) {
-            const profile = this.contextMenuProfile
-            profile.icon = icon
-            await this.profilesService.writeProfile(profile)
-        } else if (this.contextMenuGroup) {
-            // Only ever pass a minimal {id, icon} object here, never
-            // contextMenuGroup itself — it carries the plugin-computed
-            // `.children`/`.collapsed` fields, and writeProfileGroup()
-            // Object.assign()s whatever it's given onto the live config
-            // object (see roadmap piège #12: that's exactly how a past bug
-            // leaked computed fields into config.yaml).
-            await this.profilesService.writeProfileGroup({ id: this.contextMenuGroup.id, icon } as PartialProfileGroup<ProfileGroup>)
-        } else if (this.contextMenuWorkspace) {
-            // Same shape as confirmRenameWorkspace(): find the live entry in
-            // the stored array and mutate it in place, then reassign the
-            // array itself (piège #23 — a nested in-place mutation alone
-            // never persists).
-            this.config.store.sidebarPlus ??= {}
-            const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
-            const target = workspaces.find(w => w.id === this.contextMenuWorkspace!.id)
-            if (target) {
-                target.icon = icon
-            }
-            this.config.store.sidebarPlus.workspaces = workspaces
-        } else {
-            return
-        }
-        this.recordRecentIcon(icon)
-        await this.config.save()
+    async openIconPicker (): Promise<void> {
+        const profile = this.contextMenuProfile
+        const group = this.contextMenuGroup
+        const workspace = this.contextMenuWorkspace
         this.closeContextMenu()
-    }
-
-    /** Picker entry offered only for a workspace (see the *ngIf on the icon-picker block) — folders/profiles have no equivalent "back to no icon" entry to mirror. */
-    async clearWorkspaceIcon (): Promise<void> {
-        if (!this.contextMenuWorkspace) {
+        if (!profile && !group && !workspace) {
             return
         }
-        this.config.store.sidebarPlus ??= {}
-        const workspaces: SidebarWorkspace[] = this.config.store.sidebarPlus.workspaces ?? []
-        const target = workspaces.find(w => w.id === this.contextMenuWorkspace!.id)
-        if (target) {
-            delete target.icon
-        }
-        this.config.store.sidebarPlus.workspaces = workspaces
-        await this.config.save()
-        this.closeContextMenu()
+        const modal = this.ngbModal.open(IconPickerModalComponent, { size: 'lg' })
+        modal.componentInstance.profile = profile
+        modal.componentInstance.group = group
+        modal.componentInstance.workspace = workspace
+        await modal.result.catch(() => null)
     }
 
     ////// WORKSPACE COLOR (context menu) //////
@@ -4533,7 +4109,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.closeContextMenu()
     }
 
-    /** Mirrors clearWorkspaceIcon() — deletes the field rather than storing an empty string, so every truthiness check on it (withWorkspaceColor()'s injection guard, the tab's color dot) stays a single `if (workspace.color)`. */
+    /** Mirrors IconPickerModalComponent.clearWorkspaceIcon() — deletes the field rather than storing an empty string, so every truthiness check on it (withWorkspaceColor()'s injection guard, the tab's color dot) stays a single `if (workspace.color)`. */
     async clearWorkspaceColor (): Promise<void> {
         if (!this.contextMenuWorkspace) {
             return
@@ -4547,13 +4123,6 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.config.store.sidebarPlus.workspaces = workspaces
         await this.config.save()
         this.closeContextMenu()
-    }
-
-    private recordRecentIcon (icon: string): void {
-        this.config.store.sidebarPlus ??= {}
-        const recent: string[] = (this.config.store.sidebarPlus.recentIcons ?? []).filter((i: string) => i !== icon)
-        recent.unshift(icon)
-        this.config.store.sidebarPlus.recentIcons = recent.slice(0, SidebarPlusTreeComponent.MAX_RECENT_ICONS)
     }
 
     /**
