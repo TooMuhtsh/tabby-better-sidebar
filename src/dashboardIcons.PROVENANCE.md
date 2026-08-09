@@ -5,8 +5,8 @@ licensed under the Apache License 2.0 (see `THIRD-PARTY-NOTICES.md`). This
 JSON is a static, offline asset checked into the repository — no network
 access happens at runtime, only at generation time by this script.
 
-- **Upstream commit**: `0d6481f2a87cf611e2bf25adcf8fb07351ed2440`
-- **Generated**: 2026-08-08
+- **Upstream commit**: `d64ee64282b076fa15e150b32c6880172880dd00`
+- **Generated**: 2026-08-09
 - **Cap applied**: 50 KB per individual SVG file (before any
   grouping into variants) — files over the cap are dropped entirely, not
   truncated. They remain reachable through the plugin's own "Import from an
@@ -27,7 +27,7 @@ access happens at runtime, only at generation time by this script.
 | Kept individual SVG files | 3206 |
 | Logical icons in `dashboardIcons.json` | 2468 |
 | — of which with more than one variant | 665 |
-| `dashboardIcons.json` size | 11.57 MB (12131000 bytes) |
+| `dashboardIcons.json` size | 11.97 MB (12552670 bytes) |
 
 ## Regenerating
 

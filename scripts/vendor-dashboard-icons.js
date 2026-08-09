@@ -67,6 +67,214 @@ function cleanSvg (raw) {
     return s.trim()
 }
 
+// ---------------------------------------------------------------------------
+// Isolation — three build-time rewrites, all forced by ONE fact: an icon is
+// rendered by `element.innerHTML = value` (tabby-core's FastHtmlBindDirective,
+// which <profile-icon> uses). That drops the markup straight into the live
+// document, where it is neither a standalone file nor a shadow root:
+//
+//   1. host CSS reaches inside it and wins over its presentation attributes,
+//   2. its `<style>` block becomes a GLOBAL stylesheet,
+//   3. its internal `id`s land in the document's single id namespace.
+//
+// Each rewrite below closes one of those. All three are one-time
+// transformations of vendored data, not a runtime sanitization pass (that
+// distinction is the note at the top of this file).
+// ---------------------------------------------------------------------------
+
+/** A short, stable, CSS-safe token identifying one icon file. Deterministic: same input file, same token. */
+function scopeToken (fileBase) {
+    return `dbi-${fileBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+}
+
+/**
+ * (1) Pins the root `<svg>`'s own fill so host CSS cannot repaint the artwork.
+ *
+ * Tabby's theme carries `.list-group-item svg { fill: var(--bs-body-color);
+ * fill-opacity: .75 }` (theme.new.scss) and appRoot has more of the same. CSS
+ * beats presentation attributes, so on the ~85% of upstream files whose root
+ * carries no fill of its own, every shape that relies on inheritance was
+ * repainted the theme's foreground colour — a white silhouette instead of a
+ * logo. An INLINE style is the fix: it outranks any non-`!important` rule.
+ *
+ * `#000` is not a choice of ours, it is the SVG initial value — this restores
+ * exactly what the file draws in a standalone viewer, which is what its author
+ * designed against, and is precisely why upstream ships `-light` variants for
+ * dark backgrounds (offered per icon in the picker).
+ *
+ * Left alone when the root already declares a fill (its author made a call) or
+ * uses `currentColor` (deliberately themeable — 17 files upstream).
+ */
+function pinRootFill (svg) {
+    const openTag = svg.slice(0, svg.indexOf('>') + 1)
+    if (/\sfill\s*=/.test(openTag) || /style\s*=\s*"[^"]*\bfill\s*:/.test(openTag)) {
+        return svg
+    }
+    const pinned = 'fill:#000;fill-opacity:1'
+    const withStyle = openTag.replace(/style\s*=\s*"([^"]*)"/, (_, decls) =>
+        `style="${pinned};${decls}"`)
+    const newTag = withStyle !== openTag
+        ? withStyle
+        : openTag.replace(/^<svg/i, `<svg style="${pinned}"`)
+    return newTag + svg.slice(openTag.length)
+}
+
+/**
+ * (2) Namespaces every internal `id`, and every reference to one.
+ *
+ * Measured upstream: 1 660 files carry ids, and short generic names dominate —
+ * `id="a"` alone appears in 370 different files. The picker grid renders up to
+ * 40 icons at once, so `url(#a)` (a gradient, clip path, mask, filter…)
+ * resolved to whichever icon reached the document first: logos silently drawn
+ * with a neighbour's gradient. Prefixing with the per-file token keeps every
+ * reference intact while making it unambiguous.
+ *
+ * Longest ids first, so replacing `a` can never eat into `ab`.
+ */
+function namespaceIds (svg, token) {
+    const ids = [...new Set([...svg.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]))]
+        .sort((a, b) => b.length - a.length)
+    let out = svg
+    for (const id of ids) {
+        const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const next = `${token}-${id}`
+        out = out.replace(new RegExp(`(\\sid=")${esc}(")`, 'g'), `$1${next}$2`)
+        out = out.replace(new RegExp(`url\\(\\s*#${esc}\\s*\\)`, 'g'), `url(#${next})`)
+        out = out.replace(new RegExp(`((?:xlink:)?href=")#${esc}(")`, 'g'), `$1#${next}$2`)
+        // `#id` used as a CSS selector inside the file's own <style> block.
+        out = out.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, block =>
+            block.replace(new RegExp(`([\\s,{}])#${esc}\\b`, 'g'), `$1#${next}`))
+    }
+    return out
+}
+
+/**
+ * Rewrites one CSS selector list so it can only ever match inside this icon.
+ *
+ * `.st0` must keep matching the root itself as well as its descendants, hence
+ * the two forms; a bare `svg` means the root and nothing else.
+ */
+function scopeSelectorList (selectors, token) {
+    return selectors.split(',').map(raw => {
+        const sel = raw.trim()
+        if (!sel) {
+            return ''
+        }
+        if (/^svg$/i.test(sel)) {
+            return `.${token}`
+        }
+        if (/^[.#[]/.test(sel) && !/[\s>+~]/.test(sel)) {
+            return `.${token}${sel}, .${token} ${sel}`
+        }
+        return `.${token} ${sel}`
+    }).filter(Boolean).join(',')
+}
+
+/**
+ * (3) Confines the file's own `<style>` block to the file.
+ *
+ * 578 upstream files carry one, and injected via innerHTML each becomes a
+ * document-wide stylesheet: `.st0` is declared by 165 different icons (so they
+ * repaint each other), and some use bare `path`/`rect`/`svg`/`line` selectors,
+ * which would restyle the whole of Tabby. Scoping every selector under the
+ * icon's own token makes the block inert outside it.
+ *
+ * `@font-face` is dropped rather than scoped: it is not scopable, it would
+ * register a document-wide family, and its `src` points at files that do not
+ * travel with the icon anyway. `@keyframes` names are namespaced like ids, for
+ * the same collision reason.
+ */
+function scopeStyleBlocks (svg, token) {
+    return svg.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (_, open, css, close) => {
+        let out = ''
+        // Comments go first, before anything is parsed: a `/* … */` sitting in
+        // front of a rule ends up inside the prelude, which both hides an
+        // `@media` from the at-rule test below (the scope class would then be
+        // glued in front of it, and an invalid at-rule takes its whole block
+        // down with it) and makes the emitted selector needlessly odd.
+        let rest = css.replace(/\/\*[\s\S]*?\*\//g, '')
+        rest = rest.replace(/@font-face\s*\{[^}]*\}/gi, '')
+        rest = rest.replace(/@keyframes\s+([\w-]+)/gi, (__, name) => `@keyframes ${token}-${name}`)
+        rest = rest.replace(/(animation(?:-name)?\s*:\s*)([^;}]+)/gi, (full, prop, value) =>
+            /\b(none|inherit|initial|unset)\b/i.test(value)
+                ? full
+                : prop + value.replace(/^\s*([\w-]+)/, (___, name) => `${token}-${name}`))
+        // Walk rule by rule so an at-rule's braces are not mistaken for a
+        // declaration block: @media wraps rules that each need scoping,
+        // @keyframes wraps percentage steps that must be left alone.
+        while (rest.length) {
+            const brace = rest.indexOf('{')
+            if (brace === -1) {
+                break
+            }
+            const prelude = rest.slice(0, brace)
+            const atRule = prelude.trim().startsWith('@')
+            const body = readBlock(rest, brace)
+            if (body === null) {
+                break
+            }
+            if (atRule) {
+                const keyframes = /^\s*@keyframes/i.test(prelude)
+                out += prelude + '{' + (keyframes ? body.inner : scopeCss(body.inner, token)) + '}'
+            } else {
+                out += scopeSelectorList(prelude, token) + '{' + body.inner + '}'
+            }
+            rest = rest.slice(body.end + 1)
+        }
+        return open + out + close
+    })
+}
+
+/** Scopes a bare list of rules (no at-rules expected inside `@media`, beyond nesting we do not meet here). */
+function scopeCss (css, token) {
+    let out = ''
+    let rest = css
+    while (rest.length) {
+        const brace = rest.indexOf('{')
+        if (brace === -1) {
+            break
+        }
+        const body = readBlock(rest, brace)
+        if (body === null) {
+            break
+        }
+        out += scopeSelectorList(rest.slice(0, brace), token) + '{' + body.inner + '}'
+        rest = rest.slice(body.end + 1)
+    }
+    return out
+}
+
+/** Reads a balanced `{...}` starting at `open`; returns its inner text and the index of the closing brace. */
+function readBlock (text, open) {
+    let depth = 0
+    for (let i = open; i < text.length; i++) {
+        if (text[i] === '{') {
+            depth++
+        } else if (text[i] === '}') {
+            depth--
+            if (depth === 0) {
+                return { inner: text.slice(open + 1, i), end: i }
+            }
+        }
+    }
+    return null
+}
+
+/** The three rewrites above, in the order they must run (ids before styles: selectors carry ids too). */
+function isolateSvg (svg, fileBase) {
+    const token = scopeToken(fileBase)
+    let out = namespaceIds(svg, token)
+    const hasStyle = /<style\b/i.test(out)
+    if (hasStyle) {
+        out = scopeStyleBlocks(out, token)
+        // The scope class has to exist on the root for the rules above to bite.
+        out = /^<svg[^>]*\sclass="/i.test(out)
+            ? out.replace(/^(<svg[^>]*\sclass=")/i, `$1${token} `)
+            : out.replace(/^<svg/i, `<svg class="${token}"`)
+    }
+    return pinRootFill(out)
+}
+
 function main () {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-icons-vendor-'))
     log(`cloning ${REPO_URL} (depth 1) into ${tmpDir}...`)
@@ -112,7 +320,7 @@ function main () {
                 excludedMalformed++
                 continue
             }
-            kept.set(file, cleaned)
+            kept.set(file, isolateSvg(cleaned, file.replace(/\.svg$/i, '')))
         }
 
         // Pass 2: group kept files into logical icons by filename convention.
@@ -232,4 +440,10 @@ describes the *last* generation, not a target to preserve.
     fs.writeFileSync(OUT_PROVENANCE, content)
 }
 
-main()
+// Required as a module by scripts/check-dashboard-icons.js, which replays the
+// isolation on the generated JSON to prove it holds; run directly, it vendors.
+if (require.main === module) {
+    main()
+} else {
+    module.exports = { isolateSvg, scopeToken, cleanSvg }
+}

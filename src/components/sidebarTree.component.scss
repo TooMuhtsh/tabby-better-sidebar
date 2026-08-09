@@ -5,6 +5,12 @@
 // instead so this rule (position, background, border) actually applies —
 // without it, .grabber's `position: absolute` had no positioned ancestor to
 // anchor to and fell back to the viewport as its containing block.
+// Height of the footer bar at the bottom of the sidebar. Declared up here
+// rather than next to its own rules further down because the floating popups
+// (which come first in this file) reserve the same strip: nothing may sit on
+// top of the footer, the same rule the layout enforces for the content region.
+$sidebar-footer-height: 26px;
+
 sidebar-plus-tree {
     // A column of two flow members — the content region and the footer. The
     // footer used to be absolute over a padding-bottom reserve, which was a
@@ -808,6 +814,16 @@ sidebar-plus-tree .grabber {
     width: 260px;
     padding: .5rem;
     border-radius: .3rem;
+    // Bounded, and scrolls inside itself past that. Unbounded, the icon
+    // picker's own content (favourites + recents + 150px of results + the
+    // custom-SVG field) grew taller than a short window, so it covered the
+    // sidebar from the view-mode tabs down to the footer — and being
+    // `position: fixed` at z-index 100, it floated straight over the footer
+    // the layout otherwise keeps inviolable. The reserve below matches that
+    // footer, so a popup stops just above it; `clampInViewport()` reserves
+    // the same strip when it places the box (see viewport.ts).
+    max-height: calc(100vh - #{$sidebar-footer-height} - 1.5rem);
+    overflow-y: auto;
     // Same reasoning as .group-context-menu above: --theme-bg, not the
     // sidebar's --theme-bg-more-2, so these floating popups stand out too.
     background-color: var(--theme-bg);
@@ -1322,7 +1338,7 @@ sidebar-plus-tree .recent-profiles {
 
 // Footer bar at the very bottom of the sidebar, a flow member of the tag's
 // flex column (see the top of this file for why it is no longer absolute).
-$footer-height: 26px;
+$footer-height: $sidebar-footer-height;
 
 // The content region: everything except the footer. It takes all the height
 // the footer leaves, and clips what it cannot fit — rows can no longer slide
