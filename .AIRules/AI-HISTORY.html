@@ -24,6 +24,29 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Durcir l'import de dossier collé — défaut de sécurité du code livré (2026-08-08)</h2>
+<p>Trouvé en instruisant l'idée « Team Sharing » d'un backlog post-V1.0, et <strong>sans rapport
+avec elle</strong> : le défaut était dans le chemin déjà livré <em>et publié</em> du collage de
+dossier. Corrigé par un agent en worktree isolé, puis relu et revalidé. Fiche au
+<a href="annexes/REALISE.html#durcir-import-collage">registre du réalisé</a>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><strong>Validé par l'utilisateur</strong>, fusion sur <code>master</code>. Le rejet total des
+profils <code>local</code> est sa décision explicite, l'alternative « les laisser voyager vidés de
+leur exécution » ayant été proposée et écartée.</td></tr>
+<tr><td>2026-08-08</td><td>cddbbc0</td>
+<td>Trois trous : l'icône n'était pas sanitisée (<code>asString()</code> au lieu de DOMPurify)
+alors qu'elle est rendue par <code>innerHTML</code> brut dans un renderer où Node est disponible ;
+<code>proxyCommand</code> survivait au niveau <code>secrets</code> alors qu'il lance un processus
+local ; les options d'exécution d'un profil <code>local</code> n'étaient purgées à aucun niveau.
+<strong>Correctif de fond</strong> : passage d'une liste noire à une <strong>liste blanche
+d'options par type de profil</strong>, <code>sanitiseIcon()</code> extrait dans
+<code>src/iconSanitize.ts</code> et partagé avec <code>workspaceShare.ts</code> — l'asymétrie entre
+les deux fichiers était le signal. Banc de <strong>13 charges hostiles, 13 passées</strong>, plus
+la rétrocompatibilité d'un export antérieur ; format inchangé, trois décomptes additifs.</td></tr>
+</table>
+
 <h2>Popups à formulaire en modales centrées (2026-08-08)</h2>
 <p>Dernier chantier ouvert de la roadmap, mené par un agent en worktree isolé puis relu et
 revalidé. Les deux popups qui portaient un formulaire — tunnels du profil, sélecteur d'icônes —

@@ -21,6 +21,90 @@ daté de chaque livraison est dans le <a href="../AI-HISTORY.html">journal</a>. 
 post-livraison s'ajoutent ici en une ligne chacune ; dès qu'une évolution touche l'architecture,
 une convention ou plus d'un fichier, elle rouvre un chantier dans l'actif.</p>
 
+<h3 id="durcir-import-collage">Durcir l'import de dossier collé (défaut de sécurité du code livré)
+<span class="pill done">✅ Corrigé (2026-08-08)</span></h3>
+<p>Trouvé en instruisant l'idée « Team Sharing » de la réflexion post-V1.0, et <strong>sans rapport
+avec elle</strong> : le défaut est dans le chemin <em>déjà livré et publié</em> du collage de
+dossier (<code>src/groupShare.ts</code>, chantier
+<a href="annexes/REALISE.html#partage-groupe">Partage rapide de groupe</a>). Trois trous, vérifiés
+dans le code, non exercés sur un banc.</p>
+<div class="callout important"><span class="callout-title">Une icône collée n'est pas
+sanitisée, et une icône est rendue par <code>innerHTML</code> brut</span>
+<p><code>sanitiseGroup()</code> fait <code>out.icon = asString(raw.icon)</code>
+(<code>groupShare.ts:439</code> pour le dossier, <code>:451</code> pour chaque profil) — un simple
+contrôle de type. Or <code>&lt;profile-icon&gt;</code> de Tabby teste <code>icon.startsWith('&lt;')</code>
+puis délègue à <code>FastHtmlBindDirective</code>, qui fait <code>innerHTML = value</code> : c'est
+exactement le court-circuit du <code>DomSanitizer</code> que <code>svgSanitizer.ts</code> documente
+déjà en tête de fichier. Un <code>"icon": "&lt;img src=x onerror=…&gt;"</code> dans un JSON collé
+s'exécute donc <strong>au moment où l'arbre se peint</strong>, dans un renderer où Node est
+disponible — ce plugin appelle lui-même <code>require('child_process')</code>
+(<code>editorLauncher.service.ts</code>), ce qui suffit à établir la portée.
+<strong><code>workspaceShare.ts:162</code> fait déjà bien</strong> : il passe par
+<code>sanitiseIcon()</code> → <code>sanitizeSvgIcon()</code> (DOMPurify) et plafonne une classe
+Iconify. C'est la même discipline qui manque ici, et l'asymétrie entre les deux fichiers est le
+signal qu'il fallait lire.</p></div>
+<ul>
+<li><strong><code>proxyCommand</code> survit au niveau <code>secrets</code></strong> : il n'est que
+  dans <code>CREDENTIAL_FIELDS</code> (<code>groupShare.ts:113</code>), pas dans
+  <code>ALWAYS_REMOVED</code> (<code>:99</code>, qui ne porte que <code>password</code> et
+  <code>scripts</code>). Or <code>tabby-ssh</code> le passe à
+  <code>SshTransport.newCommand()</code> : c'est <strong>un processus local lancé à la
+  connexion</strong>. Il appartient au niveau toujours-retiré, au même titre que
+  <code>scripts</code> — et pour la même raison, déjà écrite : un champ qui fait exécuter quelque
+  chose ne se distingue pas, à la lecture, d'un champ anodin.</li>
+<li><strong><code>command</code>, <code>args</code>, <code>cwd</code>, <code>env</code>,
+  <code>runAsAdministrator</code> ne sont purgés à aucun niveau</strong> : ce sont les
+  <code>SessionOptions</code> d'un profil <code>local</code>, donc une commande arbitraire — le
+  dernier avec élévation UAC — lancée au double-clic sur le profil collé. La purge a été écrite
+  contre un profil SSH et ne connaît pas ce type.</li>
+<li><strong>Corollaire de méthode</strong> : la purge est une <strong>liste noire</strong>, et ces
+  trois trous sont la démonstration de ce que ça coûte — chaque type de profil nouveau, chaque
+  option nouvelle de Tabby, rouvre le problème en silence. Passer à une <strong>liste blanche
+  d'<code>options</code> par type de profil connu</strong> est le vrai correctif ; la liste noire
+  ne se rattrape qu'au coup par coup.</li>
+</ul>
+<p class="muted">À faire avant d'y toucher : un banc de charges hostiles (icône avec gestionnaire
+d'événement, profil <code>local</code> avec <code>command</code>, profil SSH avec
+<code>proxyCommand</code>) collées sur des entrées jetables <code>grp-zzz-test-*</code>, pour que
+le comptage tranche plutôt que la relecture — c'est la leçon du piège #77, où un champ était
+sorti entier d'une purge que tout le monde croyait complète. Vérifier aussi si
+<code>defaults.&lt;fournisseur&gt;</code> hérite des mêmes trous (il passe par
+<code>purgeDefaults()</code>, donc a priori oui).</p>
+<p><strong>Corrigé le 2026-08-08</strong>, par un agent en worktree isolé puis relu et revalidé.
+Le correctif ne colmate pas les trois trous, il <strong>retourne la logique</strong> : la purge
+passe d'une liste noire à une <strong>liste blanche d'options par type de profil</strong>
+(<code>PROFILE_OPTION_WHITELISTS</code>), établie en lisant les interfaces réelles de Tabby pour
+<code>ssh</code>, <code>telnet</code> et <code>serial</code>. C'est ce qui referme la classe entière
+de défauts : une liste noire rouvrait le problème en silence à chaque option nouvelle de l'hôte.
+<code>sanitiseIcon()</code> est sorti dans <code>src/iconSanitize.ts</code>, partagé avec
+<code>workspaceShare.ts</code> au lieu d'être dupliqué — c'est l'asymétrie entre les deux fichiers
+qui avait laissé le trou.</p>
+<div class="callout note"><span class="callout-title">Le type <code>local</code> ne voyage plus du
+tout — décision de l'utilisateur, 2026-08-08</span>
+<p><code>SessionOptions</code> (<code>command</code>, <code>args</code>, <code>cwd</code>,
+<code>env</code>, <code>runAsAdministrator</code>) n'a <strong>aucun sous-ensemble sûr</strong> :
+tout y est un vecteur d'exécution. Le type est donc absent de la liste blanche, et un profil ou un
+bloc <code>defaults.local</code> est rejeté entièrement, compté, <strong>à l'export comme à
+l'import</strong> — y compris entre les machines de l'auteur au niveau <code>secrets</code>.
+Perte de fonctionnalité assumée : un profil local décrit une commande à exécuter, ce qui est
+exactement ce qu'on refuse de recevoir par presse-papiers. L'alternative (le laisser voyager vidé
+de son exécution, donc inerte à l'arrivée) a été proposée et écartée.</p></div>
+<p><strong>Banc de vérification — 13 charges hostiles sur 13, plus la rétrocompatibilité.</strong>
+C'est le comptage qui a tranché, pas la relecture, comme l'exigeait la leçon du piège #77 :
+icône <code>&lt;img onerror&gt;</code> rejetée entièrement (racine non-<code>&lt;svg&gt;</code>),
+icône <code>&lt;svg onload&gt;</code> conservée sans son gestionnaire, profil <code>local</code> et
+type inconnu rejetés, <code>defaults.local.command</code> écarté en bloc,
+<code>defaults.ssh.scripts</code> retiré en laissant <code>keepaliveInterval</code>, pointeur
+<code>vault://</code> retiré en gardant le chemin local, profondeur 30 ramenée à 20, payload de
+plus de 4 Mio refusé. Un export d'avant le correctif reste lisible et se retrouve simplement purgé
+plus sévèrement, l'écart apparaissant dans <code>strippedOnImport</code> — donc dans la notice
+rouge. <strong>Version du format inchangée</strong> : les trois nouveaux décomptes
+(<code>commands</code>, <code>unknownOptions</code>, <code>rejectedTypes</code>) sont additifs et se
+lisent à 0 sur un ancien payload.</p>
+
+<p class="muted">Corrigé le 2026-08-08 · Journal : <a href="../AI-HISTORY.html">« Durcir l'import
+de dossier collé » (2026-08-08)</a> · Commits : <code>cddbbc0</code></p>
+
 <h3 id="popups-en-modales">Passer les popups riches en modales centrées <span class="pill done">✅ Livré (2026-08-08)</span></h3>
 <p>Constaté en construisant la modale des snippets, et non demandé : <strong>les tunnels et le
 sélecteur d'icônes souffrent du même mal</strong> — un formulaire dans une boîte ancrée au curseur,

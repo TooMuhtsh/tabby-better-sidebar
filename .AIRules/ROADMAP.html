@@ -37,7 +37,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill out">⛔ Écarté (2026-08-03)</span></td><td>—</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill out">⛔ Hors périmètre (2026-08-03)</span></td><td>Utilité à établir avant tout portage</td></tr>
-<tr><td><a href="#durcir-import-collage">Durcir l'import de dossier collé (sécurité)</a></td><td><span class="pill warn">⚠️ À corriger (2026-08-08)</span></td><td><strong>Avant la V1.0</strong></td></tr>
+<tr><td><a href="annexes/REALISE.html#durcir-import-collage">Durcir l'import de dossier collé (sécurité)</a></td><td><span class="pill done">✅ Corrigé (2026-08-08)</span></td><td>—</td></tr>
 <tr><td><a href="#envoi-multi-sessions">Envoyer une commande à N sessions choisies</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
 <tr><td><a href="#snippet-etapes-expect">Étapes, délais et <code>expect</code> dans un snippet</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
 <tr><td><a href="#outils-reseau-non-tranche">Outils réseau au menu contextuel</a></td><td><span class="pill warn">⚠️ Sans décision (2026-08-08)</span></td><td>—</td></tr>
@@ -48,58 +48,6 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
     <td><span class="pill done">✅ À jour — remise à niveau <code>20260804-071239</code> (2026-08-08)</span></td>
     <td>Entretien récurrent</td></tr>
 </table>
-
-<h2>Phase 0 — à traiter avant la V1.0</h2>
-
-<h3 id="durcir-import-collage">Durcir l'import de dossier collé (défaut de sécurité du code livré)
-<span class="pill warn">⚠️ À corriger — trouvé le 2026-08-08</span></h3>
-<p>Trouvé en instruisant l'idée « Team Sharing » de la réflexion post-V1.0, et <strong>sans rapport
-avec elle</strong> : le défaut est dans le chemin <em>déjà livré et publié</em> du collage de
-dossier (<code>src/groupShare.ts</code>, chantier
-<a href="annexes/REALISE.html#partage-groupe">Partage rapide de groupe</a>). Trois trous, vérifiés
-dans le code, non exercés sur un banc.</p>
-<div class="callout important"><span class="callout-title">Une icône collée n'est pas
-sanitisée, et une icône est rendue par <code>innerHTML</code> brut</span>
-<p><code>sanitiseGroup()</code> fait <code>out.icon = asString(raw.icon)</code>
-(<code>groupShare.ts:439</code> pour le dossier, <code>:451</code> pour chaque profil) — un simple
-contrôle de type. Or <code>&lt;profile-icon&gt;</code> de Tabby teste <code>icon.startsWith('&lt;')</code>
-puis délègue à <code>FastHtmlBindDirective</code>, qui fait <code>innerHTML = value</code> : c'est
-exactement le court-circuit du <code>DomSanitizer</code> que <code>svgSanitizer.ts</code> documente
-déjà en tête de fichier. Un <code>"icon": "&lt;img src=x onerror=…&gt;"</code> dans un JSON collé
-s'exécute donc <strong>au moment où l'arbre se peint</strong>, dans un renderer où Node est
-disponible — ce plugin appelle lui-même <code>require('child_process')</code>
-(<code>editorLauncher.service.ts</code>), ce qui suffit à établir la portée.
-<strong><code>workspaceShare.ts:162</code> fait déjà bien</strong> : il passe par
-<code>sanitiseIcon()</code> → <code>sanitizeSvgIcon()</code> (DOMPurify) et plafonne une classe
-Iconify. C'est la même discipline qui manque ici, et l'asymétrie entre les deux fichiers est le
-signal qu'il fallait lire.</p></div>
-<ul>
-<li><strong><code>proxyCommand</code> survit au niveau <code>secrets</code></strong> : il n'est que
-  dans <code>CREDENTIAL_FIELDS</code> (<code>groupShare.ts:113</code>), pas dans
-  <code>ALWAYS_REMOVED</code> (<code>:99</code>, qui ne porte que <code>password</code> et
-  <code>scripts</code>). Or <code>tabby-ssh</code> le passe à
-  <code>SshTransport.newCommand()</code> : c'est <strong>un processus local lancé à la
-  connexion</strong>. Il appartient au niveau toujours-retiré, au même titre que
-  <code>scripts</code> — et pour la même raison, déjà écrite : un champ qui fait exécuter quelque
-  chose ne se distingue pas, à la lecture, d'un champ anodin.</li>
-<li><strong><code>command</code>, <code>args</code>, <code>cwd</code>, <code>env</code>,
-  <code>runAsAdministrator</code> ne sont purgés à aucun niveau</strong> : ce sont les
-  <code>SessionOptions</code> d'un profil <code>local</code>, donc une commande arbitraire — le
-  dernier avec élévation UAC — lancée au double-clic sur le profil collé. La purge a été écrite
-  contre un profil SSH et ne connaît pas ce type.</li>
-<li><strong>Corollaire de méthode</strong> : la purge est une <strong>liste noire</strong>, et ces
-  trois trous sont la démonstration de ce que ça coûte — chaque type de profil nouveau, chaque
-  option nouvelle de Tabby, rouvre le problème en silence. Passer à une <strong>liste blanche
-  d'<code>options</code> par type de profil connu</strong> est le vrai correctif ; la liste noire
-  ne se rattrape qu'au coup par coup.</li>
-</ul>
-<p class="muted">À faire avant d'y toucher : un banc de charges hostiles (icône avec gestionnaire
-d'événement, profil <code>local</code> avec <code>command</code>, profil SSH avec
-<code>proxyCommand</code>) collées sur des entrées jetables <code>grp-zzz-test-*</code>, pour que
-le comptage tranche plutôt que la relecture — c'est la leçon du piège #77, où un champ était
-sorti entier d'une purge que tout le monde croyait complète. Vérifier aussi si
-<code>defaults.&lt;fournisseur&gt;</code> hérite des mêmes trous (il passe par
-<code>purgeDefaults()</code>, donc a priori oui).</p>
 
 <h2 id="restes">Reste ouvert dans les chantiers livrés</h2>
 <p>Le tableau ci-dessus dit d'un chantier qu'il est <strong>fait</strong> dès que ce qui le justifiait
@@ -695,7 +643,7 @@ collage sur cinq points — l'acte disparaît (personne ne lit la notice), la so
 dépôt compromis, ACL SMB qui glissent), le rendu est automatique (une icône hostile s'exécute quand
 l'arbre se peint) et le contexte d'exécution est maximal. C'est en instruisant ce point qu'ont été
 trouvés les trous de purge du chemin déjà livré — voir
-<a href="#durcir-import-collage">Durcir l'import de dossier collé</a>.</p>
+<a href="annexes/REALISE.html#durcir-import-collage">Durcir l'import de dossier collé</a>.</p>
 <p class="muted">Le besoin réel — « mes deux ou trois machines » — est <strong>déjà couvert</strong>
 par le partage de groupe niveau <code>secrets</code>, décrit comme « celle qui se recolle à
 l'identique entre ses propres machines ». Ce qui manquerait au plus, sans rien du risque :
