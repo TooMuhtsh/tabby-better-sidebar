@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.log
 .tempfiles/
+
+# Fichier d'instructions de l'assistant : utile en local, hors du dépôt public
+CLAUDE.md

@@ -20,6 +20,14 @@
 //- 3. Every setting keeps working exactly as before: only the wording moved
 //-    into the component.
 .sidebar-plus-settings
+  //- En-tête calqué sur celui de Better Vault (h3 + ligne secondaire, au-dessus
+  //- des sous-onglets) : les deux plugins partagent le même panneau, et leurs
+  //- pages doivent s'ouvrir de la même façon. Libellés portés par des
+  //- propriétés `lbl*` comme tout ce gabarit — jamais de littéral inline ici,
+  //- c'est ce qui avait cassé le JIT au lot 2 de l'i18n.
+  h3.mb-1 {{ lblPageTitle }}
+  .sidebar-plus-settings-subtitle.mb-3 {{ lblPageSubtitle }}
+
   ul.nav.nav-tabs.sidebar-plus-settings-nav
     li.nav-item
       a.nav-link(href='#', [class.active]="section === 'general'", (click)="setSection('general', $event)") {{ lblGeneral }}

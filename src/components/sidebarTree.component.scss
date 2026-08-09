@@ -1231,8 +1231,23 @@ sidebar-plus-tree .sidebar-plus-footer {
         color: var(--theme-fg, inherit);
         opacity: 0.55;
 
+        // The two links inherit the footer's own muted colour rather than the
+        // theme's link colour: this is a signature line, not a call to action.
+        // They only announce themselves on hover.
+        .footer-name,
+        .footer-by-author {
+            color: inherit;
+            text-decoration: none;
+
+            &:hover {
+                color: inherit;
+                text-decoration: underline;
+            }
+        }
+
         .footer-name { font-weight: 600; }
         .footer-by { opacity: 0.85; }
+        .footer-by-author { opacity: 0.85; }
         .footer-version { margin-left: 4px; opacity: 0.85; }
     }
 

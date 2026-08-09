@@ -545,6 +545,14 @@ const de_DE: Record<string, string> = {
     'Manage': 'Verwalten',
     'More': 'Weitere',
 
+    // settingsTab.component.ts — Seitenkopf, dem von Better Vault nachgebildet
+    'Enhanced connection sidebar': 'Erweiterte Verbindungs-Seitenleiste',
+    'Every block below can be switched off; the sidebar itself can too.': 'Jeder Block unten lässt sich abschalten, die Seitenleiste selbst ebenfalls.',
+
+    // sidebarTree.component.pug — ausgehende Links in der Fußzeile
+    'Open the project repository': 'Projekt-Repository öffnen',
+    'Open the author profile on GitHub': 'Autorenprofil auf GitHub öffnen',
+
 }
 
 export default de_DE

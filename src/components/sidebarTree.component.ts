@@ -162,6 +162,9 @@ interface ActiveSession {
 export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChecked {
     /** Shown in the footer bar next to the plugin name. */
     readonly pluginVersion = PLUGIN_VERSION
+    /** Footer links. Constants rather than template literals: the template must not compute (piège #54). */
+    readonly repositoryUrl = 'https://github.com/TooMuhtsh/tabby-better-sidebar'
+    readonly authorUrl = 'https://github.com/TooMuhtsh?tab=repositories'
     profileGroups: PartialProfileGroup<ProfileGroup>[] = []
     rootGroups: PartialProfileGroup<ProfileGroup>[] = []
 
@@ -4571,6 +4574,19 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
         await this.runSnippet(result.snippet, profile)
+    }
+
+    /**
+     * Opens one of the footer's outbound links in the user's browser.
+     *
+     * `platform.openExternal()`, never a plain `href`: an anchor left to
+     * navigate would replace the whole Electron window with the target page,
+     * taking every open session down with it. Same call the tunnel rows make.
+     */
+    openExternalLink (url: string, event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.platform.openExternal(url)
     }
 
     /**

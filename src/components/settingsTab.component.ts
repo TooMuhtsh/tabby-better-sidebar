@@ -79,6 +79,8 @@ export class SidebarPlusSettingsTabComponent {
     // `| translate` expression breaks the JIT compiler at runtime, invisibly
     // to the webpack build — the lot-2 incident of 2026-08-08. Getters are
     // fine on this cold page (unlike sidebarTree, piège #54).
+    get lblPageTitle (): string { return this.i18n.t('Enhanced connection sidebar') }
+    get lblPageSubtitle (): string { return this.i18n.t('Every block below can be switched off; the sidebar itself can too.') }
     get lblGeneral (): string { return this.i18n.t('General') }
     get lblFeatures (): string { return this.i18n.t('Features') }
     get lblShowSidebar (): string { return this.i18n.t('Show the sidebar') }

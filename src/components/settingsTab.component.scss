@@ -7,6 +7,15 @@
 // one is active. Same approach as the other plugin's settings page, which this
 // layout is modelled on.
 .sidebar-plus-settings {
+    // Same two values as the vault's `.machine-badge`, deliberately: the two
+    // plugins share one settings panel, so their page headers have to read as
+    // one design rather than two. Restated here rather than shared — the file
+    // is global CSS and a class borrowed across plugins would couple them.
+    .sidebar-plus-settings-subtitle {
+        font-size: 0.8em;
+        opacity: 0.7;
+    }
+
     // The tab strip's styling lives in settingsNav.scss, shared with the
     // "Better Tabby" host panel — see the note there (piège #56).
 
