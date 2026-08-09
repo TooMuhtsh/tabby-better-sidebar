@@ -5,3 +5,6 @@ dist/
 
 # Fichier d'instructions de l'assistant : utile en local, hors du dépôt public
 CLAUDE.md
+
+# Config du validateur .AIRules : outil de poste, comme chez le plugin frère
+.htmlvalidate.json
