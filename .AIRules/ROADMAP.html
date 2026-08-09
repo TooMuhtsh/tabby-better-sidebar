@@ -38,6 +38,12 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill out">⛔ Écarté (2026-08-03)</span></td><td>—</td></tr>
 <tr><td><a href="#auto-enter">Validation automatique (Auto-Enter)</a></td><td><span class="pill out">⛔ Hors périmètre (2026-08-03)</span></td><td>Utilité à établir avant tout portage</td></tr>
 <tr><td><a href="#durcir-import-collage">Durcir l'import de dossier collé (sécurité)</a></td><td><span class="pill warn">⚠️ À corriger (2026-08-08)</span></td><td><strong>Avant la V1.0</strong></td></tr>
+<tr><td><a href="#envoi-multi-sessions">Envoyer une commande à N sessions choisies</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
+<tr><td><a href="#snippet-etapes-expect">Étapes, délais et <code>expect</code> dans un snippet</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
+<tr><td><a href="#outils-reseau-non-tranche">Outils réseau au menu contextuel</a></td><td><span class="pill warn">⚠️ Sans décision (2026-08-08)</span></td><td>—</td></tr>
+<tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
+<tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
+<tr><td><a href="#team-sharing">Workspaces distants / partage d'équipe</a></td><td><span class="pill out">⛔ Écarté — contrainte intenable</span></td><td>—</td></tr>
 <tr><td><a href="#popups-en-modales">Popups riches → modales centrées</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
     <td><span class="pill done">✅ À jour — remise à niveau <code>20260804-071239</code> (2026-08-08)</span></td>
@@ -517,7 +523,190 @@ seul, et ces mentions nommaient la règle telle qu'elle existait à la date de l
 
 <p id="menage-release"><a href="annexes/REALISE.html#menage-release">Ménage avant release soignée</a> — au registre du réalisé.</p>
 
+<h2>Après la V1.0 — retenus</h2>
+<p class="muted">Issus d'un backlog de cinq idées proposé par l'utilisateur le 2026-08-08 et
+instruit contre le code réellement installé (Tabby 1.0.235, sources TypeScript livrées). Trois des
+cinq sont parties en « Hors périmètre » ci-dessous ; les deux qui suivent sont ce qu'il en reste
+d'utile. Aucune n'est ouverte : elles attendent une consigne explicite
+(option <code>roadmap-avant-code</code>).</p>
+
+<h3 id="envoi-multi-sessions">Envoyer une commande à N sessions choisies
+<span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></h3>
+<p>Ce qui subsiste de l'idée « Multi-Exec / Broadcasting » une fois retiré ce que Tabby fait déjà.
+<strong>Le broadcast natif existe</strong> — <code>MultifocusService</code> de
+<code>tabby-terminal</code>, raccourcis <code>Ctrl-Shift-I</code> (panes du split) et
+<code>Ctrl-Alt-Shift-I</code> (tous les onglets), plus une entrée du menu contextuel d'onglet — donc
+un interrupteur maison qui rejoue la frappe serait redondant, et <em>inférieur</em> : le service
+s'annule au premier clic dans un terminal sans exposer aucun moyen de l'observer, si bien qu'un
+interrupteur afficherait « actif » sur une diffusion morte.</p>
+<p>Deux manques réels, que la sidebar est la seule à pouvoir combler puisqu'elle tient déjà les
+onglets vivants dans « Sessions actives » :</p>
+<ul>
+<li><strong>La sélection.</strong> Le natif ne sait faire que « tout » ou « ce split ». Diffuser
+  vers quatre machines choisies parmi vingt n'existe nulle part.</li>
+<li><strong>L'envoi une-fois-validé.</strong> Le natif diffuse caractère par caractère : une faute
+  de frappe part partout, une complétion <kbd>Tab</kbd> diverge par hôte, et une invite
+  <code>sudo</code> sur un seul hôte avale des caractères destinés à tous. Un composeur « je tape,
+  je relis, j'envoie la ligne » est plus sûr autant que plus utile.</li>
+</ul>
+<div class="callout important"><span class="callout-title">L'esprit du refus de « Group Exec »
+gouverne ce chantier</span>
+<p>La saisie synchronisée a déjà été refusée une fois — « taper une commande sur douze serveurs de
+production ne doit pas être l'effet de bord d'un <em>ouvrir tout</em> »
+(<a href="annexes/REALISE.html#group-exec">Group Exec</a>, clos le 2026-08-03). Le refus portait
+sur le <strong>couplage à l'ouverture groupée</strong>, pas sur la fonction ; un composeur à
+sélection explicite n'est pas ce qui a été écarté. Mais rien ne doit diffuser par effet de bord :
+sélection <em>opt-in</em> ligne par ligne, jamais « tout » par défaut.</p></div>
+<p class="muted">À trancher avant de coder : miroir de frappe ou envoi de ligne (recommandation :
+envoi de ligne) ; le seuil de sessions au-delà duquel une confirmation s'impose ; et le retour par
+ligne — <code>sendInput()</code> fait <code>this.session?.feedFromTerminal(...)</code>, donc sur une
+session morte <strong>rien ne se passe et rien ne le dit</strong>, ce qui ferait croire la commande
+passée partout.</p>
+
+<h3 id="snippet-etapes-expect">Étapes, délais et <code>expect</code> dans un snippet
+<span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></h3>
+<p>Ce qui subsiste de l'idée « Visual Macro Manager », dont la fiche du registre porte déjà le nom
+(<a href="annexes/REALISE.html#quick-snippets">Quick Snippets — Macros de Sidebar</a>) : un snippet
+est un texte multi-lignes envoyé tel quel dans le pty, donc <strong>déjà</strong> une macro
+multi-commandes, avec variables, héritage profil → dossier → racine et trois réglages tri-état. Ne
+manquent que deux choses :</p>
+<ul>
+<li><strong>Des délais entre les lignes</strong> — aujourd'hui il n'y en a qu'un
+  (<code>launchDelayMs</code>), et seulement après un lancement automatique. Petit.</li>
+<li><strong>Une étape <code>expect</code></strong> : attendre un motif de sortie avant de
+  continuer. C'est le seul ajout à vraie valeur technique, et il répare une faiblesse que ce
+  document reconnaît déjà — le délai fixe « ne résout rien, il remplace la chance par un nombre
+  que l'on choisit ». Atteignable par <code>SessionMiddleware</code> de <code>tabby-terminal</code>
+  (exporté, vérifié aux deux niveaux), avec un précédent livré dans Tabby lui-même :
+  <code>tabby-auto-sudo-password</code> lit la sortie et répond.</li>
+</ul>
+<p class="muted">Piège à ne pas rater : l'<code>expect</code> natif compare <strong>chunk par
+chunk, sans tampon inter-chunks</strong> — une invite coupée entre deux paquets est ratée. Un
+<code>expect</code> honnête doit tenir son propre tampon glissant et retirer les séquences ANSI.
+Voir aussi <a href="#outils-reseau-non-tranche">l'idée non tranchée</a> plus bas.</p>
+
+<h3 id="outils-reseau-non-tranche">Outils réseau au menu contextuel — <em>non tranché</em>
+<span class="pill warn">⚠️ Sans décision (2026-08-08)</span></h3>
+<p>Quatrième idée du backlog (Ping / Traceroute / Nmap depuis le menu d'un profil, dans un onglet
+local). Instruite, mais <strong>volontairement laissée sans décision</strong> : ni retenue, ni
+écartée. Consignée pour que l'instruction ne soit pas à refaire.</p>
+<ul>
+<li><strong>Faisable et sûr côté shell</strong> : un profil <code>local</code> synthétique passé à
+  <code>openNewTabForProfile()</code> avec <code>pauseAfterExit: true</code>. La chaîne va jusqu'à
+  <code>execvp</code> (Unix) ou <code>CreateProcessW</code> (Windows) <strong>sans jamais passer par
+  un shell</strong> : un hôte valant <code>x; rm -rf ~</code> arrive littéralement à
+  <code>ping</code>, qui répond « hôte inconnu ».</li>
+<li><strong>Le risque est ailleurs — l'injection d'argument.</strong> Un gabarit en chaîne libre
+  recollé puis redécoupé transforme un hôte valant <code>-f 10.0.0.1</code> en deux arguments. Sur
+  <code>nmap</code>, <code>--script</code> exécute un script Lua arbitraire : c'est une exécution de
+  code. D'où : <strong>pas de champ « chaîne de commande » libre</strong>, mais une liste
+  d'arguments dont un élément vaut <code>{host}</code>, substitué entier, plus une liste blanche sur
+  l'hôte refusant tout ce qui commence par <code>-</code>. Et <strong>pas de Nmap</strong>.</li>
+<li><strong>Ce qui retient la décision</strong> : <code>src/ping.service.ts</code> argumente déjà,
+  noir sur blanc, le refus d'ICMP — « couramment filtré, ce qui afficherait rouge sur un lien
+  parfaitement sain », et « aucun processus externe, contrairement à <code>ping.exe</code> ».
+  Ajouter une entrée « Ping » n'est pas contradictoire (l'un sonde une session vivante, l'autre un
+  hôte injoignable) mais oblige à écrire la distinction. S'y ajoute que sur un profil à rebond ou
+  proxy — ceux qu'on diagnostique justement — un ping local vers <code>options.host</code> ne
+  mesure rien du chemin réel.</li>
+<li><strong>Le seul créneau qui la justifie</strong> : le profil <em>ne connecte pas</em>, donc il
+  n'y a aucune session à sonder. C'est exactement ce que <code>ping.service.ts</code> ne peut pas
+  couvrir par construction.</li>
+</ul>
+<p class="muted">Deux pièges relevés à l'instruction, à ne pas redécouvrir : lire
+<code>options.port</code> sans regarder <code>type</code> donne <code>COM3</code> sur un profil
+série (l'entrée doit être masquée hors SSH/Telnet) ; et sous Windows, un binaire absent fait ouvrir
+<strong>un onglet vide qui ne se ferme jamais</strong>, sans message — le renderer reçoit son id
+avant que le processus principal ne lève l'exception. Détecter avant de lancer.</p>
+
 <h2>Hors périmètre</h2>
+
+<h3 id="x11">Intégration X11 <span class="pill out">⛔ Écarté — déjà natif (2026-08-08)</span></h3>
+<p>Idée du backlog du 2026-08-08 : redirection X11 transparente, détection des serveurs X locaux,
+interrupteur par profil, éventuellement en plugin séparé <code>tabby-better-x11</code>.
+<strong>Sans objet : Tabby le fait déjà, intégralement.</strong> <code>russh</code> expose
+<code>requestX11Forwarding()</code> et le flux des canaux <code>x11</code> entrants ; <code>tabby-ssh</code>
+implémente la chaîne complète (<code>src/session/ssh.ts</code> : requête <code>x11-req</code> avec
+cookie MIT-MAGIC-COOKIE-1, relais vers la socket X locale par <code>X11Socket</code>,
+<code>src/session/x11.ts</code>), et affiche lui-même les liens VcXsrv/Xming quand aucun serveur X
+ne répond. <strong>L'interrupteur par profil existe déjà</strong> (Éditer le profil → onglet
+<em>Advanced</em> → « X11 forwarding », <code>options.x11</code>), ainsi qu'un réglage global
+« Override X11 display ». Comme notre entrée « Modifier… » ouvre la modale native, c'est atteignable
+depuis la sidebar sans une ligne de code. Aucun plugin <code>tabby-*x11*</code> n'existe sur npm —
+l'écosystème ne l'a pas fait parce qu'il n'y a rien à faire.</p>
+<div class="callout note"><span class="callout-title">Un vrai défaut amont trouvé au passage, à
+signaler chez Eugeny plutôt qu'à contourner ici</span>
+<p>La regex de <code>X11Socket.resolveDisplaySpec()</code> (<code>tabby-ssh/src/session/x11.ts:10</code>)
+est <code>/^(.+):(\d+)(?:.(\d+))$/</code> : <strong>le groupe du numéro d'écran n'est pas
+optionnel</strong>. Vérifié par exécution — <code>localhost:10.0</code> donne bien
+<code>localhost:6010</code>, mais <code>localhost:1</code>, <code>host:10</code> et
+<code>192.168.1.5:0</code> ne correspondent à rien et retombent <strong>en silence</strong> sur
+<code>localhost:6000</code>. Le champ « Override X11 display » n'obéit donc qu'à la forme longue.
+La correction tient en un caractère (<code>(?:\.(\d+))?</code>, point échappé au passage). Si
+quelque chose doit sortir de cette idée, c'est cette PR — pas un plugin.</p></div>
+<p class="muted">Pertinence de fond, pour mémoire : X11 est devenu marginal — serveurs administrés
+sans bibliothèque X, alternatives web (Cockpit, Proxmox, console du fournisseur), VNC/RDP, X2Go,
+Wayland qui ne le fait pas fonctionner, et WSLg côté Windows.</p>
+
+<h3 id="macro-manager">Gestionnaire de macros visuel
+<span class="pill out">⛔ Écarté — redondant avec les snippets (2026-08-08)</span></h3>
+<p>Idée du backlog du 2026-08-08 : enregistrer, sauvegarder et rejouer des séquences de frappes,
+avec délais et affectation par profil ou workspace. <strong>Redondant aux trois quarts</strong> :
+la fiche livrée s'appelle déjà <a href="annexes/REALISE.html#quick-snippets">« Quick Snippets
+(Macros de Sidebar) »</a>, un snippet est un texte multi-lignes envoyé tel quel dans le pty — donc
+déjà une macro multi-commandes —, et l'affectation par profil/dossier avec héritage est plus fine
+que ce que l'idée demande. Ce qu'elle ajouterait vraiment est isolé et retenu ailleurs :
+<a href="#snippet-etapes-expect">étapes, délais et <code>expect</code></a>.</p>
+<div class="callout important"><span class="callout-title">L'enregistrement de frappes est écarté
+pour une raison de fond, déjà tranchée deux fois</span>
+<p><code>frontend.input$</code> capte <strong>chaque frappe, y compris à une invite de mot de
+passe</strong> : les caractères sont absents de la sortie mais intégralement présents dans
+l'entrée, dans l'ordre. Ils atterriraient dans <code>config.store.sidebarPlus</code>, <strong>en
+clair</strong> — vérifié sur ce poste, <code>config.yaml</code> ne porte aucune clé
+<code>encrypted:</code>, seule la section <code>vault:</code> est chiffrée. Or ce projet a déjà
+tranché exactement cet artefact : <code>scripts</code> est purgé d'office à l'export parce qu'« un
+couple expect/send est l'endroit où un mot de passe sudo se retrouve en dur », et
+<a href="#auto-enter">Auto-Enter</a> est sorti du périmètre pour le même motif. Un enregistreur
+produirait cet artefact <strong>automatiquement</strong>, sans que l'utilisateur ait choisi de
+l'écrire. Ne pas le construire, ici ni ailleurs.</p></div>
+<p class="muted">À savoir : <code>tabby-quick-cmds</code> existe et recouvre presque trait pour
+trait nos snippets, délais entre commandes compris — c'est le « Macro Manager » moins
+l'enregistrement.</p>
+
+<h3 id="team-sharing">Workspaces distants / partage d'équipe
+<span class="pill out">⛔ Écarté — contrainte intenable (2026-08-08)</span></h3>
+<p>Idée du backlog du 2026-08-08 : s'abonner à un workspace par URL ou chemin réseau, rafraîchi
+périodiquement, <em>« lecture seule en local, secrets jamais synchronisés »</em>. Le transport est
+trivial (aucune CSP dans Tabby, <code>fetch()</code> est le style maison, Node entier dans le
+renderer, UNC lisible par <code>fs</code>) — <strong>et c'est précisément ce qui rend l'idée
+dangereuse</strong> : le sujet n'est pas le transport, c'est la réconciliation.</p>
+<div class="callout important"><span class="callout-title">La contrainte « lecture seule » ne peut
+pas être tenue, donc elle ne doit pas être promise</span>
+<p>Il faut séparer deux objets que l'idée confond. Un <strong>workspace</strong> est un overlay
+dont le plugin est seul écrivain : verrouillable. Un <strong>dossier et ses profils</strong> vivent
+dans <code>config.store.groups</code>/<code>.profiles</code>, données natives que <em>les
+paramètres de Tabby éditent sans passer par le plugin</em> — le verrou n'existerait donc que dans
+la sidebar, c'est-à-dire nulle part de fiable : une convention d'affichage vendue comme une
+garantie, ce qui est pire que rien. S'y ajoute que le re-parentage <strong>change l'id</strong> du
+dossier (piège #62), donc casse toute clé de rapprochement au premier glisser-déposer, et qu'un
+moteur de resynchronisation est fait de la question interdite par le piège #74 (« cet id
+existe-t-il encore ? », qui répond <em>non</em> pour des entrées vivantes). <strong>L'idée se
+dévore elle-même</strong> : sa partie sûre (un workspace nu) est inutile — ce ne sont que des
+listes d'ids qui ne désignent rien chez le destinataire — et sa partie utile (les profils) n'est
+pas sûre.</p></div>
+<p>Sécurité, pour mémoire si le sujet revenait : un abonnement automatique est plus dangereux qu'un
+collage sur cinq points — l'acte disparaît (personne ne lit la notice), la source devient répétée
+(bénigne aujourd'hui, hostile dans trois mois), la surface d'attaque devient l'URL (DNS, TLS,
+dépôt compromis, ACL SMB qui glissent), le rendu est automatique (une icône hostile s'exécute quand
+l'arbre se peint) et le contexte d'exécution est maximal. C'est en instruisant ce point qu'ont été
+trouvés les trous de purge du chemin déjà livré — voir
+<a href="#durcir-import-collage">Durcir l'import de dossier collé</a>.</p>
+<p class="muted">Le besoin réel — « mes deux ou trois machines » — est <strong>déjà couvert</strong>
+par le partage de groupe niveau <code>secrets</code>, décrit comme « celle qui se recolle à
+l'identique entre ses propres machines ». Ce qui manquerait au plus, sans rien du risque :
+importer/exporter depuis un <strong>fichier</strong> plutôt que le presse-papiers — même
+<code>parsePayload()</code>, même modale, même double décompte, seule la source change. L'acte reste
+manuel et le contenu reste choisi.</p>
 
 <h3 id="editeur-par-type">Éditeur par type de fichier (notamment les images)</h3>
 <div class="callout important"><span class="callout-title">Écarté le 2026-08-03, après construction et
