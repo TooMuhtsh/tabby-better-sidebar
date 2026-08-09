@@ -24,6 +24,43 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Préparation de la V1.0 — dépôt, vitrine et paquet (2026-08-08)</h2>
+<p>Demande de l'utilisateur : un dépôt propre et un README exhaustif avant la mise en ligne. Le
+tour d'inventaire a surtout montré que le dépôt l'était déjà — aucun fichier source mort, aucun
+résidu non suivi, et un paquet npm qui ne publiait que <code>dist/</code>, <code>README.md</code>
+et <code>LICENSE</code>, comme le plugin frère.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><code>package.json</code> à <strong>1.0.0</strong>. Chaîne de publication revérifiée avant
+d'en dépendre : <code>build:prod</code> compile, <strong>aucune source-map ne subsiste</strong>
+dans <code>dist/</code>, paquet à <strong>4,7 Mo compressés / 18,9 Mo décompressés,
+102 fichiers</strong>, dont un bundle principal à 0,45 Mo — le poids vit dans les deux chunks
+d'icônes, chargés à la première recherche seulement.</td></tr>
+<tr><td>2026-08-08</td><td>5077d32</td>
+<td><strong>README réécrit</strong> : inventaire complet des fonctionnalités (logos
+dashboard-icons et variantes, sous-menus, snippets et leur héritage, notes, partage de dossier,
+mémoire de coupure des tunnels, déplacement SFTP, liens symboliques), section
+<em>Known limitations</em> assumant quatre écarts, et référence complète des réglages repliée sous
+<em>Configuration</em> — chaque valeur par défaut vérifiée par script contre
+<code>configProvider.ts</code>. <strong>Une seule phrase</strong> sur la désactivation des blocs,
+avec son bénéfice concret (alléger la sidebar), sur consigne explicite de l'utilisateur : un
+premier jet le répétait sur chaque fonctionnalité, ce qui était redondant.</td></tr>
+<tr><td>2026-08-08</td><td>83d9d2f</td>
+<td>Pied de page : <strong>« better-sidebar » ouvre le dépôt, « TooMuhtsh » le profil GitHub</strong>.
+Passage obligé par <code>platform.openExternal()</code> — un <code>href</code> nu aurait fait
+naviguer la fenêtre Electron elle-même, emportant toutes les sessions ouvertes. En-tête de la page
+de réglages aligné sur celui de Better Vault (titre + ligne secondaire au-dessus des sous-onglets,
+mêmes valeurs de style), pour que les deux plugins d'un même panneau s'ouvrent pareil.</td></tr>
+<tr><td>2026-08-08</td><td>(même commit)</td>
+<td><strong>Dépôt allégé, sur le modèle du frère</strong> : <code>CLAUDE.md</code> et
+<code>.htmlvalidate.json</code> retirés du suivi Git (<code>git rm --cached</code> +
+<code>.gitignore</code>) — outils de poste, sans intérêt pour qui clone. Ils restent en local et
+font toujours foi ; le validateur reste vert. <strong>Dix topics GitHub</strong> ajoutés. Conséquence
+à connaître : plus rien dans un clone ne pointe automatiquement vers <code>.AIRules/</code>, qui
+reste public et actif.</td></tr>
+</table>
+
 <h2>Durcir l'import de dossier collé — défaut de sécurité du code livré (2026-08-08)</h2>
 <p>Trouvé en instruisant l'idée « Team Sharing » d'un backlog post-V1.0, et <strong>sans rapport
 avec elle</strong> : le défaut était dans le chemin déjà livré <em>et publié</em> du collage de
