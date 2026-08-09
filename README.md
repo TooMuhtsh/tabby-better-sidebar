@@ -6,6 +6,8 @@
 favourites, live connection status, drag & drop, and a contextual SFTP browser
 living *inside* the sidebar rather than in a separate docked panel.
 
+**English** · [Français](README.fr.md)
+
 [![License: MIT](https://img.shields.io/github/license/TooMuhtsh/tabby-better-sidebar?color=0d9488)](LICENSE)
 [![Part of Better Tabby](https://img.shields.io/badge/part%20of-Better%20Tabby-0d9488)](#-better-tabby-the-plugin-family)
 
