@@ -21,6 +21,42 @@ daté de chaque livraison est dans le <a href="../AI-HISTORY.html">journal</a>. 
 post-livraison s'ajoutent ici en une ligne chacune ; dès qu'une évolution touche l'architecture,
 une convention ou plus d'un fichier, elle rouvre un chantier dans l'actif.</p>
 
+<h3 id="popups-en-modales">Passer les popups riches en modales centrées <span class="pill done">✅ Livré (2026-08-08)</span></h3>
+<p>Constaté en construisant la modale des snippets, et non demandé : <strong>les tunnels et le
+sélecteur d'icônes souffrent du même mal</strong> — un formulaire dans une boîte ancrée au curseur,
+large de 300 px — et portent chacun leur propre positionnement, leur propre recadrage à l'écran et
+leur propre exception au clic extérieur. Trois mécaniques dupliquées pour un motif qui a désormais un
+patron éprouvé (<code>snippetsModal</code>, <code>noteModal</code>,
+<code>pasteGroupModal</code>).</p>
+<p class="muted"><strong>Les menus contextuels, eux, restent des menus</strong> : ils sont courts et
+doivent s'ouvrir sous la souris. Ce chantier vise les popups qui contiennent un <em>formulaire</em>,
+pas ceux qui contiennent une <em>liste d'actions</em> — la distinction est ce qui l'empêche de
+déborder sur <a href="#menu-contextuel-long">le chantier voisin</a>.</p>
+<p class="muted">Non ouvert pendant la phase 0.3.0 : la pile de code non testé était déjà large.</p>
+<p><strong>Livré le 2026-08-08</strong>, par un agent en worktree isolé puis relu et revalidé. Deux
+composants créés sur le patron des trois modales existantes : <code>TunnelsModalComponent</code> et
+<code>IconPickerModalComponent</code>. Le petit menu de bascule favori du picker (clic droit sur une
+tuile) a migré <em>à l'intérieur</em> de la modale avec son propre gestionnaire de clic, au lieu de
+vivre dans le <code>HostListener</code> de l'arbre. <code>formatTunnel()</code>/<code>tunnelKey()</code>
+sont sortis dans <code>src/tunnels.ts</code>, seul point resté commun avec la section « Tunnels
+actifs » de l'arbre — qui, elle, affiche les tunnels réellement montés et n'était pas du périmètre.</p>
+<p><strong>Le résultat se mesure au nettoyage, pas à l'ergonomie</strong> :
+<code>sidebarTree.component.{ts,pug,scss}</code> perd <strong>758 lignes nettes</strong> — vingt-six
+méthodes et une douzaine de champs partis dans les modales, <code>contextMenuMode</code> délesté de
+ses valeurs <code>icon</code>/<code>tunnels</code>, <code>.icon-picker</code> retiré des deux listes
+<code>closest()</code> du <code>HostListener</code> et du sélecteur de recadrage, blocs SCSS du
+picker et de la popup tunnels supprimés. C'était l'objet de la fiche : faire disparaître trois
+mécaniques dupliquées, pas en ajouter une quatrième. <strong>Aucune clé i18n ajoutée ni retirée</strong>
+— les chaînes déplacées ont gardé les leurs.</p>
+<p>Laissé en popup délibérément, sur le « au cas par cas » que la fiche autorise : renommage,
+création de dossier/profil, confirmation de suppression, menu et couleur de workspace. Aucune ne
+porte de formulaire à plusieurs champs et toutes tiennent sous la souris sans recadrage notable. Le
+chargement différé des collections d'icônes est préservé : <code>loadIconEntries()</code> n'est
+appelé que depuis <code>onIconQueryChange()</code>, donc la modale ne charge rien à l'ouverture.</p>
+
+<p class="muted">Livré le 2026-08-08 · Journal : <a href="../AI-HISTORY.html">« Popups à formulaire
+en modales centrées » (2026-08-08)</a> · Commits : <code>634496b</code></p>
+
 <h3 id="menu-contextuel-long">Le menu contextuel du dossier est devenu trop long <span class="pill done">✅ Livré (2026-08-08)</span></h3>
 <p>Relevé par l'utilisateur le 2026-08-03, au premier test de la passe du partage de groupe : « il
 s'étend vers l'infini et devient de moins en moins utilisable ». <strong>À cadrer avec lui avant d'y

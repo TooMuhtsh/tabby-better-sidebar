@@ -44,7 +44,6 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
 <tr><td><a href="#team-sharing">Workspaces distants / partage d'équipe</a></td><td><span class="pill out">⛔ Écarté — contrainte intenable</span></td><td>—</td></tr>
-<tr><td><a href="#popups-en-modales">Popups riches → modales centrées</a></td><td><span class="pill planned">📋 Proposé</span></td><td>Basse</td></tr>
 <tr><td><a href="#gouvernance">Conformité de la gouvernance à la charte</a></td>
     <td><span class="pill done">✅ À jour — remise à niveau <code>20260804-071239</code> (2026-08-08)</span></td>
     <td>Entretien récurrent</td></tr>
@@ -287,18 +286,7 @@ les liens du journal.</p>
 
 <p id="clone-express"><a href="annexes/REALISE.html#clone-express">Clone Express de profil</a> — au registre du réalisé.</p>
 
-<h3 id="popups-en-modales">Passer les popups riches en modales centrées</h3>
-<p>Constaté en construisant la modale des snippets, et non demandé : <strong>les tunnels et le
-sélecteur d'icônes souffrent du même mal</strong> — un formulaire dans une boîte ancrée au curseur,
-large de 300 px — et portent chacun leur propre positionnement, leur propre recadrage à l'écran et
-leur propre exception au clic extérieur. Trois mécaniques dupliquées pour un motif qui a désormais un
-patron éprouvé (<code>snippetsModal</code>, <code>noteModal</code>,
-<code>pasteGroupModal</code>).</p>
-<p class="muted"><strong>Les menus contextuels, eux, restent des menus</strong> : ils sont courts et
-doivent s'ouvrir sous la souris. Ce chantier vise les popups qui contiennent un <em>formulaire</em>,
-pas ceux qui contiennent une <em>liste d'actions</em> — la distinction est ce qui l'empêche de
-déborder sur <a href="#menu-contextuel-long">le chantier voisin</a>.</p>
-<p class="muted">Non ouvert pendant la phase 0.3.0 : la pile de code non testé était déjà large.</p>
+<p id="popups-en-modales"><a href="annexes/REALISE.html#popups-en-modales">Passer les popups riches en modales centrées</a> — au registre du réalisé.</p>
 
 <p id="menu-contextuel-long"><a href="annexes/REALISE.html#menu-contextuel-long">Le menu contextuel du dossier est devenu trop long</a> — au registre du réalisé.</p>
 
