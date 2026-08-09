@@ -72,6 +72,16 @@ Tabby.</p>
 <h2 id="cat-env">Environnement &amp; build</h2>
 <p class="muted">Avant même de faire tourner ou de publier le plugin.</p>
 
+<div class="callout note"><span class="callout-title">Version de Tabby de référence :
+<strong>1.0.235</strong> (au 2026-08-08)</span>
+<p>C'est la version installée sur le poste de développement et celle contre laquelle tout ce
+document a été vérifié — <strong>y compris les pièges et la checklist de montée de version</strong>
+ci-dessous. Le <code>tabby-core</code> qu'elle embarque s'annonce, lui, en
+<code>1.0.231-nightly.0</code> : c'est ce numéro-là, et non celui de l'application, que cible la
+peer dependency du <code>package.json</code> — les deux ne coïncident pas, et confondre l'un avec
+l'autre fait chercher une incompatibilité qui n'existe pas. À mettre à jour ici <em>et</em> dans
+le README quand la référence change.</p></div>
+
 <h3 id="piege-1">#1 — <code>TABBY_PLUGINS</code> cassé sur Windows</h3>
 <p>Tabby fait <code>process.env.TABBY_PLUGINS.split(':')</code> ; un chemin Windows
 (<code>C:\...</code>) contient un <code>:</code> après la lettre de lecteur → chemin tronqué,
