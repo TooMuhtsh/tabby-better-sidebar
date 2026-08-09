@@ -553,6 +553,9 @@ const fr_FR: Record<string, string> = {
     '{count, plural, one {# key path} other {# key paths}}': '{count, plural, one {# chemin de clé} other {# chemins de clé}}',
     '{count, plural, one {# credential} other {# credentials and routes}}': '{count, plural, one {# identifiant} other {# identifiants et routes}}',
     '{count, plural, one {# sensitive field} other {# sensitive fields}}': '{count, plural, one {# champ sensible} other {# champs sensibles}}',
+    '{count, plural, one {# proxy command} other {# proxy commands}}': '{count, plural, one {# commande de proxy} other {# commandes de proxy}}',
+    '{count, plural, one {# unrecognised option} other {# unrecognised options}}': '{count, plural, one {# option non reconnue} other {# options non reconnues}}',
+    '{count, plural, one {# profile of an unsupported type} other {# profiles of an unsupported type}}': '{count, plural, one {# profil de type non pris en charge} other {# profils de type non pris en charge}}',
 
     // workspaceShare.ts — parseWorkspacePayload() errors
     'The clipboard content is too large to be an exported workspace.': 'Le contenu du presse-papiers est trop volumineux pour être un workspace exporté.',

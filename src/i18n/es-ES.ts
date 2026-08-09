@@ -524,6 +524,9 @@ const es_ES: Record<string, string> = {
     '{count, plural, one {# key path} other {# key paths}}': '{count, plural, one {# ruta de clave} other {# rutas de clave}}',
     '{count, plural, one {# credential} other {# credentials and routes}}': '{count, plural, one {# credencial} other {# credenciales y rutas}}',
     '{count, plural, one {# sensitive field} other {# sensitive fields}}': '{count, plural, one {# campo sensible} other {# campos sensibles}}',
+    '{count, plural, one {# proxy command} other {# proxy commands}}': '{count, plural, one {# comando proxy} other {# comandos proxy}}',
+    '{count, plural, one {# unrecognised option} other {# unrecognised options}}': '{count, plural, one {# opción no reconocida} other {# opciones no reconocidas}}',
+    '{count, plural, one {# profile of an unsupported type} other {# profiles of an unsupported type}}': '{count, plural, one {# perfil de tipo no compatible} other {# perfiles de tipo no compatible}}',
 
     // workspaceShare.ts — parseWorkspacePayload() errors
     'The clipboard content is too large to be an exported workspace.': 'El contenido del portapapeles es demasiado grande para ser un workspace exportado.',

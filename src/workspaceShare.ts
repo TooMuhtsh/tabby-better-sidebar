@@ -1,6 +1,6 @@
 import { SidebarWorkspace } from './configProvider'
 import { TranslatableMessage } from './i18nMessage'
-import { sanitizeSvgIcon } from './svgSanitizer'
+import { sanitiseIcon } from './iconSanitize'
 
 /**
  * Sharing a workspace as JSON: what goes out, and how what comes back in is
@@ -45,9 +45,6 @@ export interface WorkspaceSharePayload {
 
 /** Above this, the clipboard is not holding a workspace and parsing it would be pointless work. */
 const MAX_PAYLOAD_BYTES = 2 * 1024 * 1024
-
-/** A plain icon class (e.g. an Iconify name) has no reason to run long — generous cap against clipboard garbage. */
-const MAX_ICON_CLASS_LENGTH = 200
 
 function cloneOrderMap (map: Record<string, string[]> | undefined): Record<string, string[]> {
     const out: Record<string, string[]> = {}
@@ -110,32 +107,6 @@ function asOrderMap (value: unknown): Record<string, string[]> {
         out[key] = asStringArray(entry)
     }
     return out
-}
-
-/**
- * `icon` can be either an Iconify class name or a raw custom SVG string
- * (anything starting with `<`) — same two shapes the picker itself produces
- * (`applyCustomSvg()`/`selectIconClass()` in sidebarTree.component.ts).
- *
- * A pasted workspace's icon is rendered by the same `<profile-icon>` that
- * does a raw `innerHTML = value` for a string starting with `<`
- * (svgSanitizer.ts's own docstring) — so an SVG coming in through this path
- * gets exactly the sanitisation the picker's custom-SVG input gets, rather
- * than being trusted because it arrived via config instead of a text box.
- */
-function sanitiseIcon (value: unknown): string|undefined {
-    if (typeof value !== 'string') {
-        return undefined
-    }
-    const text = value.trim()
-    if (!text) {
-        return undefined
-    }
-    if (text.startsWith('<')) {
-        const result = sanitizeSvgIcon(text)
-        return result.ok ? result.svg : undefined
-    }
-    return text.length <= MAX_ICON_CLASS_LENGTH ? text : undefined
 }
 
 /**
