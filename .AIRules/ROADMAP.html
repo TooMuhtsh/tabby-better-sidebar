@@ -643,7 +643,14 @@ optionnel</strong>. Vérifié par exécution — <code>localhost:10.0</code> don
 <code>192.168.1.5:0</code> ne correspondent à rien et retombent <strong>en silence</strong> sur
 <code>localhost:6000</code>. Le champ « Override X11 display » n'obéit donc qu'à la forme longue.
 La correction tient en un caractère (<code>(?:\.(\d+))?</code>, point échappé au passage). Si
-quelque chose doit sortir de cette idée, c'est cette PR — pas un plugin.</p></div>
+quelque chose doit sortir de cette idée, c'est cette PR — pas un plugin.</p>
+<p><strong>Signalé en amont le 2026-08-08 :</strong>
+<a href="https://github.com/Eugeny/tabby/issues/11576">Eugeny/tabby#11576</a>. Bug confirmé présent
+dans <code>master</code> amont (<code>14e2d60</code>), aucune issue ouverte ne le couvrait. L'issue
+porte le comportement mesuré avant/après sur les deux plates-formes, le diff proposé, et l'effet de
+bord à connaître : sur Linux, un <code>localhost:0</code> explicite passe de la socket Unix au TCP
+<code>localhost:6000</code> — ce que la spec veut dire, mais que <code>-nolisten tcp</code> refuse
+sur beaucoup de distributions. La forme nue <code>:0</code>, elle, est inchangée.</p></div>
 <p class="muted">Pertinence de fond, pour mémoire : X11 est devenu marginal — serveurs administrés
 sans bibliothèque X, alternatives web (Cockpit, Proxmox, console du fournisseur), VNC/RDP, X2Go,
 Wayland qui ne le fait pas fonctionner, et WSLg côté Windows.</p>
