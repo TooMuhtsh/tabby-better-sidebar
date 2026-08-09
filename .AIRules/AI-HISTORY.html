@@ -24,6 +24,22 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Publication de la V1.0 (2026-08-08)</h2>
+<p><code>tabby-better-sidebar@1.0.0</code> est sur npm et sur GitHub. La condition posée par la
+roadmap — une passe de test de release avant toute publication — est remplie : la passe porte sur
+le <strong>paquet</strong> et non sur les fonctionnalités, celles-ci ayant été validées une à une
+dans la journée.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><strong>Passe de release validée par l'utilisateur</strong> (15 tests sur le paquet installé
+hors jonction, en build de production). Ce que cette passe couvre et qu'aucune autre ne pouvait :
+le JIT de l'i18n sur un bundle <em>minifié</em> dans les trois langues, le chargement différé des
+chunks d'icônes, les deux modales portées le matin même, les liens du pied de page, et le collage
+d'un JSON hostile sur le paquet réel. <code>npm publish</code> (<code>dist-tags.latest = 1.0.0</code>,
+4,7 Mo compressés, 102 fichiers) puis release GitHub <code>v1.0.0</code>.</td></tr>
+</table>
+
 <h2>Préparation de la V1.0 — dépôt, vitrine et paquet (2026-08-08)</h2>
 <p>Demande de l'utilisateur : un dépôt propre et un README exhaustif avant la mise en ligne. Le
 tour d'inventaire a surtout montré que le dépôt l'était déjà — aucun fichier source mort, aucun
