@@ -32,7 +32,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
     <td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td>Publication npm</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
 <tr><td>Menu contextuel enrichi (Profils &amp; Groupes)</td><td><span class="pill done">✅ Fait</span></td><td>—</td></tr>
-<tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02)</span></td><td>Basse</td></tr>
+<tr><td><a href="#ui-polish">Options &amp; polissage UI</a></td><td><span class="pill done">✅ Vidé — plus aucun item ouvert (2026-08-08)</span></td><td>—</td></tr>
 <tr><td><a href="#vault">Vault Auto-Unlock</a></td><td><span class="pill out">⛔ Hors périmètre</span></td><td>Plugin séparé futur</td></tr>
 <tr><td><a href="#moba-importer">Importateur MobaXterm</a></td><td><span class="pill out">⛔ Écarté</span></td><td>—</td></tr>
 <tr><td><a href="#editeur-par-type">Éditeur par type de fichier (images)</a></td><td><span class="pill out">⛔ Écarté (2026-08-03)</span></td><td>—</td></tr>
@@ -275,13 +275,18 @@ plus de ne pas y régler ce qui relève de l'onglet de réglages.</p></div>
 <p id="icones-dashboard"><a href="annexes/REALISE.html#icones-dashboard">Icônes dashboard-icons (logos de services IT)</a> — au registre du réalisé.</p>
 
 <h3 id="ui-polish">Options &amp; polissage UI
-<span class="pill progress">🚧 Plusieurs items livrés (2026-08-01/02) — le reste ouvert</span></h3>
+<span class="pill done">✅ Vidé — plus aucun item ouvert (2026-08-08)</span></h3>
 <div class="callout note"><span class="callout-title">Ce chantier s'est vidé par le bas</span>
 <p>Aucun de ses items n'a jamais été construit « pour lui-même » : chacun est arrivé en dépendance
-d'un autre chantier, et le statut global n'a pas suivi. État repris item par item ci-dessous. Ce qui
-reste ouvert tient en <strong>deux</strong> points depuis le 2026-08-03 : l'icône d'engrenage en bas
-de sidebar, et le gel de la vue. L'agencement de la page de paramètres est arrivé avec les
-<a href="#feature-flags">interrupteurs par bloc</a>.</p></div>
+d'un autre chantier, et le statut global n'a jamais suivi — d'où ce chapô, deux fois en retard sur
+le code. L'agencement de la page de paramètres est arrivé avec les
+<a href="#feature-flags">interrupteurs par bloc</a> ; les <strong>deux derniers points</strong> qu'il
+annonçait encore ouverts au 2026-08-03 le sont depuis : l'<strong>icône d'engrenage</strong> vit
+dans le pied de page de la sidebar (<code>.sidebar-plus-gear</code>, livrée avec lui en 0.3.0) et
+le <strong>gel de la vue</strong> est livré comme épinglage de l'onglet lié
+(<code>frozen</code> dans <code>sftpPanel.component.ts</code>, 2026-08-08). Constaté le 2026-08-08
+en recensant ce qui restait ouvert ; rien à construire ici, la fiche reste pour la trace de ce qui
+a été livré par ailleurs.</p></div>
 <h4>Agencement de la page de paramètres (Settings Layout)
 <span class="pill done">✅ Fait (2026-08-03)</span></h4>
 <div class="callout note"><span class="callout-title">Livré autrement que par le découpage prévu</span>
