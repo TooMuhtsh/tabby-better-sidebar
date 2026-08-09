@@ -21,6 +21,94 @@ daté de chaque livraison est dans le <a href="../AI-HISTORY.html">journal</a>. 
 post-livraison s'ajoutent ici en une ligne chacune ; dès qu'une évolution touche l'architecture,
 une convention ou plus d'un fichier, elle rouvre un chantier dans l'actif.</p>
 
+<h3 id="icones-dashboard">Icônes dashboard-icons (logos de services IT)
+<span class="pill done">✅ Livré (2026-08-08)</span></h3>
+<p>Ajouter <a href="https://github.com/homarr-labs/dashboard-icons">homarr-labs/dashboard-icons</a>
+(~1 800 logos de services auto-hébergés — Proxmox, Pi-hole, Nextcloud… — SVG source, variantes
+<code>-light</code>/<code>-dark</code>, manifeste <code>metadata.json</code>, Apache-2.0 avec
+disclaimer sur les marques) comme <strong>troisième source</strong> de la recherche unifiée du
+picker, aux côtés de FontAwesome et des collections Iconify — bien plus parlant pour nommer les
+profils SSH d'un parc que des glyphes génériques. Pas de paquet npm : <strong>vendoring depuis le
+dépôt GitHub</strong> par un script de génération (JSON <code>nom → corps SVG + variantes</code>,
+alias de recherche tirés de <code>metadata.json</code>), avec <code>PROVENANCE.md</code> et entrée
+dans <code>THIRD-PARTY-NOTICES.md</code>.</p>
+<ul>
+<li><strong>Ajouter, pas remplacer</strong> (tranché) : MDI/Tabler restent pour les glyphes
+  génériques (dossiers, workspaces). Les icônes déjà posées ne dépendent de rien : stockées
+  <strong>par valeur</strong> dans <code>config.yaml</code>.</li>
+<li><strong>Tout embarquer, en chunk webpack séparé</strong> (tranché) : même motif de chargement à
+  la première recherche que les collections Iconify ; hors-ligne préservé, zéro coût au démarrage.
+  Le CDN jsDelivr est écarté — le picker est délibérément « entirely offline ».</li>
+<li><strong>Variantes par icône dans le picker</strong> (tranché) : chaque tuile propose ses
+  variantes (base / <code>-light</code> / <code>-dark</code>) ; le choix se fige à l'assignation —
+  écart assumé, un changement de thème ultérieur ne re-choisit pas la variante.</li>
+<li>Données bundlées, pas d'entrée utilisateur : <strong>pas de passe DOMPurify</strong> au
+  chargement, même règle et même motif que les collections Iconify (voir <code>src/icons.ts</code>).</li>
+</ul>
+<p><strong>Poids, mesuré le 2026-08-08</strong> (API GitHub, arbre <code>main</code>) : le
+<code>svg/</code> amont fait <strong>3 295 fichiers pour 40,5 Mo bruts</strong>, mais la médiane est
+à 1,9 Ko — <strong>44 fichiers aberrants</strong> (du bitmap incrusté dans du SVG, jusqu'à 4 Mo
+pour <code>dilg.svg</code>) portent à eux seuls 26,7 Mo. <strong>Plafonné à 50 Ko par fichier :
+3 215 icônes (98,7 %) pour 11,4 Mo bruts</strong>, soit ~3-4 Mo gzip estimés dans le tarball.
+Référence actuelle : le chunk <code>icon-sets.js</code> (MDI + Tabler) pèse 5,1 Mo bruts /
+~1,1 Mo gzip. Cumul des trois sources avec le plafond : <strong>~16,5 Mo bruts embarqués,
+~4,5 Mo compressés</strong> côté icônes.</p>
+<p><strong>Réalisé le 2026-08-08</strong>, conforme aux trois arbitrages ci-dessus. Chiffres
+constatés à la génération (amont <code>d64ee64</code>) : 3 294 fichiers lus, <strong>80 exclus par
+le plafond de 50 Ko</strong> (29,3 Mo à eux seuls) et 8 à racine SVG non standard, soit 3 206
+fichiers regroupés en <strong>2 468 icônes logiques dont 665 à plusieurs variantes</strong>.
+<code>src/dashboardIcons.json</code> pèse 12,0 Mo, le chunk <code>dashboard-icons.js</code> 12,8 Mo
+bruts (~3,3 Mo gzip), chargé à la première recherche seulement. Le regroupement des variantes se
+fait par <strong>convention de nom de fichier</strong> lue dans <code>svg/</code>, pas par le champ
+<code>colors</code> de <code>metadata.json</code> — celui-ci ne couvre qu'une minorité des paires
+réellement présentes ; le manifeste ne sert qu'aux alias de recherche. Variantes proposées en
+<strong>pastilles</strong> au coin de chaque tuile, en clic gauche : le clic droit reste
+l'épinglage en favori, jamais intercepté.</p>
+<div class="callout important"><span class="callout-title">Une icône injectée par
+<code>innerHTML</code> n'est ni un fichier isolé ni un shadow root — d'où trois isolations à la
+génération</span>
+<p>Le rendu passe par <code>FastHtmlBindDirective</code> (<code>element.innerHTML = value</code>),
+qui dépose le balisage dans le document vivant. Trois conséquences, toutes corrigées <em>une fois
+au vendoring</em> et non à l'exécution (voir <code>scripts/vendor-dashboard-icons.js</code>) :</p>
+<ul>
+<li><strong>Le CSS de l'hôte entre dedans et bat les attributs de présentation.</strong>
+  <code>.list-group-item svg { fill: var(--bs-body-color) }</code> (thème de Tabby) repeignait
+  toute forme qui hérite — et 2 716 des 3 206 fichiers n'ont pas de <code>fill</code> sur leur
+  racine, d'où des <strong>silhouettes blanches à la place des logos</strong>, signalé en test.
+  Un <code>style="fill:#000;fill-opacity:1"</code> <em>en ligne</em> est épinglé sur la racine : il
+  bat toute règle non <code>!important</code>. Le noir n'est pas un choix, c'est la valeur initiale
+  du SVG — donc ce que le fichier dessine dans une visionneuse, ce contre quoi son auteur l'a
+  conçu, et la raison d'être des variantes <code>-light</code>. Les 13 fichiers en
+  <code>currentColor</code> sont laissés thématisables.</li>
+<li><strong>Les <code>id</code> internes partagent le namespace du document.</strong> 1 660
+  fichiers en portent, et <code>id="a"</code> existe dans 370 d'entre eux : dans une grille qui
+  affiche 40 icônes, <code>url(#a)</code> résout vers le premier arrivé, si bien qu'un logo
+  empruntait le dégradé d'un voisin. Ids et références préfixés par icône.</li>
+<li><strong>Un <code>&lt;style&gt;</code> embarqué devient une feuille de style globale.</strong>
+  578 fichiers en portent un ; <code>.st0</code> est déclaré par 165 icônes différentes, et
+  certains utilisent des sélecteurs nus (<code>path</code>, <code>rect</code>, <code>svg</code>,
+  <code>line</code>) qui auraient repeint <em>toute</em> l'interface de Tabby. Chaque bloc est
+  scopé à son icône, les <code>@font-face</code> retirés, les noms d'animation préfixés. Piège de
+  ce scopage, trouvé en le vérifiant : un commentaire CSS devant une règle <code>@media</code> la
+  rend invalide si on préfixe le prélude sans avoir retiré les commentaires d'abord.</li>
+</ul></div>
+<p>Corrigé dans le même geste, même cause de fond — <strong>un popup flottant ignore la mise en
+page</strong> : le picker, <code>position: fixed</code> sans borne de hauteur, couvrait sur une
+fenêtre courte la sidebar entière, onglets et pied de page compris, en flottant à
+<code>z-index: 100</code> par-dessus le pied de page que le flux garde pourtant inviolable. Il est
+borné (<code>max-height</code> = fenêtre moins la bande du pied de page) et défile en interne, et
+<code>clampInViewport()</code> réserve désormais cette même bande pour <strong>tous</strong> les
+popups du plugin — <code>SIDEBAR_FOOTER_INSET</code> (<code>src/viewport.ts</code>) et
+<code>$sidebar-footer-height</code> (SCSS) sont faits pour bouger ensemble.</p>
+<p class="muted">Reste ouvert : la cadence de rafraîchissement du vendoring n'est pas décidée (le
+dépôt amont bouge vite) — le script se relance à la demande et réécrit
+<code>PROVENANCE.md</code> avec le commit amont du jour.</p>
+
+<p class="muted">Livré le 2026-08-08 · Journal : <a href="../AI-HISTORY.html">« Icônes
+dashboard-icons » (2026-08-08)</a> · Pièges issus du chantier : l'encadré ci-dessus (isolation
+d'un SVG injecté par <code>innerHTML</code>) · Commits : <code>89838b0</code>,
+<code>93bab1c</code>, <code>ea02170</code></p>
+
 <h3 id="i18n">Internationalisation (i18n) <span class="pill done">✅ Livré (2026-08-08)</span></h3>
 <p>Greffée sur le <code>ngx-translate</code> déjà chargé par <code>tabby-core</code>, plutôt qu'une
 dépendance i18n séparée — <code>@ngx-translate/core</code> reste <strong>external</strong> dans la

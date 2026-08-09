@@ -305,6 +305,11 @@ const de_DE: Record<string, string> = {
     'Import from an SVG...': 'Aus einem SVG importieren...',
     'Apply the SVG': 'SVG anwenden',
 
+    // sidebarTree.component.pug — icon picker, dashboard-icons variant dots
+    'Default variant': 'Standardvariante',
+    'Light variant': 'Helle Variante',
+    'Dark variant': 'Dunkle Variante',
+
     // sidebarTree.component.pug — rename/create popups
     'Rename': 'Umbenennen',
     'New folder': 'Neuer Ordner',

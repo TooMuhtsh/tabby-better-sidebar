@@ -4283,7 +4283,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (this.iconQuery.trim().toLowerCase() !== q) {
             return
         }
-        this.iconMatches = entries.filter(e => e.name.includes(q)).slice(0, 40)
+        this.iconMatches = entries
+            .filter(e => e.name.includes(q) || e.searchTerms?.some(t => t.includes(q)))
+            .slice(0, 40)
     }
 
     toggleCustomSvgInput (): void {
@@ -4292,6 +4294,19 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     async selectIconClass (iconClass: string): Promise<void> {
         await this.applyIcon(iconClass)
+    }
+
+    /**
+     * A tile's small variant dots (dashboard-icons' light/dark palettes,
+     * see icons.ts) — deliberately its own handler rather than reusing
+     * selectIconClass() with a different argument, so the click can be
+     * stopped from also bubbling into the tile's own (click), which would
+     * immediately re-apply the tile's *default* variant right after this one.
+     */
+    async selectIconVariant (value: string, event: Event): Promise<void> {
+        event.preventDefault()
+        event.stopPropagation()
+        await this.applyIcon(value)
     }
 
     async applyCustomSvg (): Promise<void> {

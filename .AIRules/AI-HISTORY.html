@@ -24,6 +24,39 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Icônes dashboard-icons — troisième source du picker (2026-08-08)</h2>
+<p>Demandé par l'utilisateur : les collections en place offraient peu d'icônes reflétant des
+solutions IT. Chantier mené par un agent (Sonnet) dans un worktree isolé, puis relu, corrigé et
+revalidé. Design tranché en amont — ajout et non remplacement, tout embarqué hors-ligne plafonné à
+50 Ko par fichier, variantes proposées par icône. Fiche complète au
+<a href="annexes/REALISE.html#icones-dashboard">registre du réalisé</a>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><strong>Validé visuellement par l'utilisateur.</strong> Ajout de la <strong>version de Tabby de
+référence — 1.0.235</strong> — au README et à la tête de la section environnement du contexte :
+elle n'était mentionnée nulle part, alors que toute la checklist de montée de version en dépend.
+Le <code>tabby-core</code> embarqué s'annonce en <code>1.0.231-nightly.0</code>, numéro distinct
+que cible la peer dependency — les confondre fait chercher une incompatibilité inexistante.</td></tr>
+<tr><td>2026-08-08</td><td>ea02170</td>
+<td><strong>Trois isolations à la génération, dont une signalée en test</strong> : les logos
+devenaient des silhouettes blanches (le CSS de l'hôte bat les attributs de présentation d'un SVG
+injecté par <code>innerHTML</code> ; 2 716 fichiers sur 3 206 n'ont pas de <code>fill</code> sur
+leur racine). Trouvés en vérifiant : les <code>id</code> internes se contaminaient d'une icône à
+l'autre (<code>id="a"</code> dans 370 fichiers) et les <code>&lt;style&gt;</code> embarqués (578
+fichiers, sélecteurs nus compris) fuyaient sur toute l'interface de Tabby. Corrigé <em>une fois au
+vendoring</em>, pas à l'exécution. Dans le même geste, le picker — <code>position: fixed</code>
+sans borne — couvrait la sidebar entière sur fenêtre courte, pied de page compris : borné et
+défilant, et <code>clampInViewport()</code> réserve désormais la bande du pied de page pour tous
+les popups.</td></tr>
+<tr><td>2026-08-08</td><td>89838b0, 93bab1c</td>
+<td>Script de vendoring (clone shallow, plafond 50 Ko, <code>PROVENANCE.md</code> à commit amont
+épinglé) et JSON embarqué ; troisième source de la recherche unifiée, chunk séparé chargé à la
+première recherche ; variantes en pastilles au clic gauche, le clic droit restant l'épinglage en
+favori ; entrée Apache-2.0 avec disclaimer de marques dans
+<code>THIRD-PARTY-NOTICES.md</code>.</td></tr>
+</table>
+
 <h2>i18n lot 4 — modules purs, clôture de la couverture (2026-08-08)</h2>
 <p>Dernier lot de l'internationalisation, mené par un agent (Sonnet) dans un worktree isolé sur
 consigne de l'utilisateur, puis relu et revalidé. Les modules purs sans accès à l'injecteur
