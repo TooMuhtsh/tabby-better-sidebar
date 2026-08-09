@@ -59,6 +59,16 @@ as static, offline data (no network access at runtime). See
 `src/dashboardIcons.PROVENANCE.md` for the exact upstream commit, the size
 cap applied, and how to regenerate.
 
+**These files have been modified** (Apache License 2.0, section 4b). The
+vendoring script rewrites each SVG once, at generation time, so that it can be
+rendered inside a live document without interfering with the rest of the
+application: an explicit `fill` is pinned on the root element so host CSS
+cannot repaint the artwork, internal `id` attributes and the references to them
+are prefixed per icon so gradients and clip paths cannot collide between two
+icons shown side by side, and any embedded `<style>` block is scoped to its own
+icon, with `@font-face` rules dropped. XML prologs, comments and `<script>`
+elements are stripped. No artwork is otherwise altered.
+
 The logos and marks depicted by these icons remain the property of their
 respective owners; their inclusion here is solely to let a user identify a
 self-hosted service by its own logo when naming an SSH profile or folder, not

@@ -24,6 +24,27 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>1.0.1 — les notices tierces voyagent avec le paquet (2026-08-08)</h2>
+<p>Trouvé en répondant à une question de l'utilisateur sur les différences entre licences : le
+paquet npm <strong>ne contenait pas</strong> <code>THIRD-PARTY-NOTICES.md</code>. Le champ
+<code>files</code> ne listait que <code>dist</code>, et npm n'ajoute d'office que la licence et les
+README. Or le paquet redistribue des œuvres sous Apache 2.0 — les logos dashboard-icons et
+DOMPurify — dont l'article 4a demande que le destinataire reçoive une copie de la licence. Sur
+GitHub tout était en place ; dans le paquet installé, non.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><code>files</code> passe à <code>["dist", "THIRD-PARTY-NOTICES.md"]</code>, vérifié dans le
+tarball. La section dashboard-icons des notices déclare désormais <strong>que les fichiers ont été
+modifiés</strong> et lesquelles de leurs parties (article 4b) — épinglage du <code>fill</code>,
+préfixage des identifiants internes, scopage des blocs <code>&lt;style&gt;</code> — ce que seul le
+<code>PROVENANCE.md</code> disait, et il ne voyage pas. L'amont n'a <strong>pas</strong> de fichier
+<code>NOTICE</code> (vérifié par l'API GitHub), donc l'article 4d ne s'applique pas.
+<strong>Licence du projet maintenue à MIT</strong>, décision de l'utilisateur après examen : Tabby,
+le plugin frère et l'écosystème le sont, et la concession de brevets d'Apache 2.0 ne couvre aucun
+risque réel ici.</td></tr>
+</table>
+
 <h2>README français, parité avec le plugin frère (2026-08-08)</h2>
 <p>Question de l'utilisateur : « le <code>README.fr.md</code> a disparu ? ». Vérification faite dans
 l'historique complet — <strong>il n'a jamais existé</strong> sur ce dépôt, qui n'a connu que
