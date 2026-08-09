@@ -1,0 +1,100 @@
+.modal-header
+    h5.modal-title {{ 'Choose an icon' | translate }}
+    button.btn-close((click)='close()')
+
+.modal-body.icon-picker-modal
+    //- Workspace-only: folders/profiles have no "back to no icon" entry to
+    //- share this with (verified — neither offers one), so this stays gated
+    //- to `workspace` rather than becoming a general picker feature.
+    a.small.d-block.mb-1(
+        *ngIf='workspace && workspace.icon',
+        (click)='clearWorkspaceIcon()',
+        href='#'
+    ) {{ 'Remove the icon' | translate }}
+
+    .text-muted.small(*ngIf='!iconQuery') {{ 'Favorites' | translate }}
+    .icon-picker-grid(*ngIf='favoriteIcons.length && !iconQuery')
+        a.icon-picker-item(
+            *ngFor='let c of favoriteIcons',
+            (click)='selectIconClass(c)',
+            (contextmenu)='onIconContextMenu($event, c)',
+            [title]='c',
+            href='#'
+        )
+            profile-icon([icon]='c')
+    .icon-picker-empty(*ngIf='!favoriteIcons.length && !iconQuery')
+        | {{ 'Right-click an icon: "Add to favorites"' | translate }}
+
+    .text-muted.small(*ngIf='recentIcons.length && !iconQuery') {{ 'Recently used' | translate }}
+    .icon-picker-grid(*ngIf='recentIcons.length && !iconQuery')
+        a.icon-picker-item(
+            *ngFor='let c of recentIcons',
+            (click)='selectIconClass(c)',
+            (contextmenu)='onIconContextMenu($event, c)',
+            [title]='c',
+            href='#'
+        )
+            profile-icon([icon]='c')
+
+    input.form-control.form-control-sm.mb-1.mt-1(
+        type='text',
+        [(ngModel)]='iconQuery',
+        [placeholder]="'Search (e.g. server, folder, star...)' | translate",
+        (ngModelChange)='onIconQueryChange()'
+    )
+    .icon-picker-grid(*ngIf='iconMatches.length')
+        a.icon-picker-item(
+            *ngFor='let e of iconMatches',
+            (click)='selectIconClass(e.value)',
+            (contextmenu)='onIconContextMenu($event, e.value)',
+            [title]='e.name',
+            href='#'
+        )
+            profile-icon([icon]='e.value')
+            //- Dashboard-icons entries with more than one rendering (light/
+            //- dark, occasionally a third "default") only: a small on-tile
+            //- dot per variant, picked with its own left click. Deliberately
+            //- NOT the right click — that already opens the favorite-toggle
+            //- menu for the tile's default value (onIconContextMenu below),
+            //- and a variant dot sits well inside that same tile.
+            .icon-picker-variant-dots(*ngIf='e.variants')
+                a.icon-picker-variant-dot(
+                    *ngFor='let v of e.variants',
+                    [class.variant-light]="v.key === 'light'",
+                    [class.variant-dark]="v.key === 'dark'",
+                    [class.variant-default]="v.key === 'default'",
+                    (click)='selectIconVariant(v.value, $event)',
+                    [title]="v.key === 'light' ? ('Light variant' | translate) : v.key === 'dark' ? ('Dark variant' | translate) : ('Default variant' | translate)",
+                    href='#'
+                )
+
+    hr
+
+    .icon-picker-custom
+        a.small((click)='toggleCustomSvgInput()', href='#') {{ 'Import from an SVG...' | translate }}
+
+        ng-container(*ngIf='showCustomSvgInput')
+            textarea.form-control.form-control-sm.mt-1(
+                rows='3',
+                [(ngModel)]='customSvgText',
+                placeholder='<svg viewBox="0 0 24 24">...</svg>'
+            )
+            .text-danger.small.mt-1(*ngIf='customSvgError') {{ customSvgError }}
+            .text-warning.small.mt-1(*ngIf='customSvgWarning') {{ customSvgWarning }}
+            button.btn.btn-sm.btn-secondary.mt-1((click)='applyCustomSvg()') {{ 'Apply the SVG' | translate }}
+
+.modal-footer
+    button.btn.btn-primary((click)='close()') {{ 'Close' | translate }}
+
+//- Rendered outside .modal-body: the picker's grids scroll (overflow-y),
+//- which would clip a menu overlapping a tile — the same clipping that made
+//- the first attempt, a star badge in the tile's corner, come out cut off.
+.icon-context-menu(
+    *ngIf='iconMenuIcon',
+    [style.left.px]='iconMenuX',
+    [style.top.px]='iconMenuY',
+    (click)='$event.stopPropagation()'
+)
+    a.group-context-menu-item((click)='toggleFavoriteIconFromMenu($event)', href='#')
+        profile-icon.me-2([icon]='iconMenuIcon')
+        | {{ isFavoriteIcon(iconMenuIcon) ? ('Remove from favorites' | translate) : ('Add to favorites' | translate) }}

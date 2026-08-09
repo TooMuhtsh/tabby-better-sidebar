@@ -30,7 +30,7 @@ sidebar-plus-tree {
 // modals, the SSH password prompt — not just this sidebar's.
 //
 // The tag selector is enough: every input this plugin renders is a descendant
-// of <sidebar-plus-tree>. The floating popups (.icon-picker, .create-popup,
+// of <sidebar-plus-tree>. The floating popups (.create-popup,
 // .group-context-menu) are `position: fixed`, which changes their containing
 // block but never reparents them; only CDK's drag preview/placeholder are
 // moved out to <body>, and those contain no input.
@@ -825,23 +825,18 @@ sidebar-plus-tree .grabber {
 }
 
 // Shared box styling for the small floating popups anchored at
-// contextMenuX/Y (icon picker, create-group, create-profile) — the header
-// (title + close button) is identical across all of them.
-.icon-picker,
+// contextMenuX/Y (create-group, create-profile, rename...) — the header
+// (title + close button) is identical across all of them. The icon picker
+// and the tunnels editor used to be two more of these; both are centred
+// modals now (iconPickerModal.component.*, tunnelsModal.component.*), which
+// is why this rule no longer mentions them.
 .create-popup {
     position: fixed;
     z-index: 100;
     width: 260px;
     padding: .5rem;
     border-radius: .3rem;
-    // Bounded, and scrolls inside itself past that. Unbounded, the icon
-    // picker's own content (favourites + recents + 150px of results + the
-    // custom-SVG field) grew taller than a short window, so it covered the
-    // sidebar from the view-mode tabs down to the footer — and being
-    // `position: fixed` at z-index 100, it floated straight over the footer
-    // the layout otherwise keeps inviolable. The reserve below matches that
-    // footer, so a popup stops just above it; `clampInViewport()` reserves
-    // the same strip when it places the box (see viewport.ts).
+    // Bounded, and scrolls inside itself past that.
     max-height: calc(100vh - #{$sidebar-footer-height} - 1.5rem);
     overflow-y: auto;
     // Same reasoning as .group-context-menu above: --theme-bg, not the
@@ -871,100 +866,10 @@ sidebar-plus-tree .grabber {
     }
 }
 
-.icon-picker {
-    // Placeholder shown while no icon is pinned — the "Favoris" section stays
-    // visible even when empty so the feature is discoverable, which it would
-    // not be if the section only appeared once something had been pinned.
-    .icon-picker-empty {
-        margin-bottom: .4rem;
-        font-size: .7rem;
-        font-style: italic;
-        opacity: .6;
-    }
-
-    .icon-picker-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: .25rem;
-        max-height: 150px;
-        overflow-y: auto;
-        margin-bottom: .4rem;
-
-        .icon-picker-item {
-            position: relative; // anchors .icon-picker-variant-dots below
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            border-radius: .2rem;
-            color: inherit;
-            text-decoration: none;
-            cursor: pointer;
-
-            &:hover {
-                background-color: var(--theme-secondary);
-            }
-
-
-            profile-icon {
-                width: 16px;
-                height: 16px;
-            }
-
-            // dashboard-icons entries with more than one rendering (see
-            // icons.ts PickerIcon.variants) only — a row of tiny dots in the
-            // tile's corner, each its own click target picking that variant
-            // instead of the tile's default. Deliberately not on the right
-            // click: that gesture is already the tile's own favorite-toggle
-            // (onIconContextMenu), and both live comfortably on one 28px
-            // tile without conflicting — the dots are a plain (click), the
-            // favorite toggle a (contextmenu), never the same event.
-            .icon-picker-variant-dots {
-                position: absolute;
-                right: 1px;
-                bottom: 1px;
-                display: flex;
-                gap: 1px;
-
-                .icon-picker-variant-dot {
-                    width: 5px;
-                    height: 5px;
-                    border-radius: 50%;
-                    border: 1px solid var(--theme-bg);
-                    cursor: pointer;
-
-                    &.variant-light {
-                        background-color: #fff;
-                    }
-
-                    &.variant-dark {
-                        background-color: #000;
-                    }
-
-                    &.variant-default {
-                        background-color: var(--theme-primary);
-                    }
-
-                    &:hover {
-                        transform: scale(1.6);
-                    }
-                }
-            }
-        }
-    }
-
-    .icon-picker-custom textarea {
-        font-family: monospace;
-        font-size: .75rem;
-        resize: vertical;
-    }
-}
-
-// Workspace color picker — same swatch-grid idea as .icon-picker-grid above,
-// but the tiles are plain color circles (no profile-icon glyph) and live
-// inside a .create-popup rather than .icon-picker (it has no search box or
-// favorites/recent sections to make room for).
+// Workspace color picker — same swatch-grid idea as the icon picker's own
+// grid (now in iconPickerModal.component.scss), but the tiles are plain
+// color circles (no profile-icon glyph) and live inside a .create-popup —
+// it has no search box or favorites/recent sections to make room for.
 .color-picker-grid {
     display: flex;
     flex-wrap: wrap;
@@ -1182,73 +1087,6 @@ sidebar-plus-tree .recent-profiles {
     font-size: .6rem;
     opacity: .75;
     color: var(--theme-primary);
-}
-
-.tunnels-popup {
-    width: 320px;
-
-    .tunnel-row {
-        display: flex;
-        align-items: center;
-        padding: .2rem .25rem;
-        border-radius: .2rem;
-        font-size: .75rem;
-        cursor: pointer;
-
-        &:hover {
-            background-color: var(--theme-secondary);
-        }
-
-        // Marks which row the form below is currently editing — without it the
-        // form silently overwrites a row the user can no longer identify.
-        &.editing {
-            background-color: var(--theme-secondary);
-            box-shadow: inset 2px 0 0 var(--theme-primary);
-        }
-
-        .action {
-            cursor: pointer;
-            font-size: .65rem;
-            opacity: .6;
-
-            &:hover {
-                opacity: 1;
-                color: var(--theme-primary);
-            }
-
-            // Kept in place rather than removed outright: a button that simply
-            // vanishes reads as a bug, a padlock states why it is unavailable.
-            &.disabled {
-                cursor: default;
-                opacity: .35;
-
-                &:hover {
-                    opacity: .35;
-                    color: inherit;
-                }
-            }
-        }
-    }
-
-
-    // The `sidebar-plus-tree input` rule below only reaches <input>; a <select>
-    // needs the border spelled out or it renders flat against the popup.
-    .tunnel-type {
-        flex: 0 0 auto;
-        width: 90px;
-        border: 1px solid var(--theme-secondary);
-    }
-
-    .tunnel-hint {
-        opacity: .55;
-        line-height: 1.25;
-        font-size: .68rem;
-    }
-
-    hr {
-        margin: .5rem 0;
-        opacity: .2;
-    }
 }
 
 .selection-bar {

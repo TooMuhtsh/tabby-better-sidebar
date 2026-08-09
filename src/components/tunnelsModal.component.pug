@@ -1,0 +1,64 @@
+.modal-header
+    h5.modal-title.no-wrap {{ 'Tunnels: {name}' | translate:{ name: profile.name } }}
+    button.btn-close((click)='close()')
+
+.modal-body.tunnels-modal
+    .text-muted.small.mt-1(*ngIf='!profileTunnels.length') {{ 'No tunnels configured on this profile.' | translate }}
+    .tunnel-row(
+        *ngFor='let fw of profileTunnels; let i = index',
+        [class.editing]='editingTunnelIndex === i',
+        (dblclick)='startEditTunnel(i)',
+        [title]="'Double-click to edit this tunnel' | translate"
+    )
+        span.me-auto.no-wrap {{ formatTunnelRow(fw) }}
+        .action(
+            *ngIf='!isLive(fw)',
+            (click)='removeProfileTunnel(i)',
+            [title]="'Delete this tunnel' | translate"
+        )
+            .fa.fa-fw.fas.fa-trash
+        .action.disabled(
+            *ngIf='isLive(fw)',
+            [title]="'This tunnel is currently mounted on the open session. Deleting it here would remove its configuration without cutting the tunnel, which would keep running until the session closes. Close the session to be able to delete it.' | translate"
+        )
+            .fa.fa-fw.fas.fa-lock
+    hr
+    .d-flex.gap-1.mb-1
+        select.form-control.form-control-sm.tunnel-type([(ngModel)]='tunnelDraft.type')
+            option(*ngFor='let t of tunnelTypes', [value]='t') {{ t }}
+        //- Placeholder says which machine listens; the hint below spells out
+        //- which end resolves the destination, since that flips with the type.
+        input.form-control.form-control-sm(
+            type='number',
+            [(ngModel)]='tunnelDraft.port',
+            [placeholder]="'Listening port' | translate",
+            (keydown.enter)='addProfileTunnel()',
+            (keydown.escape)='close()'
+        )
+    .d-flex.gap-1.mb-1(*ngIf='!isDynamicDraft')
+        input.form-control.form-control-sm(
+            type='text',
+            [(ngModel)]='tunnelDraft.targetAddress',
+            [placeholder]="'Target host' | translate"
+        )
+        input.form-control.form-control-sm(
+            type='number',
+            [(ngModel)]='tunnelDraft.targetPort',
+            [placeholder]="'Target port' | translate",
+            (keydown.enter)='addProfileTunnel()',
+            (keydown.escape)='close()'
+        )
+    input.form-control.form-control-sm.mb-1(
+        type='text',
+        [(ngModel)]='tunnelDraft.description',
+        [placeholder]="'Description (optional)' | translate"
+    )
+    .tunnel-hint.small.mb-1 {{ tunnelHint }}
+    .text-danger.small.mb-1(*ngIf='tunnelError') {{ tunnelError }}
+    .d-flex.gap-2
+        button.btn.btn-sm.btn-primary((click)='addProfileTunnel()') {{ editingTunnelIndex === null ? ('Add the tunnel' | translate) : ('Save' | translate) }}
+        button.btn.btn-sm.btn-secondary(*ngIf='editingTunnelIndex !== null', (click)='cancelEditTunnel()') {{ 'Cancel' | translate }}
+    .text-muted.small.mt-2 {{ 'Takes effect at the next session launch.' | translate }}
+
+.modal-footer
+    button.btn.btn-primary((click)='close()') {{ 'Close' | translate }}

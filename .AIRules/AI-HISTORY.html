@@ -24,6 +24,26 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Popups à formulaire en modales centrées (2026-08-08)</h2>
+<p>Dernier chantier ouvert de la roadmap, mené par un agent en worktree isolé puis relu et
+revalidé. Les deux popups qui portaient un formulaire — tunnels du profil, sélecteur d'icônes —
+passent sur le patron des modales existantes. Les menus contextuels restent des menus, comme la
+fiche l'exigeait. Fiche au <a href="annexes/REALISE.html#popups-en-modales">registre du
+réalisé</a>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><strong>Validé visuellement par l'utilisateur</strong>, fusion sur <code>master</code>.</td></tr>
+<tr><td>2026-08-08</td><td>634496b</td>
+<td><code>TunnelsModalComponent</code> et <code>IconPickerModalComponent</code> créés ; le menu de
+bascule favori du picker migre <em>dans</em> la modale avec son propre gestionnaire de clic ;
+<code>formatTunnel()</code>/<code>tunnelKey()</code> sortis dans <code>src/tunnels.ts</code>.
+<strong>Le résultat se mesure au nettoyage</strong> : <code>sidebarTree.component.*</code> perd
+<strong>758 lignes nettes</strong> — 26 méthodes, une douzaine de champs, deux entrées
+<code>closest()</code> du <code>HostListener</code> et deux blocs SCSS. Aucune clé i18n ajoutée ni
+retirée. Chargement différé des collections d'icônes préservé.</td></tr>
+</table>
+
 <h2>Menus contextuels en sous-menus nommés (2026-08-08)</h2>
 <p>Le menu du dossier portait treize entrées — « il s'étend vers l'infini », signalé par
 l'utilisateur le 2026-08-03. La fiche imposait de <strong>poser</strong> le critère de partage
