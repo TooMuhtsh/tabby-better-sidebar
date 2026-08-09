@@ -391,6 +391,38 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     /** Set whenever a context menu/popup opens or switches mode — checked once in ngAfterViewChecked() to clamp it back on-screen after Angular renders it at its real size. */
     private menuPositionDirty = false
 
+    ////// LATERAL SUBMENUS (Manage / More, folder + profile menus) //////
+    // Windows-style side panels for the folder and profile context menus,
+    // which had grown to 13 top-level entries each and kept "extending
+    // towards infinity" (user report). Only one plugin-wide field: the two
+    // menus are mutually exclusive (contextMenuGroup xor contextMenuProfile),
+    // so nothing needs to know which parent it belongs to.
+    /** Which submenu is open, or none — opening either replaces the other, so a single field is enough. */
+    activeSubmenu: 'manage'|'more'|null = null
+    submenuX = 0
+    submenuY = 0
+    // The carrying entry's own rect at the moment it opened the submenu —
+    // not just the x/y the submenu renders at, which clampSubmenuPosition()
+    // is free to move. Needed to decide whether to flip the panel to the
+    // entry's LEFT once its real width is known (piège #30's clamp only
+    // pulls a box back inside the viewport, it never flips a side panel to
+    // the other side of its anchor).
+    private submenuAnchorLeft = 0
+    private submenuAnchorRight = 0
+    private submenuAnchorTop = 0
+    /** Set whenever the submenu opens or moves — checked once in ngAfterViewChecked(), same pattern as menuPositionDirty above and for the same reason (the DOM must have rendered the panel at its real size first). */
+    private submenuPositionDirty = false
+    /**
+     * Debounces the submenu's close-on-mouseleave so the diagonal path from
+     * the carrying entry to the panel beside it doesn't trip it — the pointer
+     * briefly leaves the entry before it reaches the panel. Cancelled by
+     * cancelSubmenuClose() if the pointer lands back on the entry or on the
+     * panel itself before it fires. Deliberately simple (a flat delay, no
+     * triangle-of-tolerance geometry): the user asked to keep this part
+     * simple, and ~150-200ms already covers the normal case.
+     */
+    private submenuCloseTimer: ReturnType<typeof setTimeout>|null = null
+
     ////// WORKSPACE SWITCHER (list mode) //////
     // Deliberately NOT a contextMenuMode value: the modes are mutually
     // exclusive, so as one the switcher died the moment any popup it spawned
@@ -622,6 +654,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 menu.style.top = `${y}px`
             })
         }
+        if (this.submenuPositionDirty) {
+            this.submenuPositionDirty = false
+            setTimeout(() => this.clampSubmenuPosition())
+        }
         if (!this.menuPositionDirty) {
             return
         }
@@ -682,6 +718,29 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             menu.style.left = `${x}px`
             menu.style.top = `${y}px`
         }
+    }
+
+    /**
+     * Positions the open lateral submenu beside the entry that carries it —
+     * flipped to the entry's LEFT when there is no room to its right — then
+     * runs the result through clampInViewport(), the plugin's one point for
+     * pulling a floating element back on screen (piège #30). Same deferred
+     * pattern as clampContextMenuPosition() and for the same reason: the
+     * panel's real width is only known once Angular has actually rendered it.
+     */
+    private clampSubmenuPosition (): void {
+        const panel = document.querySelector<HTMLElement>('.group-context-submenu')
+        if (!panel) {
+            return
+        }
+        const width = panel.getBoundingClientRect().width
+        const fitsRight = this.submenuAnchorRight + width <= window.innerWidth
+        const x = fitsRight ? this.submenuAnchorRight : this.submenuAnchorLeft - width
+        const { x: clampedX, y: clampedY } = clampInViewport(panel, x, this.submenuAnchorTop)
+        this.submenuX = clampedX
+        this.submenuY = clampedY
+        panel.style.left = `${clampedX}px`
+        panel.style.top = `${clampedY}px`
     }
 
     /**
@@ -4004,6 +4063,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!group.editable && !this.canMoveSelectionTo(group)) {
             return
         }
+        this.resetSubmenu()
         this.contextMenuProfile = null
         this.contextMenuGroup = group
         this.contextMenuRoot = false
@@ -4017,6 +4077,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     onSidebarContextMenu (event: MouseEvent): void {
         event.preventDefault()
         event.stopPropagation()
+        this.resetSubmenu()
         this.contextMenuGroup = null
         this.contextMenuProfile = null
         this.contextMenuRoot = true
@@ -4032,7 +4093,49 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.contextMenuRoot = false
         this.contextMenuWorkspace = null
         this.contextMenuMode = 'menu'
+        this.resetSubmenu()
         this.closeIconMenu()
+    }
+
+    /**
+     * Opens the given lateral submenu beside the entry that carries it — both
+     * hover and click call this. Anchored on the CARRYING ENTRY's own rect
+     * (not a fixed point), so clampSubmenuPosition() can later flip the panel
+     * to the entry's left once the panel's real width is known.
+     */
+    openSubmenuPanel (name: 'manage'|'more', event: MouseEvent): void {
+        this.cancelSubmenuClose()
+        const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+        this.submenuAnchorLeft = rect.left
+        this.submenuAnchorRight = rect.right
+        this.submenuAnchorTop = rect.top
+        this.activeSubmenu = name
+        this.submenuX = rect.right
+        this.submenuY = rect.top
+        this.submenuPositionDirty = true
+    }
+
+    /** Cancels a pending submenu close — the pointer made it from the carrying entry onto the panel (or onto another submenu-carrying entry) before scheduleSubmenuClose()'s delay ran out. */
+    cancelSubmenuClose (): void {
+        if (this.submenuCloseTimer) {
+            clearTimeout(this.submenuCloseTimer)
+            this.submenuCloseTimer = null
+        }
+    }
+
+    /** Closes the open submenu after a short delay instead of immediately, so the pointer's path from the carrying entry to the panel beside it (which briefly leaves both) doesn't make it vanish underfoot. */
+    scheduleSubmenuClose (): void {
+        this.cancelSubmenuClose()
+        this.submenuCloseTimer = setTimeout(() => {
+            this.submenuCloseTimer = null
+            this.activeSubmenu = null
+        }, 180)
+    }
+
+    /** The submenu dies with whatever menu carries it — called from closeContextMenu() and from every place that opens a fresh menu directly (a right-click elsewhere never goes through closeContextMenu() first). */
+    private resetSubmenu (): void {
+        this.cancelSubmenuClose()
+        this.activeSubmenu = null
     }
 
     // Checks the click's target rather than relying on descendant
@@ -4058,10 +4161,18 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // early. The compact bar is excluded so its own toggle stays the one
         // in charge of open/close (piège #15: its stopPropagation() cannot be
         // trusted to keep this HostListener from firing).
-        if (!target.closest('.workspace-switcher-menu, .workspace-bar-compact, .group-context-menu, .icon-picker, .create-popup')) {
+        if (!target.closest('.workspace-switcher-menu, .workspace-bar-compact, .group-context-menu, .group-context-submenu, .icon-picker, .create-popup')) {
             this.workspaceSwitcherOpen = false
         }
-        if (target.closest('.group-context-menu, .icon-picker, .create-popup')) {
+        // .group-context-submenu (the Manage/More lateral panels) is a
+        // sibling of .group-context-menu in the DOM, never a descendant of it
+        // (piège #38: its entries are <a>, so the panel can't nest inside the
+        // carrying entry's own <a> without the parser silently un-nesting
+        // it) — so it needs its own entry here, not just an implicit catch
+        // via the menu's. Left out, opening a submenu closes the whole menu
+        // from under it (piège #15: stopPropagation() on its own click
+        // binding does not stop this HostListener).
+        if (target.closest('.group-context-menu, .group-context-submenu, .icon-picker, .create-popup')) {
             return
         }
         // The tunnels popup is the only one holding a form the user may have
@@ -4184,6 +4295,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!this.isProfileSelected(profile)) {
             this.clearSelection()
         }
+        this.resetSubmenu()
         this.contextMenuGroup = null
         this.contextMenuProfile = profile
         this.contextMenuRoot = false

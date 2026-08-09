@@ -21,6 +21,54 @@ daté de chaque livraison est dans le <a href="../AI-HISTORY.html">journal</a>. 
 post-livraison s'ajoutent ici en une ligne chacune ; dès qu'une évolution touche l'architecture,
 une convention ou plus d'un fichier, elle rouvre un chantier dans l'actif.</p>
 
+<h3 id="menu-contextuel-long">Le menu contextuel du dossier est devenu trop long <span class="pill done">✅ Livré (2026-08-08)</span></h3>
+<p>Relevé par l'utilisateur le 2026-08-03, au premier test de la passe du partage de groupe : « il
+s'étend vers l'infini et devient de moins en moins utilisable ». <strong>À cadrer avec lui avant d'y
+toucher.</strong></p>
+<p>Le menu du dossier porte <strong>treize entrées</strong> : déplacer la sélection, lancer les
+sessions, snippets, note, favori, renommer, nouveau dossier, nouveau profil, icône, les <em>deux</em>
+copies, cacher dans le workspace, supprimer. Les deux dernières arrivées sont celles du
+<a href="#partage-groupe">partage de groupe</a>, ce qui rend la remarque d'autant plus juste.</p>
+<p>Piste évoquée par l'utilisateur : un « afficher plus » ou équivalent.</p>
+<div class="callout note"><span class="callout-title">Ce qui est à trancher n'est pas la
+mécanique</span>
+<p>C'est le <strong>critère de partage</strong> — ce qui mérite le premier niveau. Deux angles
+possibles, et ils ne donnent pas la même liste : la <em>fréquence d'usage</em>, ou la <em>nature du
+geste</em> (agir sur le dossier / créer dedans / le partager / le retirer de la vue). À poser comme
+une question, pas à deviner : trois des cinq items de G1 se sont révélés autres qu'annoncés faute de
+l'avoir fait.</p>
+<p>Noter aussi que le menu du <strong>profil</strong> grossit en parallèle, et qu'un choix fait ici le
+concerne. Et que le clic droit doit rester court et s'ouvrir sous la souris : c'est une raison de
+plus de ne pas y régler ce qui relève de l'onglet de réglages.</p></div>
+<p><strong>Tranché et livré le 2026-08-08.</strong> Le critère retenu n'est aucun des deux angles
+que la fiche opposait (fréquence d'usage / nature du geste) : l'utilisateur a demandé des
+<strong>sous-menus nommés, à la façon des menus contextuels Windows</strong> — plusieurs groupes
+titrés plutôt qu'un unique « Plus… ». Poser la question plutôt que deviner a donc bien payé une
+seconde fois. Découpage appliqué <strong>aux deux menus</strong> dans le même geste, comme la fiche
+le recommandait :</p>
+<ul>
+<li><strong>Premier niveau</strong> — les gestes fréquents et le geste destructeur isolé en bas :
+  dossier = déplacer la sélection, lancer toutes les sessions, nouveau dossier, nouveau profil,
+  puis <code>Supprimer</code> ; profil = lancer la session, modifier, dupliquer, puis
+  <code>Supprimer</code>.</li>
+<li><strong><code>Manage</code> ›</strong> (« Gérer ») : renommer, changer l'icône, la note, le
+  favori.</li>
+<li><strong><code>More</code> ›</strong> (« Plus ») : snippets, les deux copies et le masquage de
+  workspace côté dossier ; snippets, tunnels du profil et masquage côté profil.</li>
+</ul>
+<p>Sous-menus <strong>latéraux</strong> (choix utilisateur), ouverts au survol comme au clic, avec
+fermeture différée de 180 ms pour que le trajet diagonal du parent vers le panneau ne les referme
+pas. Le panneau est monté en <strong>frère</strong> du menu, jamais en descendant : une ancre dans
+une ancre est désimbriquée en silence par le parseur (piège #38). Il bascule à gauche quand le bord
+droit manque, et passe par le <code>clampInViewport()</code> unique du plugin — donc il ne recouvre
+pas non plus le pied de page. <code>.group-context-submenu</code> a été ajouté aux deux tests
+<code>closest()</code> du <code>HostListener('document:click')</code> : sans cela, ouvrir un
+sous-menu refermait tout le menu (piège #15).</p>
+
+<p class="muted">Livré le 2026-08-08 · Journal : <a href="../AI-HISTORY.html">« Menus contextuels
+en sous-menus nommés » (2026-08-08)</a> · Pièges rejoués : #15, #38 · Commits :
+<code>145d4eb</code></p>
+
 <h3 id="icones-dashboard">Icônes dashboard-icons (logos de services IT)
 <span class="pill done">✅ Livré (2026-08-08)</span></h3>
 <p>Ajouter <a href="https://github.com/homarr-labs/dashboard-icons">homarr-labs/dashboard-icons</a>

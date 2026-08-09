@@ -538,6 +538,10 @@ const de_DE: Record<string, string> = {
     'The root must be a single <svg> tag.': 'Die Wurzel muss ein einzelnes <svg>-Tag sein.',
     '{count} disallowed element(s) or attribute(s) removed.': '{count} nicht zulässige(s) Element(e) oder Attribut(e) entfernt.',
 
+    // sidebarTree.component.pug — Seitenmenüs "Manage"/"More" (Ordner- und Profilmenü)
+    'Manage': 'Verwalten',
+    'More': 'Weitere',
+
 }
 
 export default de_DE

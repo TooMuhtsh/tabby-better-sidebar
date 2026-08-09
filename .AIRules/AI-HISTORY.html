@@ -24,6 +24,30 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Menus contextuels en sous-menus nommés (2026-08-08)</h2>
+<p>Le menu du dossier portait treize entrées — « il s'étend vers l'infini », signalé par
+l'utilisateur le 2026-08-03. La fiche imposait de <strong>poser</strong> le critère de partage
+plutôt que de le deviner ; bien lui en a pris : aucun des deux angles qu'elle opposait (fréquence
+d'usage / nature du geste) n'a été retenu. L'utilisateur a demandé des <strong>sous-menus nommés à
+la façon de Windows</strong>. Chantier mené par un agent (Sonnet) en worktree isolé, puis relu et
+revalidé. Fiche au <a href="annexes/REALISE.html#menu-contextuel-long">registre du réalisé</a>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-08</td><td>(commit en cours)</td>
+<td><strong>Validé visuellement par l'utilisateur</strong>, fusion sur <code>master</code>.</td></tr>
+<tr><td>2026-08-08</td><td>145d4eb</td>
+<td>Deux sous-menus latéraux — <code>Manage</code> (renommer, icône, note, favori) et
+<code>More</code> (snippets, copies, masquage ; côté profil : snippets, tunnels, masquage) —
+appliqués <strong>aux deux menus</strong> dans le même geste, comme la fiche le recommandait. Au
+premier niveau ne restent que les gestes fréquents, <code>Supprimer</code> isolé en bas. Panneau
+monté en <strong>frère</strong> du menu (piège #38), <code>.group-context-submenu</code> ajouté aux
+deux tests <code>closest()</code> du <code>HostListener</code> (piège #15 — sans quoi ouvrir un
+sous-menu refermait tout), bascule à gauche près du bord et recadrage par le
+<code>clampInViewport()</code> unique du plugin. Ouverture au survol comme au clic, fermeture
+différée de 180 ms pour le trajet diagonal. Clés <code>Manage</code>/<code>More</code> en
+fr/es/de.</td></tr>
+</table>
+
 <h2>Icônes dashboard-icons — troisième source du picker (2026-08-08)</h2>
 <p>Demandé par l'utilisateur : les collections en place offraient peu d'icônes reflétant des
 solutions IT. Chantier mené par un agent (Sonnet) dans un worktree isolé, puis relu, corrigé et
