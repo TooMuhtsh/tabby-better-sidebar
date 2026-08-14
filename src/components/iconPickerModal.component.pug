@@ -80,7 +80,6 @@
                 placeholder='<svg viewBox="0 0 24 24">...</svg>'
             )
             .text-danger.small.mt-1(*ngIf='customSvgError') {{ customSvgError }}
-            .text-warning.small.mt-1(*ngIf='customSvgWarning') {{ customSvgWarning }}
             button.btn.btn-sm.btn-secondary.mt-1((click)='applyCustomSvg()') {{ 'Apply the SVG' | translate }}
 
 .modal-footer
