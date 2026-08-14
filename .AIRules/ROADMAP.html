@@ -599,7 +599,13 @@ est <strong>instruit</strong> : il est utilisé (<code>webpack.config.js</code>,
 <code>{ test: /\.pug$/, use: ['apply-loader', 'pug-loader'] }</code>). <code>pug-loader</code> rend
 une <em>fonction</em> de template et <code>apply-loader</code> l'applique, ce qui donne la chaîne
 que <code>template: require('./x.pug')</code> attend. S'en passer n'est pas un retrait mais un
-<strong>changement de chaîne de chargement pug</strong>, à instruire comme tel.</p>
+<strong>changement de chaîne de chargement pug</strong>, à instruire comme tel. Il est par ailleurs
+<strong>abandonné de fait</strong> — dernière publication le 2017-04-28 (2.0.0, vérifié au registre
+le 2026-08-14) — et <strong>ne tient sous webpack 5 que parce que la config ne lui passe aucune
+option</strong> : constat convergent avec l'instruction du même sujet menée côté
+<code>tabby-better-vault</code> (rapportée par l'utilisateur le 2026-08-14). Posture commune aux
+deux plugins : <strong>en surveillance, pas en urgence</strong> — toute évolution de la config qui
+voudrait lui passer des options rouvre la question du remplacement.</p>
 <p class="muted">Contrainte à ne pas perdre : <code>pug@^2.0</code> et les versions liées sont
 verrouillés par Angular 15 (<a href="AI-CONTEXT.html#piege-4">piège #4</a>) — un
 <code>npm audit fix --force</code> monterait ou <em>rétrograderait</em> des majeures et casserait
@@ -613,7 +619,9 @@ isolées du runtime de Tabby. Vrai pour <strong>webpack-cli 4→5</strong> (webp
 place) ; <strong>faux pour TypeScript</strong> : Angular 15 — imposé par la peer dependency de
 <code>tabby-core</code> — plafonne TS <strong>strictement sous 5.0</strong>, son compilateur
 refusant au-delà (<a href="AI-CONTEXT.html#piege-4">piège #4</a>). <code>typescript@4.9.5</code>
-est donc déjà le plafond atteignable ; TS 5 attendra que Tabby monte d'Angular. Le chantier réel :
+est donc déjà le plafond atteignable ; passer à TS 5.x n'est <strong>pas un bump mais une
+migration Angular 16+</strong>, hors de portée tant que Tabby n'y est pas — même conclusion
+atteinte indépendamment côté <code>tabby-better-vault</code>. Le chantier réel :
 webpack-cli et les loaders, en période calme, build de production revérifié. À savoir avant de le
 juger urgent : l'audit du 2026-08-14 montre que <code>webpack-cli@4</code> ne tire
 <strong>aucune</strong> vulnérabilité — ce bump est de l'hygiène d'outillage, pas de la
