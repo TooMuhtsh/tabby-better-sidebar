@@ -24,6 +24,24 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>1.0.2 — référencement npm seul, aucun changement de code (2026-08-10)</h2>
+<p>Publication menée par l'utilisateur lui-même, consignée a posteriori le 2026-08-14. Le paquet
+remontait mal dans la recherche npm : ses six mots-clés ne couvraient pas ce qu'il fait.
+<strong>Seul le référencement a été amélioré</strong> — la liste <code>keywords</code> de
+<code>package.json</code> passe de 6 à 28 entrées (<code>sftp-client</code>,
+<code>ssh-tunnel</code>, <code>drag-and-drop</code>, <code>workspaces</code>,
+<code>better-tabby</code>…), <code>tabby-plugin</code> restant en tête pour le gestionnaire de
+plugins de Tabby. <strong>Aucun changement de code ni de fonctionnalité</strong> entre 1.0.1 et
+1.0.2 ; <code>dist/</code> n'a été rebuildé que par <code>prepublishOnly</code>.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-10</td><td>6fb5b64</td>
+<td><code>npm publish</code> de la <strong>1.0.2</strong> (<code>dist-tags.latest = 1.0.2</code>),
+tag <code>v1.0.2</code>. Le <code>gitHead</code> du tarball pointe <code>f954bbf</code> (publish
+lancé avant le commit) — sans conséquence, le contenu publié correspond bien au commit. Le clone
+local de ce poste, resté sur la 1.0.1, a été resynchronisé (fast-forward) le 2026-08-14.</td></tr>
+</table>
+
 <h2>1.0.1 — les notices tierces voyagent avec le paquet (2026-08-08)</h2>
 <p>Trouvé en répondant à une question de l'utilisateur sur les différences entre licences : le
 paquet npm <strong>ne contenait pas</strong> <code>THIRD-PARTY-NOTICES.md</code>. Le champ
