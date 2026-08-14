@@ -41,6 +41,9 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#envoi-multi-sessions">Envoyer une commande à N sessions choisies</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
 <tr><td><a href="#snippet-etapes-expect">Étapes, délais et <code>expect</code> dans un snippet</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
 <tr><td><a href="#outils-reseau-non-tranche">Outils réseau au menu contextuel</a></td><td><span class="pill warn">⚠️ Sans décision (2026-08-08)</span></td><td>—</td></tr>
+<tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — rien dans le code livré</td></tr>
+<tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
+<tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Avant la prochaine publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
 <tr><td><a href="#team-sharing">Workspaces distants / partage d'équipe</a></td><td><span class="pill out">⛔ Écarté — contrainte intenable</span></td><td>—</td></tr>
@@ -556,6 +559,74 @@ local). Instruite, mais <strong>volontairement laissée sans décision</strong> 
 série (l'entrée doit être masquée hors SSH/Telnet) ; et sous Windows, un binaire absent fait ouvrir
 <strong>un onglet vide qui ne se ferme jamais</strong>, sans message — le renderer reçoit son id
 avant que le processus principal ne lève l'exception. Détecter avant de lancer.</p>
+
+<h2>Entretien du paquet et du dépôt — retenus</h2>
+<p class="muted">Issus des trois notes du tableau de bord GitHub de l'utilisateur
+(<code>users/TooMuhtsh/projects/1</code>, écrites vers le 2026-08-10), consignées et instruites ici
+le 2026-08-14. Les mêmes notes visent aussi <code>tabby-better-vault</code> — sa part se traite
+dans ses propres sessions, rien ici ne la couvre. Aucune n'est ouverte : elles attendent une
+consigne explicite (option <code>roadmap-avant-code</code>).</p>
+
+<h3 id="audit-devdeps">Vulnérabilités npm de l'outillage de build
+<span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></h3>
+<p>Mesuré le 2026-08-14 : <code>npm audit</code> rend <strong>22 vulnérabilités (1 low, 4 moderate,
+17 high)</strong>, toutes dans les <code>devDependencies</code>. Provenance établie le même jour :</p>
+<ul>
+<li><strong>16 sur 22 (15 high + 1 low) : la pile Angular 15 elle-même</strong> —
+  <code>@angular/*</code>, <code>@ng-bootstrap</code> et les pairs
+  <code>tabby-core</code>/<code>-settings</code>/<code>-terminal</code>, ces trois derniers marqués
+  <code>fixAvailable: false</code>. Correction = Angular 15 → 19+, <strong>bloquée tant que Tabby
+  amont reste sur Angular 15</strong>. Tous sont dans les <code>externals</code> webpack : rien de
+  ce groupe ne voyage dans notre paquet, c'est le runtime de Tabby qui les porte.</li>
+<li><strong>3 moderate : la chaîne <code>pug@2</code></strong> (pug, pug-code-gen, pug-loader —
+  outil de build pur, jamais livré). Sortie réelle : pug 2 → 3 <em>plus</em> remplacement du
+  loader (<code>pug-loader</code> ne déclare que <code>pug ^2</code> en peer) — le « correctif »
+  que npm propose est un <strong>downgrade</strong> de pug-loader en 1.0.2, à ne jamais appliquer
+  par <code>--force</code>.</li>
+<li><strong>3 transitifs corrigeables sans majeure</strong> : <code>fast-uri</code> (via
+  html-validate), <code>nanoid</code> (via css-loader), <code>brace-expansion</code>.</li>
+<li><strong>1 moderate : <code>dompurify</code> — la seule des 22 qui atteint le paquet
+  publié</strong> : bundlée dans <code>dist/</code> (utilisée par <code>svgSanitizer.ts</code> et
+  <code>icons.ts</code>, absente des <code>externals</code>). Correction publiée en
+  <code>3.4.13</code>, dans la plage <code>^3.4.12</code> — aucune majeure.</li>
+</ul>
+<p>Un <code>npm audit fix</code> sans <code>--force</code> réglerait donc <strong>4 des 22</strong>
+(dompurify compris) ; les 18 restantes sont conditionnées à Angular 19+ (bloqué par Tabby) et à
+pug 3. Non urgent, jugé ainsi par l'utilisateur dans la note d'origine — mais si une seule chose
+doit se faire vite, c'est le bump de dompurify.</p>
+<p>Le préalable posé par la note — « vérifier si <code>apply-loader</code> est encore nécessaire » —
+est <strong>instruit</strong> : il est utilisé (<code>webpack.config.js</code>,
+<code>{ test: /\.pug$/, use: ['apply-loader', 'pug-loader'] }</code>). <code>pug-loader</code> rend
+une <em>fonction</em> de template et <code>apply-loader</code> l'applique, ce qui donne la chaîne
+que <code>template: require('./x.pug')</code> attend. S'en passer n'est pas un retrait mais un
+<strong>changement de chaîne de chargement pug</strong>, à instruire comme tel.</p>
+<p class="muted">Contrainte à ne pas perdre : <code>pug@^2.0</code> et les versions liées sont
+verrouillés par Angular 15 (<a href="AI-CONTEXT.html#piege-4">piège #4</a>) — un
+<code>npm audit fix --force</code> monterait ou <em>rétrograderait</em> des majeures et casserait
+le build. Le chantier, quand il s'ouvrira : <code>npm audit fix</code> nu, build de production
+revérifié, et l'éventuel passage à pug 3 instruit séparément avec le remplacement du loader.</p>
+
+<h3 id="bump-outillage">Montée de version TypeScript / webpack-cli
+<span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></h3>
+<p>La note d'origine juge le bump « low-risk » parce que ce sont des <code>devDependencies</code>
+isolées du runtime de Tabby. Vrai pour <strong>webpack-cli 4→5</strong> (webpack 5 est déjà en
+place) ; <strong>faux pour TypeScript</strong> : Angular 15 — imposé par la peer dependency de
+<code>tabby-core</code> — plafonne TS <strong>strictement sous 5.0</strong>, son compilateur
+refusant au-delà (<a href="AI-CONTEXT.html#piege-4">piège #4</a>). <code>typescript@4.9.5</code>
+est donc déjà le plafond atteignable ; TS 5 attendra que Tabby monte d'Angular. Le chantier réel :
+webpack-cli et les loaders, en période calme, build de production revérifié. À savoir avant de le
+juger urgent : l'audit du 2026-08-14 montre que <code>webpack-cli@4</code> ne tire
+<strong>aucune</strong> vulnérabilité — ce bump est de l'hygiène d'outillage, pas de la
+sécurité.</p>
+
+<h3 id="changelog">CHANGELOG.md du dépôt
+<span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></h3>
+<p>Aucun <code>CHANGELOG.md</code> dans le dépôt, alors que les versions s'enchaînent
+(1.0.0 → 1.0.1 → 1.0.2). État réel nuancé le 2026-08-14 : les <strong>releases GitHub
+v0.4.0 → v1.0.2 portent déjà un titre et des notes</strong> — le manque est le fichier au dépôt,
+seul visible depuis la page npm et le clone, et la couverture des versions antérieures
+(0.2.0, 0.3.0). Rétro-remplissage possible depuis les releases et le journal. À faire au plus tard
+avec la prochaine publication, pour que la version qui l'introduit le mentionne.</p>
 
 <h2>Hors périmètre</h2>
 
