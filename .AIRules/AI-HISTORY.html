@@ -24,6 +24,28 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Publication de la 1.0.3 (2026-08-14)</h2>
+<p>Première publication depuis la 1.0.2 : elle embarque le lot de sécurité, le toast des retraits
+SVG (les deux chantiers ci-dessous) et introduit le <code>CHANGELOG.md</code>, rétro-rempli de la
+0.2.0 à la 1.0.3 et ajouté aux fichiers du paquet — la fiche
+<a href="ROADMAP.html#changelog">#changelog</a> voulait qu'il naisse avec la version qui le
+mentionne.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-14</td><td>(commit en cours)</td>
+<td><strong>Passe de release validée par l'utilisateur (7/7)</strong> sur le paquet installé hors
+jonction en build de production — toast des retraits et rejet d'un SVG hostile vérifiés sur le
+bundle minifié avec dompurify 3.4.13. <code>npm publish</code>
+(<code>dist-tags.latest = 1.0.3</code>, 4,7 Mo compressés, 105 fichiers, 29 mots-clés vérifiés
+après coup), release GitHub <code>v1.0.3</code>. Le <code>gitHead</code> du tarball pointe le
+commit de version <code>fef60c1</code> — commité <em>avant</em> le publish, leçon de la 1.0.2.
+Jonction de dev remise et <code>dist/</code> rebuildé en dev, dernier geste du protocole.</td></tr>
+<tr><td>2026-08-14</td><td>fef60c1</td>
+<td><code>package.json</code> à <strong>1.0.3</strong>, <code>CHANGELOG.md</code> créé
+(rétro-rempli depuis les releases GitHub et ce journal) et ajouté à <code>files</code> ;
+correction du décompte de mots-clés de l'entrée 1.0.2 (29, pas 28).</td></tr>
+</table>
+
 <h2>Lot de sécurité sans majeure — 22 → 18 vulnérabilités (2026-08-14)</h2>
 <p>Sur consigne de l'utilisateur, depuis les notes de son tableau de bord GitHub consignées en
 roadmap le matin même (fiche <a href="ROADMAP.html#audit-devdeps">#audit-devdeps</a>). Exécution et

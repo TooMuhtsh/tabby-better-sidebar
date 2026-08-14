@@ -43,7 +43,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#outils-reseau-non-tranche">Outils réseau au menu contextuel</a></td><td><span class="pill warn">⚠️ Sans décision (2026-08-08)</span></td><td>—</td></tr>
 <tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill done">✅ Lot sans majeure livré et validé (2026-08-14)</span></td><td>Surveillance — 18 restantes bloquées par Angular 15 / pug 2</td></tr>
 <tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
-<tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Avant la prochaine publication</td></tr>
+<tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></td><td>À tenir à chaque publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
 <tr><td><a href="#team-sharing">Workspaces distants / partage d'équipe</a></td><td><span class="pill out">⛔ Écarté — contrainte intenable</span></td><td>—</td></tr>
@@ -652,7 +652,11 @@ juger urgent : l'audit du 2026-08-14 montre que <code>webpack-cli@4</code> ne ti
 sécurité.</p>
 
 <h3 id="changelog">CHANGELOG.md du dépôt
-<span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></h3>
+<span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></h3>
+<p><strong>Livré avec la 1.0.3</strong> : <code>CHANGELOG.md</code> à la racine, rétro-rempli de la
+0.2.0 à la 1.0.3 depuis les releases GitHub et le journal, et ajouté à <code>files</code> — il
+voyage dans le paquet npm. <strong>Règle d'entretien qui reste</strong> : une entrée par
+publication, écrite au moment du bump de version, en anglais comme le README.</p>
 <p>Aucun <code>CHANGELOG.md</code> dans le dépôt, alors que les versions s'enchaînent
 (1.0.0 → 1.0.1 → 1.0.2). État réel nuancé le 2026-08-14 : les <strong>releases GitHub
 v0.4.0 → v1.0.2 portent déjà un titre et des notes</strong> — le manque est le fichier au dépôt,
