@@ -4,6 +4,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { ConfigService, PartialProfile, PartialProfileGroup, Profile, ProfileGroup, ProfilesService } from 'tabby-core'
 import { loadIconEntries, PickerIcon } from '../icons'
 import { sanitizeSvgIcon } from '../svgSanitizer'
+import { SidebarPlusNoticesService } from '../notices.service'
 import { SidebarWorkspace } from '../configProvider'
 import { SidebarPlusI18nService } from '../i18n'
 import { TranslatableMessage } from '../i18nMessage'
@@ -42,7 +43,6 @@ export class IconPickerModalComponent implements AfterViewChecked {
     showCustomSvgInput = false
     customSvgText = ''
     customSvgError: string|null = null
-    customSvgWarning: string|null = null
 
     ////// FAVORITE-TOGGLE MENU (per tile, right click) //////
     /** The icon a right-click opened the pin/unpin menu on, or null. */
@@ -59,6 +59,7 @@ export class IconPickerModalComponent implements AfterViewChecked {
         private profilesService: ProfilesService,
         private modalInstance: NgbActiveModal,
         private i18n: SidebarPlusI18nService,
+        private notices: SidebarPlusNoticesService,
     ) { }
 
     ngAfterViewChecked (): void {
@@ -204,11 +205,14 @@ export class IconPickerModalComponent implements AfterViewChecked {
         const result = sanitizeSvgIcon(this.customSvgText)
         if (!result.ok || !result.svg) {
             this.customSvgError = result.error ? this.tMsg(result.error) : this.i18n.t('SVG rejected.')
-            this.customSvgWarning = null
             return
         }
         this.customSvgError = null
-        this.customSvgWarning = result.warning ? this.tMsg(result.warning) : null
+        if (result.warning) {
+            // A toast, not a line in the modal: applyIcon() closes the modal,
+            // which took the inline warning with it before it could be read.
+            this.notices.notice(this.tMsg(result.warning))
+        }
         await this.applyIcon(result.svg)
     }
 
