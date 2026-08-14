@@ -41,7 +41,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#envoi-multi-sessions">Envoyer une commande à N sessions choisies</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
 <tr><td><a href="#snippet-etapes-expect">Étapes, délais et <code>expect</code> dans un snippet</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
 <tr><td><a href="#outils-reseau-non-tranche">Outils réseau au menu contextuel</a></td><td><span class="pill warn">⚠️ Sans décision (2026-08-08)</span></td><td>—</td></tr>
-<tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill warn">⏳ Lot sans majeure exécuté — en validation (2026-08-14)</span></td><td>Basse — le reste bloqué par Angular 15 / pug 2</td></tr>
+<tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill done">✅ Lot sans majeure livré et validé (2026-08-14)</span></td><td>Surveillance — 18 restantes bloquées par Angular 15 / pug 2</td></tr>
 <tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Avant la prochaine publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
@@ -568,7 +568,13 @@ dans ses propres sessions, rien ici ne la couvre. Aucune n'est ouverte : elles a
 consigne explicite (option <code>roadmap-avant-code</code>).</p>
 
 <h3 id="audit-devdeps">Vulnérabilités npm de l'outillage de build
-<span class="pill warn">⏳ Lot sans majeure exécuté — en validation (2026-08-14)</span></h3>
+<span class="pill done">✅ Lot sans majeure livré et validé (2026-08-14) — reste en surveillance</span></h3>
+<p><strong>Validé par l'utilisateur le 2026-08-14</strong> (SVG de test collé au sélecteur
+d'icônes), fusionné sur <code>master</code> (<code>e5b9a55</code>). La passe de validation a fait
+naître un correctif connexe, livré et validé le même jour : l'avertissement de retraits passe par
+un toast (fusion <code>4d5c6a3</code>, journal). <strong>Reste en surveillance</strong> : les 18
+vulnérabilités restantes sont bloquées par Angular 15 (imposé par Tabby amont) et pug 2 — rien à
+faire ici tant que l'amont ne bouge pas ; re-mesurer à chaque montée de version de Tabby.</p>
 <p><strong>Lot « sans majeure » exécuté le 2026-08-14</strong> sur la branche
 <code>fix/audit-sans-majeure</code>, sur consigne de l'utilisateur : <code>npm audit fix</code> nu,
 <strong>22 → 18</strong> vulnérabilités (1 low, 3 moderate, 14 high), les quatre attendues

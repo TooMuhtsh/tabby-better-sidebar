@@ -24,6 +24,47 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Lot de sécurité sans majeure — 22 → 18 vulnérabilités (2026-08-14)</h2>
+<p>Sur consigne de l'utilisateur, depuis les notes de son tableau de bord GitHub consignées en
+roadmap le matin même (fiche <a href="ROADMAP.html#audit-devdeps">#audit-devdeps</a>). Exécution et
+instruction de compatibilité menées par deux agents en parallèle, vérifiées ensuite.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-14</td><td>(commit en cours)</td>
+<td><strong>Validé par l'utilisateur</strong> (SVG de test collé au sélecteur d'icônes sur le
+paquet rebuilé), fusion sur <code>master</code> (<code>e5b9a55</code>). La passe de validation a
+fait naître le chantier du toast, consigné ci-dessous. Fiche roadmap passée en
+surveillance : les 18 vulnérabilités restantes sont bloquées par Angular 15 (imposé par Tabby
+amont) et pug 2.</td></tr>
+<tr><td>2026-08-14</td><td>e37afbf</td>
+<td><code>npm audit fix</code> sans <code>--force</code> : <strong>dompurify 3.4.13, nanoid 3.3.18,
+fast-uri 3.1.5, brace-expansion 2.1.4</strong> — seul <code>package-lock.json</code> touché,
+<code>package.json</code> intact, builds de production et de développement verts sans warning
+nouveau. Compatibilité de dompurify — seul du lot embarqué dans le bundle — instruite contre
+l'amont : l'advisory corrigée (<code>GHSA-55q2-fjhq-7xh7</code>) exige <code>IN_PLACE</code> plus
+un hook de retrait, que le plugin n'utilise nulle part — <strong>non vulnérables même en
+3.4.12</strong> ; seul changement sur notre chemin, le hoisting par déplacement au lieu de clonage,
+sans effet sémantique.</td></tr>
+</table>
+
+<h2>Toast des retraits SVG (2026-08-14)</h2>
+<p>Trouvé par l'utilisateur pendant la passe de validation du lot ci-dessus : le décompte
+« N élément(s) retiré(s) » s'affichait dans la modale du sélecteur d'icônes, que
+<code>applyIcon()</code> ferme aussitôt l'icône appliquée — le message mourait avec elle, illisible.
+Demande explicite : un vrai toast, pas une ligne dans la modale.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-08-14</td><td>(commit en cours)</td>
+<td><strong>Validé par l'utilisateur</strong>, fusion sur <code>master</code>
+(<code>4d5c6a3</code>).</td></tr>
+<tr><td>2026-08-14</td><td>53869ec</td>
+<td>L'avertissement passe par <code>SidebarPlusNoticesService</code> (toast de 8 s, empilé avec
+ceux de Tabby), émis juste avant la fermeture de la modale ; la ligne inline est retirée du
+template. La ligne d'<em>erreur</em> (« SVG rejeté ») reste dans la modale : sur ce chemin elle ne
+se ferme pas. Clé i18n existante réutilisée, aucune chaîne nouvelle
+(<code>lint:i18n</code> complet, 426 clés).</td></tr>
+</table>
+
 <h2>1.0.2 — référencement npm seul, aucun changement de code (2026-08-10)</h2>
 <p>Publication menée par l'utilisateur lui-même, consignée a posteriori le 2026-08-14. Le paquet
 remontait mal dans la recherche npm : ses six mots-clés ne couvraient pas ce qu'il fait.
