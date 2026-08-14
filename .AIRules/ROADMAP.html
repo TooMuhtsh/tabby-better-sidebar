@@ -41,7 +41,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#envoi-multi-sessions">Envoyer une commande à N sessions choisies</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
 <tr><td><a href="#snippet-etapes-expect">Étapes, délais et <code>expect</code> dans un snippet</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-08)</span></td><td>Après V1.0</td></tr>
 <tr><td><a href="#outils-reseau-non-tranche">Outils réseau au menu contextuel</a></td><td><span class="pill warn">⚠️ Sans décision (2026-08-08)</span></td><td>—</td></tr>
-<tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — rien dans le code livré</td></tr>
+<tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill warn">⏳ Lot sans majeure exécuté — en validation (2026-08-14)</span></td><td>Basse — le reste bloqué par Angular 15 / pug 2</td></tr>
 <tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Avant la prochaine publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
@@ -568,7 +568,25 @@ dans ses propres sessions, rien ici ne la couvre. Aucune n'est ouverte : elles a
 consigne explicite (option <code>roadmap-avant-code</code>).</p>
 
 <h3 id="audit-devdeps">Vulnérabilités npm de l'outillage de build
-<span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></h3>
+<span class="pill warn">⏳ Lot sans majeure exécuté — en validation (2026-08-14)</span></h3>
+<p><strong>Lot « sans majeure » exécuté le 2026-08-14</strong> sur la branche
+<code>fix/audit-sans-majeure</code>, sur consigne de l'utilisateur : <code>npm audit fix</code> nu,
+<strong>22 → 18</strong> vulnérabilités (1 low, 3 moderate, 14 high), les quatre attendues
+corrigées — <code>dompurify</code> 3.4.12 → 3.4.13, <code>nanoid</code> 3.3.16 → 3.3.18,
+<code>fast-uri</code> 3.1.4 → 3.1.5, <code>brace-expansion</code> 2.1.2 → 2.1.4. Seul
+<code>package-lock.json</code> a bougé, <code>package.json</code> est intact ; builds de production
+et de développement verts, aucun warning nouveau, <code>dist/</code> laissé en build de dev pour la
+jonction.</p>
+<p>Compatibilité de <code>dompurify</code> — le seul du lot qui voyage dans le bundle — instruite
+contre l'amont : l'advisory corrigée (<code>GHSA-55q2-fjhq-7xh7</code>) exige
+<code>IN_PLACE</code> <em>et</em> un hook de retrait, que le plugin n'utilise nulle part (un unique
+appel dans <code>svgSanitizer.ts</code>, profil SVG + allow-lists passées à l'appel, aucun hook) —
+<strong>nous n'étions pas vulnérables en 3.4.12</strong>. Le seul changement du diff sur notre
+chemin est le hoisting des enfants par déplacement au lieu de clonage : optimisation, même arbre
+final attendu. <strong>Validation avant fusion</strong> (le décompte « N retirés » alimente un
+message utilisateur) : coller dans le sélecteur d'icônes un SVG mêlant balises autorisées et non
+autorisées (<code>defs</code>, <code>use</code>, <code>text</code> autour de <code>path</code>/<code>rect</code>)
+et vérifier que le rendu et le décompte sont ceux d'avant.</p>
 <p>Mesuré le 2026-08-14 : <code>npm audit</code> rend <strong>22 vulnérabilités (1 low, 4 moderate,
 17 high)</strong>, toutes dans les <code>devDependencies</code>. Provenance établie le même jour :</p>
 <ul>
