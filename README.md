@@ -100,6 +100,10 @@ be **frozen** on one session so it stops following the focused tab.
 
 - **Configurable columns** (size, date, octal and long permissions, type,
   extension), folders-first sorting, hidden files toggle, zebra striping
+- **Sort by name, date or size** — click a column header to sort on it, click
+  again to flip the direction; date and size start with the newest and the
+  biggest at the top. Also in the header's right-click menu, for a column
+  that is hidden. The choice is remembered
 - **Multiple selection**, files *and* folders, for bulk delete and move
 - **Chunked loading** of large directory listings
 - **Double-click opens a file in a code editor**, never through the OS file
@@ -212,6 +216,8 @@ latency probe, no transfer tracking for a panel nobody is looking at.
 | `sftpDragOutFolders` | `false` | Allows dragging a *folder* out to the OS, not just a file |
 | `sftpColumns` | `size`, `date`, `mode` | Columns shown in the SFTP listing |
 | `sftpFoldersFirst` | `true` | Sorts folders before files |
+| `sftpSortKey` | `name` | Column the listing is sorted on: `name`, `date` or `size` |
+| `sftpSortDescending` | `false` | Sort direction |
 | `sftpShowHidden` | `true` | Shows dot-files |
 | `sftpColumnBorders` | `true` | Column separators in the listing |
 | `sftpZebra` | `true` | Alternating row background |

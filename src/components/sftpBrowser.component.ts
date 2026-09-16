@@ -111,6 +111,13 @@ function entryFile (entry: FileSystemFileEntry): Promise<File> {
 }
 
 /** An optional column of the file list. The name column is not one of these — it is always shown. */
+/**
+ * What the listing can be ordered by. Only the three columns a user actually
+ * sorts on; permissions, type and extension stay inert on purpose — see the
+ * ROADMAP entry `#sftp-tri`.
+ */
+export type SftpSortKey = 'name'|'date'|'size'
+
 export interface SftpColumn {
     id: string
     /** Header caption. Kept short: the whole list lives in a ~300px sidebar. */
@@ -193,6 +200,85 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             { key: 'sftpColumnBorders', label: this.i18n.t('Column borders') },
             { key: 'sftpZebra', label: this.i18n.t('Alternating rows') },
         ]
+    }
+
+    ////// SORTING //////
+    /**
+     * The "Sort by" section of the header menu. Same translation reasoning as
+     * `availableColumns`; the three labels are the column captions, which
+     * already exist in every table.
+     */
+    get sortOptions (): { key: SftpSortKey, label: string }[] {
+        return [
+            { key: 'name', label: this.i18n.t('Name') },
+            { key: 'date', label: this.i18n.t('Date') },
+            { key: 'size', label: this.i18n.t('Size') },
+        ]
+    }
+
+    /**
+     * Direction a column starts in on its first click. Name reads top-down;
+     * date and size are looked at for "the newest" and "the biggest", so they
+     * start with those at the top — the Explorer/Finder convention, and the
+     * one the user picked when asked.
+     */
+    private static readonly SORT_DEFAULT_DESCENDING: Record<SftpSortKey, boolean> = {
+        name: false,
+        date: true,
+        size: true,
+    }
+
+    get sortKey (): SftpSortKey {
+        const key = this.config.store.sidebarPlus?.sftpSortKey
+        return key === 'date' || key === 'size' ? key : 'name'
+    }
+
+    get sortDescending (): boolean {
+        return this.config.store.sidebarPlus?.sftpSortDescending ?? false
+    }
+
+    /**
+     * Header click and menu click share this: a click on the current key
+     * flips the direction, a click on another key switches to it in that
+     * key's default direction. Persisted like the display toggles, and the
+     * rendering restarts from the first chunk for the same reason they do —
+     * the rows at the top are no longer the rows that were there.
+     */
+    sortBy (key: SftpSortKey): void {
+        if (key === this.sortKey) {
+            this.config.store.sidebarPlus.sftpSortDescending = !this.sortDescending
+        } else {
+            this.config.store.sidebarPlus.sftpSortKey = key
+            this.config.store.sidebarPlus.sftpSortDescending = SidebarPlusSftpBrowserComponent.SORT_DEFAULT_DESCENDING[key]
+        }
+        this.config.save()
+        this.resetRenderChunk()
+    }
+
+    /** The sort key a header cell drives, or `null` for the columns that stay inert. */
+    sortKeyForColumn (column: SftpColumn): SftpSortKey|null {
+        return column.id === 'date' || column.id === 'size' ? column.id : null
+    }
+
+    /** Header cell click: sorts when the column is sortable, does nothing otherwise. */
+    onHeaderClick (column: SftpColumn): void {
+        const key = this.sortKeyForColumn(column)
+        if (key) {
+            this.sortBy(key)
+        }
+    }
+
+    /**
+     * Timestamp for the date comparator. `modified` is typed `Date` but is
+     * not always one in practice — `shortDate()` guards against the same
+     * thing — and an unparseable value sorts as the epoch rather than
+     * poisoning the whole comparison with NaN.
+     */
+    private static modifiedTime (file: SFTPFile): number {
+        const value: unknown = file.modified
+        const d = value instanceof Date ? value : new Date(value as string|number)
+        const t = d.getTime()
+        return isNaN(t) ? 0 : t
     }
 
     /**
@@ -2125,6 +2211,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         source: SFTPFile[]
         showHidden: boolean
         foldersFirst: boolean
+        sortKey: SftpSortKey
+        sortDescending: boolean
         result: SFTPFile[]
     }|null = null
 
@@ -2144,25 +2232,48 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     get displayedFiles (): SFTPFile[] {
         const showHidden = this.isToggleOn('sftpShowHidden')
         const foldersFirst = this.isToggleOn('sftpFoldersFirst')
+        const sortKey = this.sortKey
+        const sortDescending = this.sortDescending
         const cached = this.displayCache
         if (cached
             && cached.source === this.filteredFileList
             && cached.showHidden === showHidden
-            && cached.foldersFirst === foldersFirst) {
+            && cached.foldersFirst === foldersFirst
+            && cached.sortKey === sortKey
+            && cached.sortDescending === sortDescending) {
             return cached.result
         }
 
+        // Locale-aware and case-insensitive: readdir returns whatever order
+        // the server felt like, which is rarely one a human reads. Also the
+        // tie-breaker for the other two keys — two files of the same size or
+        // minute still come out in a stable, readable order, and always
+        // ascending: flipping the tie-breaker along with the key would list
+        // equal sizes Z-to-A for no reason anyone asked.
+        const locale = this.locale.getLocale()
+        const byName = (a: SFTPFile, b: SFTPFile): number =>
+            a.name.localeCompare(b.name, locale, { sensitivity: 'base' })
+        const primary = (a: SFTPFile, b: SFTPFile): number => {
+            switch (sortKey) {
+                case 'size': return a.size - b.size
+                case 'date': return SidebarPlusSftpBrowserComponent.modifiedTime(a) - SidebarPlusSftpBrowserComponent.modifiedTime(b)
+                default: return byName(a, b)
+            }
+        }
+        const sign = sortDescending ? -1 : 1
+
         const files = this.filteredFileList.filter(f => showHidden || !this.isHidden(f))
         files.sort((a, b) => {
+            // Folders-first outranks the key, whichever it is: a size sort
+            // with folders reporting 4096 bytes apiece is not what anyone
+            // means by "folders first".
             if (foldersFirst && a.isDirectory !== b.isDirectory) {
                 return a.isDirectory ? -1 : 1
             }
-            // Locale-aware and case-insensitive: readdir returns whatever
-            // order the server felt like, which is rarely one a human reads.
-            return a.name.localeCompare(b.name, this.locale.getLocale(), { sensitivity: 'base' })
+            return sign * primary(a, b) || (sortKey === 'name' ? 0 : byName(a, b))
         })
 
-        this.displayCache = { source: this.filteredFileList, showHidden, foldersFirst, result: files }
+        this.displayCache = { source: this.filteredFileList, showHidden, foldersFirst, sortKey, sortDescending, result: files }
         return files
     }
 

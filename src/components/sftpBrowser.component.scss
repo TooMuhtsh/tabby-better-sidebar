@@ -268,9 +268,10 @@ sidebar-plus-sftp-browser .sftp-header-row {
     background-color: var(--theme-bg);
     border-bottom: 2px solid var(--theme-primary);
 
-    // Deliberately no hover state. An accent-coloured header that lights up
-    // under the cursor reads as sortable, and sorting is not implemented —
-    // better to look inert than to look broken.
+    // The row itself has no hover state: only the cells that actually sort
+    // light up, so an inert column (permissions, type, extension) does not
+    // read as clickable. Before sorting existed the whole header was kept
+    // inert for the same reason, the other way round.
     &:hover {
         background-color: var(--theme-bg);
     }
@@ -278,6 +279,25 @@ sidebar-plus-sftp-browser .sftp-header-row {
     .cell-value {
         font-family: inherit;
         opacity: 1;
+    }
+
+    .sortable {
+        cursor: pointer;
+
+        &:hover {
+            background-color: color-mix(in srgb, var(--theme-primary) 15%, transparent);
+        }
+    }
+
+    // The cells are flex containers that clip and never wrap (see .sftp-row
+    // > *), so a caret that does not fit next to its caption in a fixed
+    // track is cut off rather than pushing the grid.
+    .sort-indicator {
+        font-size: .75em;
+        margin-left: .15rem;
+        opacity: .8;
+        // fa-fw reserves 1.25em; too wide next to a 3.9rem "Size" track.
+        width: auto;
     }
 }
 

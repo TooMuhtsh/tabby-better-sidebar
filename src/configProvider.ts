@@ -166,6 +166,14 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             sftpShowHidden: true,
             sftpColumnBorders: true,
             sftpZebra: true,
+            // Sort order of the SFTP listing: which column, and which way.
+            // Two flat keys rather than one `{ key, descending }` object —
+            // a nested object mutated in place does not persist (piège #23).
+            // Name ascending by default, i.e. what the listing always did
+            // before sorting became a choice. See sortBy() in the browser for
+            // the per-column default direction on the first click.
+            sftpSortKey: 'name' as 'name'|'date'|'size',
+            sftpSortDescending: false,
             // Hides Tabby's own transfers button and dropdown from the tab bar,
             // the plugin's own panel showing the same transfers and more. On by
             // default: left visible, the native dropdown *opens by itself* on

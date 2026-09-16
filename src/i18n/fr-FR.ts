@@ -47,6 +47,8 @@ const fr_FR: Record<string, string> = {
     'Show hidden files': 'Afficher les fichiers cachés',
     'Column borders': 'Bordures de colonnes',
     'Alternating rows': 'Lignes alternées',
+    'Sort by': 'Trier par',
+    'Sort by this column': 'Trier sur cette colonne',
 
     // sftpBrowser.component.ts — downloadFolder()
     'Destination folder for {name}': 'Dossier de destination pour {name}',

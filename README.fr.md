@@ -109,6 +109,10 @@ vue peut être **figée** sur une session pour cesser de suivre le focus.
 - **Colonnes configurables** (taille, date, permissions en octal et en format
   long, type, extension), tri dossiers d'abord, affichage des fichiers cachés,
   lignes alternées
+- **Tri par nom, date ou taille** — un clic sur le titre de colonne trie
+  dessus, un second inverse le sens ; date et taille commencent par le plus
+  récent et le plus gros. Aussi dans le menu du clic droit sur l'en-tête, pour
+  une colonne masquée. Le choix est mémorisé
 - **Sélection multiple**, fichiers *et* dossiers, pour supprimer ou déplacer par
   lot
 - **Chargement par blocs** des listings volumineux
@@ -227,6 +231,8 @@ personne ne regarde.
 | `sftpDragOutFolders` | `false` | Autorise le glisser d'un *dossier* vers le système, et pas seulement d'un fichier |
 | `sftpColumns` | `size`, `date`, `mode` | Colonnes affichées dans le listing SFTP |
 | `sftpFoldersFirst` | `true` | Trie les dossiers avant les fichiers |
+| `sftpSortKey` | `name` | Colonne de tri du listing : `name`, `date` ou `size` |
+| `sftpSortDescending` | `false` | Sens du tri |
 | `sftpShowHidden` | `true` | Affiche les fichiers commençant par un point |
 | `sftpColumnBorders` | `true` | Séparateurs de colonnes dans le listing |
 | `sftpZebra` | `true` | Fond de ligne alterné |

@@ -33,6 +33,8 @@ const es_ES: Record<string, string> = {
     'Show hidden files': 'Mostrar archivos ocultos',
     'Column borders': 'Bordes de columna',
     'Alternating rows': 'Filas alternas',
+    'Sort by': 'Ordenar por',
+    'Sort by this column': 'Ordenar por esta columna',
 
     // sftpBrowser.component.ts — downloadFolder()
     'Destination folder for {name}': 'Carpeta de destino para {name}',

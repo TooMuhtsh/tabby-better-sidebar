@@ -85,14 +85,37 @@
             [class.with-col-borders]='showColumnBorders',
             [class.with-zebra]='showZebra'
         )
+            //- Name, date and size sort on click; the caret marks the active
+            //- key and its direction. The other columns keep their tooltip
+            //- and nothing else — no `.sortable`, so no pointer, no hover.
+            //- Right-click on the header still opens the display menu
+            //- (onBackgroundContextMenu), where "Sort by" is also reachable
+            //- for a column that is hidden.
             .sftp-row.sftp-header-row([style.grid-template-columns]='gridTemplate')
                 .cell-icon
-                .cell-name {{ 'Name' | translate }}
+                .cell-name.sortable(
+                    (click)="sortBy('name')",
+                    [title]="'Sort by this column' | translate"
+                )
+                    | {{ 'Name' | translate }}
+                    i.fa.fa-fw.fas.sort-indicator(
+                        *ngIf="sortKey === 'name'",
+                        [class.fa-caret-up]='!sortDescending',
+                        [class.fa-caret-down]='sortDescending'
+                    )
                 .cell-value(
                     *ngFor='let column of visibleColumns',
                     [class.cell-right]='column.numeric',
+                    [class.sortable]='sortKeyForColumn(column)',
+                    (click)='onHeaderClick(column)',
                     [title]='column.description'
-                ) {{ column.label }}
+                )
+                    | {{ column.label }}
+                    i.fa.fa-fw.fas.sort-indicator(
+                        *ngIf='sortKeyForColumn(column) === sortKey',
+                        [class.fa-caret-up]='!sortDescending',
+                        [class.fa-caret-down]='sortDescending'
+                    )
 
             .sftp-row.sftp-row-up(
                 *ngIf='canGoUp',
@@ -202,6 +225,15 @@
     a.menu-item(*ngFor='let column of availableColumns', (click)='toggleColumn(column)', [title]='column.description')
         .menu-check {{ isColumnVisible(column) ? '✓' : '' }}
         span {{ column.description }}
+    .menu-separator
+    //- The gutter carries the direction rather than a tick: clicking the
+    //- active key flips it, and the caret is what says so. Reachable even
+    //- when the matching column is hidden — that is the point of having it
+    //- here as well as on the header.
+    .menu-title {{ 'Sort by' | translate }}
+    a.menu-item(*ngFor='let option of sortOptions', (click)='sortBy(option.key)')
+        .menu-check {{ option.key === sortKey ? (sortDescending ? '▼' : '▲') : '' }}
+        span {{ option.label }}
     .menu-separator
     a.menu-item(*ngFor='let toggle of displayToggles', (click)='toggleDisplayOption(toggle.key)')
         .menu-check {{ isToggleOn(toggle.key) ? '✓' : '' }}
