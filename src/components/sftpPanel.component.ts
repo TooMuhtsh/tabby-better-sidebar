@@ -67,6 +67,11 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         }
         this.isActive = value
         if (value) {
+            // The user just opened the SFTP view. If no SSH session exists yet,
+            // show the "Waiting" placeholder rather than bouncing straight back
+            // to Profiles — the auto-return feature is for a session dying
+            // *while* the view is open, not for the moment of entry.
+            this.suppressAutoReturnOnce = true
             this.sync()
         } else {
             this.releaseBoundPanel()
@@ -74,6 +79,15 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
     }
 
     private isActive = false
+    /** True only on the sync() pass that immediately follows activation. */
+    private suppressAutoReturnOnce = false
+    /**
+     * Whether a session has ever been bound during the current activation.
+     * The "no live SSH session anywhere" auto-return must only fire when a
+     * session the user was actually looking at is gone — not when they just
+     * opened the view and are waiting for one to exist.
+     */
+    private everBoundSinceActivation = false
 
     /**
      * Pins the visible panel to the session it currently shows, so a focus
@@ -220,6 +234,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         this.boundSession = null
         this.boundTabTitle = null
         this.sessionLostSince = null
+        this.everBoundSinceActivation = false
         // Pinning a panel nobody can see is meaningless, and leaving it set
         // would silently carry over to whichever tab happens to get bound
         // next time the view becomes active again.
@@ -282,7 +297,12 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             this.notices.notice(lostTabTitle
                 ? this.i18n.t('SSH session lost ({tab}) — back to Profiles view', { tab: lostTabTitle })
                 : this.i18n.t('SSH session lost — back to Profiles view'))
-            this.closed.emit()
+            // Deferred: sync() is reached from the `active` @Input setter,
+            // which runs inside the parent's change-detection pass. Emitting
+            // `closed` synchronously calls setSftpMode(false) on the sidebar
+            // mid-CD, flipping `sftpMode` under bindings Angular has already
+            // checked and raising NG0100.
+            setTimeout(() => this.closed.emit())
             return
         }
         this.sessionLostSince = null
@@ -306,12 +326,16 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         if (
             this.boundTab === null &&
             this.autoReturnToProfilesEnabled() &&
-            this.noLiveSSHTabAnywhere()
+            this.noLiveSSHTabAnywhere() &&
+            !this.suppressAutoReturnOnce &&
+            this.everBoundSinceActivation
         ) {
             this.notices.notice(this.i18n.t('No more active SSH session — back to Profiles view'))
-            this.closed.emit()
+            // Deferred for the same NG0100 reason as the session-lost emit above.
+            setTimeout(() => this.closed.emit())
             return
         }
+        this.suppressAutoReturnOnce = false
 
         // Frozen: pin `tab` to whatever is already bound instead of asking
         // focus who's next — that's the entire effect of the freeze. The
@@ -331,6 +355,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         this.boundSession = tab?.sshSession ?? null
         this.boundTabTitle = tab?.title ?? null
         if (tab) {
+            this.everBoundSinceActivation = true
             this.attachPanel(tab)
         }
     }
