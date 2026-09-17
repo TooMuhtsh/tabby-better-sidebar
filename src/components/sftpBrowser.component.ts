@@ -196,6 +196,17 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     /**
+     * trackBy for the header-menu `*ngFor`s. The two getters above return
+     * fresh object identities on every access, so identity-based diffing
+     * would rebuild every menu item on each change-detection pass — that
+     * destroys the node between mousedown and mouseup and Chromium then
+     * drops the click entirely. Tracking by stable id/key keeps the nodes.
+     */
+    trackColumn = (_index: number, column: SftpColumn): string => column.id
+
+    trackToggle = (_index: number, toggle: { key: string }): string => toggle.key
+
+    /**
      * Full paths of every selected entry — files and folders mixed freely.
      * `Set` rather than an array: `isSelected()` runs for every row on every
      * change-detection pass (see the doc comment above `rows`), and a `Set`

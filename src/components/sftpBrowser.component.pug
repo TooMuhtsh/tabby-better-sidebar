@@ -199,10 +199,15 @@
     .menu-item.menu-item-disabled
         .menu-check ✓
         span {{ 'Name' | translate }}
-    a.menu-item(*ngFor='let column of availableColumns', (click)='toggleColumn(column)', [title]='column.description')
+    //- trackBy is not optional here: availableColumns/displayToggles are
+    //- getters that build fresh object arrays on every access, and without
+    //- trackBy ngFor rebuilds every item on every CD pass — the node under
+    //- the mouse dies between mousedown and mouseup, Chromium drops the
+    //- click, and the menu items become unclickable for real mice.
+    a.menu-item(*ngFor='let column of availableColumns; trackBy: trackColumn', (click)='toggleColumn(column)', [title]='column.description')
         .menu-check {{ isColumnVisible(column) ? '✓' : '' }}
         span {{ column.description }}
     .menu-separator
-    a.menu-item(*ngFor='let toggle of displayToggles', (click)='toggleDisplayOption(toggle.key)')
+    a.menu-item(*ngFor='let toggle of displayToggles; trackBy: trackToggle', (click)='toggleDisplayOption(toggle.key)')
         .menu-check {{ isToggleOn(toggle.key) ? '✓' : '' }}
         span {{ toggle.label }}
