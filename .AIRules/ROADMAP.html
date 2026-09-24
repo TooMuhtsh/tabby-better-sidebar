@@ -43,6 +43,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#outils-reseau-non-tranche">Outils réseau au menu contextuel</a></td><td><span class="pill warn">⚠️ Sans décision (2026-08-08)</span></td><td>—</td></tr>
 <tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill done">✅ Lot sans majeure livré et validé (2026-08-14)</span></td><td>Surveillance — 18 restantes bloquées par Angular 15 / pug 2</td></tr>
 <tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
+<tr><td><a href="#tabby-1-0-236">Compatibilité Tabby 1.0.236</a></td><td><span class="pill progress">🔧 En cours — codé sur branche, en attente de validation (2026-09-24)</span></td><td>Avant la prochaine publication</td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></td><td>À tenir à chaque publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
@@ -650,6 +651,47 @@ webpack-cli et les loaders, en période calme, build de production revérifié. 
 juger urgent : l'audit du 2026-08-14 montre que <code>webpack-cli@4</code> ne tire
 <strong>aucune</strong> vulnérabilité — ce bump est de l'hygiène d'outillage, pas de la
 sécurité.</p>
+
+<h3 id="tabby-1-0-236">Compatibilité Tabby 1.0.236
+<span class="pill progress">🔧 En cours — codé sur branche, en attente de validation (2026-09-24)</span></h3>
+<p>Tabby <strong>1.0.236</strong> est sortie le 2026-09-23 ; le plugin était validé sur la 1.0.235.
+Diff amont <code>v1.0.235..v1.0.236</code> (46 commits) instruit le 2026-09-24 contre chaque point
+de contact du plugin, à la lecture des sources — <strong>rien ne casse</strong> : conteneur de
+montage, <code>EditProfileModalComponent</code>, <code>SFTPPanelComponent</code>/<code>SFTPSession</code>
+et <code>SSHTabComponent</code> inchangés sur ce que le plugin consomme. Changements amont vérifiés
+sans effet : <code>FileTransfer.isComplete()</code> renvoie désormais <code>false</code> pour un
+transfert annulé (le <code>tick()</code> du registre teste <code>isCancelled()</code> avant) ; un
+échec d'envoi SFTP renseigne le statut avant <code>cancel()</code> ; <code>reconnect()</code>
+rafraîchit le profil <em>en place</em> (<code>refreshConfigProxyForProfile()</code>, même objet) ;
+Electron 38 → 43 ne touche ni <code>webContents.startDrag</code>, ni
+<code>nativeImage.createFromDataURL</code>, ni <code>DownloadURL</code>/<code>will-download</code>,
+ni <code>@electron/remote</code>. Seul effet visible hérité d'Electron 43 : les boîtes de dialogue
+de dossier s'ouvrent sur Téléchargements au lieu du dernier dossier utilisé — côté Tabby, rien à
+faire ici.</p>
+<p><strong>Un défaut réel, corrigé sur la branche</strong> : la 1.0.236 ajoute <code>cwd</code>,
+<code>rememberCwd</code> et <code>term</code> à <code>SSHProfileOptions</code>, absents de
+<code>PROFILE_OPTION_WHITELISTS.ssh</code> (<code>src/groupShare.ts</code>) — un dossier copié
+perdait ces trois réglages, comptés en « options inconnues ». Design retenu :</p>
+<ul>
+<li><code>rememberCwd</code> et <code>term</code> voyagent aux deux niveaux : un booléen et un type
+  de terminal que Tabby ne passe qu'à la requête PTY (<code>resolveSSHTerminalType()</code>).</li>
+<li><code>cwd</code> voyage au niveau <code>secrets</code> mais rejoint
+  <code>CREDENTIAL_FIELDS</code> : <code>/home/alice/deploy</code> nomme le compte et la disposition
+  du serveur, exactement ce que <code>credentials</code> retire déjà avec <code>user</code> et
+  <code>jumpHost</code>. Pas de risque d'exécution : Tabby l'écrit dans le shell distant entre
+  quotes simples échappées (<code>cd -- '…'</code>).</li>
+<li>Même liste des deux côtés, donc l'import d'un dossier venu d'une 1.0.236 garde aussi ces
+  champs. Vérifié hors Tabby sur un dossier synthétique (profil + <code>defaults.ssh</code>) aux
+  deux niveaux : 0 option inconnue, <code>cwd</code> compté en identifiants au niveau
+  <code>credentials</code>. Build de dev vert, <code>lint:i18n</code> vert.</li>
+</ul>
+<p class="muted">Reste à faire sur le poste : (1) <strong>passe de validation</strong> dans Tabby
+1.0.236, <code>Tabby.exe</code> tué et relancé — sidebar montée, panneau SFTP, glisser-déposer
+sortant, modale d'édition de profil non vide, et un aller-retour copier/coller d'un dossier
+<code>grp-zzz-test-*</code> dont un profil porte <code>cwd</code>/<code>term</code>, aux deux
+niveaux ; (2) <strong>recopier les typings</strong> <code>src/types/tabby-ssh</code> depuis
+l'application installée (<code>PROVENANCE.md</code>) — les trois options ci-dessus doivent être le
+seul écart attendu ; (3) entrée <code>CHANGELOG.md</code> au bump de version.</p>
 
 <h3 id="changelog">CHANGELOG.md du dépôt
 <span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></h3>
