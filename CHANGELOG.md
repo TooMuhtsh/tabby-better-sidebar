@@ -3,6 +3,20 @@
 All notable changes to `tabby-better-sidebar` are documented here, one entry
 per npm release. Dates are the npm publication dates.
 
+## 1.0.4 — 2026-09-24
+
+- **Fixed** (Tabby 1.0.236 compatibility): sharing a folder through the
+  clipboard now keeps the three SSH options Tabby 1.0.236 introduced —
+  `term`, `rememberCwd` and `cwd` (remote start directory). They used to be
+  dropped as unknown options. *Copy without credentials* still removes `cwd`,
+  like the username: a path such as `/home/alice/deploy` names the account and
+  the server layout.
+- Checked against the rest of Tabby 1.0.236 (including its Electron 38 → 43
+  upgrade): no other change affects the plugin.
+- **Fixed** (packaging): `typings` now points to `dist/src/index.d.ts`, where
+  the build actually writes them. 1.0.3 also shipped an outdated second copy
+  under `dist/`, left over from an earlier build.
+
 ## 1.0.3 — 2026-08-14
 
 - **Security**: bumped bundled `dompurify` to 3.4.13 (GHSA-55q2-fjhq-7xh7 — the
