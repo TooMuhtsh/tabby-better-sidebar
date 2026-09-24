@@ -3,6 +3,19 @@
 All notable changes to `tabby-better-sidebar` are documented here, one entry
 per npm release. Dates are the npm publication dates.
 
+## 1.0.5 — 2026-09-24
+
+- **Added**: Simplified Chinese (`zh-CN`) translation of the whole plugin.
+- **Fixed**: the column and display toggles in the SFTP header menu did not
+  respond to a real mouse click.
+- **Fixed**: an Angular `NG0100` error when the SFTP view closes itself.
+- **Changed**: opening the SFTP view with no SSH session now shows the
+  "Waiting for an active SSH session" placeholder instead of bouncing straight
+  back to the profiles; the automatic return only happens when a session that
+  was shown is lost.
+- **Fixed**: no more false console warning about the SFTP context menu when
+  Tabby runs in German, Spanish or Chinese.
+
 ## 1.0.4 — 2026-09-24
 
 - **Fixed** (Tabby 1.0.236 compatibility): sharing a folder through the
