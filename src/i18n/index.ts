@@ -4,6 +4,7 @@ import { LocaleService, TranslateService } from 'tabby-core'
 import fr_FR from './fr-FR'
 import es_ES from './es-ES'
 import de_DE from './de-DE'
+import zh_CN from './zh-CN'
 
 /**
  * Plugin UI translations, grafted onto Tabby's own mechanism.
@@ -28,7 +29,8 @@ import de_DE from './de-DE'
  */
 
 /**
- * Covered languages, by Tabby locale code — the same three the vault ships.
+ * Covered languages, by Tabby locale code — the vault's three, plus zh-CN
+ * (contributed by hoyoho, 2026-09).
  *
  * Locale codes, not language codes: Tabby tells `en-US` from `en-GB`; an
  * entry under `fr` would never be found. `en-US` is deliberately absent —
@@ -40,6 +42,7 @@ const TABLES: Record<string, Record<string, string>> = {
     'fr-FR': fr_FR,
     'es-ES': es_ES,
     'de-DE': de_DE,
+    'zh-CN': zh_CN,
 }
 
 /**

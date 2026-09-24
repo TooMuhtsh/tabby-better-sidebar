@@ -137,10 +137,11 @@ be **frozen** on one session so it stops following the focused tab.
 
 ## 🌍 Languages
 
-The interface follows Tabby's language — English, plus French, Spanish and
-German, covering the whole plugin: profile tree, context menus, active sessions
-and tunnels, SFTP browser, dialogs, transfers and the settings tab. Any other
-locale falls back to English.
+The interface follows Tabby's language — English, plus French, Spanish,
+German and Simplified Chinese (contributed by
+[hoyoho](https://github.com/hoyoho)), covering the whole plugin: profile tree,
+context menus, active sessions and tunnels, SFTP browser, dialogs, transfers
+and the settings tab. Any other locale falls back to English.
 
 ## Elsewhere
 

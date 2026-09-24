@@ -44,6 +44,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill done">✅ Lot sans majeure livré et validé (2026-08-14)</span></td><td>Surveillance — 18 restantes bloquées par Angular 15 / pug 2</td></tr>
 <tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
 <tr><td><a href="#tabby-1-0-236">Compatibilité Tabby 1.0.236</a></td><td><span class="pill progress">🔧 En cours — codé sur branche, en attente de validation (2026-09-24)</span></td><td>Avant la prochaine publication</td></tr>
+<tr><td><a href="#fork-hoyoho">Reprise du fork de hoyoho (correctifs SFTP, chinois)</a></td><td><span class="pill progress">🔧 En cours — repris sur branche, en attente de validation (2026-09-24)</span></td><td>Prochaine publication (1.0.5)</td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></td><td>À tenir à chaque publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
@@ -692,6 +693,55 @@ sortant, modale d'édition de profil non vide, et un aller-retour copier/coller 
 niveaux ; (2) <strong>recopier les typings</strong> <code>src/types/tabby-ssh</code> depuis
 l'application installée (<code>PROVENANCE.md</code>) — les trois options ci-dessus doivent être le
 seul écart attendu ; (3) entrée <code>CHANGELOG.md</code> au bump de version.</p>
+
+<h3 id="fork-hoyoho">Reprise du fork de hoyoho (correctifs SFTP, chinois)
+<span class="pill progress">🔧 En cours — repris sur branche, en attente de validation (2026-09-24)</span></h3>
+<p>Fork <code>hoyoho/tabby-better-sidebar</code> (12 commits, 2026-09-12 → 17, partis de la 1.0.3),
+instruit le 2026-09-24 sur demande de l'utilisateur. <strong>Il ne se fusionne pas en bloc</strong> :
+il vise le fork de Tabby de son auteur (<code>hoyoho/tabby</code>, 1.0.236 + ~30 commits), et deux
+de ses changements cassent le plugin sur le Tabby officiel. Retenu par l'utilisateur et repris sur
+la branche, commits d'origine conservés (auteur hoyoho) :</p>
+<ul>
+<li><code>6198b30</code> — menu d'en-tête SFTP insensible aux vrais clics : les getters
+  <code>availableColumns</code>/<code>displayToggles</code> rendent de nouveaux objets à chaque
+  détection de changement, <code>*ngFor</code> sans <code>trackBy</code> recrée le nœud entre
+  <code>mousedown</code> et <code>mouseup</code>, Chromium perd le clic. Correctif : <code>trackBy</code>.</li>
+<li><code>ef719f0</code> — NG0100 quand la vue SFTP se referme d'elle-même (émission de
+  <code>closed</code> reportée au tick suivant) <strong>et changement de comportement assumé</strong> :
+  entrer dans la vue sans session SSH affiche « En attente » au lieu de rebasculer aussitôt vers
+  les profils ; le retour automatique ne joue plus que pour une session effectivement perdue.</li>
+<li><code>662e361</code> — l'avertissement console du menu contextuel SFTP accepte les libellés
+  « Delete » traduits (de, es, zh). Diagnostic seulement : la suppression de l'entrée native se fait
+  par position.</li>
+<li><strong>Traduction chinois simplifié</strong> (<code>zh-CN</code>) — portée depuis son
+  <code>locale/zh-CN.po</code> vers <code>src/i18n/zh-CN.ts</code> (426 clés sur 426, pluriels en
+  <code>other</code> seul), <code>lint:i18n</code> vert. Les 7 entrées de son <code>.po</code> propres à
+  ses fonctions (dont le renommage du plugin en « 侧边栏+ ») ne sont pas reprises.</li>
+</ul>
+<div class="callout important"><p><strong>Non repris, et pourquoi</strong> — pour ne pas le reproposer :</p>
+<ul>
+<li><strong><code>SidebarContribution</code></strong> (<code>6e9c40a</code>) : API de montage qui
+  n'existe que dans <code>hoyoho/tabby</code> — ni en 1.0.236, ni sur le <code>master</code> amont au
+  2026-09-24. À reconsidérer seulement si Tabby l'adopte.</li>
+<li><strong>Constructeur de <code>SFTPPanelComponent</code></strong> (même commit) : le paramètre
+  <code>translate</code> ajouté n'existe que dans son fork ; sur Tabby officiel il prendrait la place
+  des fournisseurs de menu et le panneau SFTP planterait à l'ouverture.</li>
+<li><strong>Panneaux du bas, aperçu de profil, pastilles retirées, regroupement des sessions</strong>
+  (<code>9020f45</code>, <code>9f88860</code>, <code>e33410f</code>, <code>f346307</code>) : alignés sur la
+  sidebar de son fork de Tabby.</li>
+<li><strong>Transparence</strong> (<code>34de21c</code>) : pilotée par un plugin d'arrière-plan qui
+  lui est propre.</li>
+<li><strong>Passage des tables en <code>.po</code></strong> (<code>9dfc324</code>) et pluriels
+  <code>one</code> → <code>=1</code> : refonte d'outillage sans bénéfice ici, et <code>=1</code>
+  dégraderait le français (0 est singulier : « 0 fichier »).</li>
+<li><strong>Retrait du raccourci Ctrl+Entrée</strong> (<code>a45c368</code>) : choix de conception
+  de son auteur. Sans conflit avec le raccourci « Insert new line » ajouté par Tabby 1.0.236
+  (Alt+Maj+Entrée, <code>ESC CR</code>).</li>
+</ul></div>
+<p class="muted">Reste à faire : passe de validation dans Tabby — menu d'en-tête SFTP au clic
+souris, entrée dans la vue SFTP sans session (placeholder, pas de rebond, pas de NG0100 en
+console), perte d'une session liée (retour aux profils), et Tabby passé en 简体中文 ; puis entrée
+<code>CHANGELOG.md</code> au bump 1.0.5.</p>
 
 <h3 id="changelog">CHANGELOG.md du dépôt
 <span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></h3>
