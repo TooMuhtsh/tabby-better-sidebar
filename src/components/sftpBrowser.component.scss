@@ -231,6 +231,36 @@ sidebar-plus-sftp-browser .sftp-floating-menu {
         margin: .25rem 0;
         background-color: var(--theme-secondary);
     }
+
+    // Favorites: the path takes the room and clips from the right, the
+    // remove cross only shows on the hovered row — a column of crosses reads
+    // as a list of things to delete.
+    .favorite-item {
+        max-width: 20rem;
+
+        .favorite-path {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: monospace;
+        }
+
+        .favorite-remove {
+            flex: none;
+            margin-left: .4rem;
+            color: inherit;
+            opacity: 0;
+
+            &:hover {
+                color: var(--theme-primary);
+            }
+        }
+
+        &:hover .favorite-remove {
+            opacity: .7;
+        }
+    }
 }
 
 // Both optional, as in SFTP+, and both driven by a class on the grid so the

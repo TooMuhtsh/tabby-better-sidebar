@@ -30,6 +30,16 @@
 
     //- A title on every button: the captions the native template pairs with
     //- each icon do not fit a sidebar, and an icon on its own says nothing.
+    //-
+    //- The star sits first, next to the path it is about. Lit when the
+    //- current folder is a favorite; the click opens the list either way.
+    button.btn.btn-link.btn-sm.sftp-tool.sftp-favorites-button(
+        type='button',
+        [class.active]='isCurrentFavorite',
+        (click)='openFavoritesMenu($event)',
+        [title]="'Favorite folders' | translate"
+    )
+        .fa.fa-fw.fas.fa-star
     button.btn.btn-link.btn-sm.sftp-tool(
         type='button',
         *ngIf='editingPath === null',
@@ -211,3 +221,34 @@
     a.menu-item(*ngFor='let toggle of displayToggles; trackBy: trackToggle', (click)='toggleDisplayOption(toggle.key)')
         .menu-check {{ isToggleOn(toggle.key) ? '✓' : '' }}
         span {{ toggle.label }}
+
+//- Favorite folders of the bound profile, dropped down from the toolbar
+//- star. A click on a path navigates and closes; the cross on a row removes
+//- it and leaves the menu open; the last item toggles the current folder.
+//- Two disabled rows cover the empty states — no profile, no favorites yet.
+.sftp-floating-menu.sftp-favorites-menu(
+    *ngIf='favoritesMenuOpen',
+    [style.left.px]='backgroundMenuX',
+    [style.top.px]='backgroundMenuY'
+)
+    .menu-title {{ 'Favorites' | translate }}
+    .menu-item.menu-item-disabled(*ngIf='!profileId')
+        span {{ 'Favorites are saved per profile, and this session has none.' | translate }}
+    .menu-item.menu-item-disabled(*ngIf='profileId && !favorites.length')
+        span {{ 'No favorites yet — add the current folder below.' | translate }}
+    //- A div, not an `a`: the remove cross inside it is a link of its own,
+    //- and an anchor inside an anchor is not valid HTML.
+    .menu-item.favorite-item(*ngFor='let fav of favorites', (click)='goToFavorite(fav)', [title]='fav')
+        .menu-check ★
+        span.favorite-path {{ fav }}
+        span.favorite-remove(
+            (click)='removeFavorite(fav); $event.stopPropagation()',
+            [title]="'Remove from favorites' | translate"
+        )
+            .fa.fa-fw.fas.fa-times
+    ng-container(*ngIf='profileId')
+        .menu-separator
+        a.menu-item((click)='toggleCurrentFavorite()')
+            .menu-check {{ isCurrentFavorite ? '★' : '☆' }}
+            span(*ngIf='!isCurrentFavorite') {{ 'Add the current folder' | translate }}
+            span(*ngIf='isCurrentFavorite') {{ 'Remove the current folder' | translate }}

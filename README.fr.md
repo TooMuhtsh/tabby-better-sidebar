@@ -109,6 +109,8 @@ vue peut être **figée** sur une session pour cesser de suivre le focus.
 - **Colonnes configurables** (taille, date, permissions en octal et en format
   long, type, extension), tri dossiers d'abord, affichage des fichiers cachés,
   lignes alternées
+- **Dossiers favoris, par profil** — le bouton étoile les liste et ajoute ou
+  retire le dossier courant ; un clic ramène au chemin enregistré
 - **Sélection multiple**, fichiers *et* dossiers, pour supprimer ou déplacer par
   lot
 - **Chargement par blocs** des listings volumineux
@@ -228,6 +230,7 @@ personne ne regarde.
 | `sftpDragOutFolders` | `false` | Autorise le glisser d'un *dossier* vers le système, et pas seulement d'un fichier |
 | `sftpColumns` | `size`, `date`, `mode` | Colonnes affichées dans le listing SFTP |
 | `sftpFoldersFirst` | `true` | Trie les dossiers avant les fichiers |
+| `sftpFavorites` | *(vide)* | Dossiers distants favoris, par identifiant de profil |
 | `sftpShowHidden` | `true` | Affiche les fichiers commençant par un point |
 | `sftpColumnBorders` | `true` | Séparateurs de colonnes dans le listing |
 | `sftpZebra` | `true` | Fond de ligne alterné |

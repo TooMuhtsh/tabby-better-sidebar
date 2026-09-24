@@ -166,6 +166,11 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             sftpShowHidden: true,
             sftpColumnBorders: true,
             sftpZebra: true,
+            // Favorite remote folders of the SFTP browser, keyed by profile
+            // id: a path means nothing outside the server it lives on. The
+            // whole record is copied and reassigned on every change — a
+            // nested object mutated in place does not persist (piège #23).
+            sftpFavorites: {} as Record<string, string[]>,
             // Hides Tabby's own transfers button and dropdown from the tab bar,
             // the plugin's own panel showing the same transfers and more. On by
             // default: left visible, the native dropdown *opens by itself* on

@@ -265,6 +265,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     /** The constructor's `platform` goes to `super` — kept under our own name for the routes below. */
     private readonly platformSvc: PlatformService
 
+    /**
+     * Id of the profile the bound tab was opened from, set by the panel before
+     * the view is attached. Keys the favorite folders; `null` for a tab with
+     * no profile (quick connect), which then has no favorites to offer.
+     */
+    profileId: string|null = null
+
     private _sessionLabel: string|null = null
     /**
      * Display name of the SSH tab this panel serves, set by the host panel at
@@ -563,6 +570,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     backgroundMenuOpen = false
     /** Columns and display toggles. Opened by right-clicking the header — where SFTP+ puts it, and where one looks for column settings — or from the background menu. */
     displayMenuOpen = false
+    /** Favorite folders of the bound profile, from the toolbar star. Shares the position fields below. */
+    favoritesMenuOpen = false
     backgroundMenuX = 0
     backgroundMenuY = 0
     /** Set when either menu opens, consumed once in ngAfterViewChecked — a menu has no measurable size until Angular has rendered it (piège #30). */
@@ -606,14 +615,23 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      */
     @HostListener('document:click', ['$event'])
     onDocumentClick (event: MouseEvent): void {
-        if (!this.backgroundMenuOpen && !this.displayMenuOpen) {
+        if (!this.backgroundMenuOpen && !this.displayMenuOpen && !this.favoritesMenuOpen) {
             return
         }
-        if ((event.target as HTMLElement).closest('.sftp-floating-menu')) {
+        const target = event.target as HTMLElement
+        if (target.closest('.sftp-floating-menu')) {
+            return
+        }
+        // The star opens its menu on *click*, and this listener sees that
+        // same click a moment later — without this it would close the menu
+        // it just watched open. The two other menus open on right-click, so
+        // they never had the problem.
+        if (target.closest('.sftp-favorites-button')) {
             return
         }
         this.backgroundMenuOpen = false
         this.displayMenuOpen = false
+        this.favoritesMenuOpen = false
     }
 
     ngAfterViewChecked (): void {
@@ -644,6 +662,78 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.backgroundMenuOpen = false
         this.displayMenuOpen = true
         this.backgroundMenuDirty = true
+    }
+
+    ////// FAVORITE FOLDERS //////
+    /**
+     * The saved folders of the bound profile, in the order they were added.
+     * Empty without a profile id — see `profileId`.
+     */
+    get favorites (): string[] {
+        if (!this.profileId) {
+            return []
+        }
+        return this.config.store.sidebarPlus?.sftpFavorites?.[this.profileId] ?? []
+    }
+
+    /** Whether the folder currently shown is one of them — drives the star's active state. */
+    get isCurrentFavorite (): boolean {
+        return this.favorites.includes(this.path)
+    }
+
+    /**
+     * Opens the favorites menu under the star rather than at the cursor: it is
+     * a dropdown of that button, and should read as one. Same position fields
+     * and the same clamping pass as the two context menus.
+     */
+    openFavoritesMenu (event: MouseEvent): void {
+        const button = (event.currentTarget as HTMLElement).getBoundingClientRect()
+        this.backgroundMenuOpen = false
+        this.displayMenuOpen = false
+        this.backgroundMenuX = button.left
+        this.backgroundMenuY = button.bottom + 2
+        this.favoritesMenuOpen = true
+        this.backgroundMenuDirty = true
+    }
+
+    goToFavorite (path: string): void {
+        this.favoritesMenuOpen = false
+        void this.navigate(path)
+    }
+
+    toggleCurrentFavorite (): void {
+        if (this.isCurrentFavorite) {
+            this.removeFavorite(this.path)
+        } else {
+            this.addFavorite(this.path)
+        }
+    }
+
+    addFavorite (path: string): void {
+        if (!this.profileId || this.favorites.includes(path)) {
+            return
+        }
+        this.saveFavorites([...this.favorites, path])
+    }
+
+    /** Called from the menu's cross as well: the menu stays open, so several can go in a row. */
+    removeFavorite (path: string): void {
+        if (!this.profileId) {
+            return
+        }
+        this.saveFavorites(this.favorites.filter(p => p !== path))
+    }
+
+    /** Copy-and-reassign, never mutate in place — the same rule as every other record in `sidebarPlus` (piège #23). */
+    private saveFavorites (paths: string[]): void {
+        const all: Record<string, string[]> = { ...(this.config.store.sidebarPlus.sftpFavorites ?? {}) }
+        if (paths.length) {
+            all[this.profileId!] = paths
+        } else {
+            delete all[this.profileId!]
+        }
+        this.config.store.sidebarPlus.sftpFavorites = all
+        this.config.save()
     }
 
     /**
