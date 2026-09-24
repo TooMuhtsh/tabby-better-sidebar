@@ -2,9 +2,7 @@
  * Simplified Chinese table — keys are the English source strings used in the code.
  * See fr-FR.ts for how these tables are kept in step with the code.
  *
- * Contributed by hoyoho (github.com/hoyoho/tabby-better-sidebar, locale/zh-CN.po,
- * 2026-09-12), converted to this plugin's table format. Plurals only carry the
- * `other` category: Chinese has no grammatical number.
+ * Plurals only carry the `other` category: Chinese has no grammatical number.
  */
 const zh_CN: Record<string, string> = {
     // sftpPanel.component.ts — header line, auto-return-to-Profiles notices

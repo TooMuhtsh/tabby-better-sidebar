@@ -152,10 +152,9 @@ vue peut être **figée** sur une session pour cesser de suivre le focus.
 ## 🌍 Langues
 
 L'interface suit la langue de Tabby — anglais, plus français, espagnol,
-allemand et chinois simplifié (contribué par
-[hoyoho](https://github.com/hoyoho)), sur l'ensemble du plugin : arbre des
-profils, menus contextuels, sessions actives et tunnels, explorateur SFTP,
-dialogues, transferts et onglet de réglages. Toute autre langue retombe sur
+allemand et chinois simplifié, sur l'ensemble du plugin : arbre des profils,
+menus contextuels, sessions actives et tunnels, explorateur SFTP, dialogues,
+transferts et onglet de réglages. Toute autre langue retombe sur
 l'anglais.
 
 ## Ailleurs

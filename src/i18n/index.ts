@@ -29,8 +29,7 @@ import zh_CN from './zh-CN'
  */
 
 /**
- * Covered languages, by Tabby locale code — the vault's three, plus zh-CN
- * (contributed by hoyoho, 2026-09).
+ * Covered languages, by Tabby locale code — the vault's three, plus zh-CN.
  *
  * Locale codes, not language codes: Tabby tells `en-US` from `en-GB`; an
  * entry under `fr` would never be found. `en-US` is deliberately absent —
