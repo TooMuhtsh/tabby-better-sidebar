@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { NgZone } from '@angular/core'
+import { SidebarPlusI18nService } from './i18n'
 import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { Opener, SidebarPlusEditorService } from './editorLauncher.service'
@@ -86,6 +87,7 @@ export class SftpRemoteEditor {
         private temp: SidebarPlusTempFilesService,
         private confirm: ConfirmFn,
         private zone: NgZone,
+        private i18n: SidebarPlusI18nService,
     ) { }
 
     /**
@@ -148,7 +150,7 @@ export class SftpRemoteEditor {
             // usually the server refusing to open something that is not a
             // regular file (EISDIR is reported as a plain FAILURE), and knowing
             // *which* path was asked for is what tells the two apart.
-            this.notifications.error(`Impossible de télécharger ${item.fullPath}`, String(e))
+            this.notifications.error(this.i18n.t('Could not download {path}', { path: item.fullPath }), String(e))
             return
         }
 
@@ -171,7 +173,7 @@ export class SftpRemoteEditor {
         this.sessions.set(item.fullPath, session)
 
         this.open(localPath, opener)
-        this.notifications.notice(`${item.name} ouvert — chaque enregistrement sera renvoyé au serveur`)
+        this.notifications.notice(this.i18n.t('{name} opened — every save will be sent back to the server', { name: item.name }))
     }
 
     /**
@@ -192,9 +194,8 @@ export class SftpRemoteEditor {
         }
 
         if (await this.hasLocalEdits(session) && !await this.confirm(
-            `${item.name} a changé sur le serveur, et votre copie locale a des modifications non enregistrées. `
-            + 'Reprendre la version du serveur fera perdre ces modifications locales.',
-            'Reprendre celle du serveur',
+            this.i18n.t('{name} has changed on the server, and your local copy has unsaved changes. Taking the server version will lose those local changes.', { name: item.name }),
+            this.i18n.t('Take the server version'),
         )) {
             this.open(session.localPath, opener)
             return
@@ -206,7 +207,7 @@ export class SftpRemoteEditor {
             // The stale copy is still better than nothing — the user asked to
             // open a file, and refusing outright over a failed refresh would
             // lose them the gesture as well as the update.
-            this.notifications.error(`Impossible d'actualiser ${item.name} depuis le serveur`, String(e))
+            this.notifications.error(this.i18n.t('Could not refresh {name} from the server', { name: item.name }), String(e))
             this.open(session.localPath, opener)
             return
         }
@@ -214,7 +215,7 @@ export class SftpRemoteEditor {
         const stat = await fs.promises.stat(session.localPath)
         session.baseline = { size: stat.size, mtimeMs: stat.mtimeMs }
         session.remote = now
-        this.notifications.notice(`${item.name} a été actualisé depuis le serveur`)
+        this.notifications.notice(this.i18n.t('{name} was refreshed from the server', { name: item.name }))
         this.open(session.localPath, opener)
     }
 
@@ -298,13 +299,13 @@ export class SftpRemoteEditor {
         try {
             const now = await this.remoteStamp(sftp, item)
             if (this.changed(session.remote, now) && !await this.confirm(
-                `${item.name} a changé sur le serveur depuis son ouverture. Enregistrer écrasera ces modifications distantes. Continuer ?`,
-                'Écraser',
+                this.i18n.t('{name} has changed on the server since it was opened. Saving will overwrite those remote changes. Continue?', { name: item.name }),
+                this.i18n.t('Overwrite'),
             )) {
                 // `session.remote` is deliberately left as it was: the conflict
                 // has not been resolved, so the next save must ask again rather
                 // than treat silence as consent.
-                this.inZone(() => this.notifications.notice(`${item.name} n'a pas été renvoyé — le fichier distant est intact`))
+                this.inZone(() => this.notifications.notice(this.i18n.t('{name} was not sent back — the remote file is untouched', { name: item.name })))
                 return
             }
             // `now.mode`, not `item.mode`: the mode the file has at the instant
@@ -313,9 +314,9 @@ export class SftpRemoteEditor {
             await this.transfers.upload(sftp, item.fullPath, session.localPath, item.name, stat.size, now.mode)
             session.baseline = { size: stat.size, mtimeMs: stat.mtimeMs }
             session.remote = await this.remoteStamp(sftp, item)
-            this.inZone(() => this.notifications.notice(`${item.name} renvoyé sur le serveur`))
+            this.inZone(() => this.notifications.notice(this.i18n.t('{name} sent back to the server', { name: item.name })))
         } catch (e) {
-            this.inZone(() => this.notifications.error(`Échec du renvoi de ${item.name}`, String(e)))
+            this.inZone(() => this.notifications.error(this.i18n.t('Could not send {name} back', { name: item.name }), String(e)))
         } finally {
             session.uploading = false
         }

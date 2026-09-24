@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import { FileDownload, FileTransfer, FileUpload, PlatformService } from 'tabby-core'
+import { SidebarPlusI18nService } from './i18n'
 import { SidebarPlusNoticesService } from './notices.service'
 import { SidebarPlusTransfersService, TransferContext } from './transfersRegistry.service'
 import { SFTPPanelComponent } from 'tabby-ssh'
@@ -46,6 +47,7 @@ export class SftpTransfers {
         private platform: PlatformService,
         private notifications: SidebarPlusNoticesService,
         private registry: SidebarPlusTransfersService,
+        private i18n: SidebarPlusI18nService,
     ) { }
 
     /**
@@ -83,7 +85,7 @@ export class SftpTransfers {
         if (this.imposesPath) {
             const transfer = await this.platform.startDownload(name, mode, size, localPath)
             if (!transfer) {
-                throw new Error(`Le téléchargement de ${name} n'a pas pu démarrer`)
+                throw new Error(this.i18n.t('The download of {name} could not start', { name }))
             }
             // The `fileTransferStarted$` subscription tracked it inside the call
             // above, without context — completed here, where it is known.
@@ -149,13 +151,15 @@ export class SftpTransfers {
                 }
             }
         }
+        // Shown twice: as the "unsound" reason in the transfer list, and in
+        // the toast detail of the error thrown below.
         const reason = localSize === null
-            ? `aucun fichier à destination (${localPath})`
-            : `${localSize} octets à destination, ${expectedSize} attendus`
+            ? this.i18n.t('no file at destination ({path})', { path: localPath })
+            : this.i18n.t('{actual} bytes at destination, {expected} expected', { actual: localSize, expected: expectedSize })
         if (transfer) {
             this.registry.markUnsound(transfer, reason)
         }
-        throw new Error(`${name} : arrivée non vérifiée — ${reason}`)
+        throw new Error(this.i18n.t('{name}: arrival not verified — {reason}', { name, reason }))
     }
 
     /**
@@ -172,7 +176,7 @@ export class SftpTransfers {
         if (this.imposesPath) {
             const [transfer] = await this.platform.startUpload({ multiple: false }, [localPath])
             if (!transfer) {
-                throw new Error(`L'envoi de ${name} n'a pas pu démarrer`)
+                throw new Error(this.i18n.t('The upload of {name} could not start', { name }))
             }
             this.registry.attachContext(transfer, {
                 remotePath,
@@ -204,7 +208,7 @@ export class SftpTransfers {
             // difference between runnable and not — the user has to know.
             console.error(`[better-sidebar] ${name} : chmod ${permissions.toString(8)} refusé`, e)
             this.notifications.error(
-                `${name} a été renvoyé, mais ses permissions n'ont pas pu être rétablies (${permissions.toString(8)})`,
+                this.i18n.t('{name} was sent back, but its permissions could not be restored ({mode})', { name, mode: permissions.toString(8) }),
                 String(e),
             )
         }

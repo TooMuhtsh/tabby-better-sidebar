@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core'
 import { ConfigService, PartialProfile, PartialProfileGroup, Profile, ProfileGroup } from 'tabby-core'
 import { SidebarSnippet, SidebarSnippetSettings } from './configProvider'
+import { SidebarPlusI18nService } from './i18n'
 
 /** One row of the variables form — a placeholder the snippets in scope actually read. */
 export interface SnippetVariableRow {
@@ -12,7 +13,7 @@ export interface SnippetVariableRow {
     own: string
     /** The value that would be substituted right now. */
     resolved?: string
-    /** Where `resolved` comes from — "ici", a folder name, "profil", "défaut du snippet". */
+    /** Where `resolved` comes from — "here", a folder name, "profile", "snippet default" (translated). */
     source: string
     /** Required and answered nowhere: every snippet using it will refuse to run. */
     unanswered: boolean
@@ -60,7 +61,7 @@ export class SidebarPlusSnippetsService {
      */
     private groups: PartialProfileGroup<ProfileGroup>[] = []
 
-    constructor (private config: ConfigService) { }
+    constructor (private config: ConfigService, private i18n: SidebarPlusI18nService) { }
 
     useGroups (groups: PartialProfileGroup<ProfileGroup>[]): void {
         this.groups = groups
@@ -570,17 +571,17 @@ export class SidebarPlusSnippetsService {
         snippetId: string,
     ): string {
         if (own[name] !== undefined) {
-            return 'ici'
+            return this.i18n.t('here')
         }
         for (const id of chain.slice(1)) {
             if (this.variablesOf(id, snippetId)[name] !== undefined) {
-                return this.groupName(id) || 'dossier'
+                return this.groupName(id) || this.i18n.t('folder')
             }
         }
         if (this.implicitVariables(profile)[name] !== undefined) {
-            return 'profil'
+            return this.i18n.t('profile')
         }
-        return 'défaut du snippet'
+        return this.i18n.t('snippet default')
     }
 
     /**

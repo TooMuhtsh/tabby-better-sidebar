@@ -1,5 +1,6 @@
 import { SSHTabComponent, SFTPPanelComponent, SFTPSession } from 'tabby-ssh'
 import { EditProfileModalComponent, SettingsTabComponent } from 'tabby-settings'
+import { TranslatableMessage } from './i18nMessage'
 import { checkProfileModalInputs } from './profileModal'
 
 /**
@@ -29,8 +30,13 @@ import { checkProfileModalInputs } from './profileModal'
  */
 export interface HostPrecondition {
     id: string
-    /** What the user loses when this one is not met — shown to them, so in French. */
-    feature: string
+    /**
+     * What the user loses when this one is not met — shown to them. A
+     * `TranslatableMessage` rather than a string: this module has no injector
+     * access, so the English key travels and `SidebarPlusMountService`
+     * translates it at the point of display (see `src/i18nMessage.ts`).
+     */
+    feature: TranslatableMessage
     /** True when the host still provides what this plugin needs. */
     check: () => boolean
     /** Whether failing this one leaves nothing worth mounting. */
@@ -43,7 +49,7 @@ const isClass = (x: unknown): boolean => typeof x === 'function'
 export const HOST_PRECONDITIONS: HostPrecondition[] = [
     {
         id: 'mount-container',
-        feature: 'la sidebar elle-même',
+        feature: { message: 'the sidebar itself' },
         // The one host *DOM* dependency left after the profile edit route moved
         // to the API. `SidebarPlusMountService` inserts its root node here.
         check: () => !!document.querySelector('.window.h-100.d-flex'),
@@ -51,17 +57,17 @@ export const HOST_PRECONDITIONS: HostPrecondition[] = [
     },
     {
         id: 'ssh-tab',
-        feature: 'les sessions actives, le SFTP et les tunnels',
+        feature: { message: 'active sessions, SFTP and tunnels' },
         check: () => isClass(SSHTabComponent),
     },
     {
         id: 'sftp-panel',
-        feature: 'le panneau SFTP',
+        feature: { message: 'the SFTP panel' },
         check: () => isClass(SFTPPanelComponent) && isClass(SFTPSession),
     },
     {
         id: 'edit-profile-modal',
-        feature: 'la création et l\'édition de profils',
+        feature: { message: 'profile creation and editing' },
         // The class being there is not enough, and this was the one red point
         // left after the 2026-08-03 pass: the two inputs the plugin assigns are
         // declared in an augmentation that lies to TypeScript by construction

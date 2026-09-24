@@ -16,6 +16,15 @@ export const INSERT_NEWLINE_HOTKEY = 'sidebar-plus-insert-newline'
 export const FOCUS_FILTER_HOTKEY = 'sidebar-plus-focus-filter'
 
 /**
+ * Hotkey captions. Tabby's settings page runs `hotkey.name | translate`
+ * itself, so these stay English keys and the tables translate them — the
+ * lint script reads them through EXTRA_SOURCES, since `name:` is not one of
+ * the literal shapes it extracts.
+ */
+export const INSERT_NEWLINE_HOTKEY_NAME = 'Insert a line break (Better Sidebar)'
+export const FOCUS_FILTER_HOTKEY_NAME = 'Filter the profiles (Better Sidebar)'
+
+/**
  * A hotkey that inserts a line break in the focused terminal.
  *
  * Why this exists at all: `Ctrl`+`Entrée` and `Entrée` are *indistinguishable*
@@ -70,10 +79,10 @@ export class SidebarPlusHotkeyProvider extends HotkeyProvider {
     async provide (): Promise<HotkeyDescription[]> {
         return [{
             id: INSERT_NEWLINE_HOTKEY,
-            name: 'Insérer un saut de ligne (Better Sidebar)',
+            name: INSERT_NEWLINE_HOTKEY_NAME,
         }, {
             id: FOCUS_FILTER_HOTKEY,
-            name: 'Filtrer les profils (Better Sidebar)',
+            name: FOCUS_FILTER_HOTKEY_NAME,
         }]
     }
 }

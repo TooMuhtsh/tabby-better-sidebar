@@ -66,7 +66,7 @@ export class LocalFileDownload extends FileDownload {
 
     async write (buffer: Uint8Array): Promise<void> {
         if (!this.handle) {
-            throw new Error('Le fichier local n’est pas ouvert en écriture')
+            throw new Error('The local file is not open for writing')
         }
         await this.handle.write(buffer)
         this.increaseProgress(buffer.length)
