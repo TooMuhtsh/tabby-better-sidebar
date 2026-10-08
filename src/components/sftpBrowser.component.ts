@@ -196,6 +196,17 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     /**
+     * trackBy for the header-menu `*ngFor`s. The two getters above return
+     * fresh object identities on every access, so identity-based diffing
+     * would rebuild every menu item on each change-detection pass — that
+     * destroys the node between mousedown and mouseup and Chromium then
+     * drops the click entirely. Tracking by stable id/key keeps the nodes.
+     */
+    trackColumn = (_index: number, column: SftpColumn): string => column.id
+
+    trackToggle = (_index: number, toggle: { key: string }): string => toggle.key
+
+    /**
      * Full paths of every selected entry — files and folders mixed freely.
      * `Set` rather than an array: `isSelected()` runs for every row on every
      * change-detection pass (see the doc comment above `rows`), and a `Set`
@@ -1806,8 +1817,9 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * it is dropped by position unconditionally — the label is only checked
      * to `console.warn` if a future Tabby version ever reorders it, rather
      * than gating the removal on a translation string this plugin doesn't
-     * control (the installed app has no French catalog entry for it — it
-     * would render in English regardless of this plugin's own locale).
+     * control (Tabby's own catalogs translate it — 删除 on zh-CN, Löschen on
+     * de-DE, Eliminar on es-ES, Supprimer on fr-FR — hence the label list,
+     * not a single expected string).
      *
      * Every entry pushed below — "Ouvrir avec...", "Renommer...", "Supprimer"
      * — acts on `item`, the row that was right-clicked, never on the
@@ -1819,7 +1831,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         event.preventDefault()
         const items = await this.buildContextMenu(item)
         const last = items.pop()
-        if (last && !/^(delete|supprimer)/i.test(String(last.label ?? ''))) {
+        if (last && !/^(delete|supprimer|löschen|eliminar|删除)/i.test(String(last.label ?? ''))) {
             console.warn('sidebar-plus: expected the native SFTP context menu to end with "Delete"', last)
         }
         // Pushed after the pop() above, never before: the native "Delete" entry
