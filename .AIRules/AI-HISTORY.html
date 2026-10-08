@@ -24,6 +24,36 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Publication de la 1.0.6 (2026-10-08)</h2>
+<p>Embarque les trois PR d'OGKaktus (chantier ci-dessous) et trois des cinq issues instruites le même
+jour : #11 et #9 entières, l'infobulle de #10 (fiches
+<a href="annexes/REALISE.html#issue-11-date-sftp">#issue-11-date-sftp</a>,
+<a href="annexes/REALISE.html#issue-9-tout-replier">#issue-9-tout-replier</a>,
+<a href="ROADMAP.html#issue-10-titres-longs">#issue-10-titres-longs</a>). Publication directe sur
+décision de l'utilisateur, <strong>sans passe de test manuelle</strong> des trois issues : remplacée par
+un contrôle automatique du paquet.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-10-08</td><td>(commit en cours)</td>
+<td>Contrôle automatique du <strong>paquet</strong> installé hors jonction, build de production, Tabby
+relancé : chargé depuis son installation, arbre monté avec le bouton « Tout replier » traduit, les deux
+composants de réglages compilés hors écran sans erreur (le JIT des templates est ce que le build ne
+voit pas), console sans erreur. <code>npm publish</code> accepté (107 fichiers), release GitHub
+<code>v1.0.6</code> sur <code>f99bb28</code>, commit de version poussé avant le publish. Jonction de dev
+remise, <code>dist/</code> rebuildé en dev, Tabby relancé en marche normale. Les trois issues livrées
+n'ont pas été exercées à la main.</td></tr>
+<tr><td>2026-10-08</td><td>f99bb28</td>
+<td><code>package.json</code> à <strong>1.0.6</strong>, entrée <code>CHANGELOG.md</code> (PR #5, #6, #7,
+issues #9, #10, #11).</td></tr>
+<tr><td>2026-10-08</td><td>e25921f</td>
+<td>#10, premier temps : nom complet en infobulle sur les lignes de profil tronquées.</td></tr>
+<tr><td>2026-10-08</td><td>347c6b0</td>
+<td>#9 : tout replier / tout déplier (bouton de la ligne de filtre et clic droit sur le vide) ; repli
+d'« Épinglés » rétabli au rechargement.</td></tr>
+<tr><td>2026-10-08</td><td>ea36fd0</td>
+<td>#11 : format de date du panneau SFTP au choix (<code>sftpDateFormat</code>).</td></tr>
+</table>
+
 <h2>PR #5, #6, #7 d'OGKaktus (2026-10-08)</h2>
 <p>Trois contributions externes revues, retouchées et intégrées ensemble (fiche
 <a href="ROADMAP.html#pr-ogkaktus">#pr-ogkaktus</a>).</p>

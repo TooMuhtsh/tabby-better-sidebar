@@ -21,6 +21,73 @@ daté de chaque livraison est dans le <a href="../AI-HISTORY.html">journal</a>. 
 post-livraison s'ajoutent ici en une ligne chacune ; dès qu'une évolution touche l'architecture,
 une convention ou plus d'un fichier, elle rouvre un chantier dans l'actif.</p>
 
+<h3 id="issue-11-date-sftp">Format de date du panneau SFTP (issue #11) <span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></h3>
+<p>Demande : choisir JJ/MM/AAAA ou ISO AAAA-MM-JJ. Aujourd'hui <code>toLocaleDateString()</code>
+(<code>shortDate</code>/<code>fullDate</code> de <code>sftpBrowser.component.ts</code>) : français et
+espagnol donnent déjà JJ/MM/AAAA, l'allemand <code>8.10.2026</code>, l'anglais — défaut de Tabby —
+M/J/AAAA. Design : clé plate <code>sidebarPlus.sftpDateFormat</code> =
+<code>locale</code> (défaut) | <code>dmy</code> | <code>iso</code>, formateur pur à zéros de tête,
+infobulle en même format + <code>HH:mm:ss</code>, liste dans Fonctionnalités › SFTP. Le tri lit un
+horodatage numérique, non touché ; <strong>le format doit entrer dans la clé du cache des lignes</strong>,
+sinon le changement n'apparaît qu'au dossier suivant. <strong>Facile</strong> : ~50-70 lignes, 5-6 clés ×4.</p>
+<p>Tranché à la livraison : trois choix (<code>locale</code> par défaut, <code>dmy</code>, <code>iso</code>),
+pas de M/J/AAAA explicite (l'anglais le donne en <code>locale</code>), heure 24 h dans l'infobulle des deux
+formats fixes, réglage dans Fonctionnalités › Vue SFTP seulement. Formateur pur
+<code>src/sftpDate.ts</code> ; une valeur inconnue retombe sur <code>locale</code>.</p>
+<p class="muted">Livré le 2026-10-08 (1.0.6) · Journal : <a href="../AI-HISTORY.html">« Publication de la 1.0.6 » (2026-10-08)</a> · Commits : <code>ea36fd0</code></p>
+
+<h3 id="issue-9-tout-replier">Tout replier (issue #9) <span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></h3>
+<p>Demande : replier d'un geste tous les dossiers ouverts. Le repli vit dans
+<code>localStorage.sidebarPlusGroupCollapsed</code> (migration au re-parentage et purge à la suppression
+déjà en place) ; les trois blocs Sessions actives / Récents / Tunnels ont chacun leur clé. Il n'existe pas
+de barre d'outils. Design : un bouton bascule dans la ligne de filtre (replie tout s'il reste un dossier
+ouvert, sinon déplie tout), parcours récursif tous niveaux en une écriture, désactivé pendant une
+recherche ; plus une entrée au menu du clic droit sur le vide, qui marche barre de filtre éteinte. Le
+repli est global, pas par workspace. Défaut vu en passant : le repli d'« Épinglés » n'est jamais
+rétabli au rechargement (<code>applyFavorites()</code> passe toujours <code>false</code>).
+<strong>Facile</strong> : ~40-60 lignes, 2 clés ×4.</p>
+<p>Tranché à la livraison : les trois blocs sont compris, tous les niveaux d'imbrication, et le
+repli d'« Épinglés » est désormais rétabli au rechargement. Le choix replier/déplier se lit sur les
+dossiers de premier niveau ; pendant une recherche le bouton est grisé et l'entrée du clic droit
+retirée.</p>
+<p class="muted">Livré le 2026-10-08 (1.0.6) · Journal : <a href="../AI-HISTORY.html">« Publication de la 1.0.6 » (2026-10-08)</a> · Commits : <code>347c6b0</code></p>
+
+<h3 id="pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)
+<span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></h3>
+<p>Trois pull requests externes ouvertes les 16 et 17 septembre, toutes parties de la 1.0.3, donc
+antérieures à la table <code>zh-CN</code> et aux correctifs SFTP repris de hoyoho. Revues le
+2026-10-08, chacune fusionnée sur <code>master</code> dans une copie : build vert, mais
+<code>lint:i18n</code> rouge sur les trois (clés chinoises absentes). Retouches faites par nous sur
+leurs branches (l'auteur l'autorise), commit d'origine de l'auteur conservé tel quel :</p>
+<ul>
+<li><strong>#6 — chaînes restées en dur en français</strong> (toasts de l'édition distante, du glisser
+  sortant, du sélecteur d'éditeur, des transferts, erreur de compatibilité, libellés des raccourcis,
+  sources des variables de snippet, marqueur « préparation… ») : les services reçoivent
+  <code>SidebarPlusI18nService</code>, <code>hostCompat.feature</code> devient un
+  <code>TranslatableMessage</code>. Retouches : 47 clés <code>zh-CN</code>, dernier message d'erreur en
+  dur passé en anglais.</li>
+<li><strong>#7 — dossiers favoris SFTP par profil</strong> (<code>sidebarPlus.sftpFavorites</code>,
+  record indexé par id de profil ; une session en connexion rapide n'en a pas). Retouches : chemins
+  normalisés au stockage et à la comparaison (<code>/var/log/</code> = <code>/var/log</code>), purge
+  dans <code>forgetDeletedId()</code> à la suppression du profil, étoile en bascule avec
+  <code>aria-expanded</code>, étoile pleine dorée plutôt qu'un aplat, 5 clés <code>zh-CN</code>. Non
+  exportés par le partage de dossier ni de workspace — et ils ne doivent pas l'être : un chemin décrit
+  l'arborescence d'un serveur.</li>
+<li><strong>#5 — tri du listing par nom, date ou taille</strong> (clic d'en-tête, section « Trier par »
+  du menu d'affichage, <code>sftpSortKey</code>/<code>sftpSortDescending</code>). Retouches :
+  <code>trackBy</code> sur le <code>*ngFor</code> de <code>sortOptions</code> — sans lui, le
+  défaut corrigé en 1.0.5 sur le menu d'en-tête revenait (clic réel perdu) —, plus de littéral de clé
+  de tri dans les expressions du template, JSDoc de <code>SftpColumn</code> remise en place, 2 clés
+  <code>zh-CN</code>.</li>
+</ul>
+<p>Branche d'intégration <code>integ/pr-5-6-7</code> : 480 clés, quatre tables complètes ; build
+identique à <code>master</code> (12 avertissements). <strong>Passe de 20 tests validée par
+l'utilisateur le 2026-10-08</strong> sur la jonction de dev, Tabby en français puis en 简体中文.
+Les 54 traductions chinoises n'ont été relues par aucun lecteur du chinois.</p>
+<p class="muted">Livré le 2026-10-08 (1.0.6) · Journal : <a href="../AI-HISTORY.html">« PR #5, #6, #7
+d'OGKaktus » (2026-10-08)</a>, <a href="../AI-HISTORY.html">« Publication de la 1.0.6 » (2026-10-08)</a> · Commits : <code>713a97d</code> <code>46a7dc2</code>
+<code>cdd896a</code> <code>6dbb97e</code> <code>72a6f8f</code> <code>cce1bbc</code> <code>0503e3d</code></p>
+
 <h3 id="fork-hoyoho">Reprise du fork de hoyoho (correctifs SFTP, chinois)
 <span class="pill done">✅ Livré — 1.0.5 (2026-09-24)</span></h3>
 <p>Fork <code>hoyoho/tabby-better-sidebar</code> (12 commits, 2026-09-12 → 17, partis de la 1.0.3),

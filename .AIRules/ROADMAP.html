@@ -45,12 +45,12 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
 <tr><td><a href="annexes/REALISE.html#tabby-1-0-236">Compatibilité Tabby 1.0.236</a></td><td><span class="pill done">✅ Livré — 1.0.4 (2026-09-24)</span></td><td>—</td></tr>
 <tr><td><a href="annexes/REALISE.html#fork-hoyoho">Reprise du fork de hoyoho (correctifs SFTP, chinois)</a></td><td><span class="pill done">✅ Livré — 1.0.5 (2026-09-24)</span></td><td>—</td></tr>
-<tr><td><a href="#issue-11-date-sftp">Format de date du panneau SFTP (issue #11)</a></td><td><span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></td><td>Facile</td></tr>
-<tr><td><a href="#issue-9-tout-replier">Tout replier (issue #9)</a></td><td><span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></td><td>Facile</td></tr>
-<tr><td><a href="#issue-12-raccourci">Raccourci afficher/masquer la sidebar (issue #12)</a></td><td><span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></td><td>Moyen</td></tr>
-<tr><td><a href="#issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10)</a></td><td><span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></td><td>Moyen</td></tr>
-<tr><td><a href="#issue-8-filtre-actifs">Filtre « Actifs » (issue #8)</a></td><td><span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></td><td>Moyen</td></tr>
-<tr><td><a href="#pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)</a></td><td><span class="pill progress">🔧 Validé 20/20, fusion sur <code>master</code> — publication 1.0.6 à faire (2026-10-08)</span></td><td>Prochaine publication</td></tr>
+<tr><td><a href="annexes/REALISE.html#issue-11-date-sftp">Format de date du panneau SFTP (issue #11)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
+<tr><td><a href="annexes/REALISE.html#issue-9-tout-replier">Tout replier (issue #9)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
+<tr><td><a href="#issue-12-raccourci">Raccourci afficher/masquer la sidebar (issue #12)</a></td><td><span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></td><td>1.0.7</td></tr>
+<tr><td><a href="#issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10)</a></td><td><span class="pill progress">🔧 Infobulle livrée en 1.0.6, retour à la ligne visé en 1.0.7 (2026-10-08)</span></td><td>1.0.7</td></tr>
+<tr><td><a href="#issue-8-filtre-actifs">Filtre « Actifs » (issue #8)</a></td><td><span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></td><td>1.0.7</td></tr>
+<tr><td><a href="annexes/REALISE.html#pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></td><td>À tenir à chaque publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
@@ -677,70 +677,10 @@ seul visible depuis la page npm et le clone, et la couverture des versions anté
 (0.2.0, 0.3.0). Rétro-remplissage possible depuis les releases et le journal. À faire au plus tard
 avec la prochaine publication, pour que la version qui l'introduit le mentionne.</p>
 
-<h3 id="pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)
-<span class="pill progress">🔧 Validé 20/20, fusion sur <code>master</code> — publication 1.0.6 à faire (2026-10-08)</span></h3>
-<p>Trois pull requests externes ouvertes les 16 et 17 septembre, toutes parties de la 1.0.3, donc
-antérieures à la table <code>zh-CN</code> et aux correctifs SFTP repris de hoyoho. Revues le
-2026-10-08, chacune fusionnée sur <code>master</code> dans une copie : build vert, mais
-<code>lint:i18n</code> rouge sur les trois (clés chinoises absentes). Retouches faites par nous sur
-leurs branches (l'auteur l'autorise), commit d'origine de l'auteur conservé tel quel :</p>
-<ul>
-<li><strong>#6 — chaînes restées en dur en français</strong> (toasts de l'édition distante, du glisser
-  sortant, du sélecteur d'éditeur, des transferts, erreur de compatibilité, libellés des raccourcis,
-  sources des variables de snippet, marqueur « préparation… ») : les services reçoivent
-  <code>SidebarPlusI18nService</code>, <code>hostCompat.feature</code> devient un
-  <code>TranslatableMessage</code>. Retouches : 47 clés <code>zh-CN</code>, dernier message d'erreur en
-  dur passé en anglais.</li>
-<li><strong>#7 — dossiers favoris SFTP par profil</strong> (<code>sidebarPlus.sftpFavorites</code>,
-  record indexé par id de profil ; une session en connexion rapide n'en a pas). Retouches : chemins
-  normalisés au stockage et à la comparaison (<code>/var/log/</code> = <code>/var/log</code>), purge
-  dans <code>forgetDeletedId()</code> à la suppression du profil, étoile en bascule avec
-  <code>aria-expanded</code>, étoile pleine dorée plutôt qu'un aplat, 5 clés <code>zh-CN</code>. Non
-  exportés par le partage de dossier ni de workspace — et ils ne doivent pas l'être : un chemin décrit
-  l'arborescence d'un serveur.</li>
-<li><strong>#5 — tri du listing par nom, date ou taille</strong> (clic d'en-tête, section « Trier par »
-  du menu d'affichage, <code>sftpSortKey</code>/<code>sftpSortDescending</code>). Retouches :
-  <code>trackBy</code> sur le <code>*ngFor</code> de <code>sortOptions</code> — sans lui, le
-  défaut corrigé en 1.0.5 sur le menu d'en-tête revenait (clic réel perdu) —, plus de littéral de clé
-  de tri dans les expressions du template, JSDoc de <code>SftpColumn</code> remise en place, 2 clés
-  <code>zh-CN</code>.</li>
-</ul>
-<p>Branche d'intégration <code>integ/pr-5-6-7</code> : 480 clés, quatre tables complètes ; build
-identique à <code>master</code> (12 avertissements). <strong>Passe de 20 tests validée par
-l'utilisateur le 2026-10-08</strong> sur la jonction de dev, Tabby en français puis en 简体中文.
-Les 54 traductions chinoises n'ont été relues par aucun lecteur du chinois.</p>
-<p class="muted">Reste à faire : entrée <code>CHANGELOG.md</code> au bump 1.0.6, puis passe de release
-sur le paquet hors jonction et publication.</p>
-
 <h2 id="issues-octobre">Demandes d'utilisateurs — issues #8 à #12</h2>
 <p>Cinq issues ouvertes entre le 18 septembre et le 5 octobre, aucune encore répondue. Instruites le
 2026-10-08 à la lecture du code (master <code>0503e3d</code>), sans rien coder. Classement valeur/coût :
-#11 &gt; #9 &gt; #12 &gt; #10 &gt; #8. Les réponses aux issues ne se postent qu'avec une décision.</p>
-
-<h3 id="issue-11-date-sftp">Format de date du panneau SFTP (issue #11) <span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></h3>
-<p>Demande : choisir JJ/MM/AAAA ou ISO AAAA-MM-JJ. Aujourd'hui <code>toLocaleDateString()</code>
-(<code>shortDate</code>/<code>fullDate</code> de <code>sftpBrowser.component.ts</code>) : français et
-espagnol donnent déjà JJ/MM/AAAA, l'allemand <code>8.10.2026</code>, l'anglais — défaut de Tabby —
-M/J/AAAA. Design : clé plate <code>sidebarPlus.sftpDateFormat</code> =
-<code>locale</code> (défaut) | <code>dmy</code> | <code>iso</code>, formateur pur à zéros de tête,
-infobulle en même format + <code>HH:mm:ss</code>, liste dans Fonctionnalités › SFTP. Le tri lit un
-horodatage numérique, non touché ; <strong>le format doit entrer dans la clé du cache des lignes</strong>,
-sinon le changement n'apparaît qu'au dossier suivant. <strong>Facile</strong> : ~50-70 lignes, 5-6 clés ×4.</p>
-<p class="muted">À trancher : ajouter M/J/AAAA explicite ? heure 24 h dans l'infobulle ? réglage aussi
-dans le menu d'affichage de l'en-tête SFTP ?</p>
-
-<h3 id="issue-9-tout-replier">Tout replier (issue #9) <span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></h3>
-<p>Demande : replier d'un geste tous les dossiers ouverts. Le repli vit dans
-<code>localStorage.sidebarPlusGroupCollapsed</code> (migration au re-parentage et purge à la suppression
-déjà en place) ; les trois blocs Sessions actives / Récents / Tunnels ont chacun leur clé. Il n'existe pas
-de barre d'outils. Design : un bouton bascule dans la ligne de filtre (replie tout s'il reste un dossier
-ouvert, sinon déplie tout), parcours récursif tous niveaux en une écriture, désactivé pendant une
-recherche ; plus une entrée au menu du clic droit sur le vide, qui marche barre de filtre éteinte. Le
-repli est global, pas par workspace. Défaut vu en passant : le repli d'« Épinglés » n'est jamais
-rétabli au rechargement (<code>applyFavorites()</code> passe toujours <code>false</code>).
-<strong>Facile</strong> : ~40-60 lignes, 2 clés ×4.</p>
-<p class="muted">À trancher : inclure les trois blocs ? tous les niveaux (recommandé) ou la racine
-seule ? corriger la persistance d'« Épinglés » au passage ?</p>
+#11 &gt; #9 &gt; #12 &gt; #10 &gt; #8. #11, #9 et l'infobulle de #10 sont partis en 1.0.6 (fiches au registre) ; #12, #8 et le retour à la ligne de #10 visent la 1.0.7.</p>
 
 <h3 id="issue-12-raccourci">Raccourci afficher/masquer la sidebar (issue #12) <span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></h3>
 <p>Demande : basculer la sidebar au clavier (exemple donné : Ctrl+B). <strong>Ne pas basculer
@@ -757,7 +697,7 @@ touche avant le terminal. Le Ctrl+F déjà lié par le plugin a le même défaut
 <p class="muted">À trancher : raccourci par défaut (aucun, ou Ctrl+Maj+B) ? état par machine ou
 synchronisé ? le raccourci réactive-t-il un plugin éteint ? revoir le Ctrl+F par défaut ?</p>
 
-<h3 id="issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10) <span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></h3>
+<h3 id="issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10) <span class="pill progress">🔧 Infobulle livrée en 1.0.6, retour à la ligne visé en 1.0.7 (2026-10-08)</span></h3>
 <p>Demande : retour à la ligne au lieu de l'ellipse. L'ellipse vient de la classe globale
 <code>.no-wrap</code> de Tabby, posée sur les profils, récents, sessions actives, tunnels, workspaces,
 menus, titre SFTP et transferts ; aucune infobulle sur une ligne de profil. Design en deux temps :
@@ -768,7 +708,10 @@ d'hôte n'a pas d'espace). Effets : icônes et pastilles à aligner en haut, pla
 actives qui ne vaut plus 4 lignes, zone d'imbrication du glisser-déposer calculée à mi-hauteur qui se
 décale sur une ligne haute (pièges #26/#28). <strong>Moyen</strong> : ~40-60 lignes, 3 clés ×4,
 vérification à l'écran obligatoire.</p>
-<p class="muted">À trancher : réglage ou nouveau défaut ? quels blocs ? limiter à deux lignes ?</p>
+<p><strong>Premier temps livré en 1.0.6</strong> (<code>e25921f</code>) : <code>[title]</code> sur le nom des
+profils de l'arbre ; récents et sessions actives portaient déjà le nom en infobulle ; la description d'un
+tunnel ouvre désormais la sienne.</p>
+<p class="muted">À trancher pour la 1.0.7 : réglage ou nouveau défaut ? quels blocs ? limiter à deux lignes ?</p>
 
 <h3 id="issue-8-filtre-actifs">Filtre « Actifs » (issue #8) <span class="pill warn">⚠️ Instruit, à trancher (2026-10-08)</span></h3>
 <p>Demande : un bouton ACTIVE à côté de « ALL » (l'onglet de workspace « Tous ») qui ne montre que les
