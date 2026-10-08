@@ -34,6 +34,13 @@ const es_ES: Record<string, string> = {
     'Column borders': 'Bordes de columna',
     'Alternating rows': 'Filas alternas',
 
+    // sftpBrowser.component.pug — favorite folders menu
+    'Favorite folders': 'Carpetas favoritas',
+    'Favorites are saved per profile, and this session has none.': 'Los favoritos se guardan por perfil, y esta sesión no tiene ninguno.',
+    'No favorites yet — add the current folder below.': 'Aún no hay favoritos — añada la carpeta actual más abajo.',
+    'Add the current folder': 'Añadir la carpeta actual',
+    'Remove the current folder': 'Quitar la carpeta actual',
+
     // sftpBrowser.component.ts — downloadFolder()
     'Destination folder for {name}': 'Carpeta de destino para {name}',
     'Download here': 'Descargar aquí',

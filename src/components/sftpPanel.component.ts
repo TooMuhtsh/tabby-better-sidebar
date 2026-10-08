@@ -536,6 +536,10 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             // Suppresses the panel's "working directory detection" tip banner,
             // which needs a shell session we deliberately don't reach for here.
             ref.instance.cwdDetectionAvailable = false
+            // Favorite folders are stored per profile — a path means nothing
+            // on another server. A quick-connect tab has no profile id; the
+            // favorites menu says so rather than filing under a made-up key.
+            ref.instance.profileId = (tab as unknown as { profile?: { id?: string } }).profile?.id ?? null
             ref.instance.closed.subscribe(() => this.closed.emit())
             this.panels.set(tab, ref)
         }
