@@ -10,7 +10,7 @@
 <h1>Registre du réalisé</h1>
 <p class="muted">Annexe de <a href="../ROADMAP.html">Roadmap</a> (option <code>registre-livrés</code>,
 A-8) — chaque entrée est citée par sa ligne de renvoi dans la roadmap active. Dernière revue :
-2026-08-08.</p>
+2026-10-08.</p>
 
 <p>Ce registre ne porte que l'<strong>état</strong> des chantiers déjà livrés, le plus récent en tête :
 leur fiche est reprise telle qu'elle était dans la roadmap au moment de la bascule, suivie d'une
@@ -20,6 +20,93 @@ rassemblé dans sa section <a href="../ROADMAP.html#restes">« Reste ouvert »</
 daté de chaque livraison est dans le <a href="../AI-HISTORY.html">journal</a>. Les évolutions
 post-livraison s'ajoutent ici en une ligne chacune ; dès qu'une évolution touche l'architecture,
 une convention ou plus d'un fichier, elle rouvre un chantier dans l'actif.</p>
+
+<h3 id="fork-hoyoho">Reprise du fork de hoyoho (correctifs SFTP, chinois)
+<span class="pill done">✅ Livré — 1.0.5 (2026-09-24)</span></h3>
+<p>Fork <code>hoyoho/tabby-better-sidebar</code> (12 commits, 2026-09-12 → 17, partis de la 1.0.3),
+instruit le 2026-09-24 sur demande de l'utilisateur. <strong>Il ne se fusionne pas en bloc</strong> :
+il vise le fork de Tabby de son auteur (<code>hoyoho/tabby</code>, 1.0.236 + ~30 commits), et deux
+de ses changements cassent le plugin sur le Tabby officiel. Retenu par l'utilisateur et repris sur
+la branche, commits d'origine conservés (auteur hoyoho) :</p>
+<ul>
+<li><code>6198b30</code> — menu d'en-tête SFTP insensible aux vrais clics : les getters
+  <code>availableColumns</code>/<code>displayToggles</code> rendent de nouveaux objets à chaque
+  détection de changement, <code>*ngFor</code> sans <code>trackBy</code> recrée le nœud entre
+  <code>mousedown</code> et <code>mouseup</code>, Chromium perd le clic. Correctif : <code>trackBy</code>.</li>
+<li><code>ef719f0</code> — NG0100 quand la vue SFTP se referme d'elle-même (émission de
+  <code>closed</code> reportée au tick suivant) <strong>et changement de comportement assumé</strong> :
+  entrer dans la vue sans session SSH affiche « En attente » au lieu de rebasculer aussitôt vers
+  les profils ; le retour automatique ne joue plus que pour une session effectivement perdue.</li>
+<li><code>662e361</code> — l'avertissement console du menu contextuel SFTP accepte les libellés
+  « Delete » traduits (de, es, zh). Diagnostic seulement : la suppression de l'entrée native se fait
+  par position.</li>
+<li><strong>Traduction chinois simplifié</strong> (<code>zh-CN</code>) — portée depuis son
+  <code>locale/zh-CN.po</code> vers <code>src/i18n/zh-CN.ts</code> (426 clés sur 426, pluriels en
+  <code>other</code> seul), <code>lint:i18n</code> vert. Les 7 entrées de son <code>.po</code> propres à
+  ses fonctions (dont le renommage du plugin en « 侧边栏+ ») ne sont pas reprises.</li>
+</ul>
+<div class="callout important"><p><strong>Non repris, et pourquoi</strong> — pour ne pas le reproposer :</p>
+<ul>
+<li><strong><code>SidebarContribution</code></strong> (<code>6e9c40a</code>) : API de montage qui
+  n'existe que dans <code>hoyoho/tabby</code> — ni en 1.0.236, ni sur le <code>master</code> amont au
+  2026-09-24. À reconsidérer seulement si Tabby l'adopte.</li>
+<li><strong>Constructeur de <code>SFTPPanelComponent</code></strong> (même commit) : le paramètre
+  <code>translate</code> ajouté n'existe que dans son fork ; sur Tabby officiel il prendrait la place
+  des fournisseurs de menu et le panneau SFTP planterait à l'ouverture.</li>
+<li><strong>Panneaux du bas, aperçu de profil, pastilles retirées, regroupement des sessions</strong>
+  (<code>9020f45</code>, <code>9f88860</code>, <code>e33410f</code>, <code>f346307</code>) : alignés sur la
+  sidebar de son fork de Tabby.</li>
+<li><strong>Transparence</strong> (<code>34de21c</code>) : pilotée par un plugin d'arrière-plan qui
+  lui est propre.</li>
+<li><strong>Passage des tables en <code>.po</code></strong> (<code>9dfc324</code>) et pluriels
+  <code>one</code> → <code>=1</code> : refonte d'outillage sans bénéfice ici, et <code>=1</code>
+  dégraderait le français (0 est singulier : « 0 fichier »).</li>
+<li><strong>Retrait du raccourci Ctrl+Entrée</strong> (<code>a45c368</code>) : choix de conception
+  de son auteur. Sans conflit avec le raccourci « Insert new line » ajouté par Tabby 1.0.236
+  (Alt+Maj+Entrée, <code>ESC CR</code>).</li>
+</ul></div>
+<p class="muted">Livré le 2026-09-24 (1.0.5), validé par l'utilisateur · Journal :
+<a href="../AI-HISTORY.html">« Publications 1.0.4 et 1.0.5 » (2026-09-24)</a> · Commits :
+<code>f2d21b8</code> <code>79447c7</code> <code>1cd9bfa</code> <code>fc5925c</code> <code>9a62eee</code>
+<code>5a4efa1</code></p>
+
+<h3 id="tabby-1-0-236">Compatibilité Tabby 1.0.236
+<span class="pill done">✅ Livré — 1.0.4 (2026-09-24)</span></h3>
+<p>Tabby <strong>1.0.236</strong> est sortie le 2026-09-23 ; le plugin était validé sur la 1.0.235.
+Diff amont <code>v1.0.235..v1.0.236</code> (46 commits) instruit le 2026-09-24 contre chaque point
+de contact du plugin, à la lecture des sources — <strong>rien ne casse</strong> : conteneur de
+montage, <code>EditProfileModalComponent</code>, <code>SFTPPanelComponent</code>/<code>SFTPSession</code>
+et <code>SSHTabComponent</code> inchangés sur ce que le plugin consomme. Changements amont vérifiés
+sans effet : <code>FileTransfer.isComplete()</code> renvoie désormais <code>false</code> pour un
+transfert annulé (le <code>tick()</code> du registre teste <code>isCancelled()</code> avant) ; un
+échec d'envoi SFTP renseigne le statut avant <code>cancel()</code> ; <code>reconnect()</code>
+rafraîchit le profil <em>en place</em> (<code>refreshConfigProxyForProfile()</code>, même objet) ;
+Electron 38 → 43 ne touche ni <code>webContents.startDrag</code>, ni
+<code>nativeImage.createFromDataURL</code>, ni <code>DownloadURL</code>/<code>will-download</code>,
+ni <code>@electron/remote</code>. Seul effet visible hérité d'Electron 43 : les boîtes de dialogue
+de dossier s'ouvrent sur Téléchargements au lieu du dernier dossier utilisé — côté Tabby, rien à
+faire ici.</p>
+<p><strong>Un défaut réel, corrigé sur la branche</strong> : la 1.0.236 ajoute <code>cwd</code>,
+<code>rememberCwd</code> et <code>term</code> à <code>SSHProfileOptions</code>, absents de
+<code>PROFILE_OPTION_WHITELISTS.ssh</code> (<code>src/groupShare.ts</code>) — un dossier copié
+perdait ces trois réglages, comptés en « options inconnues ». Design retenu :</p>
+<ul>
+<li><code>rememberCwd</code> et <code>term</code> voyagent aux deux niveaux : un booléen et un type
+  de terminal que Tabby ne passe qu'à la requête PTY (<code>resolveSSHTerminalType()</code>).</li>
+<li><code>cwd</code> voyage au niveau <code>secrets</code> mais rejoint
+  <code>CREDENTIAL_FIELDS</code> : <code>/home/alice/deploy</code> nomme le compte et la disposition
+  du serveur, exactement ce que <code>credentials</code> retire déjà avec <code>user</code> et
+  <code>jumpHost</code>. Pas de risque d'exécution : Tabby l'écrit dans le shell distant entre
+  quotes simples échappées (<code>cd -- '…'</code>).</li>
+<li>Même liste des deux côtés, donc l'import d'un dossier venu d'une 1.0.236 garde aussi ces
+  champs. Vérifié hors Tabby sur un dossier synthétique (profil + <code>defaults.ssh</code>) aux
+  deux niveaux : 0 option inconnue, <code>cwd</code> compté en identifiants au niveau
+  <code>credentials</code>. Build de dev vert, <code>lint:i18n</code> vert.</li>
+</ul>
+<p class="muted">Livré le 2026-09-24 (1.0.4), validé par l'utilisateur · Reste ouvert : recopie des
+typings <code>src/types/tabby-ssh</code> (voir <a href="../ROADMAP.html#restes">« Reste ouvert »</a>) ·
+Journal : <a href="../AI-HISTORY.html">« Publications 1.0.4 et 1.0.5 » (2026-09-24)</a> ·
+Commits : <code>01a6d31</code> <code>3ffa9ad</code></p>
 
 <h3 id="durcir-import-collage">Durcir l'import de dossier collé (défaut de sécurité du code livré)
 <span class="pill done">✅ Corrigé (2026-08-08)</span></h3>

@@ -43,6 +43,8 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#outils-reseau-non-tranche">Outils réseau au menu contextuel</a></td><td><span class="pill warn">⚠️ Sans décision (2026-08-08)</span></td><td>—</td></tr>
 <tr><td><a href="#audit-devdeps">Vulnérabilités npm de l'outillage de build</a></td><td><span class="pill done">✅ Lot sans majeure livré et validé (2026-08-14)</span></td><td>Surveillance — 18 restantes bloquées par Angular 15 / pug 2</td></tr>
 <tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
+<tr><td><a href="annexes/REALISE.html#tabby-1-0-236">Compatibilité Tabby 1.0.236</a></td><td><span class="pill done">✅ Livré — 1.0.4 (2026-09-24)</span></td><td>—</td></tr>
+<tr><td><a href="annexes/REALISE.html#fork-hoyoho">Reprise du fork de hoyoho (correctifs SFTP, chinois)</a></td><td><span class="pill done">✅ Livré — 1.0.5 (2026-09-24)</span></td><td>—</td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></td><td>À tenir à chaque publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
@@ -155,6 +157,11 @@ lire le même fait.</p>
     sur le paquet installé hors jonction, en build de production. Le protocole est réutilisable tel
     quel à chaque publication.</td>
     <td><a href="annexes/REALISE.html#menage-release">Ménage avant release</a></td><td>✅ Fait (2026-08-08)</td></tr>
+
+<tr><td>Recopier les typings <code>src/types/tabby-ssh</code> depuis Tabby 1.0.236 installé
+    (<code>PROVENANCE.md</code>, encore en <code>1.0.231-nightly.0</code>) — <code>cwd</code>,
+    <code>rememberCwd</code> et <code>term</code> doivent être le seul écart.</td>
+    <td><a href="annexes/REALISE.html#tabby-1-0-236">Compatibilité Tabby 1.0.236</a></td><td>À faire</td></tr>
 </table>
 
 <div class="callout warning"><span class="callout-title">Ce qui ressemble à un reste et n'en est pas
