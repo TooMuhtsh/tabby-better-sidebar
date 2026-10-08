@@ -2195,14 +2195,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                     localOwners.set(key, sessionName)
                 }
                 const detail = formatTunnel(forward)
+                const label = forward.description?.trim() || detail
                 tabRows.push({
                     tab,
                     sessionName,
-                    label: forward.description?.trim() || detail,
+                    label,
                     detail,
                     url: SidebarPlusTreeComponent.tunnelUrl(forward),
                     state: 'live',
-                    tooltip: detail,
+                    tooltip: SidebarPlusTreeComponent.tunnelTooltip(label, detail, detail),
                     key,
                 })
                 if (profile?.id) {
@@ -2532,6 +2533,18 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return this.liveTunnelKeys.get(profileId)?.has(tunnelKey(forward)) ?? false
     }
 
+    /**
+     * A tunnel row's tooltip, headed by its full label when that label is the
+     * user's description: `.no-wrap` may cut it short on the row, and the rest
+     * of the tooltip only gives the technical form. A row without description
+     * already shows that form as its label, so nothing is repeated. Derived
+     * from `label`/`detail`/`state` alone, which is why sameTunnels() can
+     * leave it out.
+     */
+    private static tunnelTooltip (label: string, detail: string, body: string): string {
+        return label === detail ? body : `${label}\n${body}`
+    }
+
     private static sameTunnels (a: ActiveTunnel[], b: ActiveTunnel[]): boolean {
         return a.length === b.length && a.every((tunnel, i) =>
             tunnel.tab === b[i].tab &&
@@ -2575,7 +2588,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 // No browser button on a dead listener: the page could not load.
                 url: null,
                 state: 'waiting',
-                tooltip: this.i18n.t('{detail}: session cut, tunnel waiting to resume', { detail: row.detail }),
+                tooltip: SidebarPlusTreeComponent.tunnelTooltip(row.label, row.detail,
+                    this.i18n.t('{detail}: session cut, tunnel waiting to resume', { detail: row.detail })),
                 key: row.key,
             })
         }
@@ -2604,10 +2618,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                     detail: row.detail,
                     url: null,
                     state: 'lost' as const,
-                    tooltip: this.i18n.t(
+                    tooltip: SidebarPlusTreeComponent.tunnelTooltip(row.label, row.detail, this.i18n.t(
                         '{detail}: not restored after the reconnection. Only the tunnels saved in the profile are remounted; a tunnel added on the fly disappears with its session.',
                         { detail: row.detail },
-                    ),
+                    )),
                     key: row.key,
                 },
                 until: now + TUNNEL_NOT_RESTORED_MS,

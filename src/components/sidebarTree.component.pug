@@ -389,7 +389,8 @@
                                     [class.status-dot-error]='getProfileStatus(profile) === "error"',
                                     [title]="getProfileStatus(profile) === 'connected' ? ('Connected' | translate) : getProfileStatus(profile) === 'error' ? ('Disconnected' | translate) : ('No session' | translate)"
                                 )
-                                span.ms-2.no-wrap {{ profile.name }}
+                                //- The full name, which `.no-wrap` may cut short.
+                                span.ms-2.no-wrap([title]='profile.name') {{ profile.name }}
                                 .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavorite(profile)')
                                 //- The whole point of a note is to be seen
                                 //- without being looked for. Static title, so
