@@ -33,6 +33,8 @@ const de_DE: Record<string, string> = {
     'Show hidden files': 'Versteckte Dateien anzeigen',
     'Column borders': 'Spaltenränder',
     'Alternating rows': 'Abwechselnde Zeilen',
+    'Sort by': 'Sortieren nach',
+    'Sort by this column': 'Nach dieser Spalte sortieren',
 
     // sftpBrowser.component.pug — favorite folders menu
     'Favorite folders': 'Favorisierte Ordner',

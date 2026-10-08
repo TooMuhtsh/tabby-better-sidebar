@@ -33,6 +33,8 @@ const zh_CN: Record<string, string> = {
     'Show hidden files': '显示隐藏文件',
     'Column borders': '列边框',
     'Alternating rows': '隔行变色',
+    'Sort by': '排序方式',
+    'Sort by this column': '按此列排序',
 
     // sftpBrowser.component.pug — favorite folders menu
     'Favorite folders': '收藏的文件夹',

@@ -111,6 +111,10 @@ vue peut être **figée** sur une session pour cesser de suivre le focus.
   lignes alternées
 - **Dossiers favoris, par profil** — le bouton étoile les liste et ajoute ou
   retire le dossier courant ; un clic ramène au chemin enregistré
+- **Tri par nom, date ou taille** — un clic sur le titre de colonne trie
+  dessus, un second inverse le sens ; date et taille commencent par le plus
+  récent et le plus gros. Aussi dans le menu du clic droit sur l'en-tête, pour
+  une colonne masquée. Le choix est mémorisé
 - **Sélection multiple**, fichiers *et* dossiers, pour supprimer ou déplacer par
   lot
 - **Chargement par blocs** des listings volumineux
@@ -231,6 +235,8 @@ personne ne regarde.
 | `sftpColumns` | `size`, `date`, `mode` | Colonnes affichées dans le listing SFTP |
 | `sftpFoldersFirst` | `true` | Trie les dossiers avant les fichiers |
 | `sftpFavorites` | *(vide)* | Dossiers distants favoris, par identifiant de profil |
+| `sftpSortKey` | `name` | Colonne de tri du listing : `name`, `date` ou `size` |
+| `sftpSortDescending` | `false` | Sens du tri |
 | `sftpShowHidden` | `true` | Affiche les fichiers commençant par un point |
 | `sftpColumnBorders` | `true` | Séparateurs de colonnes dans le listing |
 | `sftpZebra` | `true` | Fond de ligne alterné |

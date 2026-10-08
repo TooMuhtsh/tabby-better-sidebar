@@ -102,6 +102,10 @@ be **frozen** on one session so it stops following the focused tab.
   extension), folders-first sorting, hidden files toggle, zebra striping
 - **Favorite folders, per profile** — the star button lists them and adds or
   removes the current folder; one click jumps to a saved path
+- **Sort by name, date or size** — click a column header to sort on it, click
+  again to flip the direction; date and size start with the newest and the
+  biggest at the top. Also in the header's right-click menu, for a column
+  that is hidden. The choice is remembered
 - **Multiple selection**, files *and* folders, for bulk delete and move
 - **Chunked loading** of large directory listings
 - **Double-click opens a file in a code editor**, never through the OS file
@@ -215,6 +219,8 @@ latency probe, no transfer tracking for a panel nobody is looking at.
 | `sftpColumns` | `size`, `date`, `mode` | Columns shown in the SFTP listing |
 | `sftpFoldersFirst` | `true` | Sorts folders before files |
 | `sftpFavorites` | *(empty)* | Favorite remote folders, keyed by profile id |
+| `sftpSortKey` | `name` | Column the listing is sorted on: `name`, `date` or `size` |
+| `sftpSortDescending` | `false` | Sort direction |
 | `sftpShowHidden` | `true` | Shows dot-files |
 | `sftpColumnBorders` | `true` | Column separators in the listing |
 | `sftpZebra` | `true` | Alternating row background |
