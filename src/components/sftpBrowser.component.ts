@@ -16,6 +16,7 @@ import { SidebarPlusNoticesService } from '../notices.service'
 import { SidebarPlusI18nService } from '../i18n'
 import { readRemoteEntry, resolveRemoteSymlink } from '../remoteEntry'
 import { downloadRemoteTree } from '../remoteTree'
+import { formatSftpDate, formatSftpDateTime, normalizeSftpDateFormat, SftpDateFormat } from '../sftpDate'
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
 import { SftpTransfers } from '../transfers'
 import { SidebarPlusTransfersService } from '../transfersRegistry.service'
@@ -2428,30 +2429,34 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         return row.item.fullPath
     }
 
-    private rowCache: { source: SFTPFile[], columns: SftpColumn[], result: SftpRow[] }|null = null
+    private rowCache: { source: SFTPFile[], columns: SftpColumn[], dateFormat: SftpDateFormat, result: SftpRow[] }|null = null
 
     /**
      * The rows as the template consumes them: everything formatted up front.
      *
-     * Recomputed only when the sorted list or the visible columns change, both
-     * of which are compared by reference — `displayedFiles` and
-     * `visibleColumns` each hand back a stable array until something real
-     * changes. `isSelected()` and `isDragPreparing()` stay as calls in the
-     * template on purpose: they are a `Set`/`Map` lookup, and they change
-     * without the list changing at all.
+     * Recomputed only when the sorted list, the visible columns or the date
+     * format change. The first two are compared by reference —
+     * `displayedFiles` and `visibleColumns` each hand back a stable array until
+     * something real changes. The date format is part of the signature because
+     * it is baked into both the date cell and the tooltip: left out, a new
+     * format would only show up on the next folder. `isSelected()` and
+     * `isDragPreparing()` stay as calls in the template on purpose: they are a
+     * `Set`/`Map` lookup, and they change without the list changing at all.
      */
     get rows (): SftpRow[] {
         const source = this.displayedFiles
         const columns = this.visibleColumns
+        const dateFormat = this.dateFormat
         const cached = this.rowCache
-        if (cached && cached.source === source && cached.columns === columns) {
+        if (cached && cached.source === source && cached.columns === columns && cached.dateFormat === dateFormat) {
             return cached.result
         }
         // Rows whose entry object survived the merge are reused as they are:
         // after a refresh where one file changed, only that file is formatted
         // again. `applyListing()` is what makes this work — it keeps the
         // existing object for every unchanged entry.
-        const previous = new Map((cached?.columns === columns ? cached.result : []).map(row => [row.item, row]))
+        const reusable = cached?.columns === columns && cached.dateFormat === dateFormat
+        const previous = new Map((reusable ? cached.result : []).map(row => [row.item, row]))
         const result = source.map(item => previous.get(item) ?? {
             item,
             icon: this.getIcon(item),
@@ -2459,7 +2464,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             hidden: this.isHidden(item),
             cells: columns.map(column => this.cellValue(column, item)),
         })
-        this.rowCache = { source, columns, result }
+        this.rowCache = { source, columns, dateFormat, result }
         return result
     }
 
@@ -2606,21 +2611,28 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     ////// FORMATTING //////
+    /** The `sftpDateFormat` setting, read like the other SFTP keys. Part of the `rows` cache signature. */
+    get dateFormat (): SftpDateFormat {
+        return normalizeSftpDateFormat(this.config.store.sidebarPlus?.sftpDateFormat)
+    }
+
     /**
      * Date only, no time — the full timestamp lives in the row tooltip.
      *
-     * The locale is taken from Tabby rather than left to the JS default:
-     * Electron reports en-US whatever the OS says, which would put `7/23/2026`
-     * in an otherwise French panel — and, worse, silently swap day and month.
+     * In `locale` format, the locale is taken from Tabby rather than left to
+     * the JS default: Electron reports en-US whatever the OS says, which would
+     * put `7/23/2026` in an otherwise French panel — and, worse, silently swap
+     * day and month. The two fixed formats ignore the locale altogether (see
+     * sftpDate.ts). Display only: sorting reads the numeric timestamp.
      */
     shortDate (value: Date): string {
         const d = value instanceof Date ? value : new Date(value)
-        return isNaN(d.getTime()) ? '' : d.toLocaleDateString(this.locale.getLocale())
+        return isNaN(d.getTime()) ? '' : formatSftpDate(d, this.dateFormat, this.locale.getLocale())
     }
 
     fullDate (value: Date): string {
         const d = value instanceof Date ? value : new Date(value)
-        return isNaN(d.getTime()) ? '' : d.toLocaleString(this.locale.getLocale())
+        return isNaN(d.getTime()) ? '' : formatSftpDateTime(d, this.dateFormat, this.locale.getLocale())
     }
 
     /** Permissions as the octal triplet (`755`, `644`), the form actually used when typing a chmod. */

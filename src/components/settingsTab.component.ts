@@ -8,6 +8,7 @@ import { BETTER_PANEL_EMBEDDED } from '../betterPanel'
 import { SidebarSnippet } from '../configProvider'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { hostSupports } from '../hostCompat'
+import { normalizeSftpDateFormat } from '../sftpDate'
 import { SidebarPlusI18nService } from '../i18n'
 import { SidebarPlusSnippetsService } from '../snippets.service'
 
@@ -146,6 +147,12 @@ export class SidebarPlusSettingsTabComponent {
     get lblKeyEsc (): string { return this.i18n.t('Esc') }
     get lblOptionCancel (): string { return this.i18n.t('Cancel: the safe answer (default)') }
     get lblOptionConfirm (): string { return this.i18n.t('Delete: Del then Enter in one gesture') }
+    get lblDateFormat (): string { return this.i18n.t('Date format') }
+    get lblDateFormatHint (): string { return this.i18n.t('The two fixed formats give the time in 24-hour format in the tooltip.') }
+    get lblDateFormatDesc (): string { return this.i18n.t('Date column and tooltip of the SFTP listing.') }
+    get lblDateLocale (): string { return this.i18n.t('Follow Tabby\'s language') }
+    get lblDateDmy (): string { return this.i18n.t('Day/month/year (08/10/2026)') }
+    get lblDateIso (): string { return this.i18n.t('ISO 8601 (2026-10-08)') }
     get lblTransfers (): string { return this.i18n.t('Transfer manager') }
     get lblTransfersHint (): string { return this.i18n.t('Also mirrors the transfers of the native SFTP panel.') }
     get lblTransfersDesc (): string { return this.i18n.t('Panel shown at the bottom of the sidebar.') }
@@ -317,6 +324,16 @@ export class SidebarPlusSettingsTabComponent {
 
     async setDeleteDefaultButton (value: string): Promise<void> {
         this.config.store.sidebarPlus.sftpDeleteDefaultButton = value
+        await this.config.save()
+    }
+
+    get dateFormat (): string {
+        return normalizeSftpDateFormat(this.config.store.sidebarPlus?.sftpDateFormat)
+    }
+
+    /** Applied at once: the date format is part of the SFTP listing's row cache signature, no folder change needed. */
+    async setDateFormat (value: string): Promise<void> {
+        this.config.store.sidebarPlus.sftpDateFormat = normalizeSftpDateFormat(value)
         await this.config.save()
     }
 

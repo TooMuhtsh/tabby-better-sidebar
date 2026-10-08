@@ -109,6 +109,8 @@ vue peut être **figée** sur une session pour cesser de suivre le focus.
 - **Colonnes configurables** (taille, date, permissions en octal et en format
   long, type, extension), tri dossiers d'abord, affichage des fichiers cachés,
   lignes alternées
+- **Format de date au choix** : celui de la langue de Tabby, jour/mois/année
+  (`08/10/2026`) ou ISO 8601 (`2026-10-08`)
 - **Dossiers favoris, par profil** — le bouton étoile les liste et ajoute ou
   retire le dossier courant ; un clic ramène au chemin enregistré
 - **Tri par nom, date ou taille** — un clic sur le titre de colonne trie
@@ -237,6 +239,7 @@ personne ne regarde.
 | `sftpFavorites` | *(vide)* | Dossiers distants favoris, par identifiant de profil |
 | `sftpSortKey` | `name` | Colonne de tri du listing : `name`, `date` ou `size` |
 | `sftpSortDescending` | `false` | Sens du tri |
+| `sftpDateFormat` | `locale` | Écriture des dates du listing : `locale` (langue de Tabby), `dmy` (`08/10/2026`) ou `iso` (`2026-10-08`) ; l'infobulle ajoute l'heure |
 | `sftpShowHidden` | `true` | Affiche les fichiers commençant par un point |
 | `sftpColumnBorders` | `true` | Séparateurs de colonnes dans le listing |
 | `sftpZebra` | `true` | Fond de ligne alterné |

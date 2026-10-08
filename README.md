@@ -100,6 +100,8 @@ be **frozen** on one session so it stops following the focused tab.
 
 - **Configurable columns** (size, date, octal and long permissions, type,
   extension), folders-first sorting, hidden files toggle, zebra striping
+- **Date format of your choice**: Tabby's language, day/month/year
+  (`08/10/2026`) or ISO 8601 (`2026-10-08`)
 - **Favorite folders, per profile** — the star button lists them and adds or
   removes the current folder; one click jumps to a saved path
 - **Sort by name, date or size** — click a column header to sort on it, click
@@ -221,6 +223,7 @@ latency probe, no transfer tracking for a panel nobody is looking at.
 | `sftpFavorites` | *(empty)* | Favorite remote folders, keyed by profile id |
 | `sftpSortKey` | `name` | Column the listing is sorted on: `name`, `date` or `size` |
 | `sftpSortDescending` | `false` | Sort direction |
+| `sftpDateFormat` | `locale` | How dates are written in the listing: `locale` (Tabby's language), `dmy` (`08/10/2026`) or `iso` (`2026-10-08`); the tooltip adds the time |
 | `sftpShowHidden` | `true` | Shows dot-files |
 | `sftpColumnBorders` | `true` | Column separators in the listing |
 | `sftpZebra` | `true` | Alternating row background |

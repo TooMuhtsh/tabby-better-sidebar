@@ -266,6 +266,19 @@
 
         .form-line
           .header
+            .title {{ lblDateFormat }} #[i.fas.fa-info-circle.info-hint([title]='lblDateFormatHint')]
+            .description {{ lblDateFormatDesc }}
+          .control
+            select#sidebar-plus-date-format.form-control(
+              [ngModel]='dateFormat',
+              (ngModelChange)='setDateFormat($event)'
+            )
+              option(value='locale') {{ lblDateLocale }}
+              option(value='dmy') {{ lblDateDmy }}
+              option(value='iso') {{ lblDateIso }}
+
+        .form-line
+          .header
             .title {{ lblTransfers }} #[i.fas.fa-info-circle.info-hint([title]='lblTransfersHint')]
             .description {{ lblTransfersDesc }}
           .control

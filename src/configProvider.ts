@@ -179,6 +179,11 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // the per-column default direction on the first click.
             sftpSortKey: 'name' as 'name'|'date'|'size',
             sftpSortDescending: false,
+            // How the date column and the row tooltip write a date: 'locale'
+            // follows Tabby's language (what the panel always did), 'dmy' is
+            // 08/10/2026 and 'iso' 2026-10-08 whatever the language. Display
+            // only — sorting reads the timestamp. See src/sftpDate.ts.
+            sftpDateFormat: 'locale' as 'locale'|'dmy'|'iso',
             // Hides Tabby's own transfers button and dropdown from the tab bar,
             // the plugin's own panel showing the same transfers and more. On by
             // default: left visible, the native dropdown *opens by itself* on
