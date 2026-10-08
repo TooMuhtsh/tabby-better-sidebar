@@ -3,6 +3,29 @@
 All notable changes to `tabby-better-sidebar` are documented here, one entry
 per npm release. Dates are the npm publication dates.
 
+## 1.0.6 — 2026-10-08
+
+- **Added**: sort the SFTP listing by name, date or size — click a column
+  header (a second click reverses the order), or use the new "Sort by" section
+  of the display menu. Folders stay first; the choice is remembered
+  (`sftpSortKey`, `sftpSortDescending`). Contributed by @OGKaktus (#5).
+- **Added**: favorite folders in the SFTP browser, saved per profile — a star
+  in the toolbar adds, lists and removes them (`sftpFavorites`). A
+  quick-connect session has none. Contributed by @OGKaktus (#7).
+- **Added**: date format setting for the SFTP listing — follow Tabby's
+  language (default, unchanged), day/month/year, or ISO 8601; the two fixed
+  formats show the time in 24-hour format in the tooltip (`sftpDateFormat`,
+  #11).
+- **Added**: a "Collapse all / Expand all" button in the filter bar, also on
+  the right click of the tree's empty space (#9).
+- **Added**: the full name as a tooltip on profile rows whose name is cut short
+  (#10).
+- **Fixed**: toasts, dialogs and captions that were still hard-coded in French
+  (remote editing, drag-out, editor picker, transfers, hotkey captions, snippet
+  variables) now follow Tabby's language. Contributed by @OGKaktus (#6).
+- **Fixed**: the collapsed state of the "Pinned" group was not restored after a
+  restart.
+
 ## 1.0.5 — 2026-09-24
 
 - **Added**: Simplified Chinese (`zh-CN`) translation of the whole plugin.
