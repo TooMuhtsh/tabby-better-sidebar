@@ -110,14 +110,13 @@ function entryFile (entry: FileSystemFileEntry): Promise<File> {
     return new Promise((resolve, reject) => entry.file(resolve, reject))
 }
 
-/** An optional column of the file list. The name column is not one of these — it is always shown. */
 /**
  * What the listing can be ordered by. Only the three columns a user actually
- * sorts on; permissions, type and extension stay inert on purpose — see the
- * ROADMAP entry `#sftp-tri`.
+ * sorts on; permissions, type and extension stay inert on purpose.
  */
 export type SftpSortKey = 'name'|'date'|'size'
 
+/** An optional column of the file list. The name column is not one of these — it is always shown. */
 export interface SftpColumn {
     id: string
     /** Header caption. Kept short: the whole list lives in a ~300px sidebar. */
@@ -255,6 +254,19 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.resetRenderChunk()
     }
 
+    /**
+     * The name header's click and caret. The name column is not an
+     * `SftpColumn`, so it cannot go through `onHeaderClick()`; these keep the
+     * key literal out of the template, as its head comment asks.
+     */
+    sortByName (): void {
+        this.sortBy('name')
+    }
+
+    get isSortedByName (): boolean {
+        return this.sortKey === 'name'
+    }
+
     /** The sort key a header cell drives, or `null` for the columns that stay inert. */
     sortKeyForColumn (column: SftpColumn): SftpSortKey|null {
         return column.id === 'date' || column.id === 'size' ? column.id : null
@@ -282,15 +294,18 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     /**
-     * trackBy for the header-menu `*ngFor`s. The two getters above return
-     * fresh object identities on every access, so identity-based diffing
-     * would rebuild every menu item on each change-detection pass — that
-     * destroys the node between mousedown and mouseup and Chromium then
-     * drops the click entirely. Tracking by stable id/key keeps the nodes.
+     * trackBy for the header-menu `*ngFor`s. `availableColumns`,
+     * `displayToggles` and `sortOptions` return fresh object identities on
+     * every access, so identity-based diffing would rebuild every menu item
+     * on each change-detection pass — that destroys the node between
+     * mousedown and mouseup and Chromium then drops the click entirely.
+     * Tracking by stable id/key keeps the nodes.
      */
     trackColumn = (_index: number, column: SftpColumn): string => column.id
 
     trackToggle = (_index: number, toggle: { key: string }): string => toggle.key
+
+    trackSortOption = (_index: number, option: { key: SftpSortKey }): SftpSortKey => option.key
 
     /**
      * Full paths of every selected entry — files and folders mixed freely.
