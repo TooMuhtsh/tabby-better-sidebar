@@ -29,9 +29,10 @@ export const SHARE_VERSION = 1
  * - `secrets` — passwords, login scripts and vault references. Everything else
  *   travels, so the export pastes back as the folder it came from. This is the
  *   one for moving between one's own machines.
- * - `credentials` — the above, plus the username, the private keys, and the
- *   route to the host (jump host, proxies, forwarded ports). The host and port
- *   stay: a structure with no host pastes into something nobody can connect to.
+ * - `credentials` — the above, plus the username, the private keys, the
+ *   route to the host (jump host, proxies, forwarded ports) and the remote
+ *   start directory. The host and port stay: a structure with no host pastes
+ *   into something nobody can connect to.
  */
 export type PurgeLevel = 'secrets' | 'credentials'
 
@@ -45,7 +46,7 @@ export interface PurgeReport {
     vaultKeys: number
     /** Private key paths removed (level `credentials` only). */
     privateKeys: number
-    /** Usernames, jump hosts, proxies and forwarded ports (level `credentials` only). */
+    /** Usernames, jump hosts, proxies, forwarded ports and remote start directories (level `credentials` only). */
     credentials: number
     /** Fields caught by the name heuristic rather than by an explicit rule. */
     suspicious: number
@@ -125,6 +126,10 @@ const ALWAYS_REMOVED = ['password', 'scripts', 'proxyCommand'] as const
  * is the shape of a private network, not a secret as such: a jump host, a
  * pair of proxies and a set of forwarded ports describe how someone's estate
  * is laid out, which is the part one does not hand to a third party.
+ *
+ * `cwd` (Tabby 1.0.236, the remote directory a session starts in) belongs to
+ * the second kind: `/home/alice/deploy` names both the account and the layout
+ * of the server. It travels between one's own machines, not to a third party.
  */
 const CREDENTIAL_FIELDS = [
     'user',
@@ -135,6 +140,7 @@ const CREDENTIAL_FIELDS = [
     'httpProxyHost',
     'httpProxyPort',
     'forwardedPorts',
+    'cwd',
 ] as const
 
 /**
@@ -185,6 +191,12 @@ const SUSPICIOUS_NAME = /pass(word|phrase)|secret|token|credential|apikey|api_ke
  *
  * Checked at the top level of an options block only, exactly like the lists
  * above it — see `purgeOptions()`.
+ *
+ * Last read against Tabby 1.0.236, which added `cwd`, `rememberCwd` and `term`
+ * to `SSHProfileOptions`. None of them runs anything: `cwd` reaches the remote
+ * shell single-quoted (`cd -- '…'`, `SSHShellSession.changeInitialDirectory()`)
+ * and `term` only the PTY request (`resolveSSHTerminalType()`). `cwd` is
+ * stripped at level `credentials` all the same — see `CREDENTIAL_FIELDS`.
  */
 const PROFILE_OPTION_WHITELISTS: Record<string, readonly string[]> = {
     ssh: [
@@ -194,6 +206,7 @@ const PROFILE_OPTION_WHITELISTS: Record<string, readonly string[]> = {
         'algorithms', 'forwardedPorts',
         'socksProxyHost', 'socksProxyPort', 'httpProxyHost', 'httpProxyPort',
         'reuseSession', 'input',
+        'cwd', 'rememberCwd', 'term',
     ],
     telnet: [
         'host', 'port', 'inputMode', 'inputNewlines', 'outputMode', 'outputNewlines', 'input',
