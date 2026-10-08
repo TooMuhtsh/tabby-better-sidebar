@@ -268,6 +268,8 @@ const zh_CN: Record<string, string> = {
     'New workspace': '新建工作区',
     'Filter (Ctrl+F)': '过滤（Ctrl+F）',
     'Hidden items in this workspace': '此工作区中隐藏的项目',
+    'Collapse all': '全部折叠',
+    'Expand all': '全部展开',
     '{count, plural, one {# profile selected} other {# profiles selected}}': '{count, plural, other {# 个配置已选择}}',
     'Clear the selection': '清除选择',
     'Drag the selection, or right-click the destination folder': '拖动所选内容，或右键点击目标文件夹',

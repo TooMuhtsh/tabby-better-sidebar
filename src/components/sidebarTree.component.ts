@@ -1798,6 +1798,73 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         window.localStorage.sidebarPlusGroupCollapsed = JSON.stringify(profileGroupCollapsed)
     }
 
+    /** `localStorage.sidebarPlusGroupCollapsed`: group id → folded. Per machine and global, not per workspace. */
+    private static readCollapsedTable (): Record<string, boolean> {
+        return JSON.parse(window.localStorage.sidebarPlusGroupCollapsed ?? '{}')
+    }
+
+    /**
+     * Whether the "collapse all" button collapses (true) or expands (false).
+     *
+     * The root level is enough to answer "is any folder still open on
+     * screen?": an open folder is only visible when every ancestor is open,
+     * root included. Read on every change detection pass, hence no deeper walk
+     * (piège #54). Folders only — the three blocks above follow along but do
+     * not decide.
+     */
+    get anyGroupExpanded (): boolean {
+        return this.rootGroups.some(group => !(group as PartialProfileGroup<CollapsableProfileGroup>).collapsed)
+    }
+
+    /**
+     * Folds every folder at every depth, plus the active sessions, recent
+     * profiles and tunnels blocks — or unfolds all of it when nothing is open
+     * any more.
+     *
+     * Covers the folders a workspace currently hides as well
+     * (`rawGroupsSnapshot`): the fold state is global, so "everything" means
+     * the same thing whichever workspace is showing. One write of the group
+     * table; each block keeps its own key, written as its own toggle does.
+     * Never while a search is showing: the results force their folders open
+     * and are not the tree.
+     */
+    toggleCollapseAll (): void {
+        if (this.filtering) {
+            return
+        }
+        const collapse = this.anyGroupExpanded
+        const table = SidebarPlusTreeComponent.readCollapsedTable()
+        const walk = (groups: PartialProfileGroup<CollapsableProfileGroup>[]): void => {
+            for (const group of groups) {
+                group.collapsed = collapse
+                table[group.id] = collapse
+                walk(group.children ?? [])
+            }
+        }
+        walk(this.rootGroups as PartialProfileGroup<CollapsableProfileGroup>[])
+        for (const group of this.profileGroups as PartialProfileGroup<CollapsableProfileGroup>[]) {
+            group.collapsed = collapse
+            table[group.id] = collapse
+        }
+        for (const group of this.rawGroupsSnapshot) {
+            table[group.id] = collapse
+        }
+        table.favorites = collapse
+        window.localStorage.sidebarPlusGroupCollapsed = JSON.stringify(table)
+
+        this.activeSessionsCollapsed = collapse
+        window.localStorage.sidebarPlusActiveSessionsCollapsed = collapse
+        this.recentProfilesCollapsed = collapse
+        window.localStorage.sidebarPlusRecentProfilesCollapsed = collapse
+        this.activeTunnelsCollapsed = collapse
+        window.localStorage.sidebarPlusActiveTunnelsCollapsed = collapse
+    }
+
+    toggleCollapseAllFromMenu (): void {
+        this.toggleCollapseAll()
+        this.closeContextMenu()
+    }
+
     private static intoCollapsable (group: PartialProfileGroup<ProfileGroup>, collapsed: boolean): PartialProfileGroup<CollapsableProfileGroup> {
         return { ...group, collapsed } as PartialProfileGroup<CollapsableProfileGroup>
     }
@@ -1929,6 +1996,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return groups
         }
 
+        // Its fold is read back like any folder's: toggleGroupCollapse() has
+        // always written it under this id, but a hard-coded `false` here meant
+        // "Épinglés" reopened on every reload.
         const favoritesGroup = SidebarPlusTreeComponent.intoCollapsable(
             {
                 id: 'favorites',
@@ -1937,7 +2007,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 editable: false,
                 profiles: favoriteProfiles,
             } as PartialProfileGroup<ProfileGroup>,
-            false,
+            SidebarPlusTreeComponent.readCollapsedTable().favorites ?? false,
         )
 
         return [favoritesGroup, ...groups]

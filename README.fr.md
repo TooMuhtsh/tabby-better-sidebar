@@ -73,6 +73,9 @@ plugin reconnaît de son côté.
   pas su remonter
 - **Barre de filtrage rapide**, qui cherche dans le nom, la description, l'hôte
   et l'utilisateur — y compris dans ce que l'espace de travail masque
+- **Tout replier / tout déplier** en un clic, par le bouton voisin du champ de
+  filtre ou le clic droit sur le vide de l'arbre : tous les dossiers à tous les
+  niveaux, plus les blocs Sessions actives, Profils récents et Tunnels
 - **Menus contextuels**, regroupés en sous-menus `Gérer` et `Plus` pour rester
   courts : créer et supprimer dossiers et profils, dupliquer un profil,
   renommer, choisir une icône, rattacher snippets et notes, partager un dossier,

@@ -260,6 +260,20 @@
             [title]="'Hidden items in this workspace' | translate"
         )
             .fa.fa-fw.fas.fa-eye-slash
+        //- Folds everything while any folder is open, unfolds everything once
+            none is. Greyed out during a search, whose results force their
+            folders open. Also on the right click of the tree's empty space,
+            for when this bar is switched off.
+        button.btn.btn-sm.btn-hidden-toggle(
+            type='button',
+            [disabled]='filtering',
+            (click)='toggleCollapseAll()',
+            [title]="anyGroupExpanded ? ('Collapse all' | translate) : ('Expand all' | translate)"
+        )
+            .fa.fa-fw.fas(
+                [class.fa-down-left-and-up-right-to-center]='anyGroupExpanded',
+                [class.fa-up-right-and-down-left-from-center]='!anyGroupExpanded'
+            )
 
     //- Readout of the current selection and reminder of both gestures. Shown
     //- from one profile on: the count is the only statement of how many rows
@@ -589,6 +603,16 @@
     a.group-context-menu-item((click)='pasteGroup()', href='#')
         .fa.fa-fw.fas.fa-paste.me-2
         | {{ 'Paste the folder' | translate }}
+    //- Same command as the button of the filter bar, reachable with that bar
+    //- switched off. Absent during a search, like the button is greyed out.
+    ng-container(*ngIf='!filtering')
+        .group-context-menu-separator
+        a.group-context-menu-item((click)='toggleCollapseAllFromMenu()', href='#')
+            .fa.fa-fw.fas.me-2(
+                [class.fa-down-left-and-up-right-to-center]='anyGroupExpanded',
+                [class.fa-up-right-and-down-left-from-center]='!anyGroupExpanded'
+            )
+            | {{ anyGroupExpanded ? ('Collapse all' | translate) : ('Expand all' | translate) }}
 
 .group-context-menu(
     *ngIf='contextMenuProfile && isMenuMode',

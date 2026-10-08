@@ -271,6 +271,8 @@ const de_DE: Record<string, string> = {
     'New workspace': 'Neuer Arbeitsbereich',
     'Filter (Ctrl+F)': 'Filtern (Strg+F)',
     'Hidden items in this workspace': 'Ausgeblendete Elemente in diesem Arbeitsbereich',
+    'Collapse all': 'Alle einklappen',
+    'Expand all': 'Alle ausklappen',
     '{count, plural, one {# profile selected} other {# profiles selected}}': '{count, plural, one {# Profil ausgewählt} other {# Profile ausgewählt}}',
     'Clear the selection': 'Auswahl aufheben',
     'Drag the selection, or right-click the destination folder': 'Auswahl ziehen oder Zielordner mit Rechtsklick wählen',

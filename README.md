@@ -66,6 +66,9 @@ between the two repos, no shared code: just a small string contract
   including a memory of tunnels a dropped session failed to bring back
 - **Quick filter bar**, searching name, description, host and username —
   including inside what a workspace currently hides
+- **Collapse all / expand all** in one click, from the button next to the
+  filter field or the right click on the tree's empty space: every folder at
+  every depth, plus the active sessions, recent profiles and tunnels blocks
 - **Right-click menus**, grouped into `Manage` and `More` submenus so they stay
   short: create and delete folders and profiles, clone a profile, rename, pick
   an icon, attach snippets and notes, share a folder, hide it in the current

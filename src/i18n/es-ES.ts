@@ -272,6 +272,8 @@ const es_ES: Record<string, string> = {
     'New workspace': 'Nuevo espacio de trabajo',
     'Filter (Ctrl+F)': 'Filtrar (Ctrl+F)',
     'Hidden items in this workspace': 'Elementos ocultos en este espacio de trabajo',
+    'Collapse all': 'Contraer todo',
+    'Expand all': 'Expandir todo',
     '{count, plural, one {# profile selected} other {# profiles selected}}': '{count, plural, one {# perfil seleccionado} other {# perfiles seleccionados}}',
     'Clear the selection': 'Cancelar la selección',
     'Drag the selection, or right-click the destination folder': 'Arrastre la selección o haga clic derecho en la carpeta de destino',
