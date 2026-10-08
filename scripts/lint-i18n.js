@@ -37,6 +37,10 @@ const EXTRA_SOURCES = [
     // profileModal.ts a délibérément aucun accès à l'injecteur — la clé sort
     // telle quelle, traduite par les deux appelants de sidebarTree.component.ts.
     { file: 'profileModal.ts', constant: 'PROFILE_MODAL_UNAVAILABLE' },
+    // hotkeys.ts — Tabby's settings page runs `hotkey.name | translate`
+    // itself, so the captions are English keys held in constants.
+    { file: 'hotkeys.ts', constant: 'INSERT_NEWLINE_HOTKEY_NAME' },
+    { file: 'hotkeys.ts', constant: 'FOCUS_FILTER_HOTKEY_NAME' },
 ]
 
 /** Tous les fichiers sous src/ (récursif) filtrés par extension, chemins relatifs à src/. */

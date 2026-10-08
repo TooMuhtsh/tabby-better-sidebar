@@ -3,6 +3,7 @@ import { existsSync } from 'fs'
 import { Inject, Injectable, Optional } from '@angular/core'
 import { ConfigService, FileProvider, NotificationsService } from 'tabby-core'
 import { electronRemote } from './electronRemote'
+import { SidebarPlusI18nService } from './i18n'
 
 /**
  * What a downloaded copy is handed to: the configured editor, or the OS's own
@@ -38,6 +39,7 @@ export class SidebarPlusEditorService {
         // single FileProvider would take the panel down with it instead of
         // merely losing the picker, which `pickEditorPath()` already handles.
         @Optional() @Inject(FileProvider) private fileProviders: FileProvider[]|null,
+        private i18n: SidebarPlusI18nService,
     ) { }
 
     get editorPath (): string {
@@ -105,9 +107,9 @@ export class SidebarPlusEditorService {
         let result: { canceled: boolean, filePaths: string[] }
         try {
             result = await remote.dialog.showOpenDialog(remote.getCurrentWindow(), {
-                title: 'Choisir l\'éditeur des fichiers distants',
+                title: this.i18n.t('Choose the editor for remote files'),
                 defaultPath: this.defaultEditorDirectory(),
-                buttonLabel: 'Utiliser cet éditeur',
+                buttonLabel: this.i18n.t('Use this editor'),
                 filters: this.editorFilters(),
                 // No `treatPackageAsDirectory`: on macOS an .app has to be
                 // selectable as one item, not browsed into.
@@ -145,19 +147,20 @@ export class SidebarPlusEditorService {
     }
 
     private editorFilters (): { name: string, extensions: string[] }[] {
+        const allFiles = { name: this.i18n.t('All files'), extensions: ['*'] }
         if (process.platform === 'win32') {
             return [
-                { name: 'Applications', extensions: ['exe', 'com', 'bat', 'cmd', 'lnk'] },
-                { name: 'Tous les fichiers', extensions: ['*'] },
+                { name: this.i18n.t('Applications'), extensions: ['exe', 'com', 'bat', 'cmd', 'lnk'] },
+                allFiles,
             ]
         }
         if (process.platform === 'darwin') {
             return [
-                { name: 'Applications', extensions: ['app'] },
-                { name: 'Tous les fichiers', extensions: ['*'] },
+                { name: this.i18n.t('Applications'), extensions: ['app'] },
+                allFiles,
             ]
         }
-        return [{ name: 'Tous les fichiers', extensions: ['*'] }]
+        return [allFiles]
     }
 
     /**
@@ -174,7 +177,7 @@ export class SidebarPlusEditorService {
             const target = remote.shell.readShortcutLink(picked).target
             return target || picked
         } catch (e) {
-            this.notifications.error(`Impossible de lire le raccourci ${picked}`, String(e))
+            this.notifications.error(this.i18n.t('Could not read the shortcut {path}', { path: picked }), String(e))
             return picked
         }
     }
@@ -193,12 +196,12 @@ export class SidebarPlusEditorService {
     private async pickEditorPathFallback (): Promise<string|null> {
         const provider = this.fileProviders?.find(p => p.name === 'Filesystem')
         if (!provider) {
-            this.notifications.error('Aucun sélecteur de fichier disponible pour choisir un éditeur')
+            this.notifications.error(this.i18n.t('No file picker is available to choose an editor'))
             return null
         }
         let key: string
         try {
-            key = await provider.selectAndStoreFile('éditeur')
+            key = await provider.selectAndStoreFile(this.i18n.t('editor'))
         } catch {
             // Cancelled — the provider throws rather than returning null.
             return null
@@ -227,11 +230,11 @@ export class SidebarPlusEditorService {
             // ENOENT for a moved or uninstalled editor arrives asynchronously,
             // never as a throw from spawn() itself.
             child.on('error', e => {
-                this.notifications.error(`Impossible de lancer l'éditeur ${editorPath}`, String(e))
+                this.notifications.error(this.i18n.t('Could not launch the editor {path}', { path: editorPath }), String(e))
             })
             child.unref()
         } catch (e) {
-            this.notifications.error(`Impossible de lancer l'éditeur ${editorPath}`, String(e))
+            this.notifications.error(this.i18n.t('Could not launch the editor {path}', { path: editorPath }), String(e))
         }
     }
 
@@ -254,7 +257,7 @@ export class SidebarPlusEditorService {
     openWith (localPath: string, learn = false): void {
         execFile('rundll32.exe', ['shell32.dll,OpenAs_RunDLL', localPath], e => {
             if (e) {
-                this.notifications.error(`Impossible d'ouvrir la boîte « Ouvrir avec »`, String(e))
+                this.notifications.error(this.i18n.t('Could not open the "Open with" dialog'), String(e))
                 return
             }
             if (learn && !this.editorPath) {
@@ -317,7 +320,7 @@ for ($i = 0; $i -lt 20; $i++) {
             return
         }
         await this.setEditorPath(resolvedPath)
-        this.notifications.notice(`Éditeur mémorisé : ${resolvedPath} — modifiable dans Paramètres → Better Sidebar`)
+        this.notifications.notice(this.i18n.t('Editor remembered: {path} — change it in Settings → Better Sidebar', { path: resolvedPath }))
     }
 
     /**

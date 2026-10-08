@@ -144,7 +144,11 @@
             )
                 .cell-icon
                     i.fa-fw([class]='row.icon')
-                .cell-name {{ row.item.name }}
+                .cell-name
+                    | {{ row.item.name }}
+                    //- Was a CSS `::after` content: a string in a stylesheet
+                    //- cannot be translated, so it lives here now.
+                    span.sftp-preparing-note(*ngIf='isDragPreparing(row.item)') {{ 'preparing...' | translate }}
                 .cell-value(
                     *ngFor='let cell of row.cells; let c = index',
                     [class.cell-right]='visibleColumns[c].numeric',

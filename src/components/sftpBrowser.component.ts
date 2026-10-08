@@ -253,11 +253,11 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
-        const transfers = new SftpTransfers(platform, notices, registry)
+        const transfers = new SftpTransfers(platform, notices, registry, i18n)
         this.fileTransfers = transfers
         this.platformSvc = platform
-        this.editor = new SftpRemoteEditor(notices, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel), zone)
-        this.dragOut = new SftpDragOut(notices, zone, transfers, temp)
+        this.editor = new SftpRemoteEditor(notices, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel), zone, i18n)
+        this.dragOut = new SftpDragOut(notices, zone, transfers, temp, i18n)
     }
 
     /** The transfers helper shared with the editor and the drag-out — kept for routes started here. */

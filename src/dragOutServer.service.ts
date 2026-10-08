@@ -4,6 +4,7 @@ import { Injectable, NgZone } from '@angular/core'
 import { FileDownload, PlatformService } from 'tabby-core'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { SidebarPlusDropLocator } from './dropLocator.service'
+import { SidebarPlusI18nService } from './i18n'
 import { freeLocalName } from './localNames'
 import { SidebarPlusNoticesService } from './notices.service'
 import { readRemoteEntry } from './remoteEntry'
@@ -114,7 +115,7 @@ class HttpFileDownload extends FileDownload {
         // a dismissed dialog left the loop reading the whole file out of the
         // server and writing it into a dead socket.
         if (this.clientGone || this.response.destroyed) {
-            throw new Error('Téléchargement abandonné')
+            throw new Error('Download abandoned')
         }
         if (!this.response.write(Buffer.from(buffer))) {
             await this.awaitDrain()
@@ -142,7 +143,7 @@ class HttpFileDownload extends FileDownload {
             }
             const onGone = (): void => {
                 cleanup()
-                reject(new Error('Téléchargement abandonné'))
+                reject(new Error('Download abandoned'))
             }
             this.response.once('drain', onDrain)
             this.response.once('close', onGone)
@@ -188,12 +189,13 @@ export class SidebarPlusDragOutServer {
         private locator: SidebarPlusDropLocator,
         private notifications: SidebarPlusNoticesService,
         private zone: NgZone,
+        private i18n: SidebarPlusI18nService,
         platform: PlatformService,
     ) {
         // Built here rather than injected: `SftpTransfers` is a plain class the
         // SFTP panel constructs for itself, and the marker route needs the same
         // reporting — imposed path, progress in Tabby's own transfer list.
-        this.fileTransfers = new SftpTransfers(platform, this.notifications, this.transfers)
+        this.fileTransfers = new SftpTransfers(platform, this.notifications, this.transfers, this.i18n)
         // Started eagerly: `dragstart` is synchronous and cannot wait for a
         // listening socket, so the port has to be known before the first
         // gesture. Failing to start is not fatal — the caller falls back to the
@@ -383,7 +385,7 @@ export class SidebarPlusDragOutServer {
         // entry arrive somewhere the user can find it rather than nowhere.
         const folder = destination ?? this.locator.fallbackFolder()
         if (!destination) {
-            this.notify(`${offer.item.name} : dossier de dépôt introuvable, livré dans ${folder}`)
+            this.notify(this.i18n.t('{name}: drop folder not found, delivered to {folder}', { name: offer.item.name, folder }))
         }
         await this.deliver(offer, folder)
     }
@@ -413,9 +415,9 @@ export class SidebarPlusDragOutServer {
                     offer.item.name, offer.item.size, offer.item.mode, context,
                 )
             }
-            this.notify(`${offer.item.name} déposé dans ${folder}`)
+            this.notify(this.i18n.t('{name} dropped in {folder}', { name: offer.item.name, folder }))
         } catch (error) {
-            this.notifyError(`${offer.item.name} n'a pas pu être déposé dans ${folder}`, String((error as Error)?.message ?? error))
+            this.notifyError(this.i18n.t('{name} could not be dropped in {folder}', { name: offer.item.name, folder }), String((error as Error)?.message ?? error))
         }
     }
 

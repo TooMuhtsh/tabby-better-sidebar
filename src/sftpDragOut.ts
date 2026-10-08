@@ -1,5 +1,6 @@
 import * as path from 'path'
 import { NgZone } from '@angular/core'
+import { SidebarPlusI18nService } from './i18n'
 import { SidebarPlusNoticesService } from './notices.service'
 import { SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { electronRemote } from './electronRemote'
@@ -86,6 +87,7 @@ export class SftpDragOut {
         private zone: NgZone,
         private transfers: SftpTransfers,
         private temp: SidebarPlusTempFilesService,
+        private i18n: SidebarPlusI18nService,
     ) { }
 
     /**
@@ -147,7 +149,7 @@ export class SftpDragOut {
         const localPath = copy.localPath
         const remote = electronRemote()
         if (!remote) {
-            this.notifications.error('Le glisser-déposer sortant n\'est pas disponible sur cette installation')
+            this.notifications.error(this.i18n.t('Dragging out to the OS is not available on this installation'))
             return false
         }
         try {
@@ -157,7 +159,7 @@ export class SftpDragOut {
             })
             return true
         } catch (e) {
-            this.notifications.error('Impossible de démarrer le glisser-déposer', String(e))
+            this.notifications.error(this.i18n.t('Could not start the drag'), String(e))
             return false
         }
     }
@@ -222,7 +224,7 @@ export class SftpDragOut {
             })
             this.handOver(fresh, isGestureHeld)
         } catch (e) {
-            this.notifications.error(`Impossible de préparer ${item.name} pour le glisser-déposer`, String(e))
+            this.notifications.error(this.i18n.t('Could not prepare {name} for dragging', { name: item.name }), String(e))
         }
     }
 
@@ -240,7 +242,7 @@ export class SftpDragOut {
         if (isGestureHeld() && this.startDrag(item)) {
             return
         }
-        this.notifications.notice(`${item.name} est prêt — glissez-le à nouveau pour le déposer`)
+        this.notifications.notice(this.i18n.t('{name} is ready — drag it again to drop it', { name: item.name }))
     }
 
     /**
@@ -261,7 +263,7 @@ export class SftpDragOut {
         const fresh = await this.remoteFingerprint(sftp, item)
         if (this.isStale(copy, fresh)) {
             this.ready.delete(item.fullPath)
-            this.notifications.notice(`${item.name} a changé sur le serveur — reglissez-le pour obtenir la version à jour`)
+            this.notifications.notice(this.i18n.t('{name} has changed on the server — drag it again to get the current version', { name: item.name }))
         }
     }
 

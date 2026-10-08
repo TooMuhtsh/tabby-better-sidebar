@@ -3,6 +3,7 @@ import { ApplicationRef, ComponentRef, EnvironmentInjector, Injectable, createCo
 import { AppService, ConfigService, NotificationsService } from 'tabby-core'
 import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
 import { checkHost } from './hostCompat'
+import { SidebarPlusI18nService } from './i18n'
 
 /** Set on `body` while Tabby's own transfers menu is to stay out of the way. */
 const HIDE_NATIVE_TRANSFERS_CLASS = 'sidebar-plus-hide-native-transfers'
@@ -29,6 +30,7 @@ export class SidebarPlusMountService {
         private app: AppService,
         private config: ConfigService,
         private notifications: NotificationsService,
+        private i18n: SidebarPlusI18nService,
     ) {
         this.app.ready$.subscribe(() => {
             this.verifyHost()
@@ -52,7 +54,7 @@ export class SidebarPlusMountService {
             return
         }
 
-        const lost = report.failed.map(p => p.feature).join(', ')
+        const lost = report.failed.map(p => this.i18n.t(p.feature.message, p.feature.params)).join(', ')
         // console.error as well as the toast: a notification is gone in
         // seconds, and this is exactly the kind of failure someone comes back
         // to diagnose later.
@@ -66,8 +68,8 @@ export class SidebarPlusMountService {
         // restriction alors que c'en est le contraire.
         this.notifications.error(
             report.fatal
-                ? 'tabby-better-sidebar ne peut pas démarrer sur cette version de Tabby — voir la console pour le détail'
-                : `tabby-better-sidebar : ${lost} — indisponible sur cette version de Tabby`,
+                ? this.i18n.t('tabby-better-sidebar cannot start on this version of Tabby — see the console for details')
+                : this.i18n.t('tabby-better-sidebar: {lost} — unavailable on this version of Tabby', { lost }),
         )
     }
 

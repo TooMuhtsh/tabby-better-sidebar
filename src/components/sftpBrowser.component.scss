@@ -302,10 +302,14 @@ sidebar-plus-sftp-browser .sftp-row.sftp-preparing {
     cursor: progress;
     box-shadow: inset 2px 0 0 var(--theme-primary);
 
-    .cell-name::after {
-        content: ' — préparation...';
+    .sftp-preparing-note {
+        margin-left: .3rem;
         opacity: .6;
         font-style: italic;
+
+        &::before {
+            content: '— ';
+        }
     }
 }
 
