@@ -151,7 +151,7 @@ export class LocalFileUpload extends FileUpload {
     /** An empty chunk is how SFTPSession.upload() detects the end of the stream. */
     async read (): Promise<Uint8Array> {
         if (!this.handle) {
-            throw new Error('Le fichier local n’est pas ouvert en lecture')
+            throw new Error('The local file is not open for reading')
         }
         const { bytesRead } = await this.handle.read(this.buffer, 0, CHUNK_SIZE, null)
         if (bytesRead === 0) {
