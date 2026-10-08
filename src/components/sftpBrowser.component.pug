@@ -31,15 +31,22 @@
     //- A title on every button: the captions the native template pairs with
     //- each icon do not fit a sidebar, and an icon on its own says nothing.
     //-
-    //- The star sits first, next to the path it is about. Lit when the
-    //- current folder is a favorite; the click opens the list either way.
+    //- The star sits first, next to the path it is about. Filled and coloured
+    //- when the current folder is a favorite, outlined otherwise — the same
+    //- star as the profile rows of the tree. The click toggles the list
+    //- either way.
     button.btn.btn-link.btn-sm.sftp-tool.sftp-favorites-button(
         type='button',
-        [class.active]='isCurrentFavorite',
-        (click)='openFavoritesMenu($event)',
+        aria-haspopup='true',
+        [attr.aria-expanded]='favoritesMenuOpen',
+        (click)='toggleFavoritesMenu($event)',
         [title]="'Favorite folders' | translate"
     )
-        .fa.fa-fw.fas.fa-star
+        .fa.fa-fw(
+            [class.fas]='isCurrentFavorite',
+            [class.far]='!isCurrentFavorite',
+            class='fa-star'
+        )
     button.btn.btn-link.btn-sm.sftp-tool(
         type='button',
         *ngIf='editingPath === null',

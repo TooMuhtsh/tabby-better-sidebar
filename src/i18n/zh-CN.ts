@@ -34,6 +34,13 @@ const zh_CN: Record<string, string> = {
     'Column borders': '列边框',
     'Alternating rows': '隔行变色',
 
+    // sftpBrowser.component.pug — favorite folders menu
+    'Favorite folders': '收藏的文件夹',
+    'Favorites are saved per profile, and this session has none.': '收藏按配置保存，而此会话没有配置。',
+    'No favorites yet — add the current folder below.': '还没有收藏——在下方添加当前文件夹。',
+    'Add the current folder': '添加当前文件夹',
+    'Remove the current folder': '移除当前文件夹',
+
     // sftpBrowser.component.ts — downloadFolder()
     'Destination folder for {name}': '{name} 的目标文件夹',
     'Download here': '下载到此处',

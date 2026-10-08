@@ -39,6 +39,12 @@ sidebar-plus-sftp-browser .sftp-tool {
     }
 }
 
+// The favorite star says "this folder is saved" by its own fill and colour —
+// the gold of the tree's favorite profiles — rather than by a button state.
+sidebar-plus-sftp-browser .sftp-favorites-button .fa-star.fas {
+    color: #e8b923;
+}
+
 sidebar-plus-sftp-browser .sftp-breadcrumb {
     min-width: 0;
     overflow-x: auto;

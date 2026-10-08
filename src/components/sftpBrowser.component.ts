@@ -77,6 +77,20 @@ interface DropPlan {
 }
 
 /**
+ * The one spelling a favorite folder is stored and compared under.
+ *
+ * A path typed in the breadcrumb can carry a trailing slash, a doubled one or
+ * a `.` segment, and the panel's own navigation does not always produce the
+ * same form: without this, `/srv/app/` saved once would never light the star
+ * on `/srv/app`, and removing it from there would miss. Trailing slash
+ * dropped, except on the root itself.
+ */
+function normalizeFavoritePath (path: string): string {
+    const normalized = posix.normalize(path)
+    return normalized.length > 1 && normalized.endsWith('/') ? normalized.slice(0, -1) : normalized
+}
+
+/**
  * Reads a dropped directory **whole**.
  *
  * `readEntries()` answers with a slice, not a listing — 100 entries at a time
@@ -676,17 +690,26 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         return this.config.store.sidebarPlus?.sftpFavorites?.[this.profileId] ?? []
     }
 
-    /** Whether the folder currently shown is one of them — drives the star's active state. */
+    /**
+     * Whether the folder currently shown is one of them — drives the star's
+     * icon. Both sides normalized: see `normalizeFavoritePath()`.
+     */
     get isCurrentFavorite (): boolean {
-        return this.favorites.includes(this.path)
+        const current = normalizeFavoritePath(this.path)
+        return this.favorites.some(p => normalizeFavoritePath(p) === current)
     }
 
     /**
-     * Opens the favorites menu under the star rather than at the cursor: it is
-     * a dropdown of that button, and should read as one. Same position fields
+     * The star toggles its menu: a second click closes it, as a dropdown
+     * button does. It opens under the star rather than at the cursor — it is a
+     * dropdown of that button, and should read as one. Same position fields
      * and the same clamping pass as the two context menus.
      */
-    openFavoritesMenu (event: MouseEvent): void {
+    toggleFavoritesMenu (event: MouseEvent): void {
+        if (this.favoritesMenuOpen) {
+            this.favoritesMenuOpen = false
+            return
+        }
         const button = (event.currentTarget as HTMLElement).getBoundingClientRect()
         this.backgroundMenuOpen = false
         this.displayMenuOpen = false
@@ -709,11 +732,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         }
     }
 
+    /** Stored normalized, so that one folder is only ever saved once. */
     addFavorite (path: string): void {
-        if (!this.profileId || this.favorites.includes(path)) {
+        const normalized = normalizeFavoritePath(path)
+        if (!this.profileId || this.favorites.some(p => normalizeFavoritePath(p) === normalized)) {
             return
         }
-        this.saveFavorites([...this.favorites, path])
+        this.saveFavorites([...this.favorites, normalized])
     }
 
     /** Called from the menu's cross as well: the menu stays open, so several can go in a row. */
@@ -721,7 +746,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         if (!this.profileId) {
             return
         }
-        this.saveFavorites(this.favorites.filter(p => p !== path))
+        const normalized = normalizeFavoritePath(path)
+        this.saveFavorites(this.favorites.filter(p => normalizeFavoritePath(p) !== normalized))
     }
 
     /** Copy-and-reassign, never mutate in place — the same rule as every other record in `sidebarPlus` (piège #23). */

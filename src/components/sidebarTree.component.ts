@@ -3583,6 +3583,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.snippets.forget(id)
         this.moveNote(id, null)
 
+        // Favorite SFTP folders are keyed by profile id. Copy, drop, reassign
+        // — like the notes just above, and for the same reason.
+        if (kind === 'profile' && id in (sidebarPlus.sftpFavorites ?? {})) {
+            const sftpFavorites: Record<string, string[]> = { ...sidebarPlus.sftpFavorites }
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+            delete sftpFavorites[id]
+            sidebarPlus.sftpFavorites = sftpFavorites
+        }
+
         if (kind === 'group') {
             // Collapsed state lives in localStorage, not in config.yaml — same
             // reasoning as in migrateWorkspaceGroupId(), and unreadable storage
