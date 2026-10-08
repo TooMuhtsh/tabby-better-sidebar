@@ -45,6 +45,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="#bump-outillage">Montée de version TypeScript / webpack-cli</a></td><td><span class="pill planned">📋 Retenu, non ouvert (2026-08-14)</span></td><td>Basse — période calme</td></tr>
 <tr><td><a href="annexes/REALISE.html#tabby-1-0-236">Compatibilité Tabby 1.0.236</a></td><td><span class="pill done">✅ Livré — 1.0.4 (2026-09-24)</span></td><td>—</td></tr>
 <tr><td><a href="annexes/REALISE.html#fork-hoyoho">Reprise du fork de hoyoho (correctifs SFTP, chinois)</a></td><td><span class="pill done">✅ Livré — 1.0.5 (2026-09-24)</span></td><td>—</td></tr>
+<tr><td><a href="#pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)</a></td><td><span class="pill progress">🔧 Validé 20/20, fusion sur <code>master</code> — publication 1.0.6 à faire (2026-10-08)</span></td><td>Prochaine publication</td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></td><td>À tenir à chaque publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
@@ -670,6 +671,41 @@ v0.4.0 → v1.0.2 portent déjà un titre et des notes</strong> — le manque es
 seul visible depuis la page npm et le clone, et la couverture des versions antérieures
 (0.2.0, 0.3.0). Rétro-remplissage possible depuis les releases et le journal. À faire au plus tard
 avec la prochaine publication, pour que la version qui l'introduit le mentionne.</p>
+
+<h3 id="pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)
+<span class="pill progress">🔧 Validé 20/20, fusion sur <code>master</code> — publication 1.0.6 à faire (2026-10-08)</span></h3>
+<p>Trois pull requests externes ouvertes les 16 et 17 septembre, toutes parties de la 1.0.3, donc
+antérieures à la table <code>zh-CN</code> et aux correctifs SFTP repris de hoyoho. Revues le
+2026-10-08, chacune fusionnée sur <code>master</code> dans une copie : build vert, mais
+<code>lint:i18n</code> rouge sur les trois (clés chinoises absentes). Retouches faites par nous sur
+leurs branches (l'auteur l'autorise), commit d'origine de l'auteur conservé tel quel :</p>
+<ul>
+<li><strong>#6 — chaînes restées en dur en français</strong> (toasts de l'édition distante, du glisser
+  sortant, du sélecteur d'éditeur, des transferts, erreur de compatibilité, libellés des raccourcis,
+  sources des variables de snippet, marqueur « préparation… ») : les services reçoivent
+  <code>SidebarPlusI18nService</code>, <code>hostCompat.feature</code> devient un
+  <code>TranslatableMessage</code>. Retouches : 47 clés <code>zh-CN</code>, dernier message d'erreur en
+  dur passé en anglais.</li>
+<li><strong>#7 — dossiers favoris SFTP par profil</strong> (<code>sidebarPlus.sftpFavorites</code>,
+  record indexé par id de profil ; une session en connexion rapide n'en a pas). Retouches : chemins
+  normalisés au stockage et à la comparaison (<code>/var/log/</code> = <code>/var/log</code>), purge
+  dans <code>forgetDeletedId()</code> à la suppression du profil, étoile en bascule avec
+  <code>aria-expanded</code>, étoile pleine dorée plutôt qu'un aplat, 5 clés <code>zh-CN</code>. Non
+  exportés par le partage de dossier ni de workspace — et ils ne doivent pas l'être : un chemin décrit
+  l'arborescence d'un serveur.</li>
+<li><strong>#5 — tri du listing par nom, date ou taille</strong> (clic d'en-tête, section « Trier par »
+  du menu d'affichage, <code>sftpSortKey</code>/<code>sftpSortDescending</code>). Retouches :
+  <code>trackBy</code> sur le <code>*ngFor</code> de <code>sortOptions</code> — sans lui, le
+  défaut corrigé en 1.0.5 sur le menu d'en-tête revenait (clic réel perdu) —, plus de littéral de clé
+  de tri dans les expressions du template, JSDoc de <code>SftpColumn</code> remise en place, 2 clés
+  <code>zh-CN</code>.</li>
+</ul>
+<p>Branche d'intégration <code>integ/pr-5-6-7</code> : 480 clés, quatre tables complètes ; build
+identique à <code>master</code> (12 avertissements). <strong>Passe de 20 tests validée par
+l'utilisateur le 2026-10-08</strong> sur la jonction de dev, Tabby en français puis en 简体中文.
+Les 54 traductions chinoises n'ont été relues par aucun lecteur du chinois.</p>
+<p class="muted">Reste à faire : entrée <code>CHANGELOG.md</code> au bump 1.0.6, puis passe de release
+sur le paquet hors jonction et publication.</p>
 
 <h2>Hors périmètre</h2>
 
