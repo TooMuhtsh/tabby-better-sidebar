@@ -66,6 +66,9 @@ plugin reconnaît de son côté.
   travail / projet), chacun avec ses propres favoris, son propre ordre entre
   frères, sa propre icône et une couleur contextuelle optionnelle ; sélecteur en
   onglets ou en liste déroulante, et export/import JSON en un clic
+- **Onglet « Actifs »** : réduit la liste aux profils qui ont un onglet ouvert
+  (déconnectés compris), dans l'espace de travail sélectionné — sur « Tous »
+  ou sans espaces de travail, toutes les sessions ouvertes
 - **Sélection multiple**, pour agir sur plusieurs profils à la fois
 - **Tunnels SSH** : un panneau de ce que Tabby redirige réellement, des badges
   sur les profils qui déclarent des tunnels, et une modale pour en ajouter,
@@ -219,6 +222,7 @@ sous `sidebarPlus` dans le `config.yaml` de Tabby.
 | `showTunnels` | `true` | Panneau de redirection de ports et badges sur les profils |
 | `showWorkspaces` | `true` | Barre des espaces de travail, au-dessus de la liste |
 | `showFilter` | `true` | Champ de recherche et son raccourci |
+| `showActiveToggle` | `true` | Onglet « Actifs » : seulement les profils qui ont un onglet ouvert |
 | `showSftp` | `true` | L'onglet SFTP de la sidebar et son panneau |
 | `showTransfers` | `true` | Gestionnaire de transferts en bas de la sidebar |
 | `showSnippets` | `true` | L'entrée *Snippets* du clic droit et son onglet |

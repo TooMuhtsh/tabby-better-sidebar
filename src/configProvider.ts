@@ -245,6 +245,10 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // mid-session instead of letting them choose it once.
             workspaceSelectorMode: 'tabs' as 'tabs'|'dropdown',
             showFilter: true,
+            // The "Actifs" tab (#8). Independent of showWorkspaces on purpose:
+            // it narrows the selected workspace, and with the workspaces off
+            // that is simply everything.
+            showActiveToggle: true,
             // Éteints, les deux retirent leur entrée du menu contextuel et ce
             // qu'ils posent sur les lignes — sans toucher à ce qui est stocké :
             // la bibliothèque, les rattachements et les notes attendent d'être

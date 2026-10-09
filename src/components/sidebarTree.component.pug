@@ -199,32 +199,47 @@
     //- (workspaceSelectorMode, next to showWorkspaces in the settings tab),
     //- never auto-detected — see the getter's own comment in the .ts for why
     //- an earlier ResizeObserver-driven version was dropped.
-    .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='showWorkspaces && !sftpMode && workspaceSelectorMode === "tabs"')
-        a.workspace-tab(
-            [class.active]='activeWorkspaceId === "all"',
-            (click)='selectWorkspace("all")',
-            href='#'
-        ) {{ 'All' | translate }}
-        a.workspace-tab(
-            *ngFor='let ws of workspaces',
-            [class.active]='activeWorkspaceId === ws.id',
-            (click)='selectWorkspace(ws.id)',
-            (contextmenu)='onWorkspaceTabContextMenu($event, ws)',
-            [title]='ws.name',
-            href='#'
-        )
-            profile-icon.me-1(*ngIf='ws.icon', [icon]='ws.icon')
-            span {{ ws.name }}
-            //- Absolutely positioned (see .workspace-color-dot in the SCSS)
-            //- so it adds zero width of its own — a colored workspace must
-            //- render at the exact same tab size as one without.
-            .workspace-color-dot(*ngIf='ws.color', [style.background-color]='ws.color')
-        a.workspace-tab.workspace-tab-add(
-            (click)='openCreateWorkspacePrompt($event)',
-            [title]="'New workspace' | translate",
+    //- The "Actifs" tab (#8) rides on this strip but does not depend on it:
+    //- it is a toggle laid over the selected workspace, not a workspace, and
+    //- stays reachable with the workspaces switched off — the strip then
+    //- holds it alone. In 'dropdown' mode too it keeps a tab of its own, here,
+    //- above the compact selector.
+    .workspace-bar.d-flex.align-items-center.flex-wrap(*ngIf='!sftpMode && (showActiveToggle || (showWorkspaces && workspaceSelectorMode === "tabs"))')
+        a.workspace-tab.workspace-tab-active-only(
+            *ngIf='showActiveToggle',
+            [class.active]='activeOnly',
+            (click)='toggleActiveOnly()',
+            [title]="'Only the profiles with an open tab' | translate",
             href='#'
         )
-            .fa.fa-fw.fas.fa-plus
+            .fa.fa-fw.fas.fa-plug.me-1
+            span {{ 'Active' | translate }}
+        ng-container(*ngIf='showWorkspaces && workspaceSelectorMode === "tabs"')
+            a.workspace-tab(
+                [class.active]='activeWorkspaceId === "all"',
+                (click)='selectWorkspace("all")',
+                href='#'
+            ) {{ 'All' | translate }}
+            a.workspace-tab(
+                *ngFor='let ws of workspaces',
+                [class.active]='activeWorkspaceId === ws.id',
+                (click)='selectWorkspace(ws.id)',
+                (contextmenu)='onWorkspaceTabContextMenu($event, ws)',
+                [title]='ws.name',
+                href='#'
+            )
+                profile-icon.me-1(*ngIf='ws.icon', [icon]='ws.icon')
+                span {{ ws.name }}
+                //- Absolutely positioned (see .workspace-color-dot in the SCSS)
+                //- so it adds zero width of its own — a colored workspace must
+                //- render at the exact same tab size as one without.
+                .workspace-color-dot(*ngIf='ws.color', [style.background-color]='ws.color')
+            a.workspace-tab.workspace-tab-add(
+                (click)='openCreateWorkspacePrompt($event)',
+                [title]="'New workspace' | translate",
+                href='#'
+            )
+                .fa.fa-fw.fas.fa-plus
 
     //- The 'dropdown' alternative to the strip above — active workspace only
     //- (same icon/dot rendering a tab would use), the full list lives in the
@@ -324,6 +339,8 @@
                         profile-icon([icon]='group.icon ?? "far fa-folder"', [color]='group.color')
                         span.ms-2 {{ group.name || 'Ungrouped' }}
                     ng-container(*ngTemplateOutlet='recursiveGroup; context: {$implicit: group, depth: 0}')
+
+            .text-muted.small.px-2(*ngIf='narrowedToOpen && !rootGroups.length') {{ 'No open session in this view.' | translate }}
 
             ng-template(#recursiveGroup let-group let-depth='depth')
                 a.tree-item(
@@ -452,7 +469,7 @@
                                 cdkDrag,
                                 cdkDragPreviewClass='sidebar-plus-drag-preview',
                                 [cdkDragData]='child',
-                                [cdkDragDisabled]='!child.editable',
+                                [cdkDragDisabled]='!child.editable || filtering',
                                 (cdkDragStarted)='onGroupDragStarted(child)',
                                 (cdkDragEnded)='onGroupDragEnded()'
                             )

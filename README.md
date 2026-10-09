@@ -60,6 +60,9 @@ between the two repos, no shared code: just a small string contract
   project), each with its own favourites, its own sibling order, its own icon
   and an optional contextual colour; a tabs-or-dropdown selector, and one-click
   JSON export/import
+- **"Active" tab**: narrows the list to the profiles with an open tab
+  (disconnected ones included), within the selected workspace — on "All" or
+  with the workspaces off, every open session
 - **Multiple selection**, for acting on several profiles at once
 - **SSH tunnels**: a panel of what Tabby is currently forwarding, badges on the
   profiles that declare tunnels, and a modal to add, edit or remove them —
@@ -204,6 +207,7 @@ Tabby's own `config.yaml`.
 | `showTunnels` | `true` | Port forwarding panel and badges on the profiles |
 | `showWorkspaces` | `true` | Workspace bar above the list |
 | `showFilter` | `true` | Search field and its shortcut |
+| `showActiveToggle` | `true` | "Active" tab: only the profiles with an open tab |
 | `showSftp` | `true` | The SFTP tab of the sidebar and its panel |
 | `showTransfers` | `true` | Transfer manager at the bottom of the sidebar |
 | `showSnippets` | `true` | The *Snippets* entry of the right click and its tab |

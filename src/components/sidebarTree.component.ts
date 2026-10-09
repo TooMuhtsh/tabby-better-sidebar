@@ -167,7 +167,23 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     readonly repositoryUrl = 'https://github.com/TooMuhtsh/tabby-better-sidebar'
     readonly authorUrl = 'https://github.com/TooMuhtsh?tab=repositories'
     profileGroups: PartialProfileGroup<ProfileGroup>[] = []
+    /** What the template renders: `baseRootGroups`, narrowed to the open profiles while the "Actifs" tab is on — see setRootGroups(). */
     rootGroups: PartialProfileGroup<ProfileGroup>[] = []
+    /** The tree as built, before the "Actifs" narrowing. Never rendered as such while that tab is on. */
+    private baseRootGroups: PartialProfileGroup<ProfileGroup>[] = []
+
+    /**
+     * The "Actifs" tab (#8), on or off. A toggle laid over the selected
+     * workspace rather than a workspace of its own: it narrows whatever is
+     * showing to the profiles with an open tab, so on "Tous" — or with the
+     * workspaces switched off — it shows every open session.
+     *
+     * Per machine, like the active workspace: what is open is a fact about
+     * this window, not something to sync.
+     */
+    activeOnly = window.localStorage.sidebarPlusActiveOnly === '1'
+    /** The set of open profile ids the current narrowing was computed from — see refreshProfileStatuses(). */
+    private openProfileKey = ''
 
     @Input() filter = ''
 
@@ -848,7 +864,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // rather than fetching it.
         this.snippets.useGroups(rawGroupsSnapshot)
         this.profileGroups = profileGroups
-        this.rootGroups = rootGroups
+        this.setRootGroups(rootGroups)
         return true
     }
 
@@ -1109,9 +1125,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * straight to the profiles' native `weight` — the search order becoming the
      * real order — and inside a workspace it files a `profileOrder` under the
      * fake `search` group id, which nothing ever reads again.
+     *
+     * The "Actifs" tab counts as one: its tree is a narrowed copy too, with
+     * folders forced open, and a drop into it would file the same kind of
+     * order computed from a partial list.
      */
     get filtering (): boolean {
-        return this.filter.trim().length > 0
+        return this.filter.trim().length > 0 || this.narrowedToOpen
     }
 
     /** `Échap` in the field: drop the filter and hand the focus back, rather than leave a filter nobody can see the cause of. */
@@ -1125,7 +1145,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         const q = this.filter.trim().toLowerCase()
 
         if (q.length === 0) {
-            this.rootGroups = this.applyFavorites(this.profilesService.buildGroupTree(this.profileGroups))
+            this.setRootGroups(this.applyFavorites(this.profilesService.buildGroupTree(this.profileGroups)))
             return
         }
 
@@ -1164,7 +1184,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 !alreadyFound.has(p.id) && this.noteFor(p.id).toLowerCase().includes(needle)))
         }
 
-        this.rootGroups = [
+        this.setRootGroups([
             ...this.matchingGroups(q),
             {
                 id: 'search',
@@ -1173,7 +1193,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 icon: 'fas fa-magnifying-glass',
                 profiles: matches,
             },
-        ]
+        ])
     }
 
     /**
@@ -1958,7 +1978,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             this.config.store.sidebarPlus.favorites = favorites
         }
         this.config.save()
-        this.rootGroups = this.applyFavorites(this.rootGroups.filter(g => g.id !== 'favorites'))
+        this.setRootGroups(this.applyFavorites(this.baseRootGroups.filter(g => g.id !== 'favorites')))
     }
 
     toggleFavoriteFromMenu (profile: PartialProfile<Profile>, event: Event): void {
@@ -2066,6 +2086,70 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             }
         }
         this.profileStatuses = statuses
+
+        // Narrowed again only when the *set* of open profiles moves — a tab
+        // opened or closed — never on the 2s tick itself, and never on a
+        // session merely dropping: a disconnected tab is still open and stays
+        // in the "Actifs" view, dot turned red.
+        const key = [...statuses.keys()].sort().join('\n')
+        if (key !== this.openProfileKey) {
+            this.openProfileKey = key
+            if (this.narrowedToOpen) {
+                this.setRootGroups(this.baseRootGroups)
+            }
+        }
+    }
+
+    ////// "ACTIFS" TAB //////
+    get showActiveToggle (): boolean {
+        return this.config.store.sidebarPlus?.showActiveToggle ?? true
+    }
+
+    /** Whether the tree is narrowed to the open profiles right now. The block switch suspends the tab without forgetting it was on. */
+    get narrowedToOpen (): boolean {
+        return this.activeOnly && this.showActiveToggle
+    }
+
+    toggleActiveOnly (): void {
+        this.activeOnly = !this.activeOnly
+        window.localStorage.sidebarPlusActiveOnly = this.activeOnly ? '1' : '0'
+        // The hidden-items panel lists what the workspace hides, which has
+        // nothing to do with what is open: clicking the tab means "show me the
+        // tree", same as switching workspace does.
+        this.showHiddenPanel = false
+        this.setRootGroups(this.baseRootGroups)
+    }
+
+    /**
+     * The one place `rootGroups` is written. Every path that builds a tree —
+     * the full load, the search, the search being cleared, a favorite toggled
+     * — hands its result here, so the "Actifs" narrowing cannot be skipped by
+     * one of them and later re-applied by another.
+     */
+    private setRootGroups (groups: PartialProfileGroup<ProfileGroup>[]): void {
+        this.baseRootGroups = groups
+        this.rootGroups = this.narrowedToOpen ? this.narrowToOpen(groups) : groups
+    }
+
+    /**
+     * A copy of the tree holding only the profiles with an open tab, and the
+     * folders on the way to them.
+     *
+     * Shallow copies, never the nodes themselves: those are `profileGroups`'
+     * own objects, which the unnarrowed tree is rebuilt from. Folders come out
+     * open — a matching profile inside a folder shown shut would be found and
+     * still not seen, the same reason the search forces its folders open.
+     */
+    private narrowToOpen (groups: PartialProfileGroup<ProfileGroup>[]): PartialProfileGroup<ProfileGroup>[] {
+        const kept: PartialProfileGroup<ProfileGroup>[] = []
+        for (const group of groups as PartialProfileGroup<CollapsableProfileGroup>[]) {
+            const children = this.narrowToOpen(group.children ?? []) as PartialProfileGroup<CollapsableProfileGroup>[]
+            const profiles = (group.profiles ?? []).filter(p => p.id && this.profileStatuses.has(p.id))
+            if (children.length || profiles.length) {
+                kept.push({ ...group, children, profiles, collapsed: false } as PartialProfileGroup<CollapsableProfileGroup>)
+            }
+        }
+        return kept
     }
 
     ////// ACTIVE SESSIONS //////

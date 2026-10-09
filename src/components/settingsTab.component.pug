@@ -110,6 +110,16 @@
 
       .form-line.block-switch
         .header
+          .title {{ lblActiveToggle }} #[i.fas.fa-info-circle.info-hint([title]='lblActiveToggleHint')]
+          .description {{ lblActiveToggleDesc }}
+        .control
+          toggle(
+            [ngModel]="blockOn('showActiveToggle')",
+            (ngModelChange)="setBlock('showActiveToggle', $event)"
+          )
+
+      .form-line.block-switch
+        .header
           .title {{ lblFilterBar }} #[i.fas.fa-info-circle.info-hint([title]='lblFilterBarHint')]
           .description {{ lblFilterBarDesc }} #[kbd Ctrl+F].
         .control

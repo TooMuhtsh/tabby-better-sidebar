@@ -308,6 +308,13 @@ sidebar-plus-tree .active-sessions {
         max-width: none;
         padding: .15rem .4rem;
     }
+
+    // Set a little apart from the workspace tabs: it is laid over whichever
+    // of them is selected, not one more of them.
+    .workspace-tab-active-only {
+        max-width: none;
+        margin-right: .35rem;
+    }
 }
 
 // The 'dropdown' alternative to .workspace-bar above (workspaceSelectorMode,

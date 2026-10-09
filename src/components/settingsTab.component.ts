@@ -103,6 +103,9 @@ export class SidebarPlusSettingsTabComponent {
     get lblPresentationDesc (): string { return this.i18n.t('Changes how the workspace bar is displayed.') }
     get lblModeTabs (): string { return this.i18n.t('Tabs (wrap onto new lines)') }
     get lblModeDropdown (): string { return this.i18n.t('Dropdown list') }
+    get lblActiveToggle (): string { return this.i18n.t('"Active" tab') }
+    get lblActiveToggleHint (): string { return this.i18n.t('A disconnected tab still counts as open.') }
+    get lblActiveToggleDesc (): string { return this.i18n.t('Narrows the selected workspace to the profiles with an open tab, workspaces on or off.') }
     get lblFilterBar (): string { return this.i18n.t('Filter bar') }
     get lblFilterBarHint (): string { return this.i18n.t('Searches the name, description, host and username.') }
     get lblFilterBarDesc (): string { return this.i18n.t('Search field and shortcut') }
