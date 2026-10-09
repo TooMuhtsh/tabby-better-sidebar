@@ -610,6 +610,7 @@ const zh_CN: Record<string, string> = {
     'profile creation and editing': '配置的创建和编辑',
     'Insert a line break (Better Sidebar)': '插入换行（Better Sidebar）',
     'Filter the profiles (Better Sidebar)': '过滤配置（Better Sidebar）',
+    'Show or hide the sidebar (Better Sidebar)': '显示或隐藏侧边栏（Better Sidebar）',
     'here': '此处',
     'folder': '文件夹',
     'profile': '配置',

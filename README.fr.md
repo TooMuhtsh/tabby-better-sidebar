@@ -172,6 +172,9 @@ l'anglais.
 
 - <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> insère un saut de ligne dans le terminal au
   lieu de valider
+- <kbd>Alt</kbd>+<kbd>B</kbd> masque la sidebar et la fait revenir, sans rien
+  fermer — vues SFTP ouvertes, filtre et sélection sont toujours là. Le
+  raccourci se change dans **Paramètres → Raccourcis**
 - Un onglet de réglages dédié dans les paramètres de Tabby (partagé sous
   **Better Tabby** quand le plugin vault est également installé)
 

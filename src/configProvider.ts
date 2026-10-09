@@ -110,6 +110,11 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // to Ctrl-Shift-F there, and only macOS uses ⌘-F for it — which is
             // a different chord from this one anyway.
             'sidebar-plus-focus-filter': ['Ctrl-F'],
+            // Not Ctrl-B, the binding asked for in #12: a chord Tabby
+            // recognizes never reaches the terminal, and Ctrl-B is tmux's
+            // prefix. Alt-B costs readline's "back one word", which has
+            // Ctrl-Left as a stand-in.
+            'sidebar-plus-toggle-sidebar': ['Alt-B'],
         },
         sidebarPlus: {
             enabled: true,

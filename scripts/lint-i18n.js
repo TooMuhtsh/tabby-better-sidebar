@@ -41,6 +41,7 @@ const EXTRA_SOURCES = [
     // itself, so the captions are English keys held in constants.
     { file: 'hotkeys.ts', constant: 'INSERT_NEWLINE_HOTKEY_NAME' },
     { file: 'hotkeys.ts', constant: 'FOCUS_FILTER_HOTKEY_NAME' },
+    { file: 'hotkeys.ts', constant: 'TOGGLE_SIDEBAR_HOTKEY_NAME' },
 ]
 
 /** Tous les fichiers sous src/ (récursif) filtrés par extension, chemins relatifs à src/. */

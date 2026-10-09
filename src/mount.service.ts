@@ -4,6 +4,7 @@ import { AppService, ConfigService, NotificationsService } from 'tabby-core'
 import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
 import { checkHost } from './hostCompat'
 import { SidebarPlusI18nService } from './i18n'
+import { SidebarPlusVisibilityService } from './visibility.service'
 
 /** Set on `body` while Tabby's own transfers menu is to stay out of the way. */
 const HIDE_NATIVE_TRANSFERS_CLASS = 'sidebar-plus-hide-native-transfers'
@@ -24,6 +25,9 @@ export class SidebarPlusMountService {
      */
     private hostFatal = false
 
+    /** Whether the sidebar has been mounted at least once in this window — see mount(). */
+    private mountedBefore = false
+
     constructor (
         private appRef: ApplicationRef,
         private environmentInjector: EnvironmentInjector,
@@ -31,6 +35,7 @@ export class SidebarPlusMountService {
         private config: ConfigService,
         private notifications: NotificationsService,
         private i18n: SidebarPlusI18nService,
+        private visibility: SidebarPlusVisibilityService,
     ) {
         this.app.ready$.subscribe(() => {
             this.verifyHost()
@@ -108,6 +113,14 @@ export class SidebarPlusMountService {
             console.error('[tabby-better-sidebar] Conteneur de montage introuvable, sidebar non montée.')
             return
         }
+        // Switching the plugin back on in the settings is someone looking for
+        // their sidebar: a hidden state left by the toggle hotkey would make
+        // that switch look broken. Not on the first mount, which has to honour
+        // the state the last session ended in.
+        if (this.mountedBefore) {
+            this.visibility.setHidden(false)
+        }
+        this.mountedBefore = true
         this.componentRef = createComponent(SidebarPlusTreeComponent, {
             environmentInjector: this.environmentInjector,
         })

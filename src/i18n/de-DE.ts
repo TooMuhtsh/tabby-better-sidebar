@@ -608,6 +608,7 @@ const de_DE: Record<string, string> = {
     'profile creation and editing': 'das Anlegen und Bearbeiten von Profilen',
     'Insert a line break (Better Sidebar)': 'Zeilenumbruch einfügen (Better Sidebar)',
     'Filter the profiles (Better Sidebar)': 'Profile filtern (Better Sidebar)',
+    'Show or hide the sidebar (Better Sidebar)': 'Sidebar ein- oder ausblenden (Better Sidebar)',
     'here': 'hier',
     'folder': 'Ordner',
     'profile': 'Profil',

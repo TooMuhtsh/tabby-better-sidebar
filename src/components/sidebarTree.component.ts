@@ -44,7 +44,8 @@ import { SidebarSnippet, SidebarWorkspace } from '../configProvider'
 import { SidebarPlusI18nService } from '../i18n'
 import { SidebarPlusSnippetsService } from '../snippets.service'
 import { SidebarPlusNoticesService } from '../notices.service'
-import { FOCUS_FILTER_HOTKEY } from '../hotkeys'
+import { FOCUS_FILTER_HOTKEY, TOGGLE_SIDEBAR_HOTKEY } from '../hotkeys'
+import { SidebarPlusVisibilityService } from '../visibility.service'
 import { PingState, SidebarPlusPingService } from '../ping.service'
 import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { hostSupports } from '../hostCompat'
@@ -185,6 +186,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      */
     @ViewChild(SidebarPlusSftpComponent) private sftpPanel?: SidebarPlusSftpComponent
     private hotkeySubscription: Subscription|null = null
+    private visibilitySubscription: Subscription|null = null
 
     ////// WORKSPACES //////
     workspaces: SidebarWorkspace[] = []
@@ -485,6 +487,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private platform: PlatformService,
         private hotkeys: HotkeysService,
         private ping: SidebarPlusPingService,
+        private visibility: SidebarPlusVisibilityService,
         private snippets: SidebarPlusSnippetsService,
         // Not `notifications` for anything the user has to read: Tabby's
         // `notice()` hard-codes a one-second timeout, which is gone before it
@@ -544,6 +547,18 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.hotkeySubscription = this.hotkeys.hotkey$.subscribe(id => {
             if (id === FOCUS_FILTER_HOTKEY) {
                 this.focusFilter()
+            } else if (id === TOGGLE_SIDEBAR_HOTKEY) {
+                this.zone.run(() => this.visibility.toggle())
+            }
+        })
+
+        // Back on screen: catch up at once rather than on the next tick, since
+        // the poll below has been skipping its work the whole time.
+        this.visibilitySubscription = this.visibility.changed.subscribe(hidden => {
+            if (!hidden) {
+                this.refreshProfileStatuses()
+                this.refreshActiveSessions()
+                this.watchSplitFocus()
             }
         })
 
@@ -581,6 +596,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // what keeps a dead session from staying listed as live.
             timer(2000, 2000),
         ).subscribe(() => {
+            // Paused while hidden: nothing here is visible, and the latency
+            // probe riding on refreshActiveSessions() sends real traffic.
+            if (this.visibility.hidden) {
+                return
+            }
             this.refreshProfileStatuses()
             this.refreshActiveSessions()
             this.watchSplitFocus()
@@ -591,6 +611,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.statusSubscription?.unsubscribe()
         this.configSubscription?.unsubscribe()
         this.hotkeySubscription?.unsubscribe()
+        this.visibilitySubscription?.unsubscribe()
         this.splitFocusSubscription?.unsubscribe()
         this.transfersActivitySubscription?.unsubscribe()
         if (this.selectionNoticeTimer) {
@@ -1066,6 +1087,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
         this.zone.run(() => {
+            // A field on a hidden sidebar cannot take the focus; asking for
+            // it is asking to see the sidebar.
+            this.visibility.setHidden(false)
             this.sftpMode = false
             this.showHiddenPanel = false
         })
@@ -1779,6 +1803,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     stopResize (): boolean {
         this.panelIsResizing = false
         return true
+    }
+
+    /**
+     * Hidden by the toggle hotkey — taken off the screen, not unmounted. The
+     * attribute alone would lose to the tag's own `display: flex`, hence the
+     * matching `[hidden]` rule in the stylesheet.
+     */
+    @HostBinding('attr.hidden')
+    get hiddenAttr (): ''|null {
+        return this.visibility.hidden ? '' : null
     }
 
     @HostBinding('style.width.px')

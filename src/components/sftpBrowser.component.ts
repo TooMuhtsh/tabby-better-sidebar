@@ -20,6 +20,7 @@ import { formatSftpDate, formatSftpDateTime, normalizeSftpDateFormat, SftpDateFo
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
 import { SftpTransfers } from '../transfers'
 import { SidebarPlusTransfersService } from '../transfersRegistry.service'
+import { SidebarPlusVisibilityService } from '../visibility.service'
 import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
 
@@ -366,6 +367,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         private i18n: SidebarPlusI18nService,
         private dragServer: SidebarPlusDragOutServer,
         private registry: SidebarPlusTransfersService,
+        private visibility: SidebarPlusVisibilityService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
@@ -603,6 +605,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * Skipped, never queued, while anything is in the middle of something: a
      * menu open, a path being typed, a delete in flight. Refreshing under an
      * open menu would rebuild the rows beneath it, and the selection with them.
+     * Skipped too while the toggle hotkey hides the sidebar: a `readdir` of a
+     * listing nobody can see.
      */
     private startAutoRefresh (): void {
         this.stopAutoRefresh()
@@ -621,7 +625,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     private async autoRefresh (): Promise<void> {
-        if (!this.sftp || this.deleteInFlight || this.editingPath !== null
+        if (!this.sftp || this.visibility.hidden || this.deleteInFlight || this.editingPath !== null
             || this.backgroundMenuOpen || this.displayMenuOpen) {
             return
         }

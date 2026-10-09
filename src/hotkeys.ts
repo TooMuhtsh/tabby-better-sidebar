@@ -16,6 +16,14 @@ export const INSERT_NEWLINE_HOTKEY = 'sidebar-plus-insert-newline'
 export const FOCUS_FILTER_HOTKEY = 'sidebar-plus-focus-filter'
 
 /**
+ * Shows or hides the sidebar without unmounting it (#12) — see
+ * SidebarPlusVisibilityService. Handled by the tree component for the same
+ * reason as the filter hotkey, which also makes it a no-op while the plugin is
+ * switched off: there is no component to receive it.
+ */
+export const TOGGLE_SIDEBAR_HOTKEY = 'sidebar-plus-toggle-sidebar'
+
+/**
  * Hotkey captions. Tabby's settings page runs `hotkey.name | translate`
  * itself, so these stay English keys and the tables translate them — the
  * lint script reads them through EXTRA_SOURCES, since `name:` is not one of
@@ -23,6 +31,7 @@ export const FOCUS_FILTER_HOTKEY = 'sidebar-plus-focus-filter'
  */
 export const INSERT_NEWLINE_HOTKEY_NAME = 'Insert a line break (Better Sidebar)'
 export const FOCUS_FILTER_HOTKEY_NAME = 'Filter the profiles (Better Sidebar)'
+export const TOGGLE_SIDEBAR_HOTKEY_NAME = 'Show or hide the sidebar (Better Sidebar)'
 
 /**
  * A hotkey that inserts a line break in the focused terminal.
@@ -83,6 +92,9 @@ export class SidebarPlusHotkeyProvider extends HotkeyProvider {
         }, {
             id: FOCUS_FILTER_HOTKEY,
             name: FOCUS_FILTER_HOTKEY_NAME,
+        }, {
+            id: TOGGLE_SIDEBAR_HOTKEY,
+            name: TOGGLE_SIDEBAR_HOTKEY_NAME,
         }]
     }
 }

@@ -157,6 +157,9 @@ settings tab. Any other locale falls back to English.
 
 - <kbd>Ctrl</kbd>+<kbd>Enter</kbd> inserts a line break in the terminal instead
   of submitting
+- <kbd>Alt</kbd>+<kbd>B</kbd> hides the sidebar and brings it back, without
+  closing anything — open SFTP views, the filter and the selection are still
+  there. The binding can be changed in **Settings → Hotkeys**
 - A dedicated settings tab under Tabby's own settings (shared as **Better
   Tabby** when the vault plugin is also installed)
 

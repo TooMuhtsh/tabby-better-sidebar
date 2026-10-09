@@ -24,6 +24,13 @@ sidebar-plus-tree {
     border-right: 1px solid var(--theme-secondary);
 }
 
+// The toggle hotkey's hidden state (SidebarPlusVisibilityService). Needed
+// because the browser's own `[hidden] { display: none }` is a user-agent rule,
+// which any author rule wins over — the `display: flex` just above included.
+sidebar-plus-tree[hidden] {
+    display: none;
+}
+
 // Scoped to the component's own tag, not left as a bare `input` selector.
 // This stylesheet is injected as plain global CSS (see the note above), so an
 // unqualified `input { ... }` restyled every text field in Tabby — settings,
