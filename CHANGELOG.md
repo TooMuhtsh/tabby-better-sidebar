@@ -3,6 +3,23 @@
 All notable changes to `tabby-better-sidebar` are documented here, one entry
 per npm release. Dates are the npm publication dates.
 
+## 1.0.7 — 2026-10-09
+
+- **Added**: Alt+B shows or hides the sidebar (#12). Hiding does not tear it
+  down: open SFTP views, the filter and the selection are still there when it
+  comes back, and its background polling pauses meanwhile. The state is kept
+  per machine. Not Ctrl+B, which is tmux's prefix — rebind it in Settings →
+  Hotkeys if you want. The "Filter the profiles" hotkey (Ctrl+F) and switching
+  the plugin back on also bring the sidebar back.
+- **Added**: an "Active" tab at the head of the workspace bar (#8). It narrows
+  the selected workspace to the profiles that have an open tab — disconnected
+  ones included — with the folders leading to them shown open; on "All", or
+  with the workspaces switched off, it shows every open session. Can be
+  switched off with `showActiveToggle`.
+- **Added**: `wrapNames` setting, off by default: long names wrap onto two
+  lines instead of being cut short (#10).
+- **Fixed**: dragging a subfolder was still possible during a search.
+
 ## 1.0.6 — 2026-10-08
 
 - **Added**: sort the SFTP listing by name, date or size — click a column
