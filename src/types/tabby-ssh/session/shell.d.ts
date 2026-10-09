@@ -21,6 +21,7 @@ export declare class SSHShellSession extends BaseSession {
     destroy(): Promise<void>;
     getChildProcesses(): Promise<any[]>;
     gracefullyKillProcess(): Promise<void>;
+    private changeInitialDirectory;
     supportsWorkingDirectory(): boolean;
     getWorkingDirectory(): Promise<string | null>;
 }

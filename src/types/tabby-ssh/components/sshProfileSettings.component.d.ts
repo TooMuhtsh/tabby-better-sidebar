@@ -1,5 +1,5 @@
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { FileProvidersService, Platform, HostAppService, PartialProfile, ProfilesService, ProfileSettingsComponent, FullyDefined, ProxifiedConfig } from 'tabby-core';
+import { FileProvidersService, Platform, PlatformService, HostAppService, PartialProfile, ProfilesService, ProfileSettingsComponent, FullyDefined, ProxifiedConfig, TranslateService } from 'tabby-core';
 import { LoginScriptsSettingsComponent } from 'tabby-terminal';
 import { PasswordStorageService } from '../services/passwordStorage.service';
 import { ForwardedPortConfig, SSHProfile } from '../api';
@@ -11,6 +11,8 @@ export declare class SSHProfileSettingsComponent implements ProfileSettingsCompo
     private passwordStorage;
     private ngbModal;
     private fileProviders;
+    private platform;
+    private translate;
     Platform: typeof Platform;
     profile: ProxifiedConfig<FullyDefined<SSHProfile>>;
     hasSavedPassword: boolean;
@@ -25,10 +27,11 @@ export declare class SSHProfileSettingsComponent implements ProfileSettingsCompo
     algorithms: Record<string, Record<string, boolean>>;
     jumpHosts: PartialProfile<SSHProfile>[];
     loginScriptsSettings: LoginScriptsSettingsComponent | null;
-    constructor(hostApp: HostAppService, profilesService: ProfilesService, passwordStorage: PasswordStorageService, ngbModal: NgbModal, fileProviders: FileProvidersService);
+    constructor(hostApp: HostAppService, profilesService: ProfilesService, passwordStorage: PasswordStorageService, ngbModal: NgbModal, fileProviders: FileProvidersService, platform: PlatformService, translate: TranslateService);
     ngOnInit(): Promise<void>;
     getJumpHostLabel(p: PartialProfile<SSHProfile>): string;
     setPassword(): Promise<void>;
+    private confirmBlankPassword;
     clearSavedPassword(): void;
     addPrivateKey(): Promise<void>;
     removePrivateKey(path: string): void;

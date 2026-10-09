@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { SFTPSession } from './sftp';
 import { SSHProfile } from '../api';
 import { ForwardedPort } from './forwards';
+import { SSHShellChannelOptions } from './shellChannel';
 import * as russh from 'russh';
 export interface Prompt {
     prompt: string;
@@ -69,9 +70,7 @@ export declare class SSHSession {
     addPortForward(fw: ForwardedPort): Promise<void>;
     removePortForward(fw: ForwardedPort): Promise<void>;
     destroy(): Promise<void>;
-    openShellChannel(options: {
-        x11: boolean;
-    }): Promise<russh.Channel>;
+    openShellChannel(options: SSHShellChannelOptions): Promise<russh.Channel>;
     private setupSocketChannelEvents;
     loadPrivateKey(name: string, privateKeyContents: Buffer): Promise<russh.KeyPair>;
     loadPrivateKeyWithPassphraseMaybe(privateKey: string): Promise<russh.KeyPair>;

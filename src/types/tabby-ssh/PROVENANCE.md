@@ -6,7 +6,12 @@ Copiés depuis l'application Tabby **installée**, pas depuis npm :
 C:\Program Files\Tabby\resources\builtin-plugins\tabby-ssh\typings\
 ```
 
-Version d'origine : `1.0.231-nightly.0` — copié le 2026-07-29.
+Version d'origine : Tabby **1.0.238** (le `package.json` du plugin intégré affiche toujours
+`1.0.231-nightly.0` : Tabby ne le fait pas suivre), copié le 2026-10-09. Copie précédente : Tabby
+1.0.231, le 2026-07-29. Écart de cette recopie : `cwd`, `rememberCwd` et `term` dans les options SSH,
+`getRecoveryToken()` avec options sur l'onglet SSH, méthodes rendues asynchrones dans la modale de
+redirection de ports, constructeur des réglages de profil SSH, et deux fichiers nouveaux
+(`session/authMethodSelection`, `session/shellChannel`) ; rien de ce que le plugin consomme.
 
 ## Pourquoi vendoriser plutôt que dépendre du paquet npm
 

@@ -2262,13 +2262,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // apart. Same precedence as Tabby's own tab header, which renders
             // `customTitle || title`.
             //
-            // The rename modal only ever targets the *top-level* tab (both
-            // entry points — `tabHeader`'s dblclick and the tab context menu —
-            // pass `this.tab`), so for a pane inside a split the custom title
-            // lives on the SplitTabComponent and never on the pane itself:
-            // hence the `topmostParent` fallback. Consequence to keep in mind:
-            // two SSH panes sharing a renamed split show the same label, which
-            // is exactly what their tab header shows.
+            // Two places can hold that title for a pane inside a split. Since
+            // Tabby 1.0.237, the pane's own context menu offers "Rename pane",
+            // which sets `customTitle` on the pane itself; the tab header's
+            // dblclick and its context menu still rename the *top-level* tab,
+            // which puts the title on the SplitTabComponent. Hence the pane's
+            // own title first, then the `topmostParent` fallback. Consequence
+            // to keep in mind: two SSH panes of a renamed split, neither
+            // renamed on its own, show the same label, which is exactly what
+            // their tab header shows.
             const renamedTitle = tab.customTitle || tab.topmostParent?.customTitle
             const sessionName = renamedTitle || profile?.name || tab.title || 'Session SSH'
             // Computed above regardless because the tunnel rows label

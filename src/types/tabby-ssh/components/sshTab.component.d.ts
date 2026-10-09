@@ -1,6 +1,6 @@
 import { Injector } from '@angular/core';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Platform, ProfilesService } from 'tabby-core';
+import { GetRecoveryTokenOptions, Platform, ProfilesService, RecoveryToken } from 'tabby-core';
 import { ConnectableTerminalTabComponent } from 'tabby-terminal';
 import { SSHService } from '../services/ssh.service';
 import { KeyboardInteractivePrompt, SSHSession } from '../session/ssh';
@@ -26,6 +26,7 @@ export declare class SSHTabComponent extends ConnectableTerminalTabComponent<SSH
     protected onSessionDestroyed(): void;
     private initializeSessionMaybeMultiplex;
     initializeSession(): Promise<void>;
+    getRecoveryToken(options?: GetRecoveryTokenOptions): Promise<RecoveryToken>;
     showPortForwarding(): void;
     canClose(): Promise<boolean>;
     openSFTP(): Promise<void>;

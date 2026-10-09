@@ -45,6 +45,9 @@ export declare class SSHProfilesService extends QuickConnectProfileProvider<SSHP
             input: {
                 backspace: string;
             };
+            cwd: null;
+            rememberCwd: boolean;
+            term: string;
         };
         clearServiceMessagesOnConnect: boolean;
     };
