@@ -63,7 +63,7 @@
                 span.status-dot.ms-1([ngClass]='sessionDotClass(session)')
                 .fw-20
                     profile-icon.ms-1([icon]='session.icon', [color]='session.color')
-                span.ms-2.me-auto.no-wrap {{ session.name }}
+                span.ms-2.me-auto.no-wrap.item-name {{ session.name }}
                 //- Uptime on the row rather than in the tooltip only: it is the
                 //- kind of thing one reads by scanning the list, not by aiming
                 //- at a dot. Covered by .actions on hover, which is fine — the
@@ -106,7 +106,7 @@
             )
                 .fw-20
                     profile-icon.ms-1([icon]='profile.icon', [color]='profile.color')
-                span.ms-2.no-wrap {{ profile.name }}
+                span.ms-2.no-wrap.item-name {{ profile.name }}
 
     //- Mirrors Tabby's own forwarding state, never drives it: the roadmap frames
     //- this chantier as a "surcouche visuelle" over the native engine. Sits
@@ -146,7 +146,7 @@
                         [class.fa-rotate]='tunnel.state === "waiting"',
                         [class.fa-link-slash]='tunnel.state === "lost"'
                     )
-                    span.ms-2.me-auto.no-wrap {{ tunnel.label }}
+                    span.ms-2.me-auto.no-wrap.item-name {{ tunnel.label }}
                     span.tunnel-state(*ngIf='tunnel.state === "waiting"') {{ 'resuming…' | translate }}
                     span.tunnel-state(*ngIf='tunnel.state === "lost"') {{ 'not restored' | translate }}
                     span.tunnel-session.no-wrap {{ tunnel.sessionName }}
@@ -356,7 +356,7 @@
                         .fa.fa-fw.fas.fa-chevron-down.ms-1.text-muted(*ngIf='!group.collapsed')
                     .fw-20
                         profile-icon.ms-1([icon]='group.icon ?? "far fa-folder"', [color]='group.color')
-                    span.ms-2.me-auto {{ group.name || 'Ungrouped' }}
+                    span.ms-2.me-auto.item-name([title]='group.name') {{ group.name || 'Ungrouped' }}
                     .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavoriteGroup(group)')
                     .fa.fa-fw.fas.fa-note-sticky.ms-1.note-badge(
                         *ngIf='hasNote(group.id)',
@@ -406,8 +406,9 @@
                                     [class.status-dot-error]='getProfileStatus(profile) === "error"',
                                     [title]="getProfileStatus(profile) === 'connected' ? ('Connected' | translate) : getProfileStatus(profile) === 'error' ? ('Disconnected' | translate) : ('No session' | translate)"
                                 )
-                                //- The full name, which `.no-wrap` may cut short.
-                                span.ms-2.no-wrap([title]='profile.name') {{ profile.name }}
+                                //- The full name, which `.no-wrap` — or the
+                                //- two-line cap of wrapNames — may cut short.
+                                span.ms-2.no-wrap.item-name([title]='profile.name') {{ profile.name }}
                                 .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavorite(profile)')
                                 //- The whole point of a note is to be seen
                                 //- without being looked for. Static title, so

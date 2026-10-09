@@ -431,6 +431,9 @@ const zh_CN: Record<string, string> = {
     'Hide the Tabby transfers menu': '隐藏 Tabby 的传输菜单',
     'Otherwise the native Tabby menu opens on every transfer.': '否则每次传输时 Tabby 原生菜单都会弹出。',
     'The sidebar panel already shows the same transfers.': '侧边栏面板已经显示了相同的传输。',
+    'Wrap long names': '长名称换行显示',
+    'Up to two lines, then the full name in the tooltip.': '最多两行，完整名称见提示。',
+    'Profiles, folders, recents, sessions and tunnels.': '配置、文件夹、最近启动、会话和隧道。',
 
     // settingsTab.component.ts — features page
     'Each block switches on independently. Nothing is deleted by turning one off.': '每个区块独立开关。关闭某个区块不会删除任何内容。',

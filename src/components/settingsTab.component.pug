@@ -63,6 +63,16 @@
             (ngModelChange)='setHideNativeTransfersMenu($event)'
           )
 
+      .form-line
+        .header
+          .title {{ lblWrapNames }} #[i.fas.fa-info-circle.info-hint([title]='lblWrapNamesHint')]
+          .description {{ lblWrapNamesDesc }}
+        .control
+          toggle(
+            [ngModel]='wrapNames',
+            (ngModelChange)='setWrapNames($event)'
+          )
+
   ng-container(*ngIf="section === 'features'")
     .settings-section
       .section-intro

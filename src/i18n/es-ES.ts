@@ -435,6 +435,9 @@ const es_ES: Record<string, string> = {
     'Hide the Tabby transfers menu': 'Ocultar el menú de transferencias de Tabby',
     'Otherwise the native Tabby menu opens on every transfer.': 'Si no, el menú nativo de Tabby se abre en cada transferencia.',
     'The sidebar panel already shows the same transfers.': 'El panel de la barra lateral ya muestra las mismas transferencias.',
+    'Wrap long names': 'Nombres largos en varias líneas',
+    'Up to two lines, then the full name in the tooltip.': 'Dos líneas como máximo, luego el nombre completo en la información emergente.',
+    'Profiles, folders, recents, sessions and tunnels.': 'Perfiles, carpetas, recientes, sesiones y túneles.',
 
     // settingsTab.component.ts — features page
     'Each block switches on independently. Nothing is deleted by turning one off.': 'Cada bloque se activa de forma independiente. No se borra nada al apagarlo.',

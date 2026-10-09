@@ -1835,6 +1835,17 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return this.visibility.hidden ? '' : null
     }
 
+    /**
+     * Long names wrap onto a second line instead of ending in an ellipsis
+     * (#10). A class on the host rather than `.no-wrap` taken off each row:
+     * the stylesheet decides which names wrap (`.item-name`), and the rows
+     * keep one template whichever way the setting points.
+     */
+    @HostBinding('class.sidebar-plus-wrap-names')
+    get wrapNames (): boolean {
+        return this.config.store.sidebarPlus?.wrapNames ?? false
+    }
+
     @HostBinding('style.width.px')
     get panelWidth (): number {
         return this.panelInternalWidth

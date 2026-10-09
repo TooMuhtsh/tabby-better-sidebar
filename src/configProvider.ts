@@ -249,6 +249,10 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // it narrows the selected workspace, and with the workspaces off
             // that is simply everything.
             showActiveToggle: true,
+            // Long names wrap onto two lines instead of being cut (#10). Off by
+            // default: rows of uneven height are a change of look nobody asked
+            // for until they do.
+            wrapNames: false,
             // Éteints, les deux retirent leur entrée du menu contextuel et ce
             // qu'ils posent sur les lignes — sans toucher à ce qui est stocké :
             // la bibliothèque, les rattachements et les notes attendent d'être

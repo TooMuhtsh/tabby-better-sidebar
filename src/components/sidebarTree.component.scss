@@ -1282,3 +1282,25 @@ sidebar-plus-tree .sidebar-plus-footer {
         }
     }
 }
+
+// Long names on two lines instead of one ellipsis (#10, `wrapNames`, off by
+// default). `.item-name` marks the names it applies to: profiles and folders of
+// the tree, recent profiles, active sessions, tunnels. Folder names never had
+// `.no-wrap` and already wrapped without limit; they get the same two-line cap.
+//
+// Beats Tabby's global `.no-wrap` (nowrap + ellipsis, no !important) on
+// specificity alone. `overflow-wrap: anywhere` because a host name has no space
+// to break on. Rows keep `align-items: center`: a one-line row looks exactly as
+// before, and a two-line one has its icon and dot between its two lines.
+//
+// Row heights stop being uniform: the active sessions' 7rem cap then shows
+// fewer than four rows, and scrolls for the rest. The nest zone of a folder
+// drag is computed from the row's own rect (lower half), so it follows.
+sidebar-plus-tree.sidebar-plus-wrap-names .item-name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}

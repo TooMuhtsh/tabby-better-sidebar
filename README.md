@@ -208,6 +208,7 @@ Tabby's own `config.yaml`.
 | `showWorkspaces` | `true` | Workspace bar above the list |
 | `showFilter` | `true` | Search field and its shortcut |
 | `showActiveToggle` | `true` | "Active" tab: only the profiles with an open tab |
+| `wrapNames` | `false` | Long names on up to two lines instead of one cut-off line |
 | `showSftp` | `true` | The SFTP tab of the sidebar and its panel |
 | `showTransfers` | `true` | Transfer manager at the bottom of the sidebar |
 | `showSnippets` | `true` | The *Snippets* entry of the right click and its tab |

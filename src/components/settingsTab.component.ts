@@ -90,6 +90,9 @@ export class SidebarPlusSettingsTabComponent {
     get lblHideTransfersMenu (): string { return this.i18n.t('Hide the Tabby transfers menu') }
     get lblHideTransfersMenuHint (): string { return this.i18n.t('Otherwise the native Tabby menu opens on every transfer.') }
     get lblHideTransfersMenuDesc (): string { return this.i18n.t('The sidebar panel already shows the same transfers.') }
+    get lblWrapNames (): string { return this.i18n.t('Wrap long names') }
+    get lblWrapNamesHint (): string { return this.i18n.t('Up to two lines, then the full name in the tooltip.') }
+    get lblWrapNamesDesc (): string { return this.i18n.t('Profiles, folders, recents, sessions and tunnels.') }
     get lblFeaturesIntro (): string { return this.i18n.t('Each block switches on independently. Nothing is deleted by turning one off.') }
     get lblTunnels (): string { return this.i18n.t('Active tunnels') }
     get lblTunnelsHint (): string { return this.i18n.t('Mirrors the state of Tabby port forwarding.') }
@@ -350,6 +353,16 @@ export class SidebarPlusSettingsTabComponent {
      */
     async setHideNativeTransfersMenu (value: boolean): Promise<void> {
         this.config.store.sidebarPlus.hideNativeTransfersMenu = value
+        await this.config.save()
+    }
+
+    get wrapNames (): boolean {
+        return this.config.store.sidebarPlus?.wrapNames ?? false
+    }
+
+    /** Applied by the tree's own host binding, which reads the setting on every change detection pass. */
+    async setWrapNames (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.wrapNames = value
         await this.config.save()
     }
 
