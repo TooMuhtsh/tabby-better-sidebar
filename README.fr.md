@@ -183,8 +183,8 @@ l'anglais.
 
 ## 📦 Installation
 
-**Nécessite Tabby 1.0.231 ou plus récent** — développé et testé sur **Tabby
-1.0.235**, la version stable actuelle.
+**Nécessite Tabby 1.0.231 ou plus récent.** Développé et testé sur **Tabby
+1.0.238**, la version stable actuelle.
 
 Dans Tabby, ouvrir **Paramètres → Plugins**, chercher `better-sidebar`,
 l'installer, puis relancer Tabby entièrement.

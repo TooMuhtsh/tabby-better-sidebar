@@ -168,8 +168,8 @@ settings tab. Any other locale falls back to English.
 
 ## 📦 Installation
 
-**Requires Tabby 1.0.231 or newer** — developed and tested against **Tabby
-1.0.235**, the current stable release.
+**Requires Tabby 1.0.231 or newer.** Developed and tested against **Tabby
+1.0.238**, the current stable release.
 
 In Tabby, open **Settings → Plugins**, search for `better-sidebar` and install
 it, then restart Tabby completely.
