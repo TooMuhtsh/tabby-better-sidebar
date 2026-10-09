@@ -10,7 +10,7 @@
 <h1>Registre du réalisé</h1>
 <p class="muted">Annexe de <a href="../ROADMAP.html">Roadmap</a> (option <code>registre-livrés</code>,
 A-8) — chaque entrée est citée par sa ligne de renvoi dans la roadmap active. Dernière revue :
-2026-10-08.</p>
+2026-10-09.</p>
 
 <p>Ce registre ne porte que l'<strong>état</strong> des chantiers déjà livrés, le plus récent en tête :
 leur fiche est reprise telle qu'elle était dans la roadmap au moment de la bascule, suivie d'une
@@ -20,6 +20,102 @@ rassemblé dans sa section <a href="../ROADMAP.html#restes">« Reste ouvert »</
 daté de chaque livraison est dans le <a href="../AI-HISTORY.html">journal</a>. Les évolutions
 post-livraison s'ajoutent ici en une ligne chacune ; dès qu'une évolution touche l'architecture,
 une convention ou plus d'un fichier, elle rouvre un chantier dans l'actif.</p>
+
+<h3 id="issue-8-filtre-actifs">Filtre « Actifs » (issue #8) <span class="pill done">✅ Livré en 1.0.7 (2026-10-09)</span></h3>
+<p>Demande : un bouton ACTIVE à côté de « ALL » (l'onglet de workspace « Tous ») qui ne montre que les
+sessions ouvertes. <strong>Déjà couvert en bonne partie pour le SSH</strong> : bloc « Sessions
+actives » en direct et pastille verte sur chaque profil connecté. Manquent les sessions locales, série
+et telnet, le contexte des dossiers, et l'affichage sans défilement (bloc plafonné à 4 lignes). Design
+recommandé : un bouton « Actifs » dans la ligne de filtre (état par machine), arbre élagué aux dossiers
+contenant un profil connecté, combinable avec le filtre texte, reconstruit seulement quand l'ensemble
+des ids connectés change, glisser-déposer coupé. Alternative fidèle à la lettre : un pseudo-workspace
+« Actifs », mais invisible en mode liste ou sans workspaces, et favoris, ordre et masquage n'y ont pas
+de sens. Quatre chemins écrivent l'arbre et devraient tous passer par l'élagage.
+<strong>Moyen</strong> : ~120-160 lignes, 3 clés ×4 ; pièges #12/#74, #22, #37/#59, #54, #68.</p>
+<p><strong>Tranché le 2026-10-09</strong> :</p>
+<ul>
+<li><strong>« Ouvert mais déconnecté » compte</strong> : un onglet dont la session est perdue (pastille
+rouge, statut <code>error</code> de <code>refreshProfileStatuses()</code>) reste dans le filtre.</li>
+<li><strong>Les deux formes, sur un seul mécanisme d'élagage, activables indépendamment</strong> :
+<ol>
+<li>un <strong>bouton « Actifs » dans la ligne de filtre</strong>, qui élague
+<strong>le workspace courant</strong> (comportement par défaut) ;</li>
+<li>un <strong>onglet « Actifs » dédié</strong> à côté de « Tous », qui cherche
+<strong>dans tous les profils</strong>, sans tenir compte des workspaces.</li>
+</ol>
+L'onglet est <strong>découplé des workspaces</strong> : on peut avoir les workspaces sans l'onglet,
+l'onglet sans les workspaces (barre réduite à « Tous | Actifs »), ou les deux.</li>
+</ul>
+<p><strong>Livré sous une forme plus simple que la décision</strong>, codé par la session cloud : un
+seul onglet « Actifs » en tête de la barre des workspaces, qui est une <strong>bascule</strong> et non un
+workspace. Allumé, il réduit le workspace sélectionné aux profils qui ont un onglet ouvert (déconnectés
+compris) et aux dossiers qui y mènent, ouverts de force ; sur « Tous », ou workspaces éteints, il montre
+toutes les sessions ouvertes. Visible même workspaces éteints ; en mode liste déroulante, il garde son
+onglet au-dessus du sélecteur. Réglage <code>showActiveToggle</code> (allumé par défaut), état par machine
+(<code>localStorage.sidebarPlusActiveOnly</code>). Les quatre chemins qui écrivent l'arbre passent par
+<code>setRootGroups()</code> ; la réduction se fait sur une copie, recalculée seulement quand l'ensemble
+des profils ouverts change. Pendant la réduction, glisser-déposer et « tout replier » sont coupés,
+comme pendant une recherche (le glisser des sous-dossiers ne l'était pas pendant une recherche : corrigé
+au passage).</p>
+<p>Validé par l'injecteur (onglet jetable ouvert puis fermé : profil présent puis retiré en moins de 3,5 s,
+message de vue vide, arbre complet rendu à l'extinction) et à l'écran par l'utilisateur (place de
+l'onglet, workspace, filtre texte, réglage). Écart connu, laissé tel quel : replier un dossier dans la vue
+réduite enregistre ce repli pour l'arbre complet.</p>
+<p class="muted">Livré le 2026-10-09 (1.0.7) · Journal : <a href="../AI-HISTORY.html">« Publication de la 1.0.7 » (2026-10-09)</a> · Commits : <code>39119e6</code></p>
+
+<h3 id="issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10) <span class="pill done">✅ Livré en 1.0.7 (2026-10-09)</span></h3>
+<p>Demande : retour à la ligne au lieu de l'ellipse. L'ellipse vient de la classe globale
+<code>.no-wrap</code> de Tabby, posée sur les profils, récents, sessions actives, tunnels, workspaces,
+menus, titre SFTP et transferts ; aucune infobulle sur une ligne de profil. Design en deux temps :
+<code>[title]</code> sur les lignes (~5 lignes, 0 clé), puis un réglage
+<code>sidebarPlus.wrapNames</code> éteint par défaut qui lève <code>.no-wrap</code> dans l'arbre, les
+récents, les sessions actives et les tunnels, avec <code>overflow-wrap: anywhere</code> (un nom
+d'hôte n'a pas d'espace). Effets : icônes et pastilles à aligner en haut, plafond de 7rem des sessions
+actives qui ne vaut plus 4 lignes, zone d'imbrication du glisser-déposer calculée à mi-hauteur qui se
+décale sur une ligne haute (pièges #26/#28). <strong>Moyen</strong> : ~40-60 lignes, 3 clés ×4,
+vérification à l'écran obligatoire.</p>
+<p><strong>Premier temps livré en 1.0.6</strong> (<code>e25921f</code>) : <code>[title]</code> sur le nom des
+profils de l'arbre ; récents et sessions actives portaient déjà le nom en infobulle ; la description d'un
+tunnel ouvre désormais la sienne.</p>
+<p><strong>Second temps livré en 1.0.7</strong>, codé par la session cloud : réglage
+<code>sidebarPlus.wrapNames</code>, éteint par défaut, qui pose une classe sur l'hôte ; les noms
+(<code>.item-name</code>) passent alors sur deux lignes au plus (<code>-webkit-line-clamp: 2</code>), avec
+<code>overflow-wrap: anywhere</code> pour un nom d'hôte sans espace. Validé par l'injecteur (classe et styles
+calculés, allumé puis éteint) et à l'écran par l'utilisateur (alignement, glisser-déposer).</p>
+<p class="muted">Livré le 2026-10-09 (1.0.7), premier temps en 1.0.6 · Journal : <a href="../AI-HISTORY.html">« Publication de la 1.0.7 » (2026-10-09)</a> · Commits : <code>e25921f</code> <code>b3ffab5</code></p>
+
+<h3 id="issue-12-raccourci">Raccourci afficher/masquer la sidebar (issue #12) <span class="pill done">✅ Livré en 1.0.7 (2026-10-09)</span></h3>
+<p>Demande : basculer la sidebar au clavier (exemple donné : Ctrl+B). <strong>Ne pas basculer
+<code>enabled</code></strong> : c'est un vrai démontage, qui détruit les panneaux SFTP en cache (chaque
+remontage rouvre un canal SFTP que rien ne ferme (<code>SFTPSession</code> n'a pas de
+<code>close()</code>), et OpenSSH plafonne à 10 sessions par connexion), perd filtre, sélection et
+chemin, et fait un <code>config.save()</code> synchronisé à chaque appui. Design : état de visibilité
+par machine (<code>localStorage</code>), hôte masqué sans destruction
+(<code>[hidden]{display:none}</code>, la balise étant en <code>display:flex</code>, piège #33),
+sondage de 2 s et sonde de latence mis en pause pendant le masquage. <strong>Ctrl+B est libre dans
+Tabby mais casse tmux</strong> (préfixe), readline et vim : un raccourci reconnu par Tabby avale la
+touche avant le terminal. Le Ctrl+F déjà lié par le plugin a le même défaut (readline, vim, less).
+<strong>Moyen</strong> : ~60-80 lignes, 1-2 clés ×4.</p>
+<p><strong>Tranché le 2026-10-09</strong> : raccourci par défaut <strong>Alt+B</strong> (Ctrl+B
+écarté : préfixe tmux, et lu comme un « break ») ; il coûte le « mot précédent » de readline, que
+Ctrl+Gauche remplace ; état <strong>par machine</strong> ; plugin éteint : le raccourci
+<strong>ne fait rien</strong>.</p>
+<p><strong>Codé le 2026-10-09</strong> par la session cloud, <strong>validé le même jour</strong> et fusionné sur
+<code>master</code> :
+<code>SidebarPlusVisibilityService</code> (<code>localStorage.sidebarPlusHidden</code>), hotkey
+<code>sidebar-plus-toggle-sidebar</code> traitée par l'arbre (donc muette plugin éteint),
+<code>[attr.hidden]</code> sur l'hôte et règle <code>sidebar-plus-tree[hidden]</code>, sondage de 2 s
+(donc sonde de latence) et rafraîchissement auto SFTP suspendus pendant le masquage. Deux filets
+ajoutés : le raccourci « Filtrer les profils » réaffiche la sidebar, et rallumer le plugin dans les
+réglages aussi (sinon l'interrupteur aurait l'air cassé sur une sidebar masquée).</p>
+<p class="muted">Validé le 2026-10-09 : par l'injecteur (masquage en <code>display: none</code> sans
+démontage, 0 appel du sondage en 5 s masqué puis rattrapage immédiat, Ctrl+F réaffiche avec le focus,
+Alt+B muet plugin éteint, plugin rallumé = visible, état masqué conservé après relance), puis par
+l'utilisateur au vrai clavier (vue SFTP, chemin et filtre intacts, libellé dans Réglages › Raccourcis).
+Au remontage, l'abonnement aux raccourcis n'arrive qu'après le premier chargement de l'arbre (plus
+d'une seconde) : Alt+B et Ctrl+F sont muets pendant ce temps, défaut préexistant et sans conséquence.
+Reste ouvert : revoir le Ctrl+F par défaut ? Publication groupée avec les autres chantiers 1.0.7.</p>
+<p class="muted">Livré le 2026-10-09 (1.0.7) · Journal : <a href="../AI-HISTORY.html">« Publication de la 1.0.7 » (2026-10-09)</a> · Commits : <code>ba4abfb</code> <code>c765054</code> <code>e2edb9f</code></p>
 
 <h3 id="issue-11-date-sftp">Format de date du panneau SFTP (issue #11) <span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></h3>
 <p>Demande : choisir JJ/MM/AAAA ou ISO AAAA-MM-JJ. Aujourd'hui <code>toLocaleDateString()</code>
