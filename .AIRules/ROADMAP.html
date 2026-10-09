@@ -47,7 +47,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="annexes/REALISE.html#fork-hoyoho">Reprise du fork de hoyoho (correctifs SFTP, chinois)</a></td><td><span class="pill done">✅ Livré — 1.0.5 (2026-09-24)</span></td><td>—</td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-11-date-sftp">Format de date du panneau SFTP (issue #11)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-9-tout-replier">Tout replier (issue #9)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
-<tr><td><a href="#issue-12-raccourci">Raccourci afficher/masquer la sidebar (issue #12)</a></td><td><span class="pill progress">🔧 Codé, test manuel dans Tabby à faire (2026-10-09)</span></td><td>1.0.7</td></tr>
+<tr><td><a href="#issue-12-raccourci">Raccourci afficher/masquer la sidebar (issue #12)</a></td><td><span class="pill progress">🔧 Validé, fusionné — à publier en 1.0.7 (2026-10-09)</span></td><td>1.0.7</td></tr>
 <tr><td><a href="#issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10)</a></td><td><span class="pill progress">🔧 Infobulle livrée en 1.0.6, retour à la ligne visé en 1.0.7 (2026-10-08)</span></td><td>1.0.7</td></tr>
 <tr><td><a href="#issue-8-filtre-actifs">Filtre « Actifs » (issue #8)</a></td><td><span class="pill planned">📋 Tranché, non ouvert (2026-10-09)</span></td><td>1.0.7</td></tr>
 <tr><td><a href="annexes/REALISE.html#pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
@@ -682,7 +682,7 @@ avec la prochaine publication, pour que la version qui l'introduit le mentionne.
 2026-10-08 à la lecture du code (master <code>0503e3d</code>), sans rien coder. Classement valeur/coût :
 #11 &gt; #9 &gt; #12 &gt; #10 &gt; #8. #11, #9 et l'infobulle de #10 sont partis en 1.0.6 (fiches au registre) ; #12, #8 et le retour à la ligne de #10 visent la 1.0.7.</p>
 
-<h3 id="issue-12-raccourci">Raccourci afficher/masquer la sidebar (issue #12) <span class="pill progress">🔧 Codé, test manuel dans Tabby à faire (2026-10-09)</span></h3>
+<h3 id="issue-12-raccourci">Raccourci afficher/masquer la sidebar (issue #12) <span class="pill progress">🔧 Validé, fusionné — à publier en 1.0.7 (2026-10-09)</span></h3>
 <p>Demande : basculer la sidebar au clavier (exemple donné : Ctrl+B). <strong>Ne pas basculer
 <code>enabled</code></strong> : c'est un vrai démontage, qui détruit les panneaux SFTP en cache — chaque
 remontage rouvre un canal SFTP que rien ne ferme (<code>SFTPSession</code> n'a pas de
@@ -698,17 +698,21 @@ touche avant le terminal. Le Ctrl+F déjà lié par le plugin a le même défaut
 écarté : préfixe tmux, et lu comme un « break ») — il coûte le « mot précédent » de readline, que
 Ctrl+Gauche remplace ; état <strong>par machine</strong> ; plugin éteint : le raccourci
 <strong>ne fait rien</strong>.</p>
-<p><strong>Codé le 2026-10-09</strong> sur la branche <code>claude/optimistic-cray-6ki3jp</code>,
-build et <code>lint:i18n</code> verts, <strong>non testé dans Tabby</strong> :
+<p><strong>Codé le 2026-10-09</strong> par la session cloud, <strong>validé le même jour</strong> et fusionné sur
+<code>master</code> :
 <code>SidebarPlusVisibilityService</code> (<code>localStorage.sidebarPlusHidden</code>), hotkey
 <code>sidebar-plus-toggle-sidebar</code> traitée par l'arbre (donc muette plugin éteint),
 <code>[attr.hidden]</code> sur l'hôte et règle <code>sidebar-plus-tree[hidden]</code>, sondage de 2 s
 (donc sonde de latence) et rafraîchissement auto SFTP suspendus pendant le masquage. Deux filets
 ajoutés : le raccourci « Filtrer les profils » réaffiche la sidebar, et rallumer le plugin dans les
 réglages aussi (sinon l'interrupteur aurait l'air cassé sur une sidebar masquée).</p>
-<p class="muted">À vérifier au test : Alt+B masque/affiche sans perdre vue SFTP, filtre ni sélection ;
-état conservé après relance complète ; aucune requête de latence pendant le masquage ; Alt+B
-inopérant plugin éteint ; Ctrl+F réaffiche. Reste ouvert : revoir le Ctrl+F par défaut ?</p>
+<p class="muted">Validé le 2026-10-09 : par l'injecteur (masquage en <code>display: none</code> sans
+démontage, 0 appel du sondage en 5 s masqué puis rattrapage immédiat, Ctrl+F réaffiche avec le focus,
+Alt+B muet plugin éteint, plugin rallumé = visible, état masqué conservé après relance), puis par
+l'utilisateur au vrai clavier (vue SFTP, chemin et filtre intacts, libellé dans Réglages › Raccourcis).
+Au remontage, l'abonnement aux raccourcis n'arrive qu'après le premier chargement de l'arbre (plus
+d'une seconde) : Alt+B et Ctrl+F sont muets pendant ce temps — préexistant, sans conséquence.
+Reste ouvert : revoir le Ctrl+F par défaut ? Publication groupée avec les autres chantiers 1.0.7.</p>
 
 <h3 id="issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10) <span class="pill progress">🔧 Infobulle livrée en 1.0.6, retour à la ligne visé en 1.0.7 (2026-10-08)</span></h3>
 <p>Demande : retour à la ligne au lieu de l'ellipse. L'ellipse vient de la classe globale

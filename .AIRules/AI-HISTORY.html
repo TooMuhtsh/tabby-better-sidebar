@@ -24,6 +24,25 @@ entrées les plus récentes en tête.</p>
 <code>Date | Hash | Résumé</code>.</p>
 </div>
 
+<h2>Raccourci afficher/masquer la sidebar — issue #12 (2026-10-09)</h2>
+<p>Premier chantier de la répartition fixée ce jour : le code vient d'une session cloud (branche
+<code>claude/optimistic-cray-6ki3jp</code>), la vérification, le test et la publication se font sur le
+poste. Fiche <a href="ROADMAP.html#issue-12-raccourci">#issue-12-raccourci</a>. Publication
+retenue jusqu'aux autres chantiers de la 1.0.7.</p>
+<table>
+<tr><th>Date</th><th>Hash</th><th>Résumé</th></tr>
+<tr><td>2026-10-09</td><td>(commit en cours)</td>
+<td><strong>Validé</strong> : contrôles par l'injecteur (masquage sans démontage, sondage suspendu,
+Ctrl+F, plugin éteint puis rallumé, persistance après relance) et gestes réels de l'utilisateur
+(Alt+B au clavier avec une vue SFTP ouverte, libellé du raccourci). Lint, typage et build verts.
+Auteur des deux commits réécrit vers l'identité du dépôt avant fusion, contenu inchangé.</td></tr>
+<tr><td>2026-10-09</td><td>c765054</td>
+<td>Roadmap : #12 tranché et codé, #8 tranché (bouton et onglet « Actifs »).</td></tr>
+<tr><td>2026-10-09</td><td>ba4abfb</td>
+<td>Alt+B masque ou réaffiche la sidebar sans la démonter (<code>SidebarPlusVisibilityService</code>,
+état par machine) ; sondage et rafraîchissement SFTP suspendus pendant le masquage.</td></tr>
+</table>
+
 <h2>Publication de la 1.0.6 (2026-10-08)</h2>
 <p>Embarque les trois PR d'OGKaktus (chantier ci-dessous) et trois des cinq issues instruites le même
 jour : #11 et #9 entières, l'infobulle de #10 (fiches
