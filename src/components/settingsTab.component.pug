@@ -187,6 +187,15 @@
                 [ngModel]='searchClearOnLaunch',
                 (ngModelChange)='setSearchClearOnLaunch($event)'
               )
+          .form-line
+            .header
+              .title {{ lblFuzzy }} #[i.fas.fa-info-circle.info-hint([title]='lblFuzzyHint')]
+              .description {{ lblFuzzyDesc }}
+            .control
+              toggle(
+                [ngModel]='searchFuzzy',
+                (ngModelChange)='setSearchFuzzy($event)'
+              )
 
       .feature-card(*ngSwitchCase="'recent'", [class.off]="!blockOn('showRecentProfiles')")
         .form-line.block-switch

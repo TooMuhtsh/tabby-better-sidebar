@@ -1297,7 +1297,45 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         void this.onFilterChange()
     }
 
+    /**
+     * Bumped by every search, so only the latest one is ever shown (#19).
+     * Typing fast, then clearing, could otherwise let a slower earlier search
+     * land after the newer result and replace it.
+     */
+    private filterRequestId = 0
+
+    /** Approximate matching (letters in order, even far apart), off by default since #19. */
+    get fuzzySearch (): boolean {
+        return this.config.store.sidebarPlus?.searchFuzzy ?? false
+    }
+
+    /**
+     * Picks the profiles matching `q` among `searchable`, those whose NAME
+     * matches first (#19), then those found by description, host or user.
+     *
+     * Exact mode is a case-insensitive substring test. Fuzzy mode is the
+     * former behaviour, kept as a setting: fuzzy-search accepts the letters in
+     * order even far apart, which is why "prod" also found
+     * "pve-replication-node".
+     */
+    private searchProfiles (searchable: PartialProfile<Profile>[], q: string): PartialProfile<Profile>[] {
+        const keys = ['name', 'description', 'options.host', 'options.user']
+        let found: PartialProfile<Profile>[]
+        let byName: Set<PartialProfile<Profile>>
+        if (this.fuzzySearch) {
+            found = new FuzzySearch(searchable, keys, { sort: false }).search(q)
+            byName = new Set(new FuzzySearch(found, ['name'], { sort: false }).search(q))
+        } else {
+            const contains = (value: unknown): boolean => typeof value === 'string' && value.toLowerCase().includes(q)
+            found = searchable.filter(p => contains(p.name) || contains((p as { description?: unknown }).description)
+                || contains(p.options?.host) || contains(p.options?.user))
+            byName = new Set(found.filter(p => contains(p.name)))
+        }
+        return [...found.filter(p => byName.has(p)), ...found.filter(p => !byName.has(p))]
+    }
+
     async onFilterChange (): Promise<void> {
+        const requestId = ++this.filterRequestId
         const q = this.filter.trim().toLowerCase()
 
         if (q.length === 0) {
@@ -1309,21 +1347,19 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             includeBuiltin: this.config.store.terminal.showBuiltinProfiles,
             clone: true,
         })
+        if (requestId !== this.filterRequestId) {
+            return
+        }
 
         // Deliberately searches everywhere, ignoring the active workspace's
         // visibility filter — a workspace only controls what the *tree*
         // shows by default, it shouldn't make something unfindable by name.
         //
-        // `options.host`/`options.user` alongside the name: fuzzy-search walks
-        // a dotted key, and a server one only remembers by address would
-        // otherwise be unreachable from here. Absent on a non-SSH profile,
-        // which the search simply skips.
+        // `options.host`/`options.user` alongside the name: a server one only
+        // remembers by address would otherwise be unreachable from here.
+        // Absent on a non-SSH profile, which the search simply skips.
         const searchable = profiles.filter(p => !p.isTemplate)
-        const matches: PartialProfile<Profile>[] = new FuzzySearch(
-            searchable,
-            ['name', 'description', 'options.host', 'options.user'],
-            { sort: false },
-        ).search(q)
+        const matches = this.searchProfiles(searchable, q)
 
         // Notes are searched in a second pass rather than as one more key of
         // the fuzzy search, which would have meant grafting the text onto each
@@ -1363,7 +1399,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * folder returned by a search that renders shut says nothing at all.
      */
     private matchingGroups (q: string): PartialProfileGroup<ProfileGroup>[] {
-        const matches = new FuzzySearch(this.rawGroupsSnapshot, ['name'], { sort: false }).search(q)
+        const matches = this.fuzzySearch
+            ? new FuzzySearch(this.rawGroupsSnapshot, ['name'], { sort: false }).search(q)
+            : this.rawGroupsSnapshot.filter(g => (g.name ?? '').toLowerCase().includes(q))
         if (!matches.length) {
             return []
         }

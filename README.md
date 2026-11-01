@@ -68,7 +68,8 @@ between the two repos, no shared code: just a small string contract
   profiles that declare tunnels, and a modal to add, edit or remove them —
   including a memory of tunnels a dropped session failed to bring back
 - **Quick filter bar**, searching name, description, host and username —
-  including inside what a workspace currently hides
+  including inside what a workspace currently hides. Exact text by default,
+  name matches listed first; approximate search is a setting
 - **Collapse all / expand all** in one click, from the button next to the
   filter field or the right click on the tree's empty space: every folder at
   every depth, plus the active sessions, recent profiles and tunnels blocks
@@ -212,6 +213,7 @@ Tabby's own `config.yaml`.
 | `showFilter` | `true` | Search field and its shortcut |
 | `searchSplitSide` | `r` | Side of the split opened by Shift+Enter from the search: `r`, `b`, `l` or `t` |
 | `searchClearOnLaunch` | `false` | Clear the search after a result is opened from the keyboard |
+| `searchFuzzy` | `false` | Approximate search, which also finds the letters in order even far apart. Off, the exact text whatever the case |
 | `showActiveToggle` | `true` | "Active" tab: only the profiles with an open tab |
 | `wrapNames` | `false` | Long names on up to two lines instead of one cut-off line |
 | `showSftp` | `true` | The SFTP tab of the sidebar and its panel |

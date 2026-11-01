@@ -75,7 +75,9 @@ plugin reconnaît de son côté.
   modifier ou retirer — avec une mémoire des tunnels qu'une session coupée n'a
   pas su remonter
 - **Barre de filtrage rapide**, qui cherche dans le nom, la description, l'hôte
-  et l'utilisateur — y compris dans ce que l'espace de travail masque
+  et l'utilisateur — y compris dans ce que l'espace de travail masque. Texte
+  exact par défaut, les noms qui correspondent en tête. La recherche approchée
+  est un réglage
 - **Tout replier / tout déplier** en un clic, par le bouton voisin du champ de
   filtre ou le clic droit sur le vide de l'arbre : tous les dossiers à tous les
   niveaux, plus les blocs Sessions actives, Profils récents et Tunnels
@@ -227,6 +229,7 @@ sous `sidebarPlus` dans le `config.yaml` de Tabby.
 | `showFilter` | `true` | Champ de recherche et son raccourci |
 | `searchSplitSide` | `r` | Côté de l'écran partagé ouvert par Maj+Entrée depuis la recherche : `r`, `b`, `l` ou `t` |
 | `searchClearOnLaunch` | `false` | Effacer la recherche après l'ouverture d'un résultat au clavier |
+| `searchFuzzy` | `false` | Recherche approchée, qui trouve aussi les lettres dans l'ordre même éloignées. Éteinte, le texte exact sans tenir compte de la casse |
 | `showActiveToggle` | `true` | Onglet « Actifs » : seulement les profils qui ont un onglet ouvert |
 | `wrapNames` | `false` | Noms longs sur deux lignes au plus, au lieu d'une ligne coupée |
 | `showSftp` | `true` | L'onglet SFTP de la sidebar et son panneau |

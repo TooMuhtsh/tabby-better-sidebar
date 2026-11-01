@@ -51,6 +51,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="annexes/REALISE.html#issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10)</a></td><td><span class="pill done">✅ Livré en 1.0.7 (2026-10-09)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-8-filtre-actifs">Filtre « Actifs » (issue #8)</a></td><td><span class="pill done">✅ Livré en 1.0.7 (2026-10-09)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-15-recherche-clavier">Lancer un résultat de recherche au clavier (issue #15)</a></td><td><span class="pill done">✅ Livré en 1.0.9 (2026-10-19)</span></td><td></td></tr>
+<tr><td><a href="#issues-17-19">Issues #17, #18 et #19 (vue gardée, noms sans limite, recherche exacte)</a></td><td><span class="pill planned">📋 Codé sur trois branches, à tester (2026-11-01)</span></td><td></td></tr>
 <tr><td><a href="#reglages-cartes">Page Fonctionnalités en cartes sur 2 colonnes</a></td><td><span class="pill progress">🔧 Validé et fusionné, à publier (2026-10-20)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-13-feux-macos">Feux de fenêtre macOS sur la sidebar (issue #13)</a></td><td><span class="pill done">✅ Livré en 1.0.8 (2026-10-17)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-14-indentation">Indentation des profils dans les dossiers (issue #14)</a></td><td><span class="pill done">✅ Livré en 1.0.8 (2026-10-17)</span></td><td></td></tr>
@@ -721,6 +722,29 @@ sur la branche, puis validé par l'injecteur (2 colonnes à 1424&nbsp;px, bascul
 Transferts grisée sans toucher à <code>showTransfers</code>, page Better Vault à 600&nbsp;px) et par
 une passe manuelle de 13 points de l'utilisateur. Fusionné le 2026-10-20, publication retenue pour la
 prochaine version.</p>
+
+<h2 id="issues-17-19">Demandes d'utilisateurs : issues #17, #18 et #19</h2>
+<p>Trois issues ouvertes le 2026-10-27 par p4535992. Instruites le 2026-11-01 à la lecture du code
+(master <code>55f6850</code>), puis tranchées avec l'utilisateur avant le code. Une branche par
+issue, partie de master.</p>
+<ul>
+<li><strong>#19, recherche</strong> (branche <code>claude/issue-19-search-exact</code>). fuzzy-search
+accepte les lettres dans l'ordre même éloignées, si bien que « prod » trouvait
+« pve-replication-node ». Décisions : texte exact par défaut, sans tenir compte de la casse ;
+recherche approchée gardée en réglage <code>searchFuzzy</code>, éteint ; les quatre champs (nom,
+description, hôte, utilisateur) restent cherchés, mais les profils dont le nom correspond passent en
+tête. Les dossiers trouvés par leur nom restent affichés avec leur contenu, c'est voulu. La course
+signalée est réelle (une recherche plus ancienne pouvait écraser la plus récente) et corrigée par un
+compteur de requête.</li>
+<li><strong>#18, noms longs</strong> (branche <code>claude/issue-18-wrap-unlimited</code>). Le
+retour à la ligne existe depuis la 1.0.7, limité à deux lignes. Décision : le réglage passe à trois
+choix, éteint, deux lignes ou sans limite.</li>
+<li><strong>#17, vue perdue après une modification</strong> (branche
+<code>claude/issue-17-keep-view</code>). Les dossiers repliés et la sélection sont déjà gardés, par
+identifiant. Mais chaque sauvegarde de la config recrée toutes les lignes de l'arbre, cause probable
+de la perte du défilement. Décision : coder le maintien des lignes existantes et la restauration du
+défilement, puis vérifier avant et après dans Tabby.</li>
+</ul>
 
 <h2>Hors périmètre</h2>
 

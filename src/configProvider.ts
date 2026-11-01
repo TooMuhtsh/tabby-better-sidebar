@@ -251,6 +251,10 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // launch unless told otherwise, to open several in a row.
             searchSplitSide: 'r' as 'r'|'l'|'t'|'b',
             searchClearOnLaunch: false,
+            // Approximate matching, letters in order even far apart (#19).
+            // Off by default: "prod" finding "pve-replication-node" read as
+            // broken. Off means a plain case-insensitive substring test.
+            searchFuzzy: false,
             // The "Actifs" tab (#8). Independent of showWorkspaces on purpose:
             // it narrows the selected workspace, and with the workspaces off
             // that is simply everything.

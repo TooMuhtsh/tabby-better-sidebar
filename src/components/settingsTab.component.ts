@@ -176,6 +176,9 @@ export class SidebarPlusSettingsTabComponent {
     get lblSideAbove (): string { return this.i18n.t('Above') }
     get lblClearOnLaunch (): string { return this.i18n.t('Clear the search after a launch') }
     get lblClearOnLaunchDesc (): string { return this.i18n.t('Otherwise the results stay, to open several connections in a row.') }
+    get lblFuzzy (): string { return this.i18n.t('Approximate search') }
+    get lblFuzzyHint (): string { return this.i18n.t('Off, the search looks for the exact text, whatever the case.') }
+    get lblFuzzyDesc (): string { return this.i18n.t('Also finds the letters in order, even far apart.') }
     get lblSnippetsHint (): string { return this.i18n.t('A library of commands attached to profiles and folders.') }
     get lblSnippetsDesc (): string { return this.i18n.t('The "Snippets" entry of the right click and its dedicated tab.') }
     get lblNotes (): string { return this.i18n.t('Notes') }
@@ -395,6 +398,15 @@ export class SidebarPlusSettingsTabComponent {
 
     async setSearchClearOnLaunch (value: boolean): Promise<void> {
         this.config.store.sidebarPlus.searchClearOnLaunch = value
+        await this.config.save()
+    }
+
+    get searchFuzzy (): boolean {
+        return this.config.store.sidebarPlus?.searchFuzzy ?? false
+    }
+
+    async setSearchFuzzy (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.searchFuzzy = value
         await this.config.save()
     }
 
