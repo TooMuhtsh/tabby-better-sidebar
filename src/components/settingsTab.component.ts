@@ -140,7 +140,10 @@ export class SidebarPlusSettingsTabComponent {
     get lblHideTransfersMenuHint (): string { return this.i18n.t('Otherwise the native Tabby menu opens on every transfer.') }
     get lblHideTransfersMenuDesc (): string { return this.i18n.t('The sidebar panel already shows the same transfers.') }
     get lblWrapNames (): string { return this.i18n.t('Wrap long names') }
-    get lblWrapNamesHint (): string { return this.i18n.t('Up to two lines, then the full name in the tooltip.') }
+    get lblWrapNamesHint (): string { return this.i18n.t('With two lines at most, the full name stays in the tooltip.') }
+    get lblWrapOff (): string { return this.i18n.t('No, one line') }
+    get lblWrapTwo (): string { return this.i18n.t('Up to two lines') }
+    get lblWrapAll (): string { return this.i18n.t('No line limit') }
     get lblWrapNamesDesc (): string { return this.i18n.t('Profiles, folders, recents, sessions and tunnels.') }
     get lblFeaturesIntro (): string { return this.i18n.t('Each block switches on independently. Nothing is deleted by turning one off.') }
     get lblLayoutGrouped (): string { return this.i18n.t('By category') }
@@ -460,13 +463,19 @@ export class SidebarPlusSettingsTabComponent {
         await this.config.save()
     }
 
-    get wrapNames (): boolean {
-        return this.config.store.sidebarPlus?.wrapNames ?? false
+    /** The three choices of the setting (#18), over two keys: wrapNames, then wrapNamesUnlimited. */
+    get wrapMode (): 'off'|'two'|'all' {
+        const sp = this.config.store.sidebarPlus
+        if (!(sp?.wrapNames ?? false)) {
+            return 'off'
+        }
+        return sp?.wrapNamesUnlimited ? 'all' : 'two'
     }
 
-    /** Applied by the tree's own host binding, which reads the setting on every change detection pass. */
-    async setWrapNames (value: boolean): Promise<void> {
-        this.config.store.sidebarPlus.wrapNames = value
+    /** Applied by the tree's own host bindings, which read both keys on every change detection pass. */
+    async setWrapMode (value: string): Promise<void> {
+        this.config.store.sidebarPlus.wrapNames = value === 'two' || value === 'all'
+        this.config.store.sidebarPlus.wrapNamesUnlimited = value === 'all'
         await this.config.save()
     }
 

@@ -435,7 +435,10 @@ const de_DE: Record<string, string> = {
     'Otherwise the native Tabby menu opens on every transfer.': 'Sonst öffnet sich das native Tabby-Menü bei jeder Übertragung.',
     'The sidebar panel already shows the same transfers.': 'Das Sidebar-Panel zeigt dieselben Übertragungen bereits an.',
     'Wrap long names': 'Lange Namen umbrechen',
-    'Up to two lines, then the full name in the tooltip.': 'Höchstens zwei Zeilen, dann der vollständige Name im Tooltip.',
+    'With two lines at most, the full name stays in the tooltip.': 'Bei höchstens zwei Zeilen bleibt der vollständige Name im Tooltip.',
+    'No, one line': 'Nein, eine Zeile',
+    'Up to two lines': 'Höchstens zwei Zeilen',
+    'No line limit': 'Ohne Zeilenbegrenzung',
     'Profiles, folders, recents, sessions and tunnels.': 'Profile, Ordner, zuletzt gestartete, Sitzungen und Tunnel.',
 
     // settingsTab.component.ts — features page

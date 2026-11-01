@@ -1332,3 +1332,11 @@ sidebar-plus-tree.sidebar-plus-wrap-names .item-name {
     white-space: normal;
     overflow-wrap: anywhere;
 }
+
+// No line limit (#18, `wrapNamesUnlimited`): the whole name, however many
+// lines it takes. Same wrapping rules as above, only the clamp goes.
+sidebar-plus-tree.sidebar-plus-wrap-names.sidebar-plus-wrap-unlimited .item-name {
+    display: block;
+    -webkit-line-clamp: none;
+    overflow: visible;
+}

@@ -263,6 +263,10 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // default: rows of uneven height are a change of look nobody asked
             // for until they do.
             wrapNames: false,
+            // With wrapNames on, no line limit instead of two (#18): the
+            // whole name, however long. A second key rather than a third
+            // value of wrapNames, so a config written before keeps its choice.
+            wrapNamesUnlimited: false,
             // Éteints, les deux retirent leur entrée du menu contextuel et ce
             // qu'ils posent sur les lignes — sans toucher à ce qui est stocké :
             // la bibliothèque, les rattachements et les notes attendent d'être

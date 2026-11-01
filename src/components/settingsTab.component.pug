@@ -73,10 +73,13 @@
             .title {{ lblWrapNames }} #[i.fas.fa-info-circle.info-hint([title]='lblWrapNamesHint')]
             .description {{ lblWrapNamesDesc }}
           .control
-            toggle(
-              [ngModel]='wrapNames',
-              (ngModelChange)='setWrapNames($event)'
+            select#sidebar-plus-wrap-names.form-control(
+              [ngModel]='wrapMode',
+              (ngModelChange)='setWrapMode($event)'
             )
+              option(value='off') {{ lblWrapOff }}
+              option(value='two') {{ lblWrapTwo }}
+              option(value='all') {{ lblWrapAll }}
 
   //- Une carte par fonctionnalité : son interrupteur en en-tête, ses options
   //- dans la carte, qui se replient quand on l'éteint. Deux présentations des

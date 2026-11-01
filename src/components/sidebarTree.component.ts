@@ -2040,6 +2040,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         return this.config.store.sidebarPlus?.wrapNames ?? false
     }
 
+    /** No line limit on the wrapped names (#18), only with wrapNames on. */
+    @HostBinding('class.sidebar-plus-wrap-unlimited')
+    get wrapNamesUnlimited (): boolean {
+        return this.wrapNames && (this.config.store.sidebarPlus?.wrapNamesUnlimited ?? false)
+    }
+
     /**
      * Room for the macOS traffic lights (#13). With the "thin" frame the
      * window has no title bar, and the three window buttons are drawn over its

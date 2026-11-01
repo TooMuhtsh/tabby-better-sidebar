@@ -232,6 +232,7 @@ sous `sidebarPlus` dans le `config.yaml` de Tabby.
 | `searchFuzzy` | `false` | Recherche approchée, qui trouve aussi les lettres dans l'ordre même éloignées. Éteinte, le texte exact sans tenir compte de la casse |
 | `showActiveToggle` | `true` | Onglet « Actifs » : seulement les profils qui ont un onglet ouvert |
 | `wrapNames` | `false` | Noms longs sur deux lignes au plus, au lieu d'une ligne coupée |
+| `wrapNamesUnlimited` | `false` | Avec `wrapNames` allumé, sans limite de lignes. Le nom s'affiche en entier, quelle que soit sa longueur |
 | `showSftp` | `true` | L'onglet SFTP de la sidebar et son panneau |
 | `showTransfers` | `true` | Gestionnaire de transferts en bas de la sidebar |
 | `showSnippets` | `true` | L'entrée *Snippets* du clic droit et son onglet |

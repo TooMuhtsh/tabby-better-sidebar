@@ -432,7 +432,10 @@ const zh_CN: Record<string, string> = {
     'Otherwise the native Tabby menu opens on every transfer.': '否则每次传输时 Tabby 原生菜单都会弹出。',
     'The sidebar panel already shows the same transfers.': '侧边栏面板已经显示了相同的传输。',
     'Wrap long names': '长名称换行显示',
-    'Up to two lines, then the full name in the tooltip.': '最多两行，完整名称见提示。',
+    'With two lines at most, the full name stays in the tooltip.': '最多两行时，完整名称保留在提示中。',
+    'No, one line': '否，一行',
+    'Up to two lines': '最多两行',
+    'No line limit': '不限行数',
     'Profiles, folders, recents, sessions and tunnels.': '配置、文件夹、最近启动、会话和隧道。',
 
     // settingsTab.component.ts — features page
