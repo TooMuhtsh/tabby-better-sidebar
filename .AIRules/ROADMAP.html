@@ -51,8 +51,8 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="annexes/REALISE.html#issue-10-titres-longs">Titres longs sur plusieurs lignes (issue #10)</a></td><td><span class="pill done">✅ Livré en 1.0.7 (2026-10-09)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-8-filtre-actifs">Filtre « Actifs » (issue #8)</a></td><td><span class="pill done">✅ Livré en 1.0.7 (2026-10-09)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-15-recherche-clavier">Lancer un résultat de recherche au clavier (issue #15)</a></td><td><span class="pill done">✅ Livré en 1.0.9 (2026-10-19)</span></td><td></td></tr>
-<tr><td><a href="#issues-17-19">Issues #17, #18 et #19 (vue gardée, noms sans limite, recherche exacte)</a></td><td><span class="pill planned">📋 Codé sur trois branches, à tester (2026-11-01)</span></td><td></td></tr>
-<tr><td><a href="#reglages-cartes">Page Fonctionnalités en cartes sur 2 colonnes</a></td><td><span class="pill progress">🔧 Validé et fusionné, à publier (2026-10-20)</span></td><td></td></tr>
+<tr><td><a href="#issues-17-19">Issues #17, #18 et #19 (vue gardée, noms sans limite, recherche exacte)</a></td><td><span class="pill progress">🔧 Fusionné, 1.0.10 prête, publication npm en attente (2026-11-01)</span></td><td></td></tr>
+<tr><td><a href="#reglages-cartes">Page Fonctionnalités en cartes sur 2 colonnes</a></td><td><span class="pill progress">🔧 Fusionné, 1.0.10 prête, publication npm en attente (2026-11-01)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-13-feux-macos">Feux de fenêtre macOS sur la sidebar (issue #13)</a></td><td><span class="pill done">✅ Livré en 1.0.8 (2026-10-17)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-14-indentation">Indentation des profils dans les dossiers (issue #14)</a></td><td><span class="pill done">✅ Livré en 1.0.8 (2026-10-17)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
@@ -745,6 +745,11 @@ identifiant. Mais chaque sauvegarde de la config recrée toutes les lignes de l'
 de la perte du défilement. Décision : coder le maintien des lignes existantes et la restauration du
 défilement, puis vérifier avant et après dans Tabby.</li>
 </ul>
+<p><strong>Testé le 2026-11-01, 15 contrôles sur 15</strong> sur une fusion locale des trois branches,
+puis repris sur master sans conflit. La 1.0.10 est validée sur le paquet de production ; sa publication attend le rétablissement de l'accès au compte npm (ticket au support le 2026-11-01). Sur master, la perte de vue de #17 ne
+s'est pas reproduite, ni par la sidebar ni par Paramètres : une sauvegarde y recréait bien toutes
+les lignes, mais le défilement restait. Après correctif, les lignes sont gardées (35 sur 35).
+Reste ouvert : les étapes du rapporteur de #17, demandées sur l'issue.</p>
 
 <h2>Hors périmètre</h2>
 
