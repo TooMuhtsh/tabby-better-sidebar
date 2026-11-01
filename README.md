@@ -67,7 +67,7 @@ between the two repos, no shared code: just a small string contract
 - **SSH tunnels**: a panel of what Tabby is currently forwarding, badges on the
   profiles that declare tunnels, and a modal to add, edit or remove them —
   including a memory of tunnels a dropped session failed to bring back
-- **Quick filter bar**, searching name, description, host and username —
+- **Quick filter bar**, searching name, description, host and username,
   including inside what a workspace currently hides. Exact text by default,
   name matches listed first; approximate search is a setting
 - **Collapse all / expand all** in one click, from the button next to the

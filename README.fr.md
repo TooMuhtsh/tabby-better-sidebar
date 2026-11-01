@@ -75,7 +75,7 @@ plugin reconnaît de son côté.
   modifier ou retirer — avec une mémoire des tunnels qu'une session coupée n'a
   pas su remonter
 - **Barre de filtrage rapide**, qui cherche dans le nom, la description, l'hôte
-  et l'utilisateur — y compris dans ce que l'espace de travail masque. Texte
+  et l'utilisateur, y compris dans ce que l'espace de travail masque. Texte
   exact par défaut, les noms qui correspondent en tête. La recherche approchée
   est un réglage
 - **Tout replier / tout déplier** en un clic, par le bouton voisin du champ de
