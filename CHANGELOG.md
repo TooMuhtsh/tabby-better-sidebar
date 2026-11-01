@@ -3,6 +3,25 @@
 All notable changes to `tabby-better-sidebar` are documented here, one entry
 per npm release. Dates are the npm publication dates.
 
+## 1.0.10 (2026-11-01)
+
+- **Changed**: the search now matches the exact text by default, whatever
+  the case, in the name, description, host and user (#19). Profiles found by
+  their name come first. Searching "prod" no longer finds a profile whose
+  name merely has those letters in order, far apart.
+- **Added**: an "Approximate search" setting under "Filter bar"
+  (`searchFuzzy`, off by default) that brings back the former matching.
+- **Fixed**: typing fast then clearing the filter could let an older search
+  land after the newer one and show stale results.
+- **Added**: the "Wrap long names" setting now offers three choices: one
+  line, up to two lines, or no line limit (#18, `wrapNamesUnlimited`). A
+  config that had `wrapNames` on keeps two lines.
+- **Fixed**: every config save redrew all the rows of the tree. Rows are now
+  kept, along with the scroll position, when a profile is edited (#17).
+- **Changed**: the Features settings page shows one card per feature, on two
+  columns when the page is wide, with a "By category / Simple list" switch.
+  The General tab uses cards too.
+
 ## 1.0.9 (2026-10-19)
 
 - **Added**: launch a search result from the keyboard (#15). While a search
