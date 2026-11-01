@@ -199,6 +199,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * absent while the sidebar shows the SFTP view.
      */
     @ViewChild('filterInput') filterInput?: ElementRef<HTMLInputElement>
+    /** The profile tree's scrolling box, read and restored around a reload (#17). */
+    @ViewChild('treeScroll') private treeScroll?: ElementRef<HTMLElement>
     /**
      * Reference to the mounted SFTP panel, so openSessionSftp() can reach
      * past its own focus-follows-tab handshake and unfreeze a pin left
@@ -559,7 +561,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // to swap the results for the whole tree, filter text still in the
             // field. #15 keeps the search open after a launch, which is exactly
             // when such a save comes.
-            void this.refreshTree()
+            void this.refreshKeepingView()
             // showTransfers can have just flipped — refreshTransferActivity()
             // reads it directly and clears the map rather than waiting for the
             // next registry event, which may never come if nothing is running.
@@ -1447,6 +1449,42 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // own comment). No-op when the pick came from a tab.
         this.workspaceSwitcherOpen = false
         this.refreshTree()
+    }
+
+    /**
+     * Rows are tracked by id (#17). Every config save rebuilds the tree from
+     * fresh clones, so without this Angular threw away and recreated every
+     * row on each save: editing one profile redrew the whole list, and the
+     * view the user was in went with it. Kept rows keep their place, their
+     * focus and the scroll around them.
+     */
+    trackGroup (_index: number, group: PartialProfileGroup<ProfileGroup>): string {
+        return group.id
+    }
+
+    trackProfile (index: number, profile: PartialProfile<Profile>): string|number {
+        return profile.id ?? index
+    }
+
+    /**
+     * `refreshTree()` for a config save, with the tree's scroll position put
+     * back once the new rows are rendered (#17). The tracked rows already keep
+     * it in the usual case; this covers the rows that still get recreated,
+     * such as the search results, whose group is rebuilt on every reload.
+     */
+    private async refreshKeepingView (): Promise<void> {
+        const scroller = this.treeScroll?.nativeElement
+        const top = scroller?.scrollTop ?? 0
+        await this.refreshTree()
+        if (!scroller || !top) {
+            return
+        }
+        // Next macrotask: Angular has rendered the new rows by then.
+        setTimeout(() => {
+            if (this.treeScroll?.nativeElement === scroller && scroller.scrollTop !== top) {
+                scroller.scrollTop = top
+            }
+        })
     }
 
     /** Single re-entry point after anything that changes what should be visible (workspace switch, config change) — re-derives rootGroups from scratch, honoring an in-progress text filter if there is one. */

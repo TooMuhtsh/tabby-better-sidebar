@@ -319,7 +319,7 @@
             a.action((click)='restoreProfileInWorkspace(p)', [title]="'Show again' | translate", href='#')
                 .fa.fa-fw.fas.fa-eye
 
-    .sidebar-plus-tree.h-100(*ngIf='!showHiddenPanel && !sftpMode', (contextmenu)='onSidebarContextMenu($event)')
+    .sidebar-plus-tree.h-100(#treeScroll, *ngIf='!showHiddenPanel && !sftpMode', (contextmenu)='onSidebarContextMenu($event)')
         .d-flex.flex-column.p-2.sidebar-plus-tree-container(
             cdkDropList,
             id='groups-root',
@@ -327,7 +327,7 @@
             [cdkDropListConnectedTo]='groupListIds',
             (cdkDropListDropped)='onGroupDrop($event, null)'
         )
-            ng-container(*ngFor='let group of rootGroups')
+            ng-container(*ngFor='let group of rootGroups; trackBy: trackGroup')
                 div(
                     cdkDrag,
                     cdkDragPreviewClass='sidebar-plus-drag-preview',
@@ -374,7 +374,7 @@
                     (cdkDropListExited)='onProfileListExited(group)'
                 )
                     ng-container(*ngIf='!group.collapsed')
-                        ng-container(*ngFor='let profile of group.profiles')
+                        ng-container(*ngFor='let profile of group.profiles; trackBy: trackProfile')
                             //- Indented by two steps, not one (#14): a folder
                             //- row is a chevron then an icon, so one step put a
                             //- profile's icon in the very column of its own
@@ -474,7 +474,7 @@
                     (cdkDropListDropped)='onGroupDrop($event, group.id)'
                 )
                     ng-container(*ngIf='!group.collapsed')
-                        ng-container(*ngFor='let child of group.children')
+                        ng-container(*ngFor='let child of group.children; trackBy: trackGroup')
                             div(
                                 cdkDrag,
                                 cdkDragPreviewClass='sidebar-plus-drag-preview',
