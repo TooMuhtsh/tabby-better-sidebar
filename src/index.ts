@@ -8,6 +8,8 @@ import { SettingsTabProvider } from 'tabby-settings'
 import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
 import { SidebarPlusSftpComponent } from './components/sftpPanel.component'
 import { SidebarPlusSftpBrowserComponent } from './components/sftpBrowser.component'
+import { SidebarPlusScpComponent } from './scp/scpPanel.component'
+import { SidebarPlusScpConfigProvider } from './scp/configProvider'
 import { ConfirmModalComponent } from './components/confirmModal.component'
 import { SnippetsModalComponent } from './components/snippetsModal.component'
 import { NoteModalComponent } from './components/noteModal.component'
@@ -46,6 +48,7 @@ const SIDEBAR_PANEL_CONTRIBUTION: BetterPanelContribution = {
     ],
     providers: [
         { provide: ConfigProvider, useClass: SidebarPlusConfigProvider, multi: true },
+        { provide: ConfigProvider, useClass: SidebarPlusScpConfigProvider, multi: true },
         { provide: SettingsTabProvider, useClass: SidebarPlusSettingsTabProvider, multi: true },
         { provide: HotkeyProvider, useClass: SidebarPlusHotkeyProvider, multi: true },
         { provide: SIDEBAR_PANEL_TOKEN, useValue: SIDEBAR_PANEL_CONTRIBUTION },
@@ -54,6 +57,7 @@ const SIDEBAR_PANEL_CONTRIBUTION: BetterPanelContribution = {
         SidebarPlusTreeComponent,
         SidebarPlusSftpComponent,
         SidebarPlusSftpBrowserComponent,
+        SidebarPlusScpComponent,
         ConfirmModalComponent,
         SnippetsModalComponent,
         NoteModalComponent,
