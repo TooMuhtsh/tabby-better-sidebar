@@ -2,6 +2,7 @@ import './hostChrome.scss'
 import { ApplicationRef, ComponentRef, EnvironmentInjector, Injectable, createComponent } from '@angular/core'
 import { AppService, ConfigService, NotificationsService } from 'tabby-core'
 import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
+import { SidebarPlusScpComponent } from './scp/scpPanel.component'
 import { checkHost } from './hostCompat'
 import { SidebarPlusI18nService } from './i18n'
 import { SidebarPlusVisibilityService } from './visibility.service'
@@ -12,6 +13,8 @@ const HIDE_NATIVE_TRANSFERS_CLASS = 'sidebar-plus-hide-native-transfers'
 @Injectable({ providedIn: 'root' })
 export class SidebarPlusMountService {
     private componentRef: ComponentRef<SidebarPlusTreeComponent>|null = null
+    private scpRef: ComponentRef<SidebarPlusScpComponent>|null = null
+    private scpMountTimer: ReturnType<typeof setTimeout>|null = null
 
     /**
      * Whether the host failed a precondition that leaves nothing to mount.
@@ -126,6 +129,25 @@ export class SidebarPlusMountService {
         })
         this.appRef.attachView(this.componentRef.hostView)
         container.insertBefore(this.rootNodeOf(this.componentRef), container.firstChild)
+        // Wait for the tree's first render, outside its change-detection pass.
+        // The SCP block is independent of both profile mode and SFTP visibility.
+        const owner = this.componentRef
+        this.scpMountTimer = setTimeout(() => {
+            this.scpMountTimer = null
+            if (this.componentRef !== owner || this.scpRef) { return }
+            owner.changeDetectorRef.detectChanges()
+            const bar = this.rootNodeOf(owner).querySelector('.view-mode-bar')
+            if (!bar?.parentElement) {
+                console.warn('[tabby-better-sidebar] Cannot mount the SCP checkbox: sidebar view bar is missing.')
+                return
+            }
+            this.scpRef = createComponent(SidebarPlusScpComponent, {
+                environmentInjector: this.environmentInjector,
+            })
+            this.appRef.attachView(this.scpRef.hostView)
+            bar.parentElement.insertBefore(this.rootNodeOf(this.scpRef), bar.nextSibling)
+            this.scpRef.changeDetectorRef.detectChanges()
+        })
     }
 
     /**
@@ -141,6 +163,13 @@ export class SidebarPlusMountService {
      * same thing in `destroyPanel()`, for the same reason.
      */
     private unmount (): void {
+        if (this.scpMountTimer) { clearTimeout(this.scpMountTimer); this.scpMountTimer = null }
+        if (this.scpRef) {
+            this.rootNodeOf(this.scpRef).remove()
+            this.appRef.detachView(this.scpRef.hostView)
+            this.scpRef.destroy()
+            this.scpRef = null
+        }
         if (!this.componentRef) {
             return
         }
@@ -150,7 +179,7 @@ export class SidebarPlusMountService {
         this.componentRef = null
     }
 
-    private rootNodeOf (ref: ComponentRef<SidebarPlusTreeComponent>): HTMLElement {
+    private rootNodeOf<T> (ref: ComponentRef<T>): HTMLElement {
         return (ref.hostView as unknown as { rootNodes: HTMLElement[] }).rootNodes[0]
     }
 }
