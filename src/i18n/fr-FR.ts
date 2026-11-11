@@ -680,6 +680,27 @@ const fr_FR: Record<string, string> = {
     '{name}: arrival not verified — {reason}': '{name} : arrivée non vérifiée — {reason}',
     'The upload of {name} could not start': 'L\'envoi de {name} n\'a pas pu démarrer',
 
+    // sidebarTree / folderTransferModal — accessible folder move/copy
+    'Move folder...': 'Déplacer le dossier...',
+    'Copy folder...': 'Copier le dossier...',
+    'Move folder': 'Déplacer le dossier',
+    'Copy folder': 'Copier le dossier',
+    'Choose a destination and confirm. All subfolders and profiles are included.': 'Choisissez une destination et confirmez. Tous les sous-dossiers et profils sont inclus.',
+    'Destination folder': 'Dossier de destination',
+    'Top level (no folder)': 'Racine (aucun dossier parent)',
+    'Copies retain saved connection settings and credentials.': 'Les copies conservent les paramètres de connexion et les identifiants enregistrés.',
+    'Confirm move': 'Confirmer le déplacement',
+    'Confirm copy': 'Confirmer la copie',
+    'The folder is no longer available.': 'Ce dossier n\'est plus disponible.',
+    'No other destination is available.': 'Aucune autre destination n\'est disponible.',
+    'The selected folder or destination is no longer available.': 'Le dossier sélectionné ou sa destination n\'est plus disponible.',
+    'Folder "{name}" moved to "{destination}".': 'Dossier « {name} » déplacé vers « {destination} ».',
+    'Folder "{name}" copied to "{destination}".': 'Dossier « {name} » copié vers « {destination} ».',
+    'Could not move folder "{name}".': 'Impossible de déplacer le dossier « {name} ».',
+    'Could not copy folder "{name}".': 'Impossible de copier le dossier « {name} ».',
+
+    'Some changes may already be saved; check the destination.': 'Certaines modifications peuvent déjà avoir été enregistrées ; vérifiez le dossier de destination.',
+
 }
 
 export default fr_FR

@@ -650,6 +650,27 @@ const de_DE: Record<string, string> = {
     '{name}: arrival not verified — {reason}': '{name}: Ankunft nicht bestätigt — {reason}',
     'The upload of {name} could not start': 'Der Upload von {name} konnte nicht gestartet werden',
 
+    // sidebarTree / folderTransferModal — accessible folder move/copy
+    'Move folder...': 'Ordner verschieben...',
+    'Copy folder...': 'Ordner kopieren...',
+    'Move folder': 'Ordner verschieben',
+    'Copy folder': 'Ordner kopieren',
+    'Choose a destination and confirm. All subfolders and profiles are included.': 'Ziel auswählen und bestätigen. Alle Unterordner und Profile werden einbezogen.',
+    'Destination folder': 'Zielordner',
+    'Top level (no folder)': 'Oberste Ebene (kein Ordner)',
+    'Copies retain saved connection settings and credentials.': 'Kopien behalten gespeicherte Verbindungseinstellungen und Zugangsdaten.',
+    'Confirm move': 'Verschieben bestätigen',
+    'Confirm copy': 'Kopieren bestätigen',
+    'The folder is no longer available.': 'Der Ordner ist nicht mehr verfügbar.',
+    'No other destination is available.': 'Kein anderes Ziel verfügbar.',
+    'The selected folder or destination is no longer available.': 'Der ausgewählte Ordner oder das Ziel ist nicht mehr verfügbar.',
+    'Folder "{name}" moved to "{destination}".': 'Ordner „{name}“ nach „{destination}“ verschoben.',
+    'Folder "{name}" copied to "{destination}".': 'Ordner „{name}“ nach „{destination}“ kopiert.',
+    'Could not move folder "{name}".': 'Ordner „{name}“ konnte nicht verschoben werden.',
+    'Could not copy folder "{name}".': 'Ordner „{name}“ konnte nicht kopiert werden.',
+
+    'Some changes may already be saved; check the destination.': 'Einige Änderungen wurden möglicherweise bereits gespeichert; bitte den Zielordner prüfen.',
+
 }
 
 export default de_DE

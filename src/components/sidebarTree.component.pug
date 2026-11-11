@@ -523,6 +523,12 @@
     a.group-context-menu-item((click)='launchGroupSessions(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | {{ 'Launch all sessions' | translate }}
+    a.group-context-menu-item((click)='openFolderTransfer("move")', href='#')
+        .fa.fa-fw.fas.fa-arrow-right.me-2
+        | {{ 'Move folder...' | translate }}
+    a.group-context-menu-item((click)='openFolderTransfer("copy")', href='#')
+        .fa.fa-fw.fas.fa-copy.me-2
+        | {{ 'Copy folder...' | translate }}
     a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
         .fa.fa-fw.fas.fa-folder-plus.me-2
         | {{ 'New folder...' | translate }}

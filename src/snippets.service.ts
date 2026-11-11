@@ -652,6 +652,21 @@ export class SidebarPlusSnippetsService {
     }
 
     /**
+     * Copies all owner-specific snippet attachments and settings without
+     * changing the source. Values are cloned so future edits stay independent.
+     */
+    copy (fromId: string, toId: string): void {
+        this.config.store.sidebarPlus ??= {}
+        for (const map of ['snippetAttachments', 'snippetSettings', 'snippetOverrides', 'snippetVariables', 'snippetMuted'] as const) {
+            const all = { ...(this.config.store.sidebarPlus[map] ?? {}) }
+            if (fromId in all) {
+                all[toId] = structuredClone(all[fromId]) as typeof all[string]
+                this.config.store.sidebarPlus[map] = all
+            }
+        }
+    }
+
+    /**
      * Carries those same maps over when a folder is given a new id.
      *
      * Forgotten, dragging a folder into another would silently strip it of its

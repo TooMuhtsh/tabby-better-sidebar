@@ -35,6 +35,7 @@ import { SidebarPlusSftpComponent } from './sftpPanel.component'
 import { SnippetsModalComponent, SnippetsModalResult } from './snippetsModal.component'
 import { NoteModalComponent } from './noteModal.component'
 import { PasteGroupModalComponent, PasteResolution } from './pasteGroupModal.component'
+import { FolderTransferDestination, FolderTransferModalComponent } from './folderTransferModal.component'
 import { TunnelsModalComponent } from './tunnelsModal.component'
 import { IconPickerModalComponent } from './iconPickerModal.component'
 import { ForwardedPortConfig, PortForwardType, SSHTabComponent } from 'tabby-ssh'
@@ -4205,6 +4206,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 ws.favoriteGroups[favoriteIndex] = newId
             }
             SidebarPlusTreeComponent.renameOrderKey(ws.groupOrder, oldId, newId)
+            // Profile ordering is also keyed by the owning folder id. Keep
+            // that key when a move recreates the folder under a new id.
+            if (ws.profileOrder?.[oldId]) {
+                ws.profileOrder[newId] = ws.profileOrder[oldId]
+                delete ws.profileOrder[oldId]
+            }
         }
         this.config.store.sidebarPlus.workspaces = workspaces
 
@@ -4276,6 +4283,280 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             current = current.parentGroupId ? this.rawGroupsSnapshot.find(g => g.id === current!.parentGroupId) : undefined
         }
         return false
+    }
+
+
+    /**
+     * Destination paths are built from the unfiltered flat tree: hidden
+     * folders still exist, and a move/copy must never silently omit them.
+     */
+    private folderPath (group: PartialProfileGroup<ProfileGroup>, all: PartialProfileGroup<ProfileGroup>[]): string {
+        const byId = new Map(all.map(item => [item.id, item]))
+        const parts: string[] = []
+        const seen = new Set<string>()
+        let current: PartialProfileGroup<ProfileGroup>|undefined = group
+        while (current && !seen.has(current.id)) {
+            parts.push(current.name || this.i18n.t('Folder'))
+            seen.add(current.id)
+            current = current.parentGroupId ? byId.get(current.parentGroupId) : undefined
+        }
+        return parts.reverse().join(' / ')
+    }
+
+    /** Checks ancestry against a single fresh snapshot, not the workspace-filtered display tree. */
+    private insideFolder (candidateId: string, sourceId: string, all: PartialProfileGroup<ProfileGroup>[]): boolean {
+        const byId = new Map(all.map(item => [item.id, item]))
+        const seen = new Set<string>()
+        let current = byId.get(candidateId)
+        while (current && !seen.has(current.id)) {
+            if (current.id === sourceId) {
+                return true
+            }
+            seen.add(current.id)
+            current = current.parentGroupId ? byId.get(current.parentGroupId) : undefined
+        }
+        return false
+    }
+
+    /**
+     * Context-menu Move/Copy: choose a destination using a native select and
+     * explicitly confirm before any write. The dialog also works without
+     * precision dragging and is navigable with a keyboard.
+     */
+    async openFolderTransfer (action: 'move'|'copy'): Promise<void> {
+        const selected = this.contextMenuGroup
+        this.closeContextMenu()
+        if (!selected?.editable) {
+            return
+        }
+
+        const all = await readProfileGroups(this.profilesService, this.config)
+        const source = all.find(group => group.id === selected.id)
+        if (!source?.editable) {
+            this.notices.error(this.i18n.t('The folder is no longer available.'))
+            return
+        }
+
+        const candidates: FolderTransferDestination[] = [
+            { id: null, value: 'root', label: this.i18n.t('Top level (no folder)') },
+            ...all.filter(group =>
+                group.editable && !this.insideFolder(group.id, source.id, all),
+            ).map(group => ({
+                id: group.id,
+                value: group.id,
+                label: this.folderPath(group, all),
+            })).sort((a, b) => a.label.localeCompare(b.label)),
+        ].filter(destination => action === 'copy' || destination.id !== (source.parentGroupId ?? null))
+
+        if (!candidates.length) {
+            this.notices.notice(this.i18n.t('No other destination is available.'))
+            return
+        }
+
+        const modal = this.ngbModal.open(FolderTransferModalComponent)
+        modal.componentInstance.action = action
+        modal.componentInstance.sourceName = source.name
+        modal.componentInstance.destinations = candidates
+        const preferred = action === 'copy' ? (source.parentGroupId ?? 'root') : candidates[0].value
+        modal.componentInstance.selectedDestination =
+            candidates.some(destination => destination.value === preferred) ? preferred : candidates[0].value
+
+        const selectedDestination = await modal.result.catch(() => null) as FolderTransferDestination|null
+        if (!selectedDestination) {
+            return
+        }
+
+        // Re-check when the modal closes: a folder may have been renamed,
+        // deleted or reparented while it was open.
+        const fresh = await readProfileGroups(this.profilesService, this.config)
+        const current = fresh.find(group => group.id === source.id)
+        const destinationId = selectedDestination.id
+        const destination = destinationId === null ? null : fresh.find(group => group.id === destinationId && group.editable)
+        if (!current?.editable || (destinationId !== null && !destination)
+            || !candidates.some(candidate => candidate.id === destinationId)
+            || this.insideFolder(destinationId ?? '', current?.id ?? '', fresh)
+            || (action === 'move' && destinationId === (current.parentGroupId ?? null))) {
+            this.notices.error(this.i18n.t('The selected folder or destination is no longer available.'))
+            return
+        }
+
+        try {
+            if (action === 'move') {
+                // Same proven recreate / migrate / delete path used by folder
+                // drag-and-drop. Directly writing parentGroupId corrupts
+                // Tabby's groups and would lose hidden descendants.
+                const id = await this.reparentGroup(current.id, {
+                    name: current.name, icon: current.icon, color: current.color,
+                }, destinationId, fresh)
+                this.placeGroupInOrders(id, destinationId)
+            } else {
+                const name = this.groupCopyName(current.name, destinationId, fresh)
+                const groupIds = new Map<string, string>()
+                const profileIds = new Map<string, string>()
+                const id = await this.cloneGroupTo(current.id, destinationId, name, fresh, groupIds, profileIds)
+                this.copyFolderOrders(groupIds, profileIds)
+                this.placeGroupInOrders(id, destinationId)
+            }
+            await this.config.save()
+            this.notices.notice(
+                action === 'move'
+                    ? this.i18n.t('Folder "{name}" moved to "{destination}".', {
+                        name: current.name, destination: destination?.name ?? this.i18n.t('Top level (no folder)'),
+                    })
+                    : this.i18n.t('Folder "{name}" copied to "{destination}".', {
+                        name: current.name, destination: destination?.name ?? this.i18n.t('Top level (no folder)'),
+                    }),
+            )
+        } catch (error) {
+            // As with the existing drop handler, persist partial writes rather
+            // than silently discarding them if a provider fails mid-operation.
+            try {
+                await this.config.save()
+            } catch (saveError) {
+                console.error('[sidebarPlus] could not save after folder transfer error', saveError)
+            }
+            console.error('[sidebarPlus] folder transfer failed', error)
+            this.notices.error(
+                action === 'move'
+                    ? this.i18n.t('Could not move folder "{name}".', { name: current.name })
+                    : this.i18n.t('Could not copy folder "{name}".', { name: current.name }),
+                this.i18n.t('Some changes may already be saved; check the destination.') + ' ' + String(error),
+            )
+        }
+    }
+
+    /** Choose a unique sibling name even when the destination is hidden in this workspace. */
+    private groupCopyName (name: string, parentId: string|null, groups: PartialProfileGroup<ProfileGroup>[]): string {
+        const taken = new Set(groups.filter(group => (group.parentGroupId ?? null) === parentId).map(group => group.name))
+        const base = this.i18n.t('{name} - Copy', { name })
+        let candidate = base
+        for (let n = 2; taken.has(candidate); n++) {
+            candidate = `${base} ${n}`
+        }
+        return candidate
+    }
+
+    /**
+     * Copy the actual local profile data (including options and group
+     * defaults) without going through clipboard sharing, which deliberately
+     * strips credentials. Every new profile and folder receives its own id.
+     */
+    private async cloneGroupTo (
+        sourceId: string,
+        parentId: string|null,
+        name: string,
+        all: PartialProfileGroup<ProfileGroup>[],
+        groupIds: Map<string, string>,
+        profileIds: Map<string, string>,
+    ): Promise<string> {
+        const original = all.find(group => group.id === sourceId)
+        if (!original?.editable) {
+            throw new Error('Source folder not found or not editable')
+        }
+        const { id: _oldId, profiles: _profiles, children: _children, ...fields } =
+            structuredClone(original) as PartialProfileGroup<ProfileGroup> & { children?: unknown }
+        const copy = {
+            ...fields, id: '', name, parentGroupId: parentId ?? undefined,
+        } as PartialProfileGroup<ProfileGroup>
+        await this.profilesService.newProfileGroup(copy, { genId: true })
+        if (!copy.id || copy.id === original.id) {
+            throw new Error('Copying the folder did not generate a new id')
+        }
+        groupIds.set(original.id, copy.id)
+        this.copyNote(original.id, copy.id)
+        this.snippets.copy(original.id, copy.id)
+
+        for (const profile of original.profiles ?? []) {
+            if (profile.isTemplate || (profile as PartialProfile<Profile> & { isBuiltin?: boolean }).isBuiltin) {
+                continue
+            }
+            const duplicated = structuredClone(profile) as PartialProfile<Profile> & { isTemplate?: boolean, isBuiltin?: boolean }
+            delete duplicated.isTemplate
+            delete duplicated.isBuiltin
+            // The original id must never be reused by a copied profile.
+            delete duplicated.id
+            duplicated.group = copy.id
+            await this.profilesService.newProfile(duplicated)
+            if (!duplicated.id || duplicated.id === profile.id) {
+                throw new Error('Copying a profile did not generate a new id')
+            }
+            this.copyNote(profile.id, duplicated.id)
+            if (profile.id) {
+                profileIds.set(profile.id, duplicated.id)
+                this.snippets.copy(profile.id, duplicated.id)
+                const favorites = this.config.store.sidebarPlus?.sftpFavorites?.[profile.id]
+                if (favorites) {
+                    this.config.store.sidebarPlus.sftpFavorites = {
+                        ...(this.config.store.sidebarPlus.sftpFavorites ?? {}),
+                        [duplicated.id]: [...favorites],
+                    }
+                }
+            }
+        }
+        for (const child of all.filter(group => group.parentGroupId === original.id)) {
+            await this.cloneGroupTo(child.id, copy.id, child.name, all, groupIds, profileIds)
+        }
+        return copy.id
+    }
+
+    /**
+     * Preserve explicit sibling order within a copied subtree, independently
+     * for All and for each workspace. IDs inside the copies are new, so
+     * copying the old lists directly would point at the originals.
+     * Visibility, favorites and other workspace-specific choices are NOT
+     * duplicated: the new folders start visible, like newly created folders.
+     */
+    private copyFolderOrders (groupIds: Map<string, string>, profileIds: Map<string, string>): void {
+        this.config.store.sidebarPlus ??= {}
+        const copyOrders = (
+            source: Record<string, string[]>|undefined,
+            childIds: Map<string, string>,
+        ): Record<string, string[]> => {
+            const copied = { ...(source ?? {}) }
+            for (const [oldGroupId, newGroupId] of groupIds) {
+                if (source?.[oldGroupId]) {
+                    copied[newGroupId] = source[oldGroupId]
+                        .map(oldChildId => childIds.get(oldChildId))
+                        .filter((id): id is string => !!id)
+                }
+            }
+            return copied
+        }
+
+        const settings = this.config.store.sidebarPlus
+        settings.groupOrder = copyOrders(settings.groupOrder, groupIds)
+        const workspaces: SidebarWorkspace[] = settings.workspaces ?? []
+        for (const workspace of workspaces) {
+            workspace.groupOrder = copyOrders(workspace.groupOrder, groupIds)
+            workspace.profileOrder = copyOrders(workspace.profileOrder, profileIds)
+        }
+        settings.workspaces = workspaces
+    }
+
+    /**
+     * Move the new id to the top of its target sibling list across workspaces.
+     * Reparenting changes ids; migrateWorkspaceGroupId() has already mapped
+     * references to the new id, but they still point to the *old* parent.
+     * Filtering all order values avoids stale/duplicate placements.
+     */
+    private placeGroupInOrders (groupId: string, parentId: string|null): void {
+        this.config.store.sidebarPlus ??= {}
+        const place = (order: Record<string, string[]>|undefined): Record<string, string[]> => {
+            const updated: Record<string, string[]> = {}
+            for (const [key, ids] of Object.entries(order ?? {})) {
+                updated[key] = ids.filter(id => id !== groupId)
+            }
+            const key = parentId ?? 'root'
+            updated[key] = [groupId, ...(updated[key] ?? [])]
+            return updated
+        }
+        const settings = this.config.store.sidebarPlus
+        settings.groupOrder = place(settings.groupOrder)
+        const workspaces: SidebarWorkspace[] = settings.workspaces ?? []
+        for (const workspace of workspaces) {
+            workspace.groupOrder = place(workspace.groupOrder)
+        }
+        settings.workspaces = workspaces
     }
 
     ////// GROUP DELETION (context menu) //////
