@@ -651,6 +651,27 @@ const es_ES: Record<string, string> = {
     '{name}: arrival not verified — {reason}': '{name}: llegada no verificada — {reason}',
     'The upload of {name} could not start': 'La subida de {name} no pudo iniciarse',
 
+    // sidebarTree / folderTransferModal — accessible folder move/copy
+    'Move folder...': 'Mover carpeta...',
+    'Copy folder...': 'Copiar carpeta...',
+    'Move folder': 'Mover carpeta',
+    'Copy folder': 'Copiar carpeta',
+    'Choose a destination and confirm. All subfolders and profiles are included.': 'Elige un destino y confirma. Se incluyen todas las subcarpetas y los perfiles.',
+    'Destination folder': 'Carpeta de destino',
+    'Top level (no folder)': 'Nivel superior (sin carpeta)',
+    'Copies retain saved connection settings and credentials.': 'Las copias conservan los ajustes de conexión y las credenciales guardadas.',
+    'Confirm move': 'Confirmar traslado',
+    'Confirm copy': 'Confirmar copia',
+    'The folder is no longer available.': 'La carpeta ya no está disponible.',
+    'No other destination is available.': 'No hay otro destino disponible.',
+    'The selected folder or destination is no longer available.': 'La carpeta seleccionada o su destino ya no están disponibles.',
+    'Folder "{name}" moved to "{destination}".': 'Carpeta «{name}» movida a «{destination}».',
+    'Folder "{name}" copied to "{destination}".': 'Carpeta «{name}» copiada a «{destination}».',
+    'Could not move folder "{name}".': 'No se pudo mover la carpeta «{name}».',
+    'Could not copy folder "{name}".': 'No se pudo copiar la carpeta «{name}».',
+
+    'Some changes may already be saved; check the destination.': 'Es posible que algunos cambios ya se hayan guardado; comprueba la carpeta de destino.',
+
 }
 
 export default es_ES

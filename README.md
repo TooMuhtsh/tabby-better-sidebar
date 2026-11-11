@@ -56,6 +56,10 @@ between the two repos, no shared code: just a small string contract
   (off by default)
 - **Drag & drop** reordering — profiles and folders, including moving a profile
   between folders and re-parenting a folder
+- **Move or copy folders without dragging** — right-click a profile-tree folder,
+  choose **Move folder...** or **Copy folder...**, select a destination and
+  confirm. Subfolders and profiles are included; copying preserves local
+  connection settings, notes and snippet attachments.
 - **Workspaces**: hide profiles and folders per workspace (personal / work /
   project), each with its own favourites, its own sibling order, its own icon
   and an optional contextual colour; a tabs-or-dropdown selector, and one-click

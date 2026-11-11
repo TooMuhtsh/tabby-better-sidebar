@@ -652,6 +652,27 @@ const zh_CN: Record<string, string> = {
     '{name}: arrival not verified — {reason}': '{name}：未验证是否送达——{reason}',
     'The upload of {name} could not start': '{name} 的上传未能开始',
 
+    // sidebarTree / folderTransferModal — accessible folder move/copy
+    'Move folder...': '移动文件夹...',
+    'Copy folder...': '复制文件夹...',
+    'Move folder': '移动文件夹',
+    'Copy folder': '复制文件夹',
+    'Choose a destination and confirm. All subfolders and profiles are included.': '选择目标位置并确认。操作将包含所有子文件夹和配置。',
+    'Destination folder': '目标文件夹',
+    'Top level (no folder)': '顶层（无父文件夹）',
+    'Copies retain saved connection settings and credentials.': '复制会保留已保存的连接设置和凭据。',
+    'Confirm move': '确认移动',
+    'Confirm copy': '确认复制',
+    'The folder is no longer available.': '此文件夹已不可用。',
+    'No other destination is available.': '没有其他可用的目标位置。',
+    'The selected folder or destination is no longer available.': '所选文件夹或目标位置已不可用。',
+    'Folder "{name}" moved to "{destination}".': '文件夹“{name}”已移动到“{destination}”。',
+    'Folder "{name}" copied to "{destination}".': '文件夹“{name}”已复制到“{destination}”。',
+    'Could not move folder "{name}".': '无法移动文件夹“{name}”。',
+    'Could not copy folder "{name}".': '无法复制文件夹“{name}”。',
+
+    'Some changes may already be saved; check the destination.': '部分更改可能已保存；请检查目标文件夹。',
+
 }
 
 export default zh_CN

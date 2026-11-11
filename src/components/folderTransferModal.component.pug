@@ -1,0 +1,19 @@
+.modal-header
+    h5.modal-title(*ngIf='action === "move"') {{ 'Move folder' | translate }}
+    h5.modal-title(*ngIf='action === "copy"') {{ 'Copy folder' | translate }}
+.modal-body
+    p.fw-semibold.mb-2 {{ sourceName }}
+    p.mb-3 {{ 'Choose a destination and confirm. All subfolders and profiles are included.' | translate }}
+    label.form-label(for='sidebar-plus-folder-destination') {{ 'Destination folder' | translate }}
+    select.form-select(
+        #destinationSelect,
+        id='sidebar-plus-folder-destination',
+        name='folderDestination',
+        [(ngModel)]='selectedDestination'
+    )
+        option(*ngFor='let destination of destinations', [value]='destination.value') {{ destination.label }}
+    p.text-muted.small.mt-3.mb-0(*ngIf='action === "copy"') {{ 'Copies retain saved connection settings and credentials.' | translate }}
+.modal-footer
+    button.btn.btn-secondary(type='button', (click)='cancel()') {{ 'Cancel' | translate }}
+    button.btn.btn-primary(type='button', *ngIf='action === "move"', (click)='confirm()', [disabled]='!canConfirm') {{ 'Confirm move' | translate }}
+    button.btn.btn-primary(type='button', *ngIf='action === "copy"', (click)='confirm()', [disabled]='!canConfirm') {{ 'Confirm copy' | translate }}
