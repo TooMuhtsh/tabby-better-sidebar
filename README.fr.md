@@ -234,6 +234,7 @@ sous `sidebarPlus` dans le `config.yaml` de Tabby.
 | `showActiveToggle` | `true` | Onglet « Actifs » : seulement les profils qui ont un onglet ouvert |
 | `wrapNames` | `false` | Noms longs sur deux lignes au plus, au lieu d'une ligne coupée |
 | `wrapNamesUnlimited` | `false` | Avec `wrapNames` allumé, sans limite de lignes. Le nom s'affiche en entier, quelle que soit sa longueur |
+| `compactRows` | `false` | Lignes de profils et de dossiers moins hautes, retrait réduit. Les icônes et `wrapNames` fonctionnent toujours |
 | `showSftp` | `true` | L'onglet SFTP de la sidebar et son panneau |
 | `showTransfers` | `true` | Gestionnaire de transferts en bas de la sidebar |
 | `showSnippets` | `true` | L'entrée *Snippets* du clic droit et son onglet |

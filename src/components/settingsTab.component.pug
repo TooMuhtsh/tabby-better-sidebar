@@ -92,6 +92,17 @@
               option(value='two') {{ lblWrapTwo }}
               option(value='all') {{ lblWrapAll }}
 
+      .feature-card
+        .form-line.block-switch
+          .header
+            .title {{ lblCompactRows }} #[i.fas.fa-info-circle.info-hint([title]='lblCompactRowsHint')]
+            .description {{ lblCompactRowsDesc }}
+          .control
+            toggle(
+              [ngModel]='compactRows',
+              (ngModelChange)='setCompactRows($event)'
+            )
+
   //- Une carte par fonctionnalité : son interrupteur en en-tête, ses options
   //- dans la carte, qui se replient quand on l'éteint. Deux présentations des
   //- MÊMES cartes, au choix de la bascule en tête de page (mémorisée par

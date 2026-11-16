@@ -474,6 +474,9 @@ const fr_FR: Record<string, string> = {
     'Up to two lines': 'Deux lignes au plus',
     'No line limit': 'Sans limite de lignes',
     'Profiles, folders, recents, sessions and tunnels.': 'Profils, dossiers, récents, sessions et tunnels.',
+    'Compact rows': 'Lignes compactes',
+    'Icons and the wrapping of long names are kept.': 'Les icônes et le retour à la ligne des noms longs sont gardés.',
+    'Shorter profile and folder rows, with a narrower indent.': 'Lignes de profils et de dossiers moins hautes, retrait réduit.',
 
     // settingsTab.component.ts — features page
     'Each block switches on independently. Nothing is deleted by turning one off.': 'Chaque bloc s\'active indépendamment. Rien n\'est supprimé en l\'éteignant.',

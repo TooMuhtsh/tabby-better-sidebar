@@ -354,7 +354,7 @@
                     [class.sidebar-plus-nest-target]='isNestTarget(group)',
                     (click)='toggleGroupCollapse(group)',
                     (contextmenu)='onGroupContextMenu($event, group)',
-                    [style.paddingLeft.px]='depth * 20',
+                    [style.paddingLeft.px]='depth * indentStep',
                     href='#'
                 )
                     .fw-20
@@ -387,6 +387,11 @@
                             //- sibling. Two steps line it up with the icons of
                             //- the sub-folders, the other children of the same
                             //- folder.
+                            //-
+                            //- This holds because one step equals the width of
+                            //- a folder's chevron column. The compact rows
+                            //- shrink both together (indentStep and the SCSS
+                            //- $compact-indent-step), so it still holds there.
                             a.tree-item(
                                 cdkDrag,
                                 cdkDragPreviewClass='sidebar-plus-drag-preview',
@@ -402,7 +407,7 @@
                                 (click)='onProfileClick(profile, group, $event)',
                                 (dblclick)='launchProfile(profile)',
                                 (contextmenu)='onProfileContextMenu($event, profile)',
-                                [style.paddingLeft.px]='(depth + 2) * 20',
+                                [style.paddingLeft.px]='(depth + 2) * indentStep',
                                 href='#'
                             )
                                 //- Custom preview so a multi-selection drag

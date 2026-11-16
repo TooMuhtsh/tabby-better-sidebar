@@ -218,6 +218,7 @@ Tabby's own `config.yaml`.
 | `showActiveToggle` | `true` | "Active" tab: only the profiles with an open tab |
 | `wrapNames` | `false` | Long names on up to two lines instead of one cut-off line |
 | `wrapNamesUnlimited` | `false` | With `wrapNames` on, no line limit. The whole name shows, however long |
+| `compactRows` | `false` | Shorter profile and folder rows with a narrower indent. Icons and `wrapNames` keep working |
 | `showSftp` | `true` | The SFTP tab of the sidebar and its panel |
 | `showTransfers` | `true` | Transfer manager at the bottom of the sidebar |
 | `showSnippets` | `true` | The *Snippets* entry of the right click and its tab |

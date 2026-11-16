@@ -148,6 +148,9 @@ export class SidebarPlusSettingsTabComponent {
     get lblWrapTwo (): string { return this.i18n.t('Up to two lines') }
     get lblWrapAll (): string { return this.i18n.t('No line limit') }
     get lblWrapNamesDesc (): string { return this.i18n.t('Profiles, folders, recents, sessions and tunnels.') }
+    get lblCompactRows (): string { return this.i18n.t('Compact rows') }
+    get lblCompactRowsHint (): string { return this.i18n.t('Icons and the wrapping of long names are kept.') }
+    get lblCompactRowsDesc (): string { return this.i18n.t('Shorter profile and folder rows, with a narrower indent.') }
     get lblFeaturesIntro (): string { return this.i18n.t('Each block switches on independently. Nothing is deleted by turning one off.') }
     get lblLayoutGrouped (): string { return this.i18n.t('By category') }
     get lblLayoutFlat (): string { return this.i18n.t('Simple list') }
@@ -493,6 +496,16 @@ export class SidebarPlusSettingsTabComponent {
     async setWrapMode (value: string): Promise<void> {
         this.config.store.sidebarPlus.wrapNames = value === 'two' || value === 'all'
         this.config.store.sidebarPlus.wrapNamesUnlimited = value === 'all'
+        await this.config.save()
+    }
+
+    get compactRows (): boolean {
+        return this.config.store.sidebarPlus?.compactRows ?? false
+    }
+
+    /** Applied by the tree's host binding, like the wrap mode above. */
+    async setCompactRows (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.compactRows = value
         await this.config.save()
     }
 

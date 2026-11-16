@@ -2204,6 +2204,26 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     /**
+     * Compact profile and folder rows: shorter rows and a narrower indent.
+     * A class on the host like wrapNames below, so the rows keep one template
+     * and the names keep wrapping when wrapNames asks for it.
+     */
+    @HostBinding('class.sidebar-plus-compact-rows')
+    get compactRows (): boolean {
+        return this.config.store.sidebarPlus?.compactRows ?? false
+    }
+
+    /**
+     * Indent of one tree level, in px. Equal to the width of a folder's
+     * chevron column, which is what lines a profile's icon up with its sibling
+     * subfolders' icons (#14). The compact value must match
+     * $compact-indent-step in the stylesheet.
+     */
+    get indentStep (): number {
+        return this.compactRows ? 14 : 20
+    }
+
+    /**
      * Long names wrap onto a second line instead of ending in an ellipsis
      * (#10). A class on the host rather than `.no-wrap` taken off each row:
      * the stylesheet decides which names wrap (`.item-name`), and the rows

@@ -444,6 +444,9 @@ const de_DE: Record<string, string> = {
     'Up to two lines': 'Höchstens zwei Zeilen',
     'No line limit': 'Ohne Zeilenbegrenzung',
     'Profiles, folders, recents, sessions and tunnels.': 'Profile, Ordner, zuletzt gestartete, Sitzungen und Tunnel.',
+    'Compact rows': 'Kompakte Zeilen',
+    'Icons and the wrapping of long names are kept.': 'Symbole und der Umbruch langer Namen bleiben erhalten.',
+    'Shorter profile and folder rows, with a narrower indent.': 'Niedrigere Profil- und Ordnerzeilen mit geringerem Einzug.',
 
     // settingsTab.component.ts — features page
     'Each block switches on independently. Nothing is deleted by turning one off.': 'Jeder Block lässt sich unabhängig aktivieren. Beim Ausschalten wird nichts gelöscht.',

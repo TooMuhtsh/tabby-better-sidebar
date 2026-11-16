@@ -1388,3 +1388,51 @@ sidebar-plus-tree.sidebar-plus-wrap-names.sidebar-plus-wrap-unlimited .item-name
     -webkit-line-clamp: none;
     overflow: visible;
 }
+
+// Compact rows of the tree (`compactRows`, off by default). Taken from the
+// fork of miller806 and adapted. Profile and folder rows only, the other
+// blocks keep their own rows.
+//
+// The indent step must stay equal to the folder's chevron column, which is
+// what puts a profile's icon in the column of its sibling subfolders' icons
+// (#14). The template indents by `indentStep` (14 here), so the chevron
+// column shrinks to the same width and its chevron loses its margin to fit.
+// The icons and their column keep their size.
+//
+// Nothing here touches `white-space` or `.item-name`. The fork forced the
+// profile name onto one line, which silently broke wrapNames (#10, #18). The
+// pinned line-height only sets the height of each wrapped line.
+$compact-indent-step: 14px;
+
+sidebar-plus-tree.sidebar-plus-compact-rows .sidebar-plus-tree {
+    .tree-item {
+        min-height: 26px;
+        padding-top: 2px;
+        padding-bottom: 2px;
+        line-height: 20px;
+    }
+
+    .tree-item[data-group-id] > .fw-20:first-child {
+        flex: 0 0 $compact-indent-step;
+        width: $compact-indent-step;
+
+        // Bootstrap's `.ms-1` carries !important.
+        .fa {
+            margin-left: 0 !important;
+        }
+    }
+
+    .status-dot {
+        width: 5px;
+        height: 5px;
+    }
+
+    // The empty drop strips overlay the lower half of the folder row above
+    // them (see `.sidebar-plus-tree` higher up), so they follow its height.
+    // A fixed size per mode, never one that changes during a drag.
+    div[id^='profiles-']:empty,
+    div[id^='groups-']:empty {
+        min-height: 13px;
+        margin-top: -13px;
+    }
+}

@@ -441,6 +441,9 @@ const zh_CN: Record<string, string> = {
     'Up to two lines': '最多两行',
     'No line limit': '不限行数',
     'Profiles, folders, recents, sessions and tunnels.': '配置、文件夹、最近启动、会话和隧道。',
+    'Compact rows': '紧凑行',
+    'Icons and the wrapping of long names are kept.': '保留图标和长名称换行。',
+    'Shorter profile and folder rows, with a narrower indent.': '配置和文件夹行更矮，缩进更窄。',
 
     // settingsTab.component.ts — features page
     'Each block switches on independently. Nothing is deleted by turning one off.': '每个区块独立开关。关闭某个区块不会删除任何内容。',
