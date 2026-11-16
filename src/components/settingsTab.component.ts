@@ -140,7 +140,7 @@ export class SidebarPlusSettingsTabComponent {
     get lblHideTransfersMenuHint (): string { return this.i18n.t('Otherwise the native Tabby menu opens on every transfer.') }
     get lblHideTransfersMenuDesc (): string { return this.i18n.t('The sidebar panel already shows the same transfers.') }
     get lblHideImportedSsh (): string { return this.i18n.t('Hide the .ssh/config folder') }
-    get lblHideImportedSshHint (): string { return this.i18n.t('Those servers stay in the recent profiles and the active sessions.') }
+    get lblHideImportedSshHint (): string { return this.i18n.t('Those servers stay in the recent profiles, the active sessions and Pinned.') }
     get lblHideImportedSshDesc (): string { return this.i18n.t('The folder Tabby imports from ~/.ssh/config, in the tree and the search.') }
     get lblWrapNames (): string { return this.i18n.t('Wrap long names') }
     get lblWrapNamesHint (): string { return this.i18n.t('With two lines at most, the full name stays in the tooltip.') }

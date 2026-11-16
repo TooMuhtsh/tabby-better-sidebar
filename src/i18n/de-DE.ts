@@ -436,7 +436,7 @@ const de_DE: Record<string, string> = {
     'Otherwise the native Tabby menu opens on every transfer.': 'Sonst öffnet sich das native Tabby-Menü bei jeder Übertragung.',
     'The sidebar panel already shows the same transfers.': 'Das Sidebar-Panel zeigt dieselben Übertragungen bereits an.',
     'Hide the .ssh/config folder': 'Ordner .ssh/config ausblenden',
-    'Those servers stay in the recent profiles and the active sessions.': 'Diese Server bleiben in den zuletzt gestarteten Profilen und den aktiven Sitzungen.',
+    'Those servers stay in the recent profiles, the active sessions and Pinned.': 'Diese Server bleiben in den zuletzt gestarteten Profilen, den aktiven Sitzungen und unter Angeheftet.',
     'The folder Tabby imports from ~/.ssh/config, in the tree and the search.': 'Der Ordner, den Tabby aus ~/.ssh/config importiert, im Baum und in der Suche.',
     'Wrap long names': 'Lange Namen umbrechen',
     'With two lines at most, the full name stays in the tooltip.': 'Bei höchstens zwei Zeilen bleibt der vollständige Name im Tooltip.',

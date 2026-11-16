@@ -437,7 +437,7 @@ const es_ES: Record<string, string> = {
     'Otherwise the native Tabby menu opens on every transfer.': 'Si no, el menú nativo de Tabby se abre en cada transferencia.',
     'The sidebar panel already shows the same transfers.': 'El panel de la barra lateral ya muestra las mismas transferencias.',
     'Hide the .ssh/config folder': 'Ocultar la carpeta .ssh/config',
-    'Those servers stay in the recent profiles and the active sessions.': 'Esos servidores siguen en los perfiles recientes y las sesiones activas.',
+    'Those servers stay in the recent profiles, the active sessions and Pinned.': 'Esos servidores siguen en los perfiles recientes, las sesiones activas y Anclados.',
     'The folder Tabby imports from ~/.ssh/config, in the tree and the search.': 'La carpeta que Tabby importa de ~/.ssh/config, en el árbol y la búsqueda.',
     'Wrap long names': 'Nombres largos en varias líneas',
     'With two lines at most, the full name stays in the tooltip.': 'Con dos líneas como máximo, el nombre completo queda en la información emergente.',

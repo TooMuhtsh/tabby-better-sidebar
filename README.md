@@ -231,7 +231,7 @@ latency probe, no transfer tracking for a panel nobody is looking at.
 | Setting | Default | Effect |
 |---|---|---|
 | `hideNativeTransfersMenu` | `true` | Hides Tabby's own transfers menu, which shows the same transfers |
-| `hideImportedSsh` | `false` | Hides the folder Tabby imports from `~/.ssh/config` from the tree and the search. Its servers stay in the recent profiles and the active sessions |
+| `hideImportedSsh` | `false` | Hides the folder Tabby imports from `~/.ssh/config` from the tree and the search. Its servers stay in the recent profiles, the active sessions and Pinned |
 | `workspaceSelectorMode` | `tabs` | Workspace bar as tabs, or as a dropdown list |
 | `pingIntervalSeconds` | `0` | Latency probe interval; `0` disables it |
 | `sftpAutoRefreshSeconds` | `0` | Re-reads the current folder on a cycle; `0` disables it |

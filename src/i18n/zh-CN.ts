@@ -433,7 +433,7 @@ const zh_CN: Record<string, string> = {
     'Otherwise the native Tabby menu opens on every transfer.': '否则每次传输时 Tabby 原生菜单都会弹出。',
     'The sidebar panel already shows the same transfers.': '侧边栏面板已经显示了相同的传输。',
     'Hide the .ssh/config folder': '隐藏 .ssh/config 文件夹',
-    'Those servers stay in the recent profiles and the active sessions.': '这些服务器仍会出现在最近启动和活动会话中。',
+    'Those servers stay in the recent profiles, the active sessions and Pinned.': '这些服务器仍会出现在最近启动、活动会话和已固定中。',
     'The folder Tabby imports from ~/.ssh/config, in the tree and the search.': 'Tabby 从 ~/.ssh/config 导入的文件夹，在树和搜索中隐藏。',
     'Wrap long names': '长名称换行显示',
     'With two lines at most, the full name stays in the tooltip.': '最多两行时，完整名称保留在提示中。',

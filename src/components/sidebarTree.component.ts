@@ -276,6 +276,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * getters that read it stay a set lookup (piège #54).
      */
     private hiddenImportedSshIds = new Set<string>()
+    /**
+     * The ~/.ssh/config servers `hideImportedSsh` took out, kept aside for
+     * "Épinglés" only. Pinning one is an explicit choice, and the setting
+     * hides the folder, not what the user pinned.
+     */
+    private hiddenImportedSshProfiles: PartialProfile<Profile>[] = []
     /** Monotonic counter guarding against overlapping loadTreeItems() calls (e.g. a config.changed$ reload racing an explicit workspace switch) — only the most recently *started* call's results are ever committed, see loadTreeItems(). */
     private loadTreeRequestId = 0
 
@@ -802,6 +808,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (hiddenImportedSshIds.size) {
             groups = groups.filter(g => !hiddenImportedSshIds.has(g.id))
         }
+        // Cloned again: the tree must not share objects with the snapshot
+        // the recent profiles read (piège #12).
+        const hiddenImportedSshProfiles = hiddenImportedSshIds.size
+            ? structuredClone(rawGroupsSnapshot.flatMap(g => g.profiles ?? []).filter(p => !!p.id && hiddenImportedSshIds.has(p.id)))
+            : []
 
         const { hiddenGroupIds, hiddenProfileIds } = SidebarPlusTreeComponent.computeWorkspaceFilterState(groups, workspace)
 
@@ -872,7 +883,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         groups.sort((a, b) => (a.id === 'ungrouped' ? 0 : 1) - (b.id === 'ungrouped' ? 0 : 1))
 
         const profileGroups = groups.map(g => SidebarPlusTreeComponent.intoCollapsable(g, profileGroupCollapsed[g.id] ?? false))
-        const rootGroups = this.applyFavorites(this.profilesService.buildGroupTree(profileGroups), workspace, profileGroups)
+        const rootGroups = this.applyFavorites(this.profilesService.buildGroupTree(profileGroups), workspace, profileGroups, hiddenImportedSshProfiles)
 
         if (requestId !== this.loadTreeRequestId) {
             // Superseded by a newer call started while we were awaiting above — discard, the newer call owns the final state.
@@ -892,6 +903,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         this.rawGroupsSnapshot = rawGroupsSnapshot
         this.hiddenImportedSshIds = hiddenImportedSshIds
+        this.hiddenImportedSshProfiles = hiddenImportedSshProfiles
         // The snippet service walks a profile up to the root and has no
         // snapshot of its own — see `useGroups()` for why it is handed one
         // rather than fetching it.
@@ -2436,13 +2448,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         groups: PartialProfileGroup<CollapsableProfileGroup>[],
         workspace: SidebarWorkspace|null = this.activeWorkspace,
         sourceProfileGroups: PartialProfileGroup<ProfileGroup>[] = this.profileGroups,
+        pinnableHiddenProfiles: PartialProfile<Profile>[] = this.hiddenImportedSshProfiles,
     ): PartialProfileGroup<CollapsableProfileGroup>[] {
         const favoriteIds = workspace ? (workspace.favorites ?? []) : (this.config.store.sidebarPlus?.favorites ?? [])
         if (!favoriteIds.length) {
             return groups
         }
 
-        const allProfiles = sourceProfileGroups.flatMap(g => g.profiles ?? [])
+        // Plus the servers `hideImportedSsh` took out of the tree: a pinned
+        // one stays in "Épinglés".
+        const allProfiles = [...sourceProfileGroups.flatMap(g => g.profiles ?? []), ...pinnableHiddenProfiles]
         const favoriteProfiles = favoriteIds
             .map(id => allProfiles.find(p => p.id === id))
             .filter((p): p is PartialProfile<Profile> => !!p)
