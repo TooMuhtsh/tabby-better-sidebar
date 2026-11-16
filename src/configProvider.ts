@@ -195,6 +195,13 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // every transfer, so keeping both means a popup covering the tabs on
             // top of a panel that already says it. Untick to get it back.
             hideNativeTransfersMenu: true,
+            // Takes the profiles Tabby generates from ~/.ssh/config out of the
+            // tree and the search, and their folder with them. They stay in
+            // the recent profiles and the active sessions. Off by default.
+            // Independent of Tabby's own terminal.showBuiltinProfiles, which
+            // the sidebar only applies to the "Built-in" folder. Taken from
+            // the fork of miller806, where it was on by default.
+            hideImportedSsh: false,
             // Per-block switches. All default to true: these blocks are what
             // was asked for and built, so defaulting them off would make
             // delivered features vanish on a plugin update.

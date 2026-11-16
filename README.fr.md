@@ -248,6 +248,7 @@ personne ne regarde.
 | Réglage | Défaut | Effet |
 |---|---|---|
 | `hideNativeTransfersMenu` | `true` | Masque le menu des transferts de Tabby, qui montre les mêmes transferts |
+| `hideImportedSsh` | `false` | Masque de l'arbre et de la recherche le dossier que Tabby importe de `~/.ssh/config`. Ses serveurs restent dans les profils récents et les sessions actives |
 | `workspaceSelectorMode` | `tabs` | Barre des espaces de travail en onglets, ou en liste déroulante |
 | `pingIntervalSeconds` | `0` | Intervalle de la sonde de latence ; `0` la désactive |
 | `sftpAutoRefreshSeconds` | `0` | Relit le dossier courant à intervalle régulier ; `0` désactive |

@@ -139,6 +139,9 @@ export class SidebarPlusSettingsTabComponent {
     get lblHideTransfersMenu (): string { return this.i18n.t('Hide the Tabby transfers menu') }
     get lblHideTransfersMenuHint (): string { return this.i18n.t('Otherwise the native Tabby menu opens on every transfer.') }
     get lblHideTransfersMenuDesc (): string { return this.i18n.t('The sidebar panel already shows the same transfers.') }
+    get lblHideImportedSsh (): string { return this.i18n.t('Hide the .ssh/config folder') }
+    get lblHideImportedSshHint (): string { return this.i18n.t('Those servers stay in the recent profiles and the active sessions.') }
+    get lblHideImportedSshDesc (): string { return this.i18n.t('The folder Tabby imports from ~/.ssh/config, in the tree and the search.') }
     get lblWrapNames (): string { return this.i18n.t('Wrap long names') }
     get lblWrapNamesHint (): string { return this.i18n.t('With two lines at most, the full name stays in the tooltip.') }
     get lblWrapOff (): string { return this.i18n.t('No, one line') }
@@ -464,6 +467,16 @@ export class SidebarPlusSettingsTabComponent {
      */
     async setHideNativeTransfersMenu (value: boolean): Promise<void> {
         this.config.store.sidebarPlus.hideNativeTransfersMenu = value
+        await this.config.save()
+    }
+
+    get hideImportedSsh (): boolean {
+        return this.config.store.sidebarPlus?.hideImportedSsh ?? false
+    }
+
+    /** The tree rebuilds itself on `config.changed$`, nothing else to poke. */
+    async setHideImportedSsh (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.hideImportedSsh = value
         await this.config.save()
     }
 

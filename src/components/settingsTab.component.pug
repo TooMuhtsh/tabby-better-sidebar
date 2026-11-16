@@ -70,6 +70,17 @@
       .feature-card
         .form-line.block-switch
           .header
+            .title {{ lblHideImportedSsh }} #[i.fas.fa-info-circle.info-hint([title]='lblHideImportedSshHint')]
+            .description {{ lblHideImportedSshDesc }}
+          .control
+            toggle(
+              [ngModel]='hideImportedSsh',
+              (ngModelChange)='setHideImportedSsh($event)'
+            )
+
+      .feature-card
+        .form-line.block-switch
+          .header
             .title {{ lblWrapNames }} #[i.fas.fa-info-circle.info-hint([title]='lblWrapNamesHint')]
             .description {{ lblWrapNamesDesc }}
           .control

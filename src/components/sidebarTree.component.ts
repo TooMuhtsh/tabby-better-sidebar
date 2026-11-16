@@ -270,6 +270,12 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * loadTreeItems() call.
      */
     private rawGroupsSnapshot: PartialProfileGroup<ProfileGroup>[] = []
+    /**
+     * Ids taken out of the tree by `hideImportedSsh`, profiles and the folder
+     * left empty by them. Computed once per loadTreeItems() so the template
+     * getters that read it stay a set lookup (piège #54).
+     */
+    private hiddenImportedSshIds = new Set<string>()
     /** Monotonic counter guarding against overlapping loadTreeItems() calls (e.g. a config.changed$ reload racing an explicit workspace switch) — only the most recently *started* call's results are ever committed, see loadTreeItems(). */
     private loadTreeRequestId = 0
 
@@ -787,6 +793,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // sort/filter below mutates each group's `.profiles` in place.
         const rawGroupsSnapshot = structuredClone(groups)
 
+        // After the snapshot, not before: the snapshot also resolves the
+        // recent profiles and walks the snippet inheritance, and the servers
+        // of ~/.ssh/config must stay reachable from there.
+        const hiddenImportedSshIds = this.hideImportedSsh
+            ? SidebarPlusTreeComponent.dropImportedSshConfig(groups)
+            : new Set<string>()
+        if (hiddenImportedSshIds.size) {
+            groups = groups.filter(g => !hiddenImportedSshIds.has(g.id))
+        }
+
         const { hiddenGroupIds, hiddenProfileIds } = SidebarPlusTreeComponent.computeWorkspaceFilterState(groups, workspace)
 
         if (hiddenGroupIds.size) {
@@ -875,6 +891,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             window.localStorage.sidebarPlusActiveWorkspace = activeWorkspaceId
         }
         this.rawGroupsSnapshot = rawGroupsSnapshot
+        this.hiddenImportedSshIds = hiddenImportedSshIds
         // The snippet service walks a profile up to the root and has no
         // snapshot of its own — see `useGroups()` for why it is handed one
         // rather than fetching it.
@@ -882,6 +899,51 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.profileGroups = profileGroups
         this.setRootGroups(rootGroups)
         return true
+    }
+
+    /** The `hideImportedSsh` setting, off by default. */
+    private get hideImportedSsh (): boolean {
+        return this.config.store.sidebarPlus?.hideImportedSsh ?? false
+    }
+
+    /**
+     * A profile Tabby generates from ~/.ssh/config. Recognised by what Tabby
+     * itself sets (the `openssh-config:` id prefix of its OpenSSH importer and
+     * the builtin flag), never by the folder name, which is a display string.
+     */
+    static isImportedSshConfigProfile (profile: PartialProfile<Profile>): boolean {
+        return !!profile.isBuiltin && !!profile.id?.startsWith('openssh-config:')
+    }
+
+    /**
+     * Takes the ~/.ssh/config profiles out of `groups` in place, and returns
+     * their ids plus those of the read-only folders they leave empty. A user
+     * folder is never dropped, even empty: only Tabby's generated folder goes
+     * with its profiles. `groups` must be a clone (piège #12), which is what
+     * loadTreeItems() hands it.
+     */
+    private static dropImportedSshConfig (groups: PartialProfileGroup<ProfileGroup>[]): Set<string> {
+        const dropped = new Set<string>()
+        for (const group of groups) {
+            if (!group.profiles?.length) {
+                continue
+            }
+            const kept = group.profiles.filter(p => {
+                if (SidebarPlusTreeComponent.isImportedSshConfigProfile(p)) {
+                    dropped.add(p.id!)
+                    return false
+                }
+                return true
+            })
+            if (kept.length === group.profiles.length) {
+                continue
+            }
+            group.profiles = kept
+            if (!kept.length && !group.editable) {
+                dropped.add(group.id)
+            }
+        }
+        return dropped
     }
 
     /**
@@ -1361,7 +1423,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // `options.host`/`options.user` alongside the name: a server one only
         // remembers by address would otherwise be unreachable from here.
         // Absent on a non-SSH profile, which the search simply skips.
-        const searchable = profiles.filter(p => !p.isTemplate)
+        //
+        // `hideImportedSsh` is the exception. Unlike a workspace it is a
+        // global choice to stop seeing those servers in the list, so the
+        // search leaves them out too.
+        const hideImportedSsh = this.hideImportedSsh
+        const searchable = profiles.filter(p => !p.isTemplate
+            && !(hideImportedSsh && SidebarPlusTreeComponent.isImportedSshConfigProfile(p)))
         const matches = this.searchProfiles(searchable, q)
 
         // Notes are searched in a second pass rather than as one more key of
@@ -1402,9 +1470,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * folder returned by a search that renders shut says nothing at all.
      */
     private matchingGroups (q: string): PartialProfileGroup<ProfileGroup>[] {
+        // The folder `hideImportedSsh` dropped is not offered either.
+        const candidates = this.hiddenImportedSshIds.size
+            ? this.rawGroupsSnapshot.filter(g => !this.hiddenImportedSshIds.has(g.id))
+            : this.rawGroupsSnapshot
         const matches = this.fuzzySearch
-            ? new FuzzySearch(this.rawGroupsSnapshot, ['name'], { sort: false }).search(q)
-            : this.rawGroupsSnapshot.filter(g => (g.name ?? '').toLowerCase().includes(q))
+            ? new FuzzySearch(candidates, ['name'], { sort: false }).search(q)
+            : candidates.filter(g => (g.name ?? '').toLowerCase().includes(q))
         if (!matches.length) {
             return []
         }
@@ -1790,7 +1862,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!workspace?.hiddenGroupIds.length) {
             return []
         }
-        return this.rawGroupsSnapshot.filter(g => workspace.hiddenGroupIds.includes(g.id))
+        // Not what `hideImportedSsh` took out: "show again" would bring back
+        // nothing, the setting hiding it anyway.
+        return this.rawGroupsSnapshot.filter(g => workspace.hiddenGroupIds.includes(g.id) && !this.hiddenImportedSshIds.has(g.id))
     }
 
     get hiddenProfilesInWorkspace (): PartialProfile<Profile>[] {
@@ -1799,7 +1873,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return []
         }
         const allProfiles = this.rawGroupsSnapshot.flatMap(g => g.profiles ?? [])
-        return allProfiles.filter(p => p.id && workspace.hiddenProfileIds.includes(p.id))
+        return allProfiles.filter(p => p.id && workspace.hiddenProfileIds.includes(p.id) && !this.hiddenImportedSshIds.has(p.id))
     }
 
     async restoreGroupInWorkspace (group: PartialProfileGroup<ProfileGroup>): Promise<void> {
