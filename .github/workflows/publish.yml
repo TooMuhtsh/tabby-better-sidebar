@@ -4,15 +4,15 @@
 # paquet (dépôt TooMuhtsh/tabby-better-sidebar, fichier publish.yml, sans
 # environnement). Si l'un des deux change, l'autre doit suivre.
 #
-# Déclenché par l'envoi d'un tag de version (v1.0.11 par exemple), posé sur
-# le commit de version comme d'habitude. Le tag doit correspondre à la
-# version de package.json, sinon rien n'est publié.
+# Déclenché par la publication d'une release GitHub, créée depuis le site
+# avec un tag de version (v1.0.11 par exemple) sur master. Aucun poste n'est
+# nécessaire. Le tag doit correspondre à la version de package.json, sinon
+# rien n'est publié.
 name: Publication npm
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 permissions:
   contents: read
