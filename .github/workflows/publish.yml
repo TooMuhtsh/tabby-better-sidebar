@@ -1,50 +1,146 @@
-# Publication sur npm par la publication de confiance (OIDC) : aucun jeton
-# npm stocké, ni sur un poste ni dans les secrets du dépôt. npm reconnaît ce
-# workflow grâce au « Trusted publisher » déclaré sur npmjs.com pour le
-# paquet (dépôt TooMuhtsh/tabby-better-sidebar, fichier publish.yml, sans
-# environnement). Si l'un des deux change, l'autre doit suivre.
+# Vérification de chaque branche et publication sur npm.
 #
-# Déclenché par la publication d'une release GitHub, créée depuis le site
-# avec un tag de version (v1.0.11 par exemple) sur master. Aucun poste n'est
-# nécessaire. Le tag doit correspondre à la version de package.json, sinon
-# rien n'est publié.
-name: Publication npm
+# Le job build tourne à chaque push sur une branche, à chaque pull request et
+# à chaque release. Il installe les dépendances, contrôle les traductions,
+# fait le build de production et fabrique le paquet avec npm pack.
+#
+# Le job publish ne tourne que pour une release GitHub publiée, créée depuis le
+# site avec un tag de version (v1.0.11 par exemple) sur master. Il publie
+# exactement le paquet fabriqué et vérifié par le job build.
+#
+# La publication passe par la publication de confiance (OIDC) donc aucun jeton
+# npm n'est stocké, ni sur un poste ni dans les secrets du dépôt. npm reconnaît
+# ce workflow grâce au « Trusted publisher » déclaré sur npmjs.com pour le
+# paquet (dépôt TooMuhtsh/tabby-better-sidebar, fichier publish.yml, sans
+# environnement). Si l'un des deux change, l'autre doit suivre. Ce fichier ne
+# doit donc pas être renommé.
+#
+# Pas de déclencheur sur le push d'un tag v* car une release crée elle aussi
+# son tag, et la même version lancerait deux publications.
+name: Build et publication npm
 
 on:
+  push:
+    branches: ['**']
+  pull_request:
   release:
     types: [published]
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pack.outputs.version }}
+      tarball: ${{ steps.pack.outputs.tarball }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: '24'
 
-      # La publication de confiance demande npm 11.5.1 ou plus récent, et le
-      # npm livré avec Node 22 est plus ancien.
-      - name: npm 11
-        run: npm install -g npm@11 && npm --version
-
-      - name: Le tag correspond à la version
-        run: |
-          version="$(node -p "require('./package.json').version")"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "Le tag $GITHUB_REF_NAME ne correspond pas à la version $version de package.json."
-            exit 1
-          fi
-
-      - run: npm ci
+      # Sans --ignore-scripts, npm ci lance le postinstall de @parcel/watcher
+      # qui compile du natif inutile ici (piège #5 de AI-CONTEXT.html).
+      - run: npm ci --ignore-scripts
 
       - run: npm run lint:i18n
 
-      # prepublishOnly lance build:prod, le même build que sur le poste.
-      - run: npm publish
+      # build:prod retire aussi les source maps de dist/
+      # (scripts/strip-source-maps.js).
+      - run: npm run build:prod
+
+      # Le paquet est fabriqué une seule fois, ici. npm publish ne relance pas
+      # prepublishOnly sur une archive .tgz, d'où le build juste avant.
+      - name: npm pack
+        id: pack
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          tarball="tabby-better-sidebar-$version.tgz"
+          npm pack
+          files="$(tar -tzf "$tarball")"
+          echo "$files"
+          if ! grep -qx 'package/dist/index.js' <<< "$files"; then
+            echo "::error::Le paquet $tarball ne contient pas dist/index.js."
+            exit 1
+          fi
+          if grep -q '\.map$' <<< "$files"; then
+            echo "::error::Le paquet $tarball contient des source maps."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+
+      - if: github.event_name == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: paquet-npm
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    # Le jeton OIDC n'est accordé qu'à ce job, qui n'installe ni ne lance
+    # aucun code du dépôt.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      # La publication de confiance demande npm 11.5.1 ou plus récent. Node 24
+      # le fournit, mais un npm trop ancien ferait échouer la publication avec
+      # une erreur d'authentification peu parlante.
+      - name: Version de npm
+        run: |
+          npm_version="$(npm --version)"
+          echo "npm $npm_version"
+          if [ "$(printf '%s\n' 11.5.1 "$npm_version" | sort -V | head -n1)" != 11.5.1 ]; then
+            echo "::error::npm $npm_version est trop ancien. La publication de confiance demande npm 11.5.1 ou plus récent."
+            exit 1
+          fi
+
+      - name: Le tag correspond à la version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          if [ "v$VERSION" != "$RELEASE_TAG" ]; then
+            echo "::error::Le tag $RELEASE_TAG ne correspond pas à la version $VERSION de package.json."
+            exit 1
+          fi
+
+      # Republier une version existante échoue toujours sur npm. Relancer ce
+      # workflow après une publication réussie ne doit pas le mettre en échec,
+      # mais le saut est signalé.
+      - name: Version déjà sur npm ?
+        id: registry
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          found="$(npm view "tabby-better-sidebar@$VERSION" version 2>/dev/null || true)"
+          if [ "$found" = "$VERSION" ]; then
+            echo "::notice::tabby-better-sidebar@$VERSION est déjà sur npm, rien n'est publié."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.registry.outputs.published == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: paquet-npm
+
+      # Une archive .tgz est publiée telle quelle. --ignore-scripts le rend
+      # explicite car aucun script du paquet ne doit tourner ici.
+      - if: steps.registry.outputs.published == 'false'
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: npm publish "./$TARBALL" --ignore-scripts
