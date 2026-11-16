@@ -1,0 +1,50 @@
+# Publication sur npm par la publication de confiance (OIDC) : aucun jeton
+# npm stocké, ni sur un poste ni dans les secrets du dépôt. npm reconnaît ce
+# workflow grâce au « Trusted publisher » déclaré sur npmjs.com pour le
+# paquet (dépôt TooMuhtsh/tabby-better-sidebar, fichier publish.yml, sans
+# environnement). Si l'un des deux change, l'autre doit suivre.
+#
+# Déclenché par l'envoi d'un tag de version (v1.0.11 par exemple), posé sur
+# le commit de version comme d'habitude. Le tag doit correspondre à la
+# version de package.json, sinon rien n'est publié.
+name: Publication npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # La publication de confiance demande npm 11.5.1 ou plus récent, et le
+      # npm livré avec Node 22 est plus ancien.
+      - name: npm 11
+        run: npm install -g npm@11 && npm --version
+
+      - name: Le tag correspond à la version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Le tag $GITHUB_REF_NAME ne correspond pas à la version $version de package.json."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - run: npm run lint:i18n
+
+      # prepublishOnly lance build:prod, le même build que sur le poste.
+      - run: npm publish

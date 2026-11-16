@@ -56,6 +56,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="annexes/REALISE.html#issue-13-feux-macos">Feux de fenêtre macOS sur la sidebar (issue #13)</a></td><td><span class="pill done">✅ Livré en 1.0.8 (2026-10-17)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-14-indentation">Indentation des profils dans les dossiers (issue #14)</a></td><td><span class="pill done">✅ Livré en 1.0.8 (2026-10-17)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
+<tr><td><a href="#publication-confiance">Publication npm depuis GitHub Actions (publication de confiance)</a></td><td><span class="pill planned">📋 Workflow sur branche, à lier sur npmjs.com (2026-11-16)</span></td><td></td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></td><td>À tenir à chaque publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
 <tr><td><a href="#macro-manager">Gestionnaire de macros visuel</a></td><td><span class="pill out">⛔ Écarté — redondant</span></td><td>—</td></tr>
@@ -672,6 +673,27 @@ webpack-cli et les loaders, en période calme, build de production revérifié. 
 juger urgent : l'audit du 2026-08-14 montre que <code>webpack-cli@4</code> ne tire
 <strong>aucune</strong> vulnérabilité — ce bump est de l'hygiène d'outillage, pas de la
 sécurité.</p>
+
+<h3 id="publication-confiance">Publication npm depuis GitHub Actions
+<span class="pill planned">📋 Workflow sur branche, à lier sur npmjs.com (2026-11-16)</span></h3>
+<p>La 1.0.10 est restée bloquée deux semaines : le jeton npm du poste était invalide, et la connexion
+web demandait une passkey perdue. Il a fallu passer par le support npm (ticket 4936792) pour
+récupérer le compte. Décision de l'utilisateur du 2026-11-16 : régénérer les codes de récupération
+npm et les ranger dans son gestionnaire de mots de passe, puis publier depuis GitHub Actions par la
+publication de confiance (OIDC). Plus aucun jeton npm n'est alors stocké, ni sur un poste ni dans
+les secrets du dépôt.</p>
+<ul>
+<li>Workflow <code>.github/workflows/publish.yml</code> (branche
+<code>claude/trusted-publishing</code>). Il est déclenché par l'envoi d'un tag <code>v*</code> et
+refuse de publier si le tag ne correspond pas à la version de <code>package.json</code>. Il installe
+npm 11, car la publication de confiance demande npm 11.5.1 ou plus récent.</li>
+<li>Côté npmjs.com, dans les réglages du paquet, déclarer un « Trusted publisher » GitHub Actions :
+propriétaire <code>TooMuhtsh</code>, dépôt <code>tabby-better-sidebar</code>, fichier
+<code>publish.yml</code>, sans environnement. Les quatre valeurs doivent correspondre exactement.</li>
+<li>Ensuite, le geste de publication devient : commit de version et CHANGELOG sur master, puis tag
+<code>vX.Y.Z</code> poussé. La release GitHub reste à créer à la main.</li>
+<li>Le même schéma vaudra pour <code>tabby-better-vault</code>, à faire à part dans son dépôt.</li>
+</ul>
 
 <h3 id="changelog">CHANGELOG.md du dépôt
 <span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></h3>
