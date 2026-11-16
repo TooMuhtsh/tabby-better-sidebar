@@ -107,6 +107,53 @@ const de_DE: Record<string, string> = {
     'No move succeeded': 'Keine Verschiebung war erfolgreich',
     '{succeeded} moved, {failed} failed': '{succeeded} verschoben, {failed} fehlgeschlagen',
 
+    // SFTP clipboard (option sftpClipboard), in sftpBrowser.component.ts/.pug,
+    // sftpConflictModal.component.ts and settingsTab.component.ts
+    'Copy, cut and paste files': 'Dateien kopieren, ausschneiden und einfügen',
+    'Also pastes files copied in the file manager of the system. On Windows, one file at a time.':
+        'Fügt auch im Dateimanager des Systems kopierte Dateien ein. Unter Windows eine Datei nach der anderen.',
+    'Ctrl+C, Ctrl+X, Ctrl+V (Cmd on macOS), Enter and Backspace act on the panel once it has been clicked.':
+        'Strg+C, Strg+X, Strg+V (Cmd unter macOS), Eingabe und Rücktaste wirken auf das Panel, sobald es angeklickt wurde.',
+    'Paste files copied here, or copied in your file manager': 'Hier oder im Dateimanager kopierte Dateien einfügen',
+    'Paste': 'Einfügen',
+    'Copy selection ({count})': 'Auswahl kopieren ({count})',
+    'Copy': 'Kopieren',
+    'Cut selection ({count})': 'Auswahl ausschneiden ({count})',
+    'Cut': 'Ausschneiden',
+    'Paste into this folder': 'In diesen Ordner einfügen',
+    '{count, plural, one {# item cut} other {# items cut}}':
+        '{count, plural, one {# Element ausgeschnitten} other {# Elemente ausgeschnitten}}',
+    '{count, plural, one {# item copied} other {# items copied}}': '{count, plural, one {# Element kopiert} other {# Elemente kopiert}}',
+    'The clipboard holds no files': 'Die Zwischenablage enthält keine Dateien',
+    '{name} cannot be copied into itself': '{name} kann nicht in sich selbst kopiert werden',
+    'Copied across sessions. The originals were left in place.': 'Zwischen Sitzungen kopiert. Die Originale bleiben an ihrem Platz.',
+    '{name} was replaced, but its previous version stays on the server as {backup}':
+        '{name} wurde ersetzt, aber die vorherige Version bleibt als {backup} auf dem Server',
+    'Could not copy {name}: {error}': '{name} konnte nicht kopiert werden: {error}',
+    'Windows only gives Tabby the first of the {count} copied files. Drag them onto the panel instead.':
+        'Windows gibt Tabby nur die erste der {count} kopierten Dateien. Ziehen Sie sie stattdessen auf das Panel.',
+    'The copied files no longer exist': 'Die kopierten Dateien existieren nicht mehr',
+    'neither a file nor a folder': 'weder eine Datei noch ein Ordner',
+    'Could not upload {name}: {error}': '{name} konnte nicht hochgeladen werden: {error}',
+    'No copy succeeded': 'Kein Kopiervorgang war erfolgreich',
+    'No upload succeeded': 'Kein Upload war erfolgreich',
+    '{succeeded} copied, {failed} failed': '{succeeded} kopiert, {failed} fehlgeschlagen',
+    '{succeeded} uploaded, {failed} failed': '{succeeded} hochgeladen, {failed} fehlgeschlagen',
+    'Nothing was pasted because every item was skipped': 'Nichts wurde eingefügt, weil alle Elemente übersprungen wurden',
+    '{succeeded} pasted, {skipped} skipped': '{succeeded} eingefügt, {skipped} übersprungen',
+    '{name} copied to {destination}': '{name} nach {destination} kopiert',
+    '{name} uploaded to {destination}': '{name} nach {destination} hochgeladen',
+    '{count} items copied to {destination}': '{count} Elemente nach {destination} kopiert',
+    '{count} items uploaded to {destination}': '{count} Elemente nach {destination} hochgeladen',
+    'Keep both': 'Beide behalten',
+    'Skip': 'Überspringen',
+    'Do this for the remaining files': 'Für die restlichen Dateien ebenso',
+    '"{name}" already exists in {destination}.': '„{name}“ existiert bereits in {destination}.',
+    '"Keep both" gives the pasted file a new name. "Overwrite" replaces the one on the server.':
+        '„Beide behalten“ gibt der eingefügten Datei einen neuen Namen. „Überschreiben“ ersetzt die Datei auf dem Server.',
+    '"Keep both" gives the pasted item a new name. Overwriting is only offered for a file replacing another file.':
+        '„Beide behalten“ gibt dem eingefügten Element einen neuen Namen. Überschreiben wird nur angeboten, wenn eine Datei eine andere ersetzt.',
+
     // sftpBrowser.component.ts — showContextMenu()
     'Open with...': 'Öffnen mit...',
     'Rename...': 'Umbenennen...',

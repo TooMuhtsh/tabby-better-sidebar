@@ -1,9 +1,10 @@
 import './sftpBrowser.component.scss'
-import { posix } from 'path'
+import * as fs from 'fs'
+import { basename, join, posix } from 'path'
 import { filesize } from 'filesize'
 import { AfterViewChecked, Component, ElementRef, HostListener, Inject, NgZone, OnDestroy, ViewChild } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
-import { ConfigService, HTMLFileUpload, LocaleService, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
+import { ConfigService, HTMLFileUpload, LocaleService, MenuItemOptions, NotificationsService, PlatformService, PromptModalComponent } from 'tabby-core'
 import { SFTPContextMenuItemProvider, SFTPFile, SFTPPanelComponent } from 'tabby-ssh'
 import { SidebarPlusEditorService } from '../editorLauncher.service'
 import { electronRemote } from '../electronRemote'
@@ -15,7 +16,10 @@ import { freeLocalName } from '../localNames'
 import { SidebarPlusNoticesService } from '../notices.service'
 import { SidebarPlusI18nService } from '../i18n'
 import { readRemoteEntry, resolveRemoteSymlink } from '../remoteEntry'
-import { downloadRemoteTree } from '../remoteTree'
+import { downloadRemoteTree, uploadLocalTree } from '../remoteTree'
+import { pickPasteSource, planPaste, routePanelKey, SftpClipboardEntry, SidebarPlusSftpClipboardService } from '../sftpClipboard.service'
+import { osClipboardFingerprint, OsClipboardFiles, readOsClipboardFiles } from '../osClipboard'
+import { ConflictAnswer, ConflictQuestion, ExistingName, freeRemoteName, settleNameCollisions, SettledName } from '../remoteNames'
 import { formatSftpDate, formatSftpDateTime, normalizeSftpDateFormat, SftpDateFormat } from '../sftpDate'
 import { SidebarPlusTempFilesService } from '../tempFiles.service'
 import { SftpTransfers } from '../transfers'
@@ -23,6 +27,7 @@ import { SidebarPlusTransfersService } from '../transfersRegistry.service'
 import { SidebarPlusVisibilityService } from '../visibility.service'
 import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
+import { SftpConflictModalComponent } from './sftpConflictModal.component'
 
 /**
  * One rendered row, computed once instead of on every change detection pass.
@@ -170,6 +175,11 @@ export interface SftpColumn {
 @Component({
     selector: 'sidebar-plus-sftp-browser',
     template: require('./sftpBrowser.component.pug'),
+    // Focusable by script, never by Tab, and only with the clipboard option
+    // on, so that a click in the panel moves the keyboard into it (see
+    // `onPanelMousedown`). Option off, no tabindex, so a click leaves the
+    // focus exactly where it was before this feature existed.
+    host: { '[attr.tabindex]': "clipboardEnabled ? '-1' : null" },
 })
 export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implements OnDestroy, AfterViewChecked {
     /**
@@ -362,12 +372,13 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         private zone: NgZone,
         private editors: SidebarPlusEditorService,
         platform: PlatformService,
-        temp: SidebarPlusTempFilesService,
+        private temp: SidebarPlusTempFilesService,
         private notices: SidebarPlusNoticesService,
         private i18n: SidebarPlusI18nService,
         private dragServer: SidebarPlusDragOutServer,
         private registry: SidebarPlusTransfersService,
         private visibility: SidebarPlusVisibilityService,
+        private clipboard: SidebarPlusSftpClipboardService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
@@ -376,6 +387,10 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         this.platformSvc = platform
         this.editor = new SftpRemoteEditor(notices, editors, transfers, temp, (message, confirmLabel) => this.ask(message, confirmLabel), zone, i18n)
         this.dragOut = new SftpDragOut(notices, zone, transfers, temp, i18n)
+        // Read now and on every config change, since the settings tab can
+        // switch the option on or off while this panel is open.
+        this.syncClipboardOption()
+        this.clipboardConfigWatch = this.config.changed$.subscribe(() => this.syncClipboardOption())
     }
 
     /** The transfers helper shared with the editor and the drag-out — kept for routes started here. */
@@ -467,6 +482,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // runs that setter with `undefined`, Angular just tears the view
         // down, so the observer has to be told here too.
         this.teardownLoadMoreObserver()
+        this.clipboardConfigWatch?.unsubscribe()
+        this.detachClipboardKeys()
     }
 
     /**
@@ -2081,6 +2098,9 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
                 click: () => { void this.openEntry(item, 'openWith') },
             })
         }
+        if (this.clipboardEnabled) {
+            this.pushClipboardEntries(items, item)
+        }
         items.push({
             label: this.i18n.t('Rename...'),
             click: () => { void this.renameEntry(item) },
@@ -2198,6 +2218,577 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         } else if (items.length > 1) {
             void this.confirmAndDeleteSelection(items)
         }
+    }
+
+    ////// CLIPBOARD (option sftpClipboard) //////
+    /**
+     * Mirror of the `sftpClipboard` option. A plain field, refreshed on config
+     * changes only, because the host binding and every key event read it
+     * (piège #54).
+     */
+    clipboardEnabled = false
+
+    private clipboardConfigWatch: { unsubscribe: () => void }|null = null
+    private clipboardKeysAttached = false
+
+    /**
+     * Guards against two pastes racing each other. Both would list the
+     * destination, both would find the same names free, and the second would
+     * then write over what the first is writing.
+     */
+    private pasteInFlight = false
+
+    private syncClipboardOption (): void {
+        const enabled = !!this.config.store.sidebarPlus?.sftpClipboard
+        if (enabled === this.clipboardEnabled) {
+            return
+        }
+        this.clipboardEnabled = enabled
+        if (enabled) {
+            this.attachClipboardKeys()
+        } else {
+            this.detachClipboardKeys()
+        }
+    }
+
+    /**
+     * Registered by hand, outside Angular, and only while the option is on.
+     *
+     * The keydown listener sits on `document` in the capture phase, because a
+     * key we handle has to be stopped before anything below sees it. Outside
+     * Angular so that the other keystrokes of the window (every one typed in a
+     * terminal) do not each trigger a change detection pass. What a key does
+     * is run back inside the zone, see `onClipboardKeydown`.
+     */
+    private attachClipboardKeys (): void {
+        if (this.clipboardKeysAttached || typeof document?.addEventListener !== 'function') {
+            return
+        }
+        this.clipboardKeysAttached = true
+        this.zone.runOutsideAngular(() => {
+            document.addEventListener('keydown', this.onClipboardKeydown, true)
+            this.elementRef.nativeElement.addEventListener('mousedown', this.onPanelMousedown)
+        })
+    }
+
+    private detachClipboardKeys (): void {
+        if (!this.clipboardKeysAttached) {
+            return
+        }
+        this.clipboardKeysAttached = false
+        document.removeEventListener('keydown', this.onClipboardKeydown, true)
+        this.elementRef.nativeElement.removeEventListener('mousedown', this.onPanelMousedown)
+    }
+
+    /**
+     * A click in the panel moves the keyboard into it, as in any file manager.
+     * Without this the terminal's hidden textarea keeps the focus, and the
+     * keys below would be aimed at the terminal. A field, a button or a link
+     * takes the focus itself, as it should.
+     */
+    private onPanelMousedown = (event: MouseEvent): void => {
+        const target = event.target as HTMLElement|null
+        if (!target || target.closest('input, textarea, select, button, a[href], [contenteditable]')) {
+            return
+        }
+        this.elementRef.nativeElement.focus({ preventScroll: true })
+    }
+
+    /**
+     * Keyboard commands of the panel: Ctrl+C, Ctrl+X, Ctrl+V (Cmd on macOS),
+     * Enter to open the selected entry and Backspace to go up.
+     *
+     * Handled only when the key is aimed at this panel, i.e. its target is
+     * inside it. A key typed in the terminal never is, so Ctrl+C there stays a
+     * SIGINT even right after a click in the panel. The rest of the rule
+     * (fields, Shift, buttons) is `routePanelKey()`, tested on its own.
+     */
+    private onClipboardKeydown = (event: KeyboardEvent): void => {
+        const host = this.elementRef.nativeElement
+        const target = event.target as HTMLElement|null
+        // `offsetParent` is null on every cached panel of another SSH tab, as
+        // `detachPanel()` takes its root node out of the document. Checked
+        // first, since it is the cheap answer for every key typed elsewhere.
+        if (!target || !host.contains(target) || !host.offsetParent) {
+            return
+        }
+        const action = routePanelKey(event, {
+            platform: process.platform,
+            inPanel: true,
+            inField: !!target.closest('input, textarea, select, [contenteditable]'),
+            onControl: !!target.closest('button, a[href]'),
+            canGoUp: this.canGoUp,
+        })
+        if (!action) {
+            return
+        }
+        event.preventDefault()
+        // Stopped in the capture phase, so nothing below (Tabby's hotkeys
+        // included) sees a command that was handled here.
+        event.stopPropagation()
+        if (event.repeat) {
+            return
+        }
+        // Back inside Angular. The listener runs outside it, and these
+        // commands change what the panel shows.
+        this.zone.run(() => {
+            switch (action) {
+                case 'copy':
+                case 'cut':
+                    void this.copySelection(action === 'cut')
+                    break
+                case 'paste':
+                    void this.paste(this.path)
+                    break
+                case 'open':
+                    void this.openSelection()
+                    break
+                case 'up':
+                    this.goUp()
+                    break
+            }
+        })
+    }
+
+    /** Enter does what a double-click does, for the one selected entry. */
+    private async openSelection (): Promise<void> {
+        const items = this.selectedItems()
+        if (items.length === 1) {
+            await this.openItem(items[0])
+        }
+    }
+
+    /** Copy, Cut and "Paste into this folder" in a row's context menu. */
+    private pushClipboardEntries (items: MenuItemOptions[], item: SFTPFile): void {
+        // Same rule as the rest of this menu. The right-clicked row, unless it
+        // is part of a multiple selection, in which case the selection.
+        const selected = this.selectedItems()
+        const onSelection = selected.length > 1 && this.selection.has(item.fullPath)
+        const targets = onSelection ? selected : [item]
+        items.push({ type: 'separator' })
+        items.push({
+            label: onSelection ? this.i18n.t('Copy selection ({count})', { count: selected.length }) : this.i18n.t('Copy'),
+            click: () => { void this.copySelection(false, targets) },
+        })
+        items.push({
+            label: onSelection ? this.i18n.t('Cut selection ({count})', { count: selected.length }) : this.i18n.t('Cut'),
+            click: () => { void this.copySelection(true, targets) },
+        })
+        if (this.isDirectoryEntry(item)) {
+            items.push({
+                label: this.i18n.t('Paste into this folder'),
+                click: () => { void this.paste(item.fullPath) },
+            })
+        }
+        items.push({ type: 'separator' })
+    }
+
+    pasteFromMenu (): void {
+        this.backgroundMenuOpen = false
+        void this.paste(this.path)
+    }
+
+    /**
+     * Ctrl+C or Ctrl+X on the selection, or the context menu entries.
+     *
+     * The system clipboard is read here too, only to remember what it held. A
+     * later paste prefers it only if it changed since (see `pickPasteSource()`).
+     */
+    private async copySelection (cut: boolean, items: SFTPFile[] = this.selectedItems()): Promise<void> {
+        if (!items.length || !this.sftp) {
+            return
+        }
+        const entries: SftpClipboardEntry[] = []
+        for (const item of items) {
+            entries.push(await this.clipboardEntryOf(item))
+        }
+        this.clipboard.set(entries, cut, this.sftp, osClipboardFingerprint(readOsClipboardFiles()))
+        this.notify.notice(cut
+            ? this.i18n.t('{count, plural, one {# item cut} other {# items cut}}', { count: entries.length })
+            : this.i18n.t('{count, plural, one {# item copied} other {# items copied}}', { count: entries.length }))
+    }
+
+    /**
+     * What the clipboard keeps of a row. A symlink is described by its target
+     * (kind, size, mode), read from the listing and never through `stat()`
+     * (piège #50). A copy writes the target's content, and the link's own mode
+     * must not land on a regular file.
+     */
+    private async clipboardEntryOf (item: SFTPFile): Promise<SftpClipboardEntry> {
+        if (item.isSymlink) {
+            const target = await this.resolveSymlink(item).catch(() => null)
+            if (target) {
+                return { name: item.name, path: item.fullPath, isDirectory: this.isDirectoryEntry(target), size: target.size, mode: target.mode }
+            }
+        }
+        return { name: item.name, path: item.fullPath, isDirectory: this.isDirectoryEntry(item), size: item.size, mode: item.mode }
+    }
+
+    /** Ctrl+V and the Paste entries. Picks the clipboard, then pastes from it. */
+    async paste (destination: string): Promise<void> {
+        if (!this.sftp || this.pasteInFlight) {
+            return
+        }
+        this.pasteInFlight = true
+        try {
+            const os = readOsClipboardFiles()
+            const fingerprint = osClipboardFingerprint(os)
+            const source = pickPasteSource({
+                os: fingerprint,
+                panelHasEntries: this.clipboard.hasEntries,
+                osAtPanelCopy: this.clipboard.osAtPanelCopy,
+                lastOsPaste: this.clipboard.lastOsPaste,
+            })
+            if (source === 'panel') {
+                await this.pasteClipboard(destination)
+            } else if (source === 'os') {
+                await this.pasteOsFiles(os, fingerprint, destination)
+            } else {
+                this.notices.notice(this.i18n.t('The clipboard holds no files'))
+            }
+        } finally {
+            this.pasteInFlight = false
+        }
+    }
+
+    /** Names of a remote directory, for "keep both" and for the backup of an overwrite. */
+    private async listNames (directory: string): Promise<string[]> {
+        return (await this.sftp.readdir(directory)).map(entry => entry.name)
+    }
+
+    /** The destination listing by name, as the collision settlement reads it. */
+    private existingByName (listing: SFTPFile[]): Map<string, ExistingName> {
+        return new Map(listing.map(entry => [entry.name, { isFile: !entry.isSymlink && !this.isDirectoryEntry(entry) }]))
+    }
+
+    /** The collision dialog. Null when it was dismissed, which the caller reads as Skip. */
+    private async askConflict (question: ConflictQuestion, destination: string): Promise<ConflictAnswer|null> {
+        const modal = this.ngbModalService.open(SftpConflictModalComponent)
+        modal.componentInstance.name = question.name
+        modal.componentInstance.destination = destination
+        modal.componentInstance.canOverwrite = question.canOverwrite
+        modal.componentInstance.many = question.moreToCome
+        return await modal.result.catch(() => null)
+    }
+
+    /**
+     * Pastes the panel's own clipboard into `destination`.
+     *
+     * SFTP has no copy command, so a copy is a download into a temporary
+     * directory followed by an upload, each file on its own line of the
+     * transfer manager. A cut that lands in the session it came from is a
+     * rename instead. The destination is listed first, and every name already
+     * taken is settled with the user before anything moves.
+     *
+     * The clipboard's entries are never modified. The names this paste writes
+     * under live in its own list.
+     */
+    private async pasteClipboard (destination: string): Promise<void> {
+        const source = this.clipboard.sourceSession
+        if (!source || !this.clipboard.hasEntries) {
+            return
+        }
+        const entries = this.clipboard.entries
+        const cut = this.clipboard.cut
+        const sameSession = this.clipboard.isFrom(this.sftp)
+        let listing: SFTPFile[]
+        try {
+            listing = await this.sftp.readdir(destination)
+        } catch (e) {
+            this.notices.error(this.i18n.t('Could not read the contents of {name}', { name: destination }), String(e))
+            return
+        }
+        const plan = planPaste({ entries, destination, sameSession, cut })
+        const incoming = plan.accepted.map(entry => ({
+            entry,
+            name: entry.name,
+            isDirectory: entry.isDirectory,
+            isItself: sameSession && posix.join(destination, entry.name) === entry.path,
+        }))
+        const { settled, skipped } = await settleNameCollisions(
+            incoming,
+            this.existingByName(listing),
+            question => this.askConflict(question, destination),
+            () => this.listNames(destination),
+        )
+
+        let done = 0
+        let failed = 0
+        let firstError: string|null = null
+        const landed = new Set<string>()
+        for (const rejected of plan.rejected) {
+            if (rejected.reason === 'inside') {
+                failed++
+                firstError = firstError ?? (cut
+                    ? this.i18n.t('{name} cannot be moved into itself', { name: rejected.entry.name })
+                    : this.i18n.t('{name} cannot be copied into itself', { name: rejected.entry.name }))
+            }
+        }
+        if (plan.byRename) {
+            for (const job of settled) {
+                const from = job.item.entry.path
+                const target = posix.join(destination, job.name)
+                try {
+                    if (job.overwrite) {
+                        await this.replaceByRename(from, target)
+                    } else {
+                        await this.sftp.rename(from, target)
+                    }
+                    // The row left the directory it was selected in.
+                    this.selection.delete(from)
+                    landed.add(from)
+                    done++
+                } catch (e) {
+                    failed++
+                    firstError = firstError ?? this.i18n.t('Could not move {name}: {error}', { name: job.item.entry.name, error: String(e) })
+                }
+            }
+        } else if (settled.length) {
+            const result = await this.copyRemoteEntries(settled, destination, source)
+            result.landed.forEach(path => landed.add(path))
+            done += result.landed.length
+            failed += settled.length - result.landed.length
+            firstError = firstError ?? result.firstError
+        }
+
+        if (cut) {
+            // What landed is no longer to be pasted. The rest stays on the
+            // clipboard for a retry.
+            const remaining = entries.filter(entry => !landed.has(entry.path))
+            if (!remaining.length) {
+                this.clipboard.clear()
+            } else if (remaining.length !== entries.length) {
+                this.clipboard.set(remaining, true, source, this.clipboard.osAtPanelCopy ?? '')
+            }
+        }
+        const leftThisDirectory = plan.byRename && [...landed].some(path => posix.dirname(path) === this.path)
+        if (destination === this.path || leftThisDirectory) {
+            await this.refreshListing()
+        }
+        const here = plan.rejected.filter(rejected => rejected.reason === 'here').length
+        this.reportPaste({
+            kind: plan.byRename ? 'moved' : 'copied',
+            single: entries.length === 1 ? settled[0]?.name ?? entries[0].name : null,
+            destination,
+            done,
+            skipped: skipped.length + here,
+            failed,
+            firstError,
+        })
+        if (done > 0 && cut && !sameSession) {
+            this.notices.notice(this.i18n.t('Copied across sessions. The originals were left in place.'))
+        }
+    }
+
+    /**
+     * Replaces an existing file by renaming another one onto it, for a cut
+     * pasted with "Overwrite" within one session.
+     *
+     * A plain `rename` onto an existing name is refused by OpenSSH (SFTP v3
+     * leaves the choice to the server). So the existing file is first renamed
+     * aside, the incoming one takes its name, and only then is the old one
+     * deleted. If the second rename fails, the old file is put back.
+     */
+    private async replaceByRename (from: string, target: string): Promise<void> {
+        const directory = posix.dirname(target)
+        const backupName = freeRemoteName(`.${posix.basename(target)}.replaced`, new Set(await this.listNames(directory)))
+        const backup = posix.join(directory, backupName)
+        await this.sftp.rename(target, backup)
+        try {
+            await this.sftp.rename(from, target)
+        } catch (e) {
+            await this.sftp.rename(backup, target).catch(() => undefined)
+            throw e
+        }
+        try {
+            await this.sftp.unlink(backup)
+        } catch (e) {
+            this.notices.error(
+                this.i18n.t('{name} was replaced, but its previous version stays on the server as {backup}', { name: posix.basename(target), backup: backupName }),
+                String(e),
+            )
+        }
+    }
+
+    /**
+     * Downloads entries into a temporary directory and sends them to
+     * `destination` under their settled names, one entry at a time, every
+     * file through the transfer manager.
+     *
+     * The remote modes come from the source listing, never from the local
+     * copy, because a local mode means nothing on Windows (0666 for
+     * everything). A symlink met inside a folder gets the server's default
+     * mode rather than the link's own.
+     */
+    private async copyRemoteEntries (
+        jobs: SettledName<{ entry: SftpClipboardEntry, name: string, isDirectory: boolean }>[],
+        destination: string,
+        source: NonNullable<SidebarPlusSftpClipboardService['sourceSession']>,
+    ): Promise<{ landed: string[], firstError: string|null }> {
+        const landed: string[] = []
+        let firstError: string|null = null
+        const tempDir = await this.temp.makeDir('copy')
+        try {
+            for (const [index, job] of jobs.entries()) {
+                const entry = job.item.entry
+                // One subdirectory per entry, since two entries may share a name.
+                const jobDir = join(tempDir, String(index))
+                const local = join(jobDir, entry.name)
+                const target = posix.join(destination, job.name)
+                try {
+                    await fs.promises.mkdir(jobDir, { recursive: true })
+                    if (entry.isDirectory) {
+                        const modes = new Map<string, number>()
+                        await downloadRemoteTree(source, entry.path, local, (remote, localPath, item) => {
+                            modes.set(localPath, item.isSymlink ? 0 : item.mode)
+                            return this.fileTransfers.download(source, remote, localPath, item.name, item.size, item.mode)
+                        })
+                        await uploadLocalTree(this.sftp, local, target, (localPath, remotePath, size) =>
+                            this.fileTransfers.upload(this.sftp, remotePath, localPath, posix.basename(remotePath), size, modes.get(localPath) ?? 0))
+                    } else {
+                        await this.fileTransfers.download(source, entry.path, local, entry.name, entry.size, entry.mode)
+                        await this.fileTransfers.upload(this.sftp, target, local, job.name, entry.size, entry.mode)
+                    }
+                    landed.push(entry.path)
+                } catch (e) {
+                    firstError = firstError ?? this.i18n.t('Could not copy {name}: {error}', { name: entry.name, error: String(e) })
+                }
+            }
+        } finally {
+            await this.temp.remove(tempDir)
+        }
+        return { landed, firstError }
+    }
+
+    /**
+     * Uploads the local files copied in the system file manager.
+     *
+     * Only paths the clipboard names in a file list format, absolute and
+     * still present (see osClipboard.ts). Each file goes through the transfer
+     * manager, a folder through `uploadLocalTree()`. No local mode is applied,
+     * exactly as for a drop from the system, so the server's default stands.
+     */
+    private async pasteOsFiles (os: OsClipboardFiles, fingerprint: string, destination: string): Promise<void> {
+        if (os.copiedCount !== null) {
+            // Windows hands Tabby only the first file of a multi-file copy.
+            // Sending that one alone would look like a success.
+            this.notices.error(this.i18n.t(
+                'Windows only gives Tabby the first of the {count} copied files. Drag them onto the panel instead.',
+                { count: os.copiedCount },
+            ))
+            return
+        }
+        if (!os.existing.length) {
+            this.notices.notice(this.i18n.t('The copied files no longer exist'))
+            return
+        }
+        this.clipboard.lastOsPaste = fingerprint
+        let listing: SFTPFile[]
+        try {
+            listing = await this.sftp.readdir(destination)
+        } catch (e) {
+            this.notices.error(this.i18n.t('Could not read the contents of {name}', { name: destination }), String(e))
+            return
+        }
+        let failed = 0
+        let firstError: string|null = null
+        const incoming: { local: string, name: string, isDirectory: boolean, size: number }[] = []
+        for (const local of os.existing) {
+            const name = basename(local)
+            try {
+                const stats = await fs.promises.stat(local)
+                if (!name || (!stats.isFile() && !stats.isDirectory())) {
+                    throw new Error(this.i18n.t('neither a file nor a folder'))
+                }
+                incoming.push({ local, name, isDirectory: stats.isDirectory(), size: stats.size })
+            } catch (e) {
+                failed++
+                firstError = firstError ?? this.i18n.t('Could not upload {name}: {error}', { name: name || local, error: String((e as Error)?.message ?? e) })
+            }
+        }
+        const { settled, skipped } = await settleNameCollisions(
+            incoming,
+            this.existingByName(listing),
+            question => this.askConflict(question, destination),
+            () => this.listNames(destination),
+        )
+        let done = 0
+        for (const job of settled) {
+            const target = posix.join(destination, job.name)
+            try {
+                if (job.item.isDirectory) {
+                    await uploadLocalTree(this.sftp, job.item.local, target, (localPath, remotePath, size) =>
+                        this.fileTransfers.upload(this.sftp, remotePath, localPath, posix.basename(remotePath), size, 0))
+                } else {
+                    await this.fileTransfers.upload(this.sftp, target, job.item.local, job.name, job.item.size, 0)
+                }
+                done++
+            } catch (e) {
+                failed++
+                firstError = firstError ?? this.i18n.t('Could not upload {name}: {error}', { name: job.item.name, error: String(e) })
+            }
+        }
+        if (destination === this.path) {
+            await this.refreshListing()
+        }
+        this.reportPaste({
+            kind: 'uploaded',
+            single: os.existing.length === 1 ? settled[0]?.name ?? basename(os.existing[0]) : null,
+            destination,
+            done,
+            skipped: skipped.length,
+            failed,
+            firstError,
+        })
+    }
+
+    /**
+     * Says what a paste did. One entry gets a sentence naming it, several a
+     * count. A partial failure states both numbers with the first error
+     * attached, and skips the user asked for are not reported as errors.
+     */
+    private reportPaste (result: {
+        kind: 'moved'|'copied'|'uploaded'
+        single: string|null
+        destination: string
+        done: number
+        skipped: number
+        failed: number
+        firstError: string|null
+    }): void {
+        const { kind, destination, done, skipped, failed } = result
+        if (failed > 0) {
+            const detail = result.firstError ?? undefined
+            if (done === 0) {
+                this.notices.error(kind === 'moved' ? this.i18n.t('No move succeeded')
+                    : kind === 'copied' ? this.i18n.t('No copy succeeded')
+                        : this.i18n.t('No upload succeeded'), detail)
+            } else {
+                this.notices.error(kind === 'moved' ? this.i18n.t('{succeeded} moved, {failed} failed', { succeeded: done, failed })
+                    : kind === 'copied' ? this.i18n.t('{succeeded} copied, {failed} failed', { succeeded: done, failed })
+                        : this.i18n.t('{succeeded} uploaded, {failed} failed', { succeeded: done, failed }), detail)
+            }
+            return
+        }
+        if (done === 0) {
+            if (skipped > 0) {
+                this.notices.notice(this.i18n.t('Nothing was pasted because every item was skipped'))
+            }
+            return
+        }
+        if (skipped > 0) {
+            this.notices.notice(this.i18n.t('{succeeded} pasted, {skipped} skipped', { succeeded: done, skipped }))
+            return
+        }
+        if (result.single !== null) {
+            this.notices.notice(kind === 'moved' ? this.i18n.t('{name} moved to {destination}', { name: result.single, destination })
+                : kind === 'copied' ? this.i18n.t('{name} copied to {destination}', { name: result.single, destination })
+                    : this.i18n.t('{name} uploaded to {destination}', { name: result.single, destination }))
+            return
+        }
+        this.notices.notice(kind === 'moved' ? this.i18n.t('{count} items moved to {destination}', { count: done, destination })
+            : kind === 'copied' ? this.i18n.t('{count} items copied to {destination}', { count: done, destination })
+                : this.i18n.t('{count} items uploaded to {destination}', { count: done, destination }))
     }
 
     async confirmAndDelete (item: SFTPFile): Promise<void> {

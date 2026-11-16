@@ -218,6 +218,9 @@ export class SidebarPlusSettingsTabComponent {
     get lblDragOut (): string { return this.i18n.t('Drag a folder out to Explorer') }
     get lblDragOutHint (): string { return this.i18n.t('The folder is downloaded in full before the drop.') }
     get lblDragOutDesc (): string { return this.i18n.t('Beyond 25 files or 20 MB, confirmation is asked.') }
+    get lblClipboard (): string { return this.i18n.t('Copy, cut and paste files') }
+    get lblClipboardHint (): string { return this.i18n.t('Also pastes files copied in the file manager of the system. On Windows, one file at a time.') }
+    get lblClipboardDesc (): string { return this.i18n.t('Ctrl+C, Ctrl+X, Ctrl+V (Cmd on macOS), Enter and Backspace act on the panel once it has been clicked.') }
     get lblAutoRefresh (): string { return this.i18n.t('Automatic refresh, in seconds') }
     get lblAutoRefreshHint (): string { return this.i18n.t('Only changed entries are redrawn.') }
     get lblAutoRefreshDesc (): string { return this.i18n.t('0 disables; every cycle re-reads the folder.') }
@@ -438,6 +441,15 @@ export class SidebarPlusSettingsTabComponent {
 
     async setDragOutFolders (value: boolean): Promise<void> {
         this.config.store.sidebarPlus.sftpDragOutFolders = value
+        await this.config.save()
+    }
+
+    get sftpClipboard (): boolean {
+        return !!this.config.store.sidebarPlus?.sftpClipboard
+    }
+
+    async setSftpClipboard (value: boolean): Promise<void> {
+        this.config.store.sidebarPlus.sftpClipboard = value
         await this.config.save()
     }
 

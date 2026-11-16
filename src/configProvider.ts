@@ -146,6 +146,12 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // gesture appears to do nothing while it downloads — with no
             // progress and no way to cancel. Files are always draggable.
             sftpDragOutFolders: false,
+            // Copy, cut and paste of files in the SFTP browser (keyboard and
+            // context menus), Enter and Backspace navigation, and the paste of
+            // files copied in the file manager of the system. Off by default, because
+            // once on, a click in the panel takes the keyboard away from the
+            // terminal, which an existing user must not discover by surprise.
+            sftpClipboard: false,
             // Seconds between two automatic reloads of the SFTP listing, 0 to
             // disable. Off by default: SFTP has no change notification, so a
             // refresh is a full readdir, which is not free on a large

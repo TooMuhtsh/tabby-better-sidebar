@@ -50,8 +50,8 @@ export class SidebarPlusTempFilesService {
         window.addEventListener('beforeunload', () => this.purgeSession())
     }
 
-    /** A fresh, empty directory for one file. */
-    async makeDir (kind: 'drag'|'edit'): Promise<string> {
+    /** A fresh, empty directory for one file, one drag-out copy, or one remote to remote paste. */
+    async makeDir (kind: 'drag'|'edit'|'copy'): Promise<string> {
         const dir = path.join(this.sessionDir, kind, String(this.counter++))
         await fs.promises.mkdir(dir, { recursive: true })
         return dir

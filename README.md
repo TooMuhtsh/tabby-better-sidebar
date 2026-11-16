@@ -130,6 +130,15 @@ be **frozen** on one session so it stops following the focused tab.
   nothing transits
 - **Drag a file out to the OS**: the download starts when you drop it, wherever
   you dropped it
+- **Copy, cut and paste files**, optional and off by default.
+  <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd> and
+  <kbd>Ctrl</kbd>+<kbd>V</kbd> (<kbd>Cmd</kbd> on macOS) or the context menu,
+  within a session or from one session to another, and files copied in your
+  file manager paste too. A name already taken asks whether to keep both,
+  overwrite (a file only) or skip. <kbd>Enter</kbd> opens the selection and
+  <kbd>Backspace</kbd> goes up a folder. On Windows, Explorer only shares one
+  copied file at a time with Tabby. Adapted from the fork by
+  [miller806](https://github.com/miller806/tabby-better-sidebar-miller)
 - **Transfer manager** at the bottom of the sidebar — progress, speed, ETA and
   elapsed time per transfer, an arrival check that flags a copy that did not
   land whole, cancel confirmation, visible from both views, hidden when empty
@@ -240,6 +249,7 @@ latency probe, no transfer tracking for a panel nobody is looking at.
 | `sftpEditorPath` | *(empty)* | Program opened on double-click. Empty, Windows decides |
 | `sftpDeleteDefaultButton` | `cancel` | Which button <kbd>Enter</kbd> activates in the SFTP delete confirmation |
 | `sftpDragOutFolders` | `false` | Allows dragging a *folder* out to the OS, not just a file |
+| `sftpClipboard` | `false` | Copy, cut and paste of files in the SFTP browser, paste of files copied in the system file manager, <kbd>Enter</kbd> and <kbd>Backspace</kbd> navigation |
 | `sftpColumns` | `size`, `date`, `mode` | Columns shown in the SFTP listing |
 | `sftpFoldersFirst` | `true` | Sorts folders before files |
 | `sftpFavorites` | *(empty)* | Favorite remote folders, keyed by profile id |

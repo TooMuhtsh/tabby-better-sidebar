@@ -1,0 +1,18 @@
+.modal-body
+    p.mb-2 {{ headline }}
+    p.mb-3.text-muted.small {{ detail }}
+    //- Only offered for a batch, since on a single file there is nothing
+        left to apply the answer to.
+    .form-check.mb-3(*ngIf='many')
+        input.form-check-input(
+            type='checkbox',
+            id='sidebar-plus-conflict-apply-all',
+            [(ngModel)]='applyToAll'
+        )
+        label.form-check-label(for='sidebar-plus-conflict-apply-all') {{ applyAllLabel }}
+    .d-flex.flex-wrap.gap-2
+        button.btn.btn-secondary.me-auto(#skipButton, (click)='skip()') {{ skipLabel }}
+        button.btn.btn-outline-danger(*ngIf='canOverwrite', #overwriteButton, (click)='overwrite()') {{ overwriteLabel }}
+        //- Focused on open, so Enter gives the answer that loses nothing. Esc
+            reaches Skip through NgbModal's own dismiss.
+        button.btn.btn-primary(#renameButton, (click)='rename()') {{ renameLabel }}

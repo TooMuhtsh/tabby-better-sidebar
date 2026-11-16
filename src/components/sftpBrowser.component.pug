@@ -227,6 +227,16 @@
     a.menu-item((click)='createFileFromMenu()')
         .fa.fa-fw.fas.fa-file-circle-plus.me-2
         span {{ 'Create a file' | translate }}
+    //- Always offered while the option is on, because it pastes remote entries
+        copied in a panel as well as files copied in the system file manager,
+        and only the paste itself can tell whether either holds anything.
+    a.menu-item(
+        *ngIf='clipboardEnabled',
+        (click)='pasteFromMenu()',
+        [title]="'Paste files copied here, or copied in your file manager' | translate"
+    )
+        .fa.fa-fw.fas.fa-paste.me-2
+        span {{ 'Paste' | translate }}
     .menu-separator
     a.menu-item((click)='openDisplayMenu()')
         .fa.fa-fw.fas.fa-table-columns.me-2

@@ -49,6 +49,7 @@
     "watch": "webpack --progress --color --watch",
     "lint:airules": "html-validate \".AIRules/**/*.html\"",
     "lint:i18n": "node scripts/lint-i18n.js",
+    "test": "node --test scripts/test-sftp-clipboard.js scripts/test-os-clipboard.js",
     "prepublishOnly": "npm run build:prod"
   },
   "files": [

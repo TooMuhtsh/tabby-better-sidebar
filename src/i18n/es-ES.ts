@@ -103,6 +103,52 @@ const es_ES: Record<string, string> = {
     'No move succeeded': 'Ningún movimiento se realizó',
     '{succeeded} moved, {failed} failed': '{succeeded} movidos, {failed} fallidos',
 
+    // SFTP clipboard (option sftpClipboard), in sftpBrowser.component.ts/.pug,
+    // sftpConflictModal.component.ts and settingsTab.component.ts
+    'Copy, cut and paste files': 'Copiar, cortar y pegar archivos',
+    'Also pastes files copied in the file manager of the system. On Windows, one file at a time.':
+        'También pega los archivos copiados en el gestor de archivos del sistema. En Windows, de uno en uno.',
+    'Ctrl+C, Ctrl+X, Ctrl+V (Cmd on macOS), Enter and Backspace act on the panel once it has been clicked.':
+        'Ctrl+C, Ctrl+X, Ctrl+V (Cmd en macOS), Intro y Retroceso actúan sobre el panel una vez que se ha hecho clic en él.',
+    'Paste files copied here, or copied in your file manager': 'Pegar los archivos copiados aquí o en tu gestor de archivos',
+    'Paste': 'Pegar',
+    'Copy selection ({count})': 'Copiar la selección ({count})',
+    'Copy': 'Copiar',
+    'Cut selection ({count})': 'Cortar la selección ({count})',
+    'Cut': 'Cortar',
+    'Paste into this folder': 'Pegar en esta carpeta',
+    '{count, plural, one {# item cut} other {# items cut}}': '{count, plural, one {# elemento cortado} other {# elementos cortados}}',
+    '{count, plural, one {# item copied} other {# items copied}}': '{count, plural, one {# elemento copiado} other {# elementos copiados}}',
+    'The clipboard holds no files': 'El portapapeles no contiene archivos',
+    '{name} cannot be copied into itself': '{name} no se puede copiar dentro de sí mismo',
+    'Copied across sessions. The originals were left in place.': 'Copiado entre sesiones. Los originales siguen en su sitio.',
+    '{name} was replaced, but its previous version stays on the server as {backup}':
+        '{name} se reemplazó, pero su versión anterior sigue en el servidor como {backup}',
+    'Could not copy {name}: {error}': 'No se pudo copiar {name}: {error}',
+    'Windows only gives Tabby the first of the {count} copied files. Drag them onto the panel instead.':
+        'Windows solo le pasa a Tabby el primero de los {count} archivos copiados. Arrástralos al panel en su lugar.',
+    'The copied files no longer exist': 'Los archivos copiados ya no existen',
+    'neither a file nor a folder': 'ni un archivo ni una carpeta',
+    'Could not upload {name}: {error}': 'No se pudo subir {name}: {error}',
+    'No copy succeeded': 'Ninguna copia se realizó',
+    'No upload succeeded': 'Ninguna subida se realizó',
+    '{succeeded} copied, {failed} failed': '{succeeded} copiados, {failed} fallidos',
+    '{succeeded} uploaded, {failed} failed': '{succeeded} subidos, {failed} fallidos',
+    'Nothing was pasted because every item was skipped': 'No se pegó nada porque se omitieron todos los elementos',
+    '{succeeded} pasted, {skipped} skipped': '{succeeded} pegados, {skipped} omitidos',
+    '{name} copied to {destination}': '{name} copiado a {destination}',
+    '{name} uploaded to {destination}': '{name} subido a {destination}',
+    '{count} items copied to {destination}': '{count} elementos copiados a {destination}',
+    '{count} items uploaded to {destination}': '{count} elementos subidos a {destination}',
+    'Keep both': 'Conservar ambos',
+    'Skip': 'Omitir',
+    'Do this for the remaining files': 'Hacer lo mismo con los archivos restantes',
+    '"{name}" already exists in {destination}.': '«{name}» ya existe en {destination}.',
+    '"Keep both" gives the pasted file a new name. "Overwrite" replaces the one on the server.':
+        '«Conservar ambos» da un nombre nuevo al archivo pegado. «Sobrescribir» reemplaza el del servidor.',
+    '"Keep both" gives the pasted item a new name. Overwriting is only offered for a file replacing another file.':
+        '«Conservar ambos» da un nombre nuevo al elemento pegado. Sobrescribir solo se ofrece cuando un archivo reemplaza a otro.',
+
     // sftpBrowser.component.ts — showContextMenu()
     'Open with...': 'Abrir con...',
     'Rename...': 'Renombrar...',

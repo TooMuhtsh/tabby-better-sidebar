@@ -402,3 +402,11 @@ sidebar-plus-sftp-browser .sftp-row.sftp-drag-source,
 sidebar-plus-sftp-browser .sftp-row.sftp-drag-source:hover {
     opacity: .45;
 }
+
+// With the clipboard option on, the panel takes the focus on every click (that
+// is what moves the keyboard out of the terminal). The ring a browser draws
+// around a focused box would flash on each row click, and the selection
+// already shows where the keyboard is.
+sidebar-plus-sftp-browser:focus {
+    outline: none;
+}

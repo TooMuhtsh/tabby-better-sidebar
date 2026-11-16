@@ -360,6 +360,16 @@
 
           .form-line
             .header
+              .title {{ lblClipboard }} #[i.fas.fa-info-circle.info-hint([title]='lblClipboardHint')]
+              .description {{ lblClipboardDesc }}
+            .control
+              toggle(
+                [ngModel]='sftpClipboard',
+                (ngModelChange)='setSftpClipboard($event)'
+              )
+
+          .form-line
+            .header
               .title {{ lblAutoRefresh }} #[i.fas.fa-info-circle.info-hint([title]='lblAutoRefreshHint')]
               .description {{ lblAutoRefreshDesc }}
             .control

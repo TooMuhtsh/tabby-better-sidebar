@@ -105,3 +105,49 @@ async function targetIsDirectory (sftp: SftpSession, remotePath: string): Promis
         return true
     }
 }
+
+/**
+ * Sends one local file to one remote path. Supplied by the caller, which owns
+ * how a transfer is reported and which mode the remote file gets.
+ */
+export type FileSender = (localPath: string, remotePath: string, size: number) => Promise<void>
+
+/**
+ * Copies a local directory up to a remote one, depth first. The other half of
+ * `downloadRemoteTree()`, used by the SFTP clipboard.
+ *
+ * The remote root must NOT exist yet. The caller settles name collisions
+ * before calling, and never offers to overwrite a folder, because merging
+ * into a directory the user did not choose to touch is not something this
+ * does.
+ *
+ * Local symlinks are skipped, Windows junctions included (`Dirent` reports
+ * them as links). `downloadRemoteTree()` writes a link to a file as a regular
+ * file and leaves a link to a directory out, so a link found here comes from
+ * the local filesystem, and following one could loop.
+ */
+export async function uploadLocalTree (
+    sftp: SftpSession,
+    localPath: string,
+    remotePath: string,
+    send: FileSender,
+): Promise<void> {
+    await sftp.mkdir(remotePath)
+    const walk = async (local: string, remote: string): Promise<void> => {
+        for (const entry of await fs.promises.readdir(local, { withFileTypes: true })) {
+            const childLocal = path.join(local, entry.name)
+            const childRemote = path.posix.join(remote, entry.name)
+            if (entry.isDirectory()) {
+                await sftp.mkdir(childRemote)
+                await walk(childLocal, childRemote)
+                continue
+            }
+            if (!entry.isFile()) {
+                continue
+            }
+            const stats = await fs.promises.stat(childLocal)
+            await send(childLocal, childRemote, stats.size)
+        }
+    }
+    await walk(localPath, remotePath)
+}

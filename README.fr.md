@@ -142,6 +142,16 @@ vue peut être **figée** sur une session pour cesser de suivre le focus.
   serveur, rien ne transite
 - **Glisser un fichier vers le système** : le téléchargement démarre au dépôt,
   là où vous l'avez déposé
+- **Copier, couper et coller des fichiers**, en option et désactivé par défaut.
+  <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd> et
+  <kbd>Ctrl</kbd>+<kbd>V</kbd> (<kbd>Cmd</kbd> sous macOS) ou le menu
+  contextuel, dans une session ou d'une session à l'autre, et les fichiers
+  copiés dans votre gestionnaire de fichiers se collent aussi. Un nom déjà pris
+  demande s'il faut garder les deux, écraser (un fichier seulement) ou ignorer.
+  <kbd>Entrée</kbd> ouvre la sélection et <kbd>Retour arrière</kbd> remonte d'un
+  dossier. Sous Windows, l'Explorateur ne transmet à Tabby qu'un fichier copié à
+  la fois. Repris du fork de
+  [miller806](https://github.com/miller806/tabby-better-sidebar-miller)
 - **Gestionnaire de transferts** en bas de la sidebar — progression, vitesse,
   temps restant estimé et temps écoulé par transfert, contrôle d'arrivée qui
   signale une copie incomplète à destination, confirmation avant annulation,
@@ -257,6 +267,7 @@ personne ne regarde.
 | `sftpEditorPath` | *(vide)* | Programme ouvert au double-clic. Vide, Windows décide |
 | `sftpDeleteDefaultButton` | `cancel` | Bouton activé par <kbd>Entrée</kbd> dans la confirmation de suppression SFTP |
 | `sftpDragOutFolders` | `false` | Autorise le glisser d'un *dossier* vers le système, et pas seulement d'un fichier |
+| `sftpClipboard` | `false` | Copier, couper et coller des fichiers dans l'explorateur SFTP, coller les fichiers copiés dans le gestionnaire de fichiers du système, navigation avec <kbd>Entrée</kbd> et <kbd>Retour arrière</kbd> |
 | `sftpColumns` | `size`, `date`, `mode` | Colonnes affichées dans le listing SFTP |
 | `sftpFoldersFirst` | `true` | Trie les dossiers avant les fichiers |
 | `sftpFavorites` | *(vide)* | Dossiers distants favoris, par identifiant de profil |

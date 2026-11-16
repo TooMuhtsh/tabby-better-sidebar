@@ -128,6 +128,52 @@ const fr_FR: Record<string, string> = {
     'No move succeeded': 'Aucun déplacement n’a abouti',
     '{succeeded} moved, {failed} failed': '{succeeded} déplacés, {failed} en échec',
 
+    // SFTP clipboard (option sftpClipboard), in sftpBrowser.component.ts/.pug,
+    // sftpConflictModal.component.ts and settingsTab.component.ts
+    'Copy, cut and paste files': 'Copier, couper et coller des fichiers',
+    'Also pastes files copied in the file manager of the system. On Windows, one file at a time.':
+        'Colle aussi les fichiers copiés dans le gestionnaire de fichiers du système. Sous Windows, un fichier à la fois.',
+    'Ctrl+C, Ctrl+X, Ctrl+V (Cmd on macOS), Enter and Backspace act on the panel once it has been clicked.':
+        'Ctrl+C, Ctrl+X, Ctrl+V (Cmd sous macOS), Entrée et Retour arrière agissent sur le panneau une fois qu’on a cliqué dedans.',
+    'Paste files copied here, or copied in your file manager': 'Coller les fichiers copiés ici ou dans votre gestionnaire de fichiers',
+    'Paste': 'Coller',
+    'Copy selection ({count})': 'Copier la sélection ({count})',
+    'Copy': 'Copier',
+    'Cut selection ({count})': 'Couper la sélection ({count})',
+    'Cut': 'Couper',
+    'Paste into this folder': 'Coller dans ce dossier',
+    '{count, plural, one {# item cut} other {# items cut}}': '{count, plural, one {# élément coupé} other {# éléments coupés}}',
+    '{count, plural, one {# item copied} other {# items copied}}': '{count, plural, one {# élément copié} other {# éléments copiés}}',
+    'The clipboard holds no files': 'Le presse-papiers ne contient aucun fichier',
+    '{name} cannot be copied into itself': '{name} ne peut pas être copié dans lui-même',
+    'Copied across sessions. The originals were left in place.': 'Copié entre deux sessions. Les originaux sont restés en place.',
+    '{name} was replaced, but its previous version stays on the server as {backup}':
+        '{name} a été remplacé, mais son ancienne version reste sur le serveur sous le nom {backup}',
+    'Could not copy {name}: {error}': 'Impossible de copier {name} : {error}',
+    'Windows only gives Tabby the first of the {count} copied files. Drag them onto the panel instead.':
+        'Windows ne transmet à Tabby que le premier des {count} fichiers copiés. Faites-les plutôt glisser sur le panneau.',
+    'The copied files no longer exist': 'Les fichiers copiés n’existent plus',
+    'neither a file nor a folder': 'ni un fichier ni un dossier',
+    'Could not upload {name}: {error}': 'Impossible d’envoyer {name} : {error}',
+    'No copy succeeded': 'Aucune copie n’a abouti',
+    'No upload succeeded': 'Aucun envoi n’a abouti',
+    '{succeeded} copied, {failed} failed': '{succeeded} copiés, {failed} en échec',
+    '{succeeded} uploaded, {failed} failed': '{succeeded} envoyés, {failed} en échec',
+    'Nothing was pasted because every item was skipped': 'Rien n’a été collé, car tous les éléments ont été ignorés',
+    '{succeeded} pasted, {skipped} skipped': '{succeeded} collés, {skipped} ignorés',
+    '{name} copied to {destination}': '{name} copié vers {destination}',
+    '{name} uploaded to {destination}': '{name} envoyé vers {destination}',
+    '{count} items copied to {destination}': '{count} éléments copiés vers {destination}',
+    '{count} items uploaded to {destination}': '{count} éléments envoyés vers {destination}',
+    'Keep both': 'Conserver les deux',
+    'Skip': 'Ignorer',
+    'Do this for the remaining files': 'Faire de même pour les fichiers restants',
+    '"{name}" already exists in {destination}.': '« {name} » existe déjà dans {destination}.',
+    '"Keep both" gives the pasted file a new name. "Overwrite" replaces the one on the server.':
+        '« Conserver les deux » donne un nouveau nom au fichier collé. « Écraser » remplace celui du serveur.',
+    '"Keep both" gives the pasted item a new name. Overwriting is only offered for a file replacing another file.':
+        '« Conserver les deux » donne un nouveau nom à l’élément collé. Écraser n’est proposé que pour un fichier qui en remplace un autre.',
+
     // sftpBrowser.component.ts — showContextMenu()
     'Open with...': 'Ouvrir avec...',
     'Rename...': 'Renommer...',
