@@ -3,7 +3,7 @@
 All notable changes to `tabby-better-sidebar` are documented here, one entry
 per npm release. Dates are the npm publication dates.
 
-## 1.0.10 (2026-11-01)
+## 1.0.10 (2026-11-16)
 
 - **Changed**: the search now matches the exact text by default, whatever
   the case, in the name, description, host and user (#19). Profiles found by
