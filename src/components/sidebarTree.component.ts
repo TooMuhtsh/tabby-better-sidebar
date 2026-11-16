@@ -639,6 +639,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     ngOnDestroy (): void {
+        this.flushWidthSave()
         this.statusSubscription?.unsubscribe()
         this.configSubscription?.unsubscribe()
         this.hotkeySubscription?.unsubscribe()
@@ -2016,24 +2017,49 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     /**
-     * Hit-tests the folder rows directly rather than going through
-     * `document.elementFromPoint`: the drop-zone overlays defined in the scss
-     * cover the lower half of a row and would answer instead of the row
-     * itself, and they are exactly what is unreliable here.
+     * The folder row under the pointer, from one hit test.
+     *
+     * Not `document.elementFromPoint`, which answers with the topmost element
+     * only. The drop-zone overlays defined in the scss cover the lower half of
+     * a row and would answer instead of the row itself. `rowUnderPointer()`
+     * walks the whole stack under the point, so the row beneath an overlay is
+     * still found. Measuring every rendered row on each mousemove, as before,
+     * forced one layout read per folder per pointer event.
      */
     private updateHoveredGroup (x: number, y: number): void {
-        this.hoveredGroupId = null
-        const rows = document.querySelectorAll<HTMLElement>('.sidebar-plus-tree a.tree-item[data-group-id]')
-        for (const row of Array.from(rows)) {
-            const rect = row.getBoundingClientRect()
-            // Lower half only: the upper half keeps meaning "reorder next to
-            // this folder", matching the resting drop-zone geometry so the
-            // gesture is the same whichever way CDK happens to resolve it.
-            if (x >= rect.left && x <= rect.right && y >= rect.top + rect.height / 2 && y <= rect.bottom) {
-                this.hoveredGroupId = row.dataset.groupId ?? null
-                return
+        const row = this.rowUnderPointer(x, y, 'data-group-id', this.draggedGroupId)
+        // Lower half only: the upper half keeps meaning "reorder next to
+        // this folder", matching the resting drop-zone geometry so the
+        // gesture is the same whichever way CDK happens to resolve it. One
+        // rect read, for the row actually under the pointer.
+        const rect = row?.getBoundingClientRect()
+        this.hoveredGroupId = row && rect && y >= rect.top + rect.height / 2
+            ? row.dataset.groupId ?? null
+            : null
+    }
+
+    /**
+     * The tree row under the pointer whose `data-*` id is not `skipId`.
+     *
+     * `elementsFromPoint` returns every element under the point, topmost
+     * first, so an overlay or a row's own children come before the row and
+     * are passed through by `closest()`. The dragged item is skipped by id,
+     * because the question is what lies beneath it. Elements that cannot be hit
+     * (`pointer-events: none`, `visibility: hidden`, content clipped by the
+     * zero height placeholder) are not in the stack at all.
+     */
+    private rowUnderPointer (x: number, y: number, attribute: 'data-group-id'|'data-profile-id', skipId: string|null): HTMLElement|null {
+        for (const element of document.elementsFromPoint(x, y)) {
+            const row = element.closest<HTMLElement>(`.sidebar-plus-tree a.tree-item[${attribute}]`)
+            if (!row) {
+                continue
+            }
+            const id = attribute === 'data-group-id' ? row.dataset.groupId : row.dataset.profileId
+            if (id && id !== skipId) {
+                return row
             }
         }
+        return null
     }
 
     @HostListener('document:mousemove', ['$event'])
@@ -2046,15 +2072,39 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         if (!this.panelIsResizing) { return }
         const delta = event.clientX - this.panelStartX
-        const width = Math.min(Math.max(this.panelMinWidth, this.panelStartWidth + delta), this.panelMaxWidth)
-        this.panelWidth = width
-        window.localStorage.sidebarPlusTreeWidth = width.toString()
+        this.panelWidth = Math.min(Math.max(this.panelMinWidth, this.panelStartWidth + delta), this.panelMaxWidth)
+        // A `localStorage` write is synchronous disk I/O. One per pointer move,
+        // tens per second while the divider is dragged, made the resize jerky.
+        this.scheduleWidthSave()
     }
 
     @HostListener('document:mouseup')
     stopResize (): boolean {
         this.panelIsResizing = false
+        this.flushWidthSave()
         return true
+    }
+
+    private widthSaveTimer: ReturnType<typeof setTimeout>|null = null
+
+    private scheduleWidthSave (): void {
+        if (this.widthSaveTimer) {
+            clearTimeout(this.widthSaveTimer)
+        }
+        this.widthSaveTimer = setTimeout(() => {
+            this.widthSaveTimer = null
+            window.localStorage.sidebarPlusTreeWidth = this.panelWidth.toString()
+        }, 250)
+    }
+
+    /** Also run on mouseup and on destroy, so the last width is never lost to a save still pending. */
+    private flushWidthSave (): void {
+        if (!this.widthSaveTimer) {
+            return
+        }
+        clearTimeout(this.widthSaveTimer)
+        this.widthSaveTimer = null
+        window.localStorage.sidebarPlusTreeWidth = this.panelWidth.toString()
     }
 
     /**
@@ -2352,7 +2402,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 statuses.set(profileId, 'error')
             }
         }
-        this.profileStatuses = statuses
+        // Swapped in only when it differs. This runs every 2s and on every tab
+        // event, and a fresh Map with the same pairs is a change for nothing.
+        if (!SidebarPlusTreeComponent.sameStatuses(this.profileStatuses, statuses)) {
+            this.profileStatuses = statuses
+        }
 
         // Narrowed again only when the *set* of open profiles moves — a tab
         // opened or closed — never on the 2s tick itself, and never on a
@@ -2879,6 +2933,19 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // Same reasoning as formatUptimePrecise(): only the day unit is
         // language-bound.
         return this.i18n.t('{d} d {h} h', { d: Math.floor(hours / 24), h: hours % 24 })
+    }
+
+    /** Whether two profile to status maps hold exactly the same pairs. */
+    private static sameStatuses (a: Map<string, ProfileConnectionStatus>, b: Map<string, ProfileConnectionStatus>): boolean {
+        if (a.size !== b.size) {
+            return false
+        }
+        for (const [id, status] of a) {
+            if (b.get(id) !== status) {
+                return false
+            }
+        }
+        return true
     }
 
     private static sameSessions (a: ActiveSession[], b: ActiveSession[]): boolean {
@@ -3570,12 +3637,24 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * what is measured is exactly what the user is pointing at.
      */
     private updateHoveredProfile (x: number, y: number): void {
+        // Same hit test as updateHoveredGroup(), so no row is measured on the
+        // common path.
+        const row = this.rowUnderPointer(x, y, 'data-profile-id', this.draggedProfileId)
+        if (row) {
+            this.hoveredProfileId = row.dataset.profileId ?? null
+            return
+        }
+        // The other rows of a multi-selection are `visibility: hidden` while
+        // they travel (isHiddenWhileDragging()), so the hit test sees through
+        // them. moveSelectionWithinArray() still needs to know the pointer is
+        // over one of them, to anchor the block on the row above it. Only
+        // those few rows are measured, and only when no visible row answered.
         this.hoveredProfileId = null
-        const rows = document.querySelectorAll<HTMLElement>('.sidebar-plus-tree a.tree-item[data-profile-id]')
-        for (const row of Array.from(rows)) {
-            const rect = row.getBoundingClientRect()
+        const hidden = document.querySelectorAll<HTMLElement>('.sidebar-plus-tree a.tree-item.drag-hidden[data-profile-id]')
+        for (const candidate of Array.from(hidden)) {
+            const rect = candidate.getBoundingClientRect()
             if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-                this.hoveredProfileId = row.dataset.profileId ?? null
+                this.hoveredProfileId = candidate.dataset.profileId ?? null
                 return
             }
         }

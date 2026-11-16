@@ -1452,7 +1452,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             return 'up'
         }
         const itemPath = (row as HTMLElement).dataset.path
-        const item = itemPath ? this.displayedFiles.find(file => file.fullPath === itemPath) : null
+        const item = itemPath ? this.fileByPath(itemPath) : null
         if (!item || !(this.isDirectoryEntry(item) || item.isSymlink)) {
             return null
         }
@@ -2436,6 +2436,25 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     private rowCache: { source: SFTPFile[], columns: SftpColumn[], dateFormat: SftpDateFormat, result: SftpRow[] }|null = null
 
     /**
+     * One entry of the displayed listing, by its path.
+     *
+     * `dragover` fires at pointer rate and needs the row under the cursor
+     * each time. A linear `find()` over a few thousand entries per event was
+     * a measurable part of dragging a file onto a folder of a large
+     * directory. The index is rebuilt only when `displayedFiles` hands back a
+     * new array, which it does only when the listing really changed.
+     */
+    private fileByPath (fullPath: string): SFTPFile|null {
+        const source = this.displayedFiles
+        if (this.pathIndex?.source !== source) {
+            this.pathIndex = { source, map: new Map(source.map(file => [file.fullPath, file])) }
+        }
+        return this.pathIndex.map.get(fullPath) ?? null
+    }
+
+    private pathIndex: { source: SFTPFile[], map: Map<string, SFTPFile> }|null = null
+
+    /**
      * The rows as the template consumes them: everything formatted up front.
      *
      * Recomputed only when the sorted list, the visible columns or the date
@@ -2507,12 +2526,23 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * node count is the entire point of this section, so the slice has to be
      * what is consumed, not `rows` itself — sort, zebra, columns and
      * selection all stay computed over the full list upstream of this.
-     * `slice()` on an array that never grew past `renderCount` costs nothing
-     * of note, and a short directory never pays for anything past this call.
+     * The slice is cached, because `rows` is already a stable array between
+     * real changes and slicing it again on every change detection pass only
+     * made a new array for `*ngFor` to diff. The same array comes back until the
+     * listing or `renderCount` moves.
      */
     get visibleRows (): SftpRow[] {
-        return this.rows.slice(0, this.renderCount)
+        const rows = this.rows
+        const cached = this.rowsSlice
+        if (cached && cached.rows === rows && cached.count === this.renderCount) {
+            return cached.result
+        }
+        const result = rows.slice(0, this.renderCount)
+        this.rowsSlice = { rows, count: this.renderCount, result }
+        return result
     }
+
+    private rowsSlice: { rows: SftpRow[], count: number, result: SftpRow[] }|null = null
 
     /** Whether more of `rows` exists past what is rendered — gates the sentinel row and, through it, the observer. False for any listing at or under `RENDER_CHUNK`, which is what makes a short directory render exactly as it did before this feature existed: no sentinel, no observer, nothing new. */
     get hasMoreRows (): boolean {
