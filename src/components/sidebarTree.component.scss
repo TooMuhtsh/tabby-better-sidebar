@@ -587,6 +587,52 @@ sidebar-plus-tree.sidebar-plus-sessions-bottom .selection-bar {
         cursor: help;
     }
 
+    // Tags (`showTags`), right after the name. The name has priority over
+    // them. A shrink factor far above the name's makes the pills absorb
+    // nearly all of the missing width, and only once they are gone does the
+    // name lose letters or, with wrapNames, wrap (#10, #18).
+    //
+    // Pills that no longer fit wrap onto a second line, which the fixed
+    // height hides. So a pill is either whole or gone, except a lone first
+    // one, which shortens with an ellipsis before it goes.
+    .profile-tags {
+        display: flex;
+        flex-wrap: wrap;
+        flex: 0 100000 auto;
+        min-width: 0;
+        height: 15px;
+        gap: 3px;
+        overflow: hidden;
+    }
+
+    // The hue comes from the tag's text (profileTags.ts), the lightness from
+    // the row. The text mixes a mid tone of the hue with the row's own text
+    // colour, so it stays dark on a light theme and light on a dark one, and
+    // keeps the contrast of the theme's text with a tint on top. oklch gives
+    // every hue the same perceived lightness, so a yellow tag reads as well
+    // as a blue one. The fork's fixed pastel (hsl at 72% lightness) was
+    // near invisible on a white background.
+    //
+    // 45% of hue and 12% of tint were measured over all 360 hues. The text
+    // stays above 4.5:1 against its pill on white, light grey, dark and dark
+    // blue backgrounds, and on a selected row, light or dark.
+    .profile-tag {
+        --sidebar-plus-tag-color: oklch(62% .16 var(--sidebar-plus-tag-hue, 0));
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 7rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 0 5px;
+        border: 1px solid color-mix(in srgb, var(--sidebar-plus-tag-color) 45%, transparent);
+        border-radius: 4px;
+        font-size: 10px;
+        line-height: 13px;
+        color: color-mix(in oklab, var(--sidebar-plus-tag-color) 45%, currentColor);
+        background-color: color-mix(in srgb, var(--sidebar-plus-tag-color) 12%, transparent);
+    }
+
     .status-dot {
         flex: 0 0 auto;
         width: 6px;

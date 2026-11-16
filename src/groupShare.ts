@@ -1,6 +1,7 @@
 import { PartialProfile, PartialProfileGroup, Profile, ProfileGroup } from 'tabby-core'
 import { TranslatableMessage } from './i18nMessage'
 import { sanitiseIcon } from './iconSanitize'
+import { cleanTags } from './profileTags'
 
 /**
  * Sharing a folder as JSON: what goes out, what is stripped on the way, and how
@@ -65,6 +66,13 @@ export interface SharedProfile {
     color?: string
     weight?: number
     options?: Record<string, unknown>
+    /**
+     * The profile's tags. They live in `sidebarPlus.profileTags`, keyed by an
+     * id the paste does not keep, so they ride along on the profile itself
+     * and are filed under the new id on the way in. Absent when the profile
+     * has none or when tags are switched off on the exporting side.
+     */
+    tags?: string[]
 }
 
 export interface SharedGroup {
@@ -376,7 +384,7 @@ function purgeDefaults (defaults: Record<string, unknown>, level: PurgeLevel, re
  * today's export will be pasted back on this machine or handed to someone
  * else's.
  */
-function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, report: PurgeReport): SharedProfile|null {
+function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, report: PurgeReport, profileTags: Record<string, unknown>): SharedProfile|null {
     const whitelist = profile.type !== undefined ? PROFILE_OPTION_WHITELISTS[profile.type] : undefined
     if (!whitelist) {
         report.rejectedTypes++
@@ -399,6 +407,10 @@ function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, repo
     if (profile.options && typeof profile.options === 'object') {
         out.options = purgeOptions(profile.options as Record<string, unknown>, level, report, whitelist)
     }
+    const tags = profile.id ? cleanTags(profileTags[profile.id]) : []
+    if (tags.length) {
+        out.tags = tags
+    }
     return out
 }
 
@@ -413,18 +425,23 @@ function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, repo
  * Reads the tree it is handed rather than fetching one: the caller holds an
  * unfiltered snapshot, and a workspace-filtered tree would quietly export a
  * subset of the folder.
+ *
+ * `profileTags` is `sidebarPlus.profileTags`, or an empty object when tags are
+ * switched off. Tags travel at both purge levels. They are labels the user
+ * chose to display, not credentials.
  */
 export function shareGroup (
     group: PartialProfileGroup<ProfileGroup>,
     allGroups: PartialProfileGroup<ProfileGroup>[],
     level: PurgeLevel,
     report: PurgeReport,
+    profileTags: Record<string, unknown> = {},
     depth = 0,
 ): SharedGroup {
     const out: SharedGroup = {
         profiles: (group.profiles ?? [])
             .filter(p => !(p as PartialProfile<Profile> & { isTemplate?: boolean }).isTemplate)
-            .map(p => shareProfile(p, level, report))
+            .map(p => shareProfile(p, level, report, profileTags))
             .filter((p): p is SharedProfile => p !== null),
         children: [],
     }
@@ -444,7 +461,7 @@ export function shareGroup (
     if (depth < MAX_DEPTH) {
         out.children = allGroups
             .filter(g => g.parentGroupId === group.id)
-            .map(child => shareGroup(child, allGroups, level, report, depth + 1))
+            .map(child => shareGroup(child, allGroups, level, report, profileTags, depth + 1))
     }
     return out
 }
@@ -453,9 +470,10 @@ export function buildPayload (
     group: PartialProfileGroup<ProfileGroup>,
     allGroups: PartialProfileGroup<ProfileGroup>[],
     level: PurgeLevel,
+    profileTags: Record<string, unknown> = {},
 ): SharePayload {
     const removed = emptyReport()
-    const shared = shareGroup(group, allGroups, level, removed)
+    const shared = shareGroup(group, allGroups, level, removed, profileTags)
     return { format: SHARE_FORMAT, version: SHARE_VERSION, purge: level, removed, group: shared }
 }
 
@@ -609,6 +627,13 @@ function sanitiseGroup (raw: Record<string, unknown>, level: PurgeLevel, report:
             }
             if (rec.options && typeof rec.options === 'object' && !Array.isArray(rec.options)) {
                 profile.options = purgeOptions(rec.options as Record<string, unknown>, level, report, whitelist)
+            }
+            // Cleaned like a tag typed in the modal: strings only, trimmed,
+            // cut to length, deduplicated. Nothing else from the clipboard
+            // reaches the config.
+            const tags = cleanTags(rec.tags)
+            if (tags.length) {
+                profile.tags = tags
             }
             profiles.push(profile)
         }

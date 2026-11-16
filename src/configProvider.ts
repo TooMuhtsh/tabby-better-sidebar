@@ -298,6 +298,12 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // dans les notes.
             showSnippets: true,
             showNotes: true,
+            // Tags on profiles, shown as pills after the name and searched by
+            // the filter. Off by default, unlike the notes above, because the
+            // pills change the look of every tagged row. Switched off, the
+            // menu entry, the pills and the search in tags go away, and
+            // `profileTags` stays as it is.
+            showTags: false,
             // The snippet library: every command the user has written, once
             // each, independent of where it is used. Nothing here is keyed by a
             // profile or group id, so none of it has to be migrated or
@@ -343,6 +349,11 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // way: a folder's note repeated on each of its twelve profiles
             // would be noise rather than a reminder.
             profileNotes: {} as Record<string, string>,
+            // Short labels per profile, by profile id. Profiles only, never
+            // folders. Like the notes, forgetDeletedId() drops them on
+            // deletion and duplicateProfile() copies them. They also travel
+            // in a shared folder, see groupShare.ts.
+            profileTags: {} as Record<string, string[]>,
             // favorites/favoriteGroups above double as the "Tous" workspace's
             // own favorites (no migration needed — they're already live in
             // the user's config.yaml). Each entry here carries its own.

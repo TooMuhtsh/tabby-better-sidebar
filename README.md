@@ -232,6 +232,7 @@ Tabby's own `config.yaml`.
 | `showTransfers` | `true` | Transfer manager at the bottom of the sidebar |
 | `showSnippets` | `true` | The *Snippets* entry of the right click and its tab |
 | `showNotes` | `true` | The *note* entry of the right click and its badge |
+| `showTags` | `false` | Tags on profiles. The *tags* entry of the right click, colored pills after the name, and the search in tags. Off, the tags are kept |
 
 Turning a block off also stops its background work — no tab scanning, no
 latency probe, no transfer tracking for a panel nobody is looking at.

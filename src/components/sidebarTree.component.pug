@@ -428,6 +428,16 @@
                                 //- The full name, which `.no-wrap` or the
                                 //- two-line cap of wrapNames may cut short.
                                 span.ms-2.no-wrap.item-name([title]='profile.name') {{ profile.name }}
+                                //- Tags, right after the name. A Map lookup
+                                //- and nothing else, the pills are computed
+                                //- on config change (piège #54). They give
+                                //- way to the name when the row is short.
+                                .profile-tags.ms-1(*ngIf='tagPills.get(profile.id) as pills')
+                                    span.profile-tag(
+                                        *ngFor='let pill of pills',
+                                        [title]='pill.text',
+                                        [style.--sidebar-plus-tag-hue]='pill.hue'
+                                    ) {{ pill.text }}
                                 .fa.fa-fw.fas.fa-star.ms-1.favorite-badge(*ngIf='isFavorite(profile)')
                                 //- The whole point of a note is to be seen
                                 //- without being looked for. Static title, so
@@ -697,7 +707,7 @@
         .fa.fa-fw.fas.fa-trash.me-2
         | {{ 'Delete' | translate }}
 
-//- "Manage" submenu, profile menu — identity (rename/icon), note, favorite.
+//- "Manage" submenu, profile menu. Identity (rename, icon), note, tags, favorite.
 .group-context-submenu(
     *ngIf='activeSubmenu === "manage" && contextMenuProfile && isMenuMode',
     [style.left.px]='submenuX',
@@ -715,6 +725,9 @@
     a.group-context-menu-item(*ngIf='showNotes', (click)='openNoteModal()', href='#')
         .fa.fa-fw.fas.fa-note-sticky.me-2
         | {{ hasNote(contextMenuProfile.id) ? ('Edit the note...' | translate) : ('Add a note...' | translate) }}
+    a.group-context-menu-item(*ngIf='showTags', (click)='openTagsModal()', href='#')
+        .fa.fa-fw.fas.fa-tags.me-2
+        | {{ hasTags(contextMenuProfile.id) ? ('Edit the tags...' | translate) : ('Add tags...' | translate) }}
     a.group-context-menu-item((click)='toggleFavoriteFromMenu(contextMenuProfile, $event)', href='#')
         .fa.fa-fw.me-2(
             [class.fas]='isFavorite(contextMenuProfile)',

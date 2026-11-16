@@ -34,6 +34,7 @@ import { SidebarPlusSettingsTabComponent } from './settingsTab.component'
 import { SidebarPlusSftpComponent } from './sftpPanel.component'
 import { SnippetsModalComponent, SnippetsModalResult } from './snippetsModal.component'
 import { NoteModalComponent } from './noteModal.component'
+import { TagsModalComponent } from './tagsModal.component'
 import { PasteGroupModalComponent, PasteResolution } from './pasteGroupModal.component'
 import { TunnelsModalComponent } from './tunnelsModal.component'
 import { IconPickerModalComponent } from './iconPickerModal.component'
@@ -58,6 +59,7 @@ import { readProfileGroups } from '../profileGroups'
 import { buildPayload, countPayload, describePurge, isEmptyReport, parsePayload, PurgeLevel, PurgeReport, SharedGroup } from '../groupShare'
 import { buildWorkspacePayload, generateWorkspaceId, parseWorkspacePayload, uniqueWorkspaceName } from '../workspaceShare'
 import { formatTunnel, tunnelKey } from '../tunnels'
+import { buildTagPills, cleanTags, parseTagsInput, TagPill } from '../profileTags'
 import { BetterPanelContribution, electBetterPanelHost, SIDEBAR_PANEL_TOKEN } from '../betterPanel'
 import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
 import { TranslatableMessage } from '../i18nMessage'
@@ -394,6 +396,13 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     activeTunnelsCollapsed = window.localStorage.sidebarPlusActiveTunnelsCollapsed === 'true'
 
     profileStatuses = new Map<string, ProfileConnectionStatus>()
+    /**
+     * profileId → its tag pills, text and hue. Rebuilt by refreshTagPills()
+     * on every config change, so a row only does a Map lookup and nothing is
+     * split, cleaned or hashed per row per change detection (piège #54).
+     * Empty while tags are switched off.
+     */
+    tagPills = new Map<string, TagPill[]>()
     private statusSubscription: Subscription|null = null
     private configSubscription: Subscription|null = null
     /** Focus moves *between panes* of the active split emit nothing on AppService — see watchSplitFocus(). */
@@ -557,6 +566,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     async ngOnInit (): Promise<void> {
+        this.refreshTagPills()
         await this.loadTreeItems()
         // Kept so ngOnDestroy can drop it. The component *is* destroyed —
         // SidebarPlusMountService unmounts it when `sidebarPlus.enabled` goes
@@ -568,6 +578,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // the active workspace or drop the filter, both of which decide
             // what loadTreeItems() is supposed to build.
             this.reconcileHiddenBlocks()
+            // Before the rows are rebuilt, so they come back with their pills.
+            this.refreshTagPills()
             // refreshTree(), not loadTreeItems() alone: a save during a search
             // (a host key accepted on the first connection, a favorite) used
             // to swap the results for the whole tree, filter text still in the
@@ -1459,6 +1471,17 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 !alreadyFound.has(p.id) && this.noteFor(p.id).toLowerCase().includes(needle)))
         }
 
+        // Tags in a third pass, for the same reasons as the notes. No field is
+        // grafted onto the profiles, and the test is a plain substring
+        // whatever searchFuzzy says, since a tag is a short exact word. Read
+        // from the config rather than from tagPills, which only holds what is
+        // shown.
+        if (this.showTags) {
+            const alreadyFound = new Set(matches.map(p => p.id))
+            matches.push(...searchable.filter(p =>
+                !alreadyFound.has(p.id) && this.tagsFor(p.id).some(tag => tag.toLowerCase().includes(q))))
+        }
+
         this.setRootGroups([
             ...this.matchingGroups(q),
             {
@@ -1984,6 +2007,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
 
     get showNotes (): boolean {
         return this.config.store.sidebarPlus?.showNotes ?? true
+    }
+
+    get showTags (): boolean {
+        return this.config.store.sidebarPlus?.showTags ?? false
     }
 
     /**
@@ -4255,6 +4282,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // is deliberately untouched, see the service.
         this.snippets.forget(id)
         this.moveNote(id, null)
+        if (kind === 'profile') {
+            this.setTagsFor(id, [])
+        }
 
         // Favorite SFTP folders are keyed by profile id. Copy, drop, reassign
         // — like the notes just above, and for the same reason.
@@ -4907,6 +4937,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // one — yet duplicating a server to make a variant of it and losing
         // what one had written about it is the wrong default.
         this.copyNote(profile.id, copy.id)
+        // Tags too, for the same reason, and whether or not they are shown,
+        // so the copy has them the day they are switched on.
+        if (copy.id) {
+            this.setTagsFor(copy.id, this.tagsFor(profile.id))
+        }
         await this.config.save()
     }
 
@@ -5024,6 +5059,68 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.config.store.sidebarPlus.profileNotes = all
     }
 
+    ////// TAGS //////
+    /**
+     * The tags stored for a profile, shown or not.
+     *
+     * For the search, the menu and the modal, never for the rows, which read
+     * `tagPills` (piège #54).
+     */
+    tagsFor (id: string|undefined): string[] {
+        return id ? cleanTags(this.config.store.sidebarPlus?.profileTags?.[id]) : []
+    }
+
+    /** Whether the menu says "edit" rather than "add". Read from the menu only, not per row. */
+    hasTags (id: string|undefined): boolean {
+        return this.tagsFor(id).length > 0
+    }
+
+    /** Recomputes the pills of every row, from the config. Cheap enough to run on each config change. */
+    private refreshTagPills (): void {
+        this.tagPills = buildTagPills(this.config.store.sidebarPlus?.profileTags, this.showTags)
+    }
+
+    /**
+     * Replaces the tags of one id, and drops its key when the list is empty,
+     * so an emptied profile leaves nothing behind. Does not save, the caller
+     * does, like copyNote() and moveNote().
+     */
+    private setTagsFor (id: string, tags: string[]): void {
+        this.config.store.sidebarPlus ??= {}
+        const current = this.config.store.sidebarPlus.profileTags ?? {}
+        const clean = cleanTags(tags)
+        if (!clean.length && !(id in current)) {
+            return
+        }
+        // Rebuilt and reassigned rather than mutated in place (piège #23).
+        const all: Record<string, string[]> = { ...current }
+        if (clean.length) {
+            all[id] = clean
+        } else {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+            delete all[id]
+        }
+        this.config.store.sidebarPlus.profileTags = all
+    }
+
+    async openTagsModal (): Promise<void> {
+        const profile = this.contextMenuProfile
+        this.closeContextMenu()
+        if (!profile?.id) {
+            return
+        }
+        const modal = this.ngbModal.open(TagsModalComponent)
+        modal.componentInstance.targetName = profile.name ?? ''
+        modal.componentInstance.text = this.tagsFor(profile.id).join(', ')
+        const text = await modal.result.catch(() => null) as string|null
+        if (text === null) {
+            return
+        }
+        this.setTagsFor(profile.id, parseTagsInput(text))
+        // config.changed$ then rebuilds the pills and the view, search included.
+        await this.config.save()
+    }
+
     ////// GROUP SHARING (context menu) //////
     /**
      * "Copier la structure (JSON)" and "Copier sans les identifiants".
@@ -5043,7 +5140,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!group) {
             return
         }
-        const payload = buildPayload(group, this.rawGroupsSnapshot, level)
+        // Tags leave only while they are shown, because what the user cannot
+        // see in the sidebar should not end up in a colleague's.
+        const payload = buildPayload(group, this.rawGroupsSnapshot, level,
+            this.showTags ? this.config.store.sidebarPlus?.profileTags ?? {} : {})
         this.platform.setClipboard({ text: JSON.stringify(payload, null, 2) })
 
         const { folders, profiles } = countPayload(payload.group)
@@ -5191,6 +5291,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 group: groupId,
             } as PartialProfile<Profile>
             await this.profilesService.newProfile(profile)
+            // Filed under the id newProfile() has just minted. Stored even
+            // with tags switched off, like any tag, and simply not shown.
+            if (shape.tags?.length && profile.id) {
+                this.setTagsFor(profile.id, shape.tags)
+            }
             profiles++
             if (shape.type) {
                 types.push(shape.type)

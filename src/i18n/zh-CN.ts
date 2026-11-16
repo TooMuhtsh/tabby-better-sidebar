@@ -534,6 +534,17 @@ const zh_CN: Record<string, string> = {
     'Notes': '备注',
     'A free-form memo per profile or folder.': '为每个配置或文件夹保存的自由备注。',
     'The "note" entry of the right click and its badge.': '右键菜单中的“备注”项及其徽标。',
+
+    // Tags (tagsModal.component.pug, sidebarTree.component.pug, settingsTab.component.ts)
+    'Tags of {name}': '{name} 的标签',
+    'prod, web, backup': 'prod, web, backup',
+    'Separate the tags with commas or line breaks. Clearing the field removes them all.': '用逗号或换行分隔标签。清空该字段即删除全部标签。',
+    'Edit the tags...': '编辑标签…',
+    'Add tags...': '添加标签…',
+    'Tags': '标签',
+    'Short labels per profile, colored from their text. Off, they are kept for later.': '每个配置的简短标签，颜色由文字决定。关闭后标签仍会保留。',
+    'The "tags" entry of the right click, the pills after the name and the search in tags.': '右键菜单中的“标签”项、名称后的标签徽标以及标签搜索。',
+
     'Recent profiles': '最近配置',
     'The 5 most recently launched profiles, all types together.': '最近启动的 5 个配置，包含所有类型。',
     'A list shown under the active sessions.': '显示在活动会话下方的列表。',

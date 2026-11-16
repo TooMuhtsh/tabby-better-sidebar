@@ -12,6 +12,7 @@ import { ConfirmModalComponent } from './components/confirmModal.component'
 import { SftpConflictModalComponent } from './components/sftpConflictModal.component'
 import { SnippetsModalComponent } from './components/snippetsModal.component'
 import { NoteModalComponent } from './components/noteModal.component'
+import { TagsModalComponent } from './components/tagsModal.component'
 import { PasteGroupModalComponent } from './components/pasteGroupModal.component'
 import { TunnelsModalComponent } from './components/tunnelsModal.component'
 import { IconPickerModalComponent } from './components/iconPickerModal.component'
@@ -59,6 +60,7 @@ const SIDEBAR_PANEL_CONTRIBUTION: BetterPanelContribution = {
         SftpConflictModalComponent,
         SnippetsModalComponent,
         NoteModalComponent,
+        TagsModalComponent,
         PasteGroupModalComponent,
         TunnelsModalComponent,
         IconPickerModalComponent,

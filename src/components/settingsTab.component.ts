@@ -64,7 +64,7 @@ export class SidebarPlusSettingsTabComponent {
      * the same order with the group titles left out.
      */
     readonly featureGroups: { id: 'profiles'|'ssh'|'sftp', icon: string, cards: string[] }[] = [
-        { id: 'profiles', icon: 'fa-list', cards: ['workspaces', 'activeToggle', 'filter', 'recent', 'notes', 'snippets'] },
+        { id: 'profiles', icon: 'fa-list', cards: ['workspaces', 'activeToggle', 'filter', 'recent', 'notes', 'tags', 'snippets'] },
         { id: 'ssh', icon: 'fa-network-wired', cards: ['sessions', 'tunnels'] },
         { id: 'sftp', icon: 'fa-folder-open', cards: ['sftp', 'transfers'] },
     ]
@@ -193,6 +193,9 @@ export class SidebarPlusSettingsTabComponent {
     get lblNotes (): string { return this.i18n.t('Notes') }
     get lblNotesHint (): string { return this.i18n.t('A free-form memo per profile or folder.') }
     get lblNotesDesc (): string { return this.i18n.t('The "note" entry of the right click and its badge.') }
+    get lblTags (): string { return this.i18n.t('Tags') }
+    get lblTagsHint (): string { return this.i18n.t('Short labels per profile, colored from their text. Off, they are kept for later.') }
+    get lblTagsDesc (): string { return this.i18n.t('The "tags" entry of the right click, the pills after the name and the search in tags.') }
     get lblRecentProfiles (): string { return this.i18n.t('Recent profiles') }
     get lblRecentProfilesHint (): string { return this.i18n.t('The 5 most recently launched profiles, all types together.') }
     get lblRecentProfilesDesc (): string { return this.i18n.t('A list shown under the active sessions.') }

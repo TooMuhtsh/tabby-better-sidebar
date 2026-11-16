@@ -244,6 +244,17 @@
               (ngModelChange)="setBlock('showNotes', $event)"
             )
 
+      .feature-card(*ngSwitchCase="'tags'", [class.off]="!blockOn('showTags')")
+        .form-line.block-switch
+          .header
+            .title {{ lblTags }} #[i.fas.fa-info-circle.info-hint([title]='lblTagsHint')]
+            .description {{ lblTagsDesc }}
+          .control
+            toggle(
+              [ngModel]="blockOn('showTags')",
+              (ngModelChange)="setBlock('showTags', $event)"
+            )
+
       .feature-card(*ngSwitchCase="'snippets'", [class.off]="!blockOn('showSnippets')")
         .form-line.block-switch
           .header

@@ -1,0 +1,19 @@
+.modal-header
+    h5.modal-title.no-wrap {{ 'Tags of {name}' | translate:{ name: targetName } }}
+    button.btn-close((click)='cancel()')
+
+.modal-body
+    //- A textarea rather than a single line, because a list pasted one tag
+    //- per line has to work. Ctrl+Enter saves, like the note modal.
+    textarea.form-control(
+        #field,
+        rows='3',
+        [(ngModel)]='text',
+        [placeholder]="'prod, web, backup' | translate",
+        (keydown.control.enter)='save()'
+    )
+    .text-muted.small.mt-2 {{ 'Separate the tags with commas or line breaks. Clearing the field removes them all.' | translate }}
+
+.modal-footer
+    button.btn.btn-secondary((click)='cancel()') {{ 'Cancel' | translate }}
+    button.btn.btn-primary((click)='save()') {{ 'Save' | translate }}

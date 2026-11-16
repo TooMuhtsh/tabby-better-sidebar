@@ -569,6 +569,17 @@ const fr_FR: Record<string, string> = {
     'Notes': 'Notes',
     'A free-form memo per profile or folder.': 'Un mémento libre par profil ou dossier.',
     'The "note" entry of the right click and its badge.': 'Entrée « note » du clic droit et pastille associée.',
+
+    // Tags (tagsModal.component.pug, sidebarTree.component.pug, settingsTab.component.ts)
+    'Tags of {name}': 'Étiquettes de {name}',
+    'prod, web, backup': 'prod, web, sauvegarde',
+    'Separate the tags with commas or line breaks. Clearing the field removes them all.': 'Séparer les étiquettes par des virgules ou des retours à la ligne. Vider le champ les retire toutes.',
+    'Edit the tags...': 'Modifier les étiquettes...',
+    'Add tags...': 'Ajouter des étiquettes...',
+    'Tags': 'Étiquettes',
+    'Short labels per profile, colored from their text. Off, they are kept for later.': 'De courts libellés par profil, colorés selon leur texte. Éteintes, elles sont conservées.',
+    'The "tags" entry of the right click, the pills after the name and the search in tags.': 'Entrée « étiquettes » du clic droit, pastilles après le nom et recherche dans les étiquettes.',
+
     'Recent profiles': 'Profils récents',
     'The 5 most recently launched profiles, all types together.': 'Les 5 derniers profils lancés, tous types confondus.',
     'A list shown under the active sessions.': 'Liste affichée sous les sessions actives.',

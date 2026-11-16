@@ -540,6 +540,17 @@ const de_DE: Record<string, string> = {
     'Notes': 'Notizen',
     'A free-form memo per profile or folder.': 'Eine freie Notiz je Profil oder Ordner.',
     'The "note" entry of the right click and its badge.': 'Eintrag „Notiz“ im Rechtsklickmenü und zugehörige Markierung.',
+
+    // Tags (tagsModal.component.pug, sidebarTree.component.pug, settingsTab.component.ts)
+    'Tags of {name}': 'Tags von {name}',
+    'prod, web, backup': 'prod, web, backup',
+    'Separate the tags with commas or line breaks. Clearing the field removes them all.': 'Tags durch Kommas oder Zeilenumbrüche trennen. Das Leeren des Felds entfernt alle.',
+    'Edit the tags...': 'Tags bearbeiten...',
+    'Add tags...': 'Tags hinzufügen...',
+    'Tags': 'Tags',
+    'Short labels per profile, colored from their text. Off, they are kept for later.': 'Kurze Bezeichnungen je Profil, nach ihrem Text eingefärbt. Ausgeschaltet bleiben sie erhalten.',
+    'The "tags" entry of the right click, the pills after the name and the search in tags.': 'Eintrag „Tags“ im Rechtsklickmenü, die Markierungen nach dem Namen und die Suche in Tags.',
+
     'Recent profiles': 'Zuletzt verwendete Profile',
     'The 5 most recently launched profiles, all types together.': 'Die 5 zuletzt gestarteten Profile, über alle Typen hinweg.',
     'A list shown under the active sessions.': 'Liste unter den aktiven Sitzungen.',

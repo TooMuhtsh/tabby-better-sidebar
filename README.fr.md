@@ -249,6 +249,7 @@ sous `sidebarPlus` dans le `config.yaml` de Tabby.
 | `showTransfers` | `true` | Gestionnaire de transferts en bas de la sidebar |
 | `showSnippets` | `true` | L'entrée *Snippets* du clic droit et son onglet |
 | `showNotes` | `true` | L'entrée *note* du clic droit et son badge |
+| `showTags` | `false` | Étiquettes sur les profils. L'entrée *étiquettes* du clic droit, des pastilles colorées après le nom et la recherche dans les étiquettes. Éteint, les étiquettes sont gardées |
 
 Éteindre un bloc coupe aussi son travail de fond — plus de balayage des onglets,
 plus de sonde de latence, plus de suivi des transferts pour un panneau que
