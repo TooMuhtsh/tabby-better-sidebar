@@ -56,6 +56,7 @@ Ce qu'un chantier livré laisse malgré tout ouvert est isolé dans
 <tr><td><a href="annexes/REALISE.html#issue-13-feux-macos">Feux de fenêtre macOS sur la sidebar (issue #13)</a></td><td><span class="pill done">✅ Livré en 1.0.8 (2026-10-17)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#issue-14-indentation">Indentation des profils dans les dossiers (issue #14)</a></td><td><span class="pill done">✅ Livré en 1.0.8 (2026-10-17)</span></td><td></td></tr>
 <tr><td><a href="annexes/REALISE.html#pr-ogkaktus">PR #5, #6, #7 d'OGKaktus (tri SFTP, textes en dur, favoris SFTP)</a></td><td><span class="pill done">✅ Livré — 1.0.6 (2026-10-08)</span></td><td>—</td></tr>
+<tr><td><a href="#reprise-fork-miller">Reprise du fork de miller806 (lot sûr, quatre idées, SFTP avancé)</a></td><td><span class="pill planned">📋 Tranché, codé sur branches séparées (2026-11-16)</span></td><td></td></tr>
 <tr><td><a href="#publication-confiance">Publication npm depuis GitHub Actions (publication de confiance)</a></td><td><span class="pill planned">📋 Workflow sur branche, à lier sur npmjs.com (2026-11-16)</span></td><td></td></tr>
 <tr><td><a href="#changelog">CHANGELOG.md du dépôt</a></td><td><span class="pill done">✅ Fait — introduit avec la 1.0.3 (2026-08-14)</span></td><td>À tenir à chaque publication</td></tr>
 <tr><td><a href="#x11">Intégration X11</a></td><td><span class="pill out">⛔ Écarté — déjà natif</span></td><td>—</td></tr>
@@ -775,6 +776,42 @@ puis repris sur master sans conflit. La 1.0.10 est validée sur le paquet de pro
 s'est pas reproduite, ni par la sidebar ni par Paramètres : une sauvegarde y recréait bien toutes
 les lignes, mais le défilement restait. Après correctif, les lignes sont gardées (35 sur 35).
 Reste ouvert : les étapes du rapporteur de #17, demandées sur l'issue.</p>
+
+<h2 id="reprise-fork-miller">Reprise du fork de miller806</h2>
+<p>Le fork public <a href="https://github.com/miller806/tabby-better-sidebar-miller">miller806/tabby-better-sidebar-miller</a>
+(MIT, comme ce dépôt) part de master <code>0107fd9</code> et ajoute 34 commits. Il est publié sur npm
+sous le nom <code>tabby-better-sidebar-miller</code>. Analysé le 2026-11-16 : son code sert de
+référence, il est rarement repris tel quel, car un même commit mêle souvent plusieurs
+fonctionnalités et change des comportements par défaut. Tout ce qui est repris est crédité à
+miller806 dans le CHANGELOG et le README.</p>
+<p><strong>Tranché avec l'utilisateur avant le code</strong> :</p>
+<ul>
+<li>Périmètre retenu : le lot sûr, quatre idées simples et le SFTP avancé. Les étiquettes et l'état
+de connexion dans les onglets de Tabby, ainsi que le basculement des onglets selon le workspace,
+restent de côté : ils retouchent le DOM interne de la barre d'onglets, et Tabby ferme aussi les
+onglets masqués avec « Fermer les autres onglets ».</li>
+<li>Toute nouveauté est une option, éteinte par défaut. Rien ne change pour un utilisateur qui met
+à jour.</li>
+<li>Une branche par fonctionnalité, testée et fusionnée à part.</li>
+<li><strong>Lot sûr</strong> : droits des fichiers envoyés depuis Windows (ils arrivaient en 0666),
+optimisations génériques, barre de progression et nom de session dans les transferts, chaîne de
+CI et de publication.</li>
+<li><strong>Sessions actives</strong> : réglage haut ou bas, haut par défaut. Le pied de sidebar
+reste.</li>
+<li><strong>Masquer le dossier « Imported from .ssh/config »</strong> : dans l'arbre et la
+recherche. Ses serveurs restent dans les profils récents et les sessions actives.</li>
+<li><strong>Lignes compactes</strong> : lignes et retrait resserrés, icônes gardées, retour à la
+ligne des noms longs (#10, #18) intact.</li>
+<li><strong>Étiquettes</strong> : sur les serveurs seulement, en pastilles après le nom, couleur
+calculée à partir du texte et lisible sur les thèmes clairs comme sombres. Nettoyées à la
+suppression, copiées à la duplication, incluses dans les exports, trouvées par la recherche, comme
+les notes.</li>
+<li><strong>SFTP avancé</strong> : copier, couper, coller de fichiers (y compris depuis le
+gestionnaire de fichiers du système), dialogue en cas de nom déjà pris, panneau SFTP à droite de la
+fenêtre en option. Les bugs relevés dans le fork sont corrigés au passage : un Ctrl+V pouvait
+envoyer d'anciens fichiers du presse-papiers système, un Ctrl+C dans le terminal pouvait être pris
+pour une copie de fichier, et « Remplacer » échouait sur un dossier.</li>
+</ul>
 
 <h2>Hors périmètre</h2>
 
