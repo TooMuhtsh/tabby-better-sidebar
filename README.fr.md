@@ -223,6 +223,7 @@ sous `sidebarPlus` dans le `config.yaml` de Tabby.
 |---|---|---|
 | `enabled` | `true` | Affiche la sidebar. Éteinte, elle disparaît sans rien désinstaller ; cette page de réglages reste accessible |
 | `showActiveSessions` | `true` | Connexions SSH ouvertes, en haut de la sidebar |
+| `activeSessionsPosition` | `top` | Place des sessions actives, `top` ou `bottom` (sous les profils, au-dessus du pied de sidebar) |
 | `showRecentProfiles` | `false` | Les cinq profils lancés le plus récemment |
 | `showTunnels` | `true` | Panneau de redirection de ports et badges sur les profils |
 | `showWorkspaces` | `true` | Barre des espaces de travail, au-dessus de la liste |

@@ -192,7 +192,11 @@ export class SidebarPlusSettingsTabComponent {
     get lblRecentProfilesDesc (): string { return this.i18n.t('A list shown under the active sessions.') }
     get lblActiveSessions (): string { return this.i18n.t('Active sessions') }
     get lblActiveSessionsHint (): string { return this.i18n.t('One row per pane, not per tab.') }
-    get lblActiveSessionsDesc (): string { return this.i18n.t('Open SSH connections, at the top of the sidebar.') }
+    get lblActiveSessionsDesc (): string { return this.i18n.t('Open SSH connections, at the top or bottom of the sidebar.') }
+    get lblSessionsPosition (): string { return this.i18n.t('Position in the sidebar') }
+    get lblSessionsPositionDesc (): string { return this.i18n.t('At the bottom, the block sits under the profiles and above the footer.') }
+    get lblPositionTop (): string { return this.i18n.t('At the top') }
+    get lblPositionBottom (): string { return this.i18n.t('At the bottom') }
     get lblPing (): string { return this.i18n.t('Latency probe, in seconds') }
     get lblPingHint (): string { return this.i18n.t('A real SFTP round trip, not an ICMP ping.') }
     get lblPingDesc (): string { return this.i18n.t('Colors the dot of each session. 0 disables.') }
@@ -496,6 +500,16 @@ export class SidebarPlusSettingsTabComponent {
 
     async setAutoReturnToProfiles (value: boolean): Promise<void> {
         this.config.store.sidebarPlus.sftpAutoReturnToProfiles = value
+        await this.config.save()
+    }
+
+    get activeSessionsPosition (): 'top'|'bottom' {
+        return this.config.store.sidebarPlus?.activeSessionsPosition === 'bottom' ? 'bottom' : 'top'
+    }
+
+    /** Applied by the tree's host binding, which reads the key on every change detection pass. */
+    async setActiveSessionsPosition (value: string): Promise<void> {
+        this.config.store.sidebarPlus.activeSessionsPosition = value === 'bottom' ? 'bottom' : 'top'
         await this.config.save()
     }
 

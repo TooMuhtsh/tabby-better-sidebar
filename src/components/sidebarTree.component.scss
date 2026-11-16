@@ -267,6 +267,39 @@ sidebar-plus-tree .active-sessions {
     }
 }
 
+// Active sessions at the bottom (`activeSessionsPosition: 'bottom'`, off by
+// default). Taken from the fork of miller806 and adapted. The fork moved the
+// block in the template, but here it keeps its single place and `order: 1`
+// sends it after every other member of the content column. In the profiles
+// view it lands under the tree, in the SFTP view under the panel and the
+// transfers. The footer is outside that column, so it stays below.
+//
+// `margin-top: auto` keeps the block against the bottom when nothing above it
+// grows (the hidden items panel replaces the tree). The block stays
+// `flex: 0 0 auto` as at the top, because a shrinkable block would be squeezed
+// in proportion to the SFTP panel's content height. The 25% cap is what keeps
+// it from eating a short window, and the list scrolls inside it.
+sidebar-plus-tree.sidebar-plus-sessions-bottom .active-sessions {
+    order: 1;
+    display: flex;
+    flex-direction: column;
+    max-height: 25%;
+    overflow: hidden;
+    margin-top: auto;
+    margin-bottom: 0;
+    padding-top: .25rem;
+    border-top: 1px solid var(--theme-secondary);
+
+    .active-sessions-header {
+        flex: 0 0 auto;
+    }
+
+    .active-sessions-list {
+        flex: 0 1 auto;
+        min-height: 0;
+    }
+}
+
 .workspace-bar {
     gap: .25rem;
     margin-bottom: .35rem;

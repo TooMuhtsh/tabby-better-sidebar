@@ -207,6 +207,7 @@ Tabby's own `config.yaml`.
 |---|---|---|
 | `enabled` | `true` | Shows the sidebar. Off, it disappears without uninstalling anything; this settings page stays reachable |
 | `showActiveSessions` | `true` | Open SSH connections, at the top of the sidebar |
+| `activeSessionsPosition` | `top` | Where the active sessions sit: `top`, or `bottom` under the profiles and above the footer |
 | `showRecentProfiles` | `false` | The five most recently launched profiles |
 | `showTunnels` | `true` | Port forwarding panel and badges on the profiles |
 | `showWorkspaces` | `true` | Workspace bar above the list |

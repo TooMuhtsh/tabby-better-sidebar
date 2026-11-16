@@ -31,6 +31,11 @@
     //- `flex-grow-1` in this flex column, so anything following it gets pushed
     //- to the very bottom of the sidebar in SFTP mode. The section is meant to
     //- sit at the top in both tabs.
+    //-
+    //- With activeSessionsPosition set to 'bottom', the same block moves to the
+    //- end of this column through CSS `order` (host class
+    //- sidebar-plus-sessions-bottom). It then sits under the tree, or under the
+    //- SFTP panel and the transfers, and the footer stays below it.
     .active-sessions(*ngIf='showActiveSessions && activeSessions.length')
         a.active-sessions-header((click)='toggleActiveSessions()', href='#')
             .fa.fa-fw.fas.me-1(

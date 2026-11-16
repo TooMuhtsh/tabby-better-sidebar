@@ -2135,6 +2135,16 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
     }
 
     /**
+     * Active sessions at the bottom of the sidebar instead of the top. A class
+     * on the host, like wrapNames: the block keeps one place in the template,
+     * and the stylesheet moves it to the end of the content column.
+     */
+    @HostBinding('class.sidebar-plus-sessions-bottom')
+    get activeSessionsAtBottom (): boolean {
+        return this.config.store.sidebarPlus?.activeSessionsPosition === 'bottom'
+    }
+
+    /**
      * Room for the macOS traffic lights (#13). With the "thin" frame the
      * window has no title bar, and the three window buttons are drawn over its
      * top left corner, which is where this sidebar sits: they covered its

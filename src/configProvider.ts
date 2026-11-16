@@ -213,6 +213,11 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // never persists (piège #23), and every key must be declared here
             // to survive a restart at all (piège #16).
             showActiveSessions: true,
+            // Where the active sessions block sits. 'top' is the layout the
+            // plugin always had, so it stays the default. 'bottom' moves the
+            // block under the profiles (or under the SFTP panel), right above
+            // the footer. Taken from the fork of miller806.
+            activeSessionsPosition: 'top' as 'top'|'bottom',
             // The MRU trail itself lives in localStorage
             // (sidebarPlusRecentProfiles — see SidebarPlusTreeComponent), not
             // here: it is per-machine usage, the same reasoning as

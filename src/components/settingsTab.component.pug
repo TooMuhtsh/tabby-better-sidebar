@@ -248,6 +248,17 @@
         .feature-card-body(*ngIf="blockOn('showActiveSessions', 'ssh-tab')")
           .form-line
             .header
+              .title {{ lblSessionsPosition }}
+              .description {{ lblSessionsPositionDesc }}
+            .control
+              select#sidebar-plus-sessions-position.form-control(
+                [ngModel]='activeSessionsPosition',
+                (ngModelChange)='setActiveSessionsPosition($event)'
+              )
+                option(value='top') {{ lblPositionTop }}
+                option(value='bottom') {{ lblPositionBottom }}
+          .form-line
+            .header
               .title {{ lblPing }} #[i.fas.fa-info-circle.info-hint([title]='lblPingHint')]
               .description {{ lblPingDesc }}
             .control
