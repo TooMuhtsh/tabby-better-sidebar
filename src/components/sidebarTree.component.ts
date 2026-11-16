@@ -52,6 +52,7 @@ import { SidebarPlusSnippetsService } from '../snippets.service'
 import { SidebarPlusNoticesService } from '../notices.service'
 import { FOCUS_FILTER_HOTKEY, TOGGLE_SIDEBAR_HOTKEY } from '../hotkeys'
 import { SidebarPlusVisibilityService } from '../visibility.service'
+import { SidebarPlusSftpViewService } from '../sftpView.service'
 import { PingState, SidebarPlusPingService } from '../ping.service'
 import { focusTab, getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { hostSupports } from '../hostCompat'
@@ -261,8 +262,39 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
      * is gone after a restart — landing in it meant switching back by hand
      * every single time. The toggle stays session-local state, held in this
      * field alone.
+     *
+     * Only ever true in the sidebar placement. With the view docked on the
+     * right of the window (`sftpPlacement: 'right'`), the tree always shows
+     * the profiles and the dock has its own open state, in
+     * SidebarPlusSftpViewService.
      */
     sftpMode = false
+
+    /**
+     * True when the SFTP view lives in the right-hand dock instead of
+     * replacing this tree. False whenever the view is switched off, so that
+     * the sidebar then looks exactly as it does in the sidebar placement.
+     */
+    get sftpInDock (): boolean {
+        return this.showSftp && this.sftpView.inDock
+    }
+
+    /** Whether the right-hand dock is open. Drives the SFTP tab's highlight in that placement. */
+    get sftpDockOpen (): boolean {
+        return this.sftpView.dockOpen
+    }
+
+    /**
+     * Whether the transfer list belongs to the dock right now.
+     *
+     * It goes with the SFTP view while the dock is open, under the file list,
+     * and comes back to the bottom of the sidebar the moment the dock closes.
+     * A transfer keeps running whether or not anyone is looking at it, so the
+     * list must never disappear with the panel. Only one host renders it.
+     */
+    get transfersInDock (): boolean {
+        return this.sftpInDock && this.sftpView.dockOpen
+    }
 
     /**
      * Groups (isTemplate/blacklist already filtered, like profileGroups) but
@@ -544,6 +576,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         private injector: Injector,
         private transfers: SidebarPlusTransfersService,
         private i18n: SidebarPlusI18nService,
+        private sftpView: SidebarPlusSftpViewService,
     ) { }
 
     /**
@@ -580,6 +613,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             this.reconcileHiddenBlocks()
             // Before the rows are rebuilt, so they come back with their pills.
             this.refreshTagPills()
+            this.reconcileSftpPlacement()
             // refreshTree(), not loadTreeItems() alone: a save during a search
             // (a host key accepted on the first connection, a favorite) used
             // to swap the results for the whole tree, filter text still in the
@@ -2062,11 +2096,46 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (on && !this.showSftp) {
             return
         }
+        if (this.sftpInDock) {
+            // Docked on the right, the tree stays and the dock opens or closes.
+            if (on) {
+                this.sftpView.show()
+            } else {
+                this.sftpView.hide()
+            }
+            return
+        }
         this.sftpMode = on
         if (on) {
             // Leaving this on would put the sidebar back into the hidden-items
             // panel — not the tree — the next time SFTP is switched off.
             this.showHiddenPanel = false
+        }
+    }
+
+    /** The SFTP tab of the sidebar in the right-hand placement, which opens and closes the dock. */
+    toggleSftpDock (): void {
+        this.setSftpMode(!this.sftpView.dockOpen)
+    }
+
+    /**
+     * Carries an open SFTP view over when the placement changes, so that the
+     * view the user was looking at moves to the other host instead of
+     * closing. Called from `config.changed$`, after SidebarPlusMountService
+     * has mounted or taken back the dock. The panel itself is not rebuilt,
+     * because both hosts draw from SidebarPlusSftpPanelCacheService, so the
+     * session keeps the SFTP channel it already had.
+     */
+    private reconcileSftpPlacement (): void {
+        if (!this.showSftp) {
+            return
+        }
+        if (this.sftpView.inDock && this.sftpMode) {
+            this.sftpMode = false
+            this.sftpView.show()
+        } else if (!this.sftpView.inDock && this.sftpView.dockOpen) {
+            this.sftpView.hide()
+            this.setSftpMode(true)
         }
     }
 
@@ -3463,6 +3532,10 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // focusTab() — sync() runs off the resulting focus change, so the
         // panel is free to follow by the time it fires.
         this.sftpPanel?.unfreeze()
+        if (this.sftpInDock) {
+            // The dock's panel is not a child of this component.
+            this.sftpView.unfreezeRequested.next()
+        }
         focusTab(this.app, session.tab)
         this.setSftpMode(true)
     }

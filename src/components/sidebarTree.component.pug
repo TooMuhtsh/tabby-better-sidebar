@@ -2,7 +2,11 @@
     //- Kept as the very first row, above the workspace bar, so it stays put
     //- when switching modes instead of sliding around under the cursor.
     .view-mode-bar.d-flex.align-items-center
+        //- With the SFTP view docked on the right (`sftpInDock`), the tree is
+        //- always the tree. The Profiles tab has nothing to switch to and is
+        //- left out, and the SFTP tab opens and closes the dock instead.
         a.view-mode-tab(
+            *ngIf='!sftpInDock',
             [class.active]='!sftpMode',
             (click)='setSftpMode(false)',
             [title]="'Profiles' | translate",
@@ -11,10 +15,19 @@
             .fa.fa-fw.fas.fa-list.me-1
             span {{ 'Profiles' | translate }}
         a.view-mode-tab(
-            *ngIf='showSftp',
+            *ngIf='showSftp && !sftpInDock',
             [class.active]='sftpMode',
             (click)='setSftpMode(true)',
             [title]="'SFTP of the active session' | translate",
+            href='#'
+        )
+            .fa.fa-fw.fas.fa-folder-open.me-1
+            span SFTP
+        a.view-mode-tab(
+            *ngIf='sftpInDock',
+            [class.active]='sftpDockOpen',
+            (click)='toggleSftpDock()',
+            [title]="'Show or hide the SFTP panel' | translate",
             href='#'
         )
             .fa.fa-fw.fas.fa-folder-open.me-1
@@ -183,8 +196,12 @@
     //- to park them. Toggling the setting back on rebuilds from nothing, which
     //- costs one channel per session actually browsed again — the price of the
     //- block genuinely being off rather than merely invisible.
+    //-
+    //- Absent in the right-hand placement, where the dock is the host. Both
+    //- hosts draw the same panels from SidebarPlusSftpPanelCacheService, so
+    //- moving the view between them opens no second SFTP channel.
     sidebar-plus-sftp.flex-grow-1(
-        *ngIf='showSftp',
+        *ngIf='showSftp && !sftpInDock',
         [hidden]='!sftpMode',
         [active]='sftpMode',
         (closed)='setSftpMode(false)'
@@ -198,7 +215,10 @@
     //- Shown in both views, not only in SFTP: a transfer started from the SFTP
     //- panel keeps running after switching back to the profiles, and losing
     //- sight of it there would be the one moment it matters.
-    sidebar-plus-transfers(*ngIf='showTransfers')
+    //-
+    //- In the right-hand placement, the open dock shows it under its file list
+    //- instead, and it comes back here as soon as the dock closes.
+    sidebar-plus-transfers(*ngIf='showTransfers && !transfersInDock')
 
     //- Which of the two blocks below renders is an explicit per-user setting
     //- (workspaceSelectorMode, next to showWorkspaces in the settings tab),

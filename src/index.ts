@@ -19,6 +19,7 @@ import { IconPickerModalComponent } from './components/iconPickerModal.component
 import { SidebarPlusHostPanelComponent } from './components/hostPanel.component'
 import { SidebarPlusSettingsTabComponent } from './components/settingsTab.component'
 import { SidebarPlusTransfersComponent } from './components/transfers.component'
+import { SidebarPlusSftpDockComponent } from './components/sftpDock.component'
 import { SidebarPlusConfigProvider } from './configProvider'
 import { SidebarPlusSettingsTabProvider } from './settings'
 import { SidebarPlusMountService } from './mount.service'
@@ -67,6 +68,7 @@ const SIDEBAR_PANEL_CONTRIBUTION: BetterPanelContribution = {
         SidebarPlusHostPanelComponent,
         SidebarPlusSettingsTabComponent,
         SidebarPlusTransfersComponent,
+        SidebarPlusSftpDockComponent,
     ],
 })
 export default class SidebarPlusModule {

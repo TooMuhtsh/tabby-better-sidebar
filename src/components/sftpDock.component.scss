@@ -1,0 +1,114 @@
+// Global CSS like every stylesheet in this plugin, so anchored on the
+// component's own tag and never on `:host` (piège #14).
+//
+// Colours follow the sidebar's own rules, with theme variables only. The
+// surface is `--theme-bg-more-2`, the divider and the hover tint are
+// `--theme-secondary`, and the one button in here looks like the browser's
+// `.sftp-tool`.
+sidebar-plus-sftp-dock {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+    background-color: var(--theme-bg-more-2);
+    border-left: 1px solid var(--theme-secondary);
+    overflow: hidden;
+}
+
+// Closed (SidebarPlusSftpDockComponent.hiddenAttr). Needed because the
+// browser's own `[hidden] { display: none }` is a user agent rule, and the
+// `display: flex` just above wins over it.
+sidebar-plus-sftp-dock[hidden] {
+    display: none;
+}
+
+// Room for the Windows window buttons (see `winInset` in the component). A
+// strip as tall as the tab bar on top, under the buttons Windows draws there,
+// and a drag region like the tab bar it continues.
+sidebar-plus-sftp-dock.sidebar-plus-win-inset {
+    padding-top: var(--tabs-height);
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--tabs-height);
+        -webkit-app-region: drag;
+    }
+}
+
+// The rail is the resize handle and holds the close button, so neither costs a
+// header row. Transparent at rest, tinted on hover.
+sidebar-plus-sftp-dock .sftp-dock-rail {
+    flex: 0 0 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: .15rem;
+    cursor: col-resize;
+    -webkit-app-region: no-drag;
+
+    &:hover {
+        background-color: var(--theme-secondary);
+    }
+}
+
+sidebar-plus-sftp-dock .sftp-dock-collapse {
+    flex: 0 0 auto;
+    padding: .1rem .2rem;
+    border: 0;
+    border-radius: .2rem;
+    background: transparent;
+    color: inherit;
+    opacity: .6;
+    font-size: .6rem;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+        opacity: 1;
+        background-color: var(--theme-primary);
+        color: var(--theme-bg);
+    }
+}
+
+// The file list with the transfer list under it. The dock itself is a row
+// (rail, then this), so the direction has to be set again here.
+sidebar-plus-sftp-dock .sftp-dock-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+// The sidebar pads the panel with its `.p-2` content box. In the dock the
+// panel is the whole column, so it gets the same horizontal inset of its own,
+// and the two columns on either side of the terminal line up.
+sidebar-plus-sftp-dock sidebar-plus-sftp {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: .2rem .5rem .5rem;
+}
+
+// A wide column reads better with a header. The path and toolbar row gets a
+// divider under it and some air above the listing. Scoped to the dock, so the
+// sidebar keeps the density it was designed for.
+sidebar-plus-sftp-dock sidebar-plus-sftp-browser .sftp-toolbar {
+    padding: .2rem .1rem .3rem;
+    border-bottom: 1px solid var(--theme-secondary);
+}
+
+sidebar-plus-sftp-dock sidebar-plus-sftp-browser .sftp-body {
+    margin: .35rem .05rem .1rem;
+}
+
+// The block keeps its sidebar header metrics, and only the inset follows the dock.
+sidebar-plus-sftp-dock .sftp-dock-main sidebar-plus-transfers {
+    margin-top: 0;
+    padding: 0 .5rem .35rem;
+    border-top: 1px solid var(--theme-secondary);
+}

@@ -265,6 +265,7 @@ personne ne regarde.
 | `hideImportedSsh` | `false` | Masque de l'arbre et de la recherche le dossier que Tabby importe de `~/.ssh/config`. Ses serveurs restent dans les profils récents, les sessions actives et Épinglés |
 | `workspaceSelectorMode` | `tabs` | Barre des espaces de travail en onglets, ou en liste déroulante |
 | `pingIntervalSeconds` | `0` | Intervalle de la sonde de latence ; `0` la désactive |
+| `sftpPlacement` | `sidebar` | Emplacement de la vue SFTP : `sidebar`, à la place des profils, ou `right`, une colonne à droite de la fenêtre que l'onglet SFTP de la sidebar ouvre et ferme. Sa largeur est gardée par machine |
 | `sftpAutoRefreshSeconds` | `0` | Relit le dossier courant à intervalle régulier ; `0` désactive |
 | `sftpAutoReturnToProfiles` | `true` | Revient à la vue Profils quand plus aucune session SSH n'est ouverte |
 | `sftpEditorPath` | *(vide)* | Programme ouvert au double-clic. Vide, Windows décide |
@@ -346,7 +347,7 @@ livré, consultables comme un petit site statique.
   adaptées : allègement du travail par événement, progression des transferts et
   badge de session, sessions actives en bas, masquage du dossier importé de
   ~/.ssh/config, lignes compactes, étiquettes sur les serveurs, copier-coller
-  SFTP. Merci !
+  SFTP et colonne SFTP à droite. Merci !
 - [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) — la
   collection de logos de services (Apache-2.0)
 - [Iconify](https://iconify.design) Material Design Icons et Tabler, ainsi que

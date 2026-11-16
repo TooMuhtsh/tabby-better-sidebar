@@ -331,6 +331,18 @@
               (ngModelChange)="setBlock('showSftp', $event)"
             )
         .feature-card-body.two-columns(*ngIf='sftpOn')
+          .form-line.full-row
+            .header
+              .title {{ lblPlacement }} #[i.fas.fa-info-circle.info-hint([title]='lblPlacementHint')]
+              .description {{ lblPlacementDesc }}
+            .control
+              select#sidebar-plus-sftp-placement.form-control(
+                [ngModel]='sftpPlacement',
+                (ngModelChange)='setSftpPlacement($event)'
+              )
+                option(value='sidebar') {{ lblPlacementSidebar }}
+                option(value='right') {{ lblPlacementRight }}
+
           //- `stacked` : le chemin passe sous son intitulé et prend toute la largeur.
               Sur la même ligne que les deux boutons, il ne restait au champ que
               quelques caractères visibles : un chemin d'exécutable n'y tenait pas.

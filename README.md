@@ -247,6 +247,7 @@ latency probe, no transfer tracking for a panel nobody is looking at.
 | `hideImportedSsh` | `false` | Hides the folder Tabby imports from `~/.ssh/config` from the tree and the search. Its servers stay in the recent profiles, the active sessions and Pinned |
 | `workspaceSelectorMode` | `tabs` | Workspace bar as tabs, or as a dropdown list |
 | `pingIntervalSeconds` | `0` | Latency probe interval; `0` disables it |
+| `sftpPlacement` | `sidebar` | Where the SFTP view lives: `sidebar`, in place of the profiles, or `right`, a column on the right of the window that the SFTP tab of the sidebar opens and closes. Its width is kept per machine |
 | `sftpAutoRefreshSeconds` | `0` | Re-reads the current folder on a cycle; `0` disables it |
 | `sftpAutoReturnToProfiles` | `true` | Returns to the profile view when no SSH session is open any more |
 | `sftpEditorPath` | *(empty)* | Program opened on double-click. Empty, Windows decides |
@@ -322,8 +323,8 @@ browsable as a small static site.
 - [miller806](https://github.com/miller806/tabby-better-sidebar-miller), for the
   MIT fork several features were adapted from: lighter event handling, transfer
   progress and session badge, active sessions at the bottom, hiding the imported
-  ~/.ssh/config folder, compact rows, server tags and SFTP copy and paste.
-  Thank you!
+  ~/.ssh/config folder, compact rows, server tags, SFTP copy and paste and the
+  right-hand SFTP column. Thank you!
 - [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) — the
   service logo collection (Apache-2.0)
 - [Iconify](https://iconify.design) Material Design Icons and Tabler, and

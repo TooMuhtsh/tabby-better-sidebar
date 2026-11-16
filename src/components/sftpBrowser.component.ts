@@ -25,6 +25,7 @@ import { SidebarPlusTempFilesService } from '../tempFiles.service'
 import { SftpTransfers } from '../transfers'
 import { SidebarPlusTransfersService } from '../transfersRegistry.service'
 import { SidebarPlusVisibilityService } from '../visibility.service'
+import { SidebarPlusSftpViewService } from '../sftpView.service'
 import { clampInViewport } from '../viewport'
 import { ConfirmModalComponent } from './confirmModal.component'
 import { SftpConflictModalComponent } from './sftpConflictModal.component'
@@ -379,6 +380,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         private registry: SidebarPlusTransfersService,
         private visibility: SidebarPlusVisibilityService,
         private clipboard: SidebarPlusSftpClipboardService,
+        private sftpView: SidebarPlusSftpViewService,
         @Inject(SFTPContextMenuItemProvider) contextMenuProviders: SFTPContextMenuItemProvider[],
     ) {
         super(ngbModalService, notify, platform, contextMenuProviders)
@@ -636,7 +638,8 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
      * menu open, a path being typed, a delete in flight. Refreshing under an
      * open menu would rebuild the rows beneath it, and the selection with them.
      * Skipped too while the toggle hotkey hides the sidebar: a `readdir` of a
-     * listing nobody can see.
+     * listing nobody can see. Not in the right-hand placement, where the
+     * listing is in the dock, which that hotkey leaves on screen.
      */
     private startAutoRefresh (): void {
         this.stopAutoRefresh()
@@ -655,7 +658,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     private async autoRefresh (): Promise<void> {
-        if (!this.sftp || this.visibility.hidden || this.deleteInFlight || this.editingPath !== null
+        if (!this.sftp || (this.visibility.hidden && !this.sftpView.inDock) || this.deleteInFlight || this.editingPath !== null
             || this.backgroundMenuOpen || this.displayMenuOpen) {
             return
         }

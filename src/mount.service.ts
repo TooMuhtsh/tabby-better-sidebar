@@ -2,8 +2,11 @@ import './hostChrome.scss'
 import { ApplicationRef, ComponentRef, EnvironmentInjector, Injectable, createComponent } from '@angular/core'
 import { AppService, ConfigService, NotificationsService } from 'tabby-core'
 import { SidebarPlusTreeComponent } from './components/sidebarTree.component'
-import { checkHost } from './hostCompat'
+import { SidebarPlusSftpDockComponent } from './components/sftpDock.component'
+import { checkHost, hostSupports } from './hostCompat'
 import { SidebarPlusI18nService } from './i18n'
+import { SidebarPlusSftpPanelCacheService } from './sftpPanelCache.service'
+import { SidebarPlusSftpViewService } from './sftpView.service'
 import { SidebarPlusVisibilityService } from './visibility.service'
 
 /** Set on `body` while Tabby's own transfers menu is to stay out of the way. */
@@ -12,6 +15,8 @@ const HIDE_NATIVE_TRANSFERS_CLASS = 'sidebar-plus-hide-native-transfers'
 @Injectable({ providedIn: 'root' })
 export class SidebarPlusMountService {
     private componentRef: ComponentRef<SidebarPlusTreeComponent>|null = null
+    /** The right-hand SFTP dock, only with `sftpPlacement: 'right'`. See syncDock(). */
+    private dockRef: ComponentRef<SidebarPlusSftpDockComponent>|null = null
 
     /**
      * Whether the host failed a precondition that leaves nothing to mount.
@@ -36,6 +41,8 @@ export class SidebarPlusMountService {
         private notifications: NotificationsService,
         private i18n: SidebarPlusI18nService,
         private visibility: SidebarPlusVisibilityService,
+        private sftpView: SidebarPlusSftpViewService,
+        private sftpPanels: SidebarPlusSftpPanelCacheService,
     ) {
         this.app.ready$.subscribe(() => {
             this.verifyHost()
@@ -87,6 +94,20 @@ export class SidebarPlusMountService {
         } else {
             this.unmount()
         }
+        const sp = this.config.store.sidebarPlus
+        const sftpOn = enabled && (sp?.showSftp ?? true) && hostSupports('sftp-panel')
+        this.syncDock(sftpOn && this.sftpView.inDock)
+        // The SFTP browsers outlive their host (sidebar or dock) so that a
+        // change of placement reuses them. Switching the view or the plugin
+        // off is the moment they are released, as they always were when the
+        // sidebar alone owned them. After the hosts above, which have parked
+        // whatever they were showing by now. The dock is closed with them, so
+        // that it comes back closed, like the sidebar comes back on its
+        // profiles after the plugin is switched off and on again.
+        if (!sftpOn) {
+            this.sftpView.hide()
+            this.sftpPanels.destroyAll()
+        }
         // Hiding Tabby's own transfers menu is only defensible while we show
         // those transfers ourselves. Three ways that stops being true — the
         // plugin switched off, the SFTP view switched off, the panel switched
@@ -94,7 +115,6 @@ export class SidebarPlusMountService {
         // readout of a transfer at all, including transfers started by the
         // native panel or another plugin, which our registry only ever
         // mirrored. The setting keeps its value; only its effect is suspended.
-        const sp = this.config.store.sidebarPlus
         const panelShown = (sp?.showSftp ?? true) && (sp?.showTransfers ?? true)
         const hide = enabled && panelShown && (sp?.hideNativeTransfersMenu ?? true)
         document.body.classList.toggle(HIDE_NATIVE_TRANSFERS_CLASS, hide)
@@ -150,7 +170,55 @@ export class SidebarPlusMountService {
         this.componentRef = null
     }
 
-    private rootNodeOf (ref: ComponentRef<SidebarPlusTreeComponent>): HTMLElement {
+    /**
+     * Mounts or takes back the right-hand SFTP dock.
+     *
+     * Last child of `.window.h-100.d-flex`, where the sidebar is the first.
+     * That element is Tabby's own row, so the dock sits to the right of
+     * everything, tab bar included. Same care as the sidebar itself. The
+     * reference is the guard against a second dock, and unmountDock() removes
+     * the node by hand for the reason given on unmount().
+     *
+     * Mounted after the sidebar on purpose. Views attached to the application
+     * are checked in the order they were attached, so when the placement
+     * changes, the sidebar has already dropped its own SFTP host by the time
+     * the dock creates its own, and two hosts never hold the panels at once.
+     *
+     * The open state is left alone here. On a change of placement the tree
+     * reads it to carry an open SFTP view over to the other host (see
+     * reconcileSftpPlacement() in the tree).
+     */
+    private syncDock (want: boolean): void {
+        if (!want) {
+            this.unmountDock()
+            return
+        }
+        if (this.dockRef) {
+            return
+        }
+        const container = document.querySelector('.window.h-100.d-flex')
+        if (!container) {
+            console.error('[tabby-better-sidebar] Conteneur de montage introuvable, panneau SFTP de droite non monté.')
+            return
+        }
+        this.dockRef = createComponent(SidebarPlusSftpDockComponent, {
+            environmentInjector: this.environmentInjector,
+        })
+        this.appRef.attachView(this.dockRef.hostView)
+        container.appendChild(this.rootNodeOf(this.dockRef))
+    }
+
+    private unmountDock (): void {
+        if (!this.dockRef) {
+            return
+        }
+        this.rootNodeOf(this.dockRef).remove()
+        this.appRef.detachView(this.dockRef.hostView)
+        this.dockRef.destroy()
+        this.dockRef = null
+    }
+
+    private rootNodeOf (ref: ComponentRef<unknown>): HTMLElement {
         return (ref.hostView as unknown as { rootNodes: HTMLElement[] }).rootNodes[0]
     }
 }

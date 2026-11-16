@@ -195,6 +195,13 @@ export class SidebarPlusConfigProvider extends ConfigProvider {
             // 08/10/2026 and 'iso' 2026-10-08 whatever the language. Display
             // only — sorting reads the timestamp. See src/sftpDate.ts.
             sftpDateFormat: 'locale' as 'locale'|'dmy'|'iso',
+            // Where the SFTP view lives. 'sidebar' puts it in place of the
+            // profile tree, as it always did. 'right' puts it in a full-height
+            // column docked on the right of the window (sftpDock.component.ts),
+            // the profile tree staying in the sidebar. 'sidebar' by default,
+            // so nothing changes for an existing configuration. See
+            // sftpView.service.ts.
+            sftpPlacement: 'sidebar' as 'sidebar'|'right',
             // Hides Tabby's own transfers button and dropdown from the tab bar,
             // the plugin's own panel showing the same transfers and more. On by
             // default: left visible, the native dropdown *opens by itself* on

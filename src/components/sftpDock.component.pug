@@ -1,0 +1,25 @@
+//- The dock's own chrome is a narrow rail on the left, which resizes the dock
+//- and holds the button that closes it. Then comes a column with the SFTP view
+//- and the transfer list under it. The rail stays out of the panel's template,
+//- so the panel is the same component in the sidebar and here.
+.sftp-dock-rail((mousedown)='startResize($event)')
+    //- Stopped at mousedown, because the rail starts a resize and this button
+    //- does not.
+    button.sftp-dock-collapse(
+        type='button',
+        (mousedown)='$event.stopPropagation()',
+        (click)='hide()',
+        [title]="'Hide the SFTP panel' | translate"
+    )
+        .fa.fa-fw.fas.fa-chevron-right
+
+.sftp-dock-main
+    sidebar-plus-sftp.flex-grow-1(
+        [active]='open',
+        (closed)='hide()'
+    )
+
+    //- Under the file list while the dock is open. The sidebar renders the same
+    //- block whenever this one is not on screen (`transfersInDock` in the view
+    //- service), so a running transfer never drops out of sight.
+    sidebar-plus-transfers(*ngIf='showTransfers && open')

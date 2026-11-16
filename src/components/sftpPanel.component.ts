@@ -1,7 +1,6 @@
 import './sftpPanel.component.scss'
 import { merge, Subscription, timer } from 'rxjs'
 import {
-    ApplicationRef,
     Component,
     ComponentRef,
     ElementRef,
@@ -19,6 +18,7 @@ import { SSHTabComponent } from 'tabby-ssh'
 import { getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { SidebarPlusNoticesService } from '../notices.service'
 import { SidebarPlusI18nService } from '../i18n'
+import { SidebarPlusSftpPanelCacheService } from '../sftpPanelCache.service'
 import { SidebarPlusSftpBrowserComponent } from './sftpBrowser.component'
 import { sessionKeyOf } from '../transfersRegistry.service'
 
@@ -34,8 +34,9 @@ import { sessionKeyOf } from '../transfersRegistry.service'
 const SESSION_LOSS_GRACE_MS = 3000
 
 /**
- * Hosts the SFTP browser inside the sidebar, bound to whatever SSH tab
- * currently has focus.
+ * Hosts the SFTP browser inside the sidebar, or inside the right-hand dock,
+ * bound to whatever SSH tab currently has focus. Only one host exists at a
+ * time, and the browsers themselves live in SidebarPlusSftpPanelCacheService.
  *
  * The browser is `SidebarPlusSftpBrowserComponent` — tabby-ssh's own
  * `SFTPPanelComponent` subclassed with our template, see that file. It is
@@ -125,8 +126,15 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
      * SSH session), so rebuilding on every switch would leak one channel per
      * switch; and the panel's own `path` is what gives us the roadmap's
      * per-tab navigation memory for free, with nothing persisted.
+     *
+     * Held by the cache service rather than by this component, so that the
+     * panels survive a change of host (sidebar or right-hand dock). See that
+     * service for why.
      */
-    private panels = new Map<SSHTabComponent, ComponentRef<SidebarPlusSftpBrowserComponent>>()
+    private get panels (): Map<SSHTabComponent, ComponentRef<SidebarPlusSftpBrowserComponent>> {
+        return this.cache.panels
+    }
+
     private boundTab: SSHTabComponent|null = null
     /**
      * The session the visible panel was built against.
@@ -149,9 +157,12 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
      * the kind of small regression that makes a feature feel unfinished.
      * Re-injected before the new panel's ngOnInit reads it; if the directory
      * is gone by then, the inherited ngOnInit already notifies and falls back
-     * to `/` on its own.
+     * to `/` on its own. Held by the cache service too, like `panels`.
      */
-    private lastPaths = new Map<SSHTabComponent, string>()
+    private get lastPaths (): Map<SSHTabComponent, string> {
+        return this.cache.lastPaths
+    }
+
     /**
      * When the bound session was first seen as lost, or null while it is fine.
      *
@@ -174,16 +185,33 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
 
     constructor (
         private app: AppService,
-        private appRef: ApplicationRef,
         private environmentInjector: EnvironmentInjector,
         private config: ConfigService,
         private notices: SidebarPlusNoticesService,
         private i18n: SidebarPlusI18nService,
+        private cache: SidebarPlusSftpPanelCacheService,
     ) { }
 
     ngOnInit (): void {
         this.viewInitialized = true
         this.subscription = new Subscription()
+
+        // The panel's own close button. The subscription is made once, by the
+        // cache, when the panel is created; whichever host shows the panel at
+        // that moment is the one that answers.
+        this.subscription.add(
+            this.cache.panelClosed.subscribe(ref => {
+                if (this.isActive && this.boundTab && this.panels.get(this.boundTab) === ref) {
+                    this.closed.emit()
+                }
+            }),
+        )
+
+        // Every panel was just released because the SFTP view or the plugin
+        // was switched off, so nothing this host points at exists any more.
+        this.subscription.add(
+            this.cache.cleared.subscribe(() => this.forgetBoundPanel()),
+        )
 
         // Pruning is driven by the two events that actually retire a tab —
         // tabRemoved$ included, which is what fires when a pane leaves a split
@@ -235,15 +263,17 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         this.tick = null
     }
 
+    /**
+     * Parks the visible panel instead of destroying the cache. The host goes
+     * away either on a change of placement, where the next host takes the
+     * same panels over, or because the SFTP view or the plugin is switched
+     * off, where SidebarPlusMountService empties the cache itself.
+     */
     ngOnDestroy (): void {
         this.stopTicking()
         this.subscription?.unsubscribe()
         this.splitFocusSubscription?.unsubscribe()
-        for (const ref of this.panels.values()) {
-            this.destroyPanel(ref)
-        }
-        this.panels.clear()
-        this.lastPaths.clear()
+        this.releaseBoundPanel()
     }
 
     /**
@@ -256,6 +286,11 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         if (this.boundTab) {
             this.detachPanel(this.boundTab)
         }
+        this.forgetBoundPanel()
+    }
+
+    /** The bookkeeping half of releaseBoundPanel(), without touching the panel itself. */
+    private forgetBoundPanel (): void {
         this.boundTab = null
         this.boundSession = null
         this.boundTabTitle = null
@@ -567,11 +602,9 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
             // on another server. A quick-connect tab has no profile id; the
             // favorites menu says so rather than filing under a made-up key.
             ref.instance.profileId = (tab as unknown as { profile?: { id?: string } }).profile?.id ?? null
-            ref.instance.closed.subscribe(() => this.closed.emit())
-            this.panels.set(tab, ref)
+            this.cache.register(tab, ref)
         }
-        this.appRef.attachView(ref.hostView)
-        this.panelContainer.nativeElement.appendChild(this.rootNodeOf(ref))
+        this.cache.attach(ref, this.panelContainer.nativeElement)
     }
 
     /**
@@ -583,8 +616,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
         if (!ref) {
             return
         }
-        this.rootNodeOf(ref).remove()
-        this.appRef.detachView(ref.hostView)
+        this.cache.detach(ref, this.panelContainer.nativeElement)
     }
 
     private rememberPath (tab: SSHTabComponent, ref: ComponentRef<SidebarPlusSftpBrowserComponent>): void {
@@ -594,12 +626,6 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
     }
 
     private destroyPanel (ref: ComponentRef<SidebarPlusSftpBrowserComponent>): void {
-        this.rootNodeOf(ref).remove()
-        this.appRef.detachView(ref.hostView)
-        ref.destroy()
-    }
-
-    private rootNodeOf (ref: ComponentRef<SidebarPlusSftpBrowserComponent>): HTMLElement {
-        return (ref.hostView as unknown as { rootNodes: HTMLElement[] }).rootNodes[0]
+        this.cache.destroyPanel(ref)
     }
 }

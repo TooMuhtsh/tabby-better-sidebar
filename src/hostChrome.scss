@@ -40,3 +40,15 @@ body:has(sidebar-plus-tree.sidebar-plus-mac-inset:not([hidden])) .tab-bar > .ins
     display: none;
 }
 
+// The same thing on the other side, for the Windows window buttons. Tabby ends
+// its tab bar with a spacer as wide as those buttons, which Windows draws over
+// the top right corner of the window. While the right-hand SFTP dock is open,
+// that corner is the dock's, and the dock leaves room for the buttons itself
+// (`winInset` in sftpDock.component.ts), so the spacer would only be a gap in
+// the middle of the window. Keyed on the dock, like the rule above is keyed
+// on the sidebar, so closing the dock, unmounting it or switching the plugin
+// off brings the spacer back with nothing to keep in step.
+body:has(sidebar-plus-sftp-dock.sidebar-plus-win-inset:not([hidden])) .tab-bar > .window-controls-spacer {
+    display: none;
+}
+

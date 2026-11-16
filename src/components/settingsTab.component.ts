@@ -212,6 +212,11 @@ export class SidebarPlusSettingsTabComponent {
     get lblSftp (): string { return this.i18n.t('SFTP view') }
     get lblSftpHint (): string { return this.i18n.t('One SFTP channel per session actually browsed.') }
     get lblSftpDesc (): string { return this.i18n.t('The SFTP tab of the sidebar and its panel.') }
+    get lblPlacement (): string { return this.i18n.t('Position of the SFTP view') }
+    get lblPlacementHint (): string { return this.i18n.t('Docked on the right, the profile tree stays visible next to the files.') }
+    get lblPlacementDesc (): string { return this.i18n.t('On the right, the SFTP tab of the sidebar opens and closes the panel.') }
+    get lblPlacementSidebar (): string { return this.i18n.t('In the sidebar, in place of the profiles (default)') }
+    get lblPlacementRight (): string { return this.i18n.t('Column on the right of the window') }
     get lblEditor (): string { return this.i18n.t('Remote file editor') }
     get lblEditorHint (): string { return this.i18n.t('The file is copied, edited, then sent back to the server.') }
     get lblEditorDesc (): string { return this.i18n.t('Program opened on double-click. Empty, Windows decides.') }
@@ -472,6 +477,19 @@ export class SidebarPlusSettingsTabComponent {
     /** Applied at once: the date format is part of the SFTP listing's row cache signature, no folder change needed. */
     async setDateFormat (value: string): Promise<void> {
         this.config.store.sidebarPlus.sftpDateFormat = normalizeSftpDateFormat(value)
+        await this.config.save()
+    }
+
+    get sftpPlacement (): string {
+        return this.config.store.sidebarPlus?.sftpPlacement === 'right' ? 'right' : 'sidebar'
+    }
+
+    /**
+     * Applied at once. SidebarPlusMountService mounts or takes back the dock
+     * on `config.changed$`, and the tree carries an open SFTP view over.
+     */
+    async setSftpPlacement (value: string): Promise<void> {
+        this.config.store.sidebarPlus.sftpPlacement = value === 'right' ? 'right' : 'sidebar'
         await this.config.save()
     }
 
