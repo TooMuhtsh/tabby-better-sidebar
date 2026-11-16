@@ -173,7 +173,9 @@ vue peut être **figée** sur une session pour cesser de suivre le focus.
   pour quelqu'un d'autre. Mots de passe, scripts de login, commandes de proxy et
   références au coffre-fort ne voyagent jamais, à aucun des deux niveaux ; ce qui
   a été retiré est annoncé dans la notice, et le JSON est revérifié champ par
-  champ au collage
+  champ au collage. Les étiquettes suivent leurs profils aux deux niveaux, et
+  les notes seulement *avec* les coordonnées, chacune quand sa fonctionnalité
+  est allumée
 
 ## 🌍 Langues
 

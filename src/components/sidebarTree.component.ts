@@ -5044,6 +5044,15 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
     }
 
+    /** Files a pasted note under the id a pasted profile has just received. Does not save, the caller does. */
+    private fileNote (id: string, text: string): void {
+        this.config.store.sidebarPlus ??= {}
+        this.config.store.sidebarPlus.profileNotes = {
+            ...(this.config.store.sidebarPlus.profileNotes ?? {}),
+            [id]: text,
+        }
+    }
+
     /** Carries a note over when a folder is given a new id, or drops it when an entry is deleted. */
     private moveNote (oldId: string, newId: string|null): void {
         this.config.store.sidebarPlus ??= {}
@@ -5140,10 +5149,11 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         if (!group) {
             return
         }
-        // Tags leave only while they are shown, because what the user cannot
-        // see in the sidebar should not end up in a colleague's.
+        // Tags and notes leave only while they are shown, because what the
+        // user cannot see in the sidebar should not end up in a colleague's.
         const payload = buildPayload(group, this.rawGroupsSnapshot, level,
-            this.showTags ? this.config.store.sidebarPlus?.profileTags ?? {} : {})
+            this.showTags ? this.config.store.sidebarPlus?.profileTags ?? {} : {},
+            this.showNotes ? this.config.store.sidebarPlus?.profileNotes ?? {} : {})
         this.platform.setClipboard({ text: JSON.stringify(payload, null, 2) })
 
         const { folders, profiles } = countPayload(payload.group)
@@ -5295,6 +5305,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             // with tags switched off, like any tag, and simply not shown.
             if (shape.tags?.length && profile.id) {
                 this.setTagsFor(profile.id, shape.tags)
+            }
+            if (shape.note && profile.id) {
+                this.fileNote(profile.id, shape.note)
             }
             profiles++
             if (shape.type) {

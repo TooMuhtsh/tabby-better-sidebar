@@ -73,7 +73,17 @@ export interface SharedProfile {
      * has none or when tags are switched off on the exporting side.
      */
     tags?: string[]
+    /**
+     * The profile's note, filed under the new id on paste like the tags.
+     * Only at level `secrets`, and only while notes are switched on: a note
+     * is free text and may hold what the `credentials` level is meant to
+     * keep at home.
+     */
+    note?: string
 }
+
+/** Longest note accepted from a paste. A note typed in the modal has no limit, a clipboard does. */
+const MAX_SHARED_NOTE = 20000
 
 export interface SharedGroup {
     name?: string
@@ -384,7 +394,13 @@ function purgeDefaults (defaults: Record<string, unknown>, level: PurgeLevel, re
  * today's export will be pasted back on this machine or handed to someone
  * else's.
  */
-function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, report: PurgeReport, profileTags: Record<string, unknown>): SharedProfile|null {
+function shareProfile (
+    profile: PartialProfile<Profile>,
+    level: PurgeLevel,
+    report: PurgeReport,
+    profileTags: Record<string, unknown>,
+    profileNotes: Record<string, unknown>,
+): SharedProfile|null {
     const whitelist = profile.type !== undefined ? PROFILE_OPTION_WHITELISTS[profile.type] : undefined
     if (!whitelist) {
         report.rejectedTypes++
@@ -411,6 +427,10 @@ function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, repo
     if (tags.length) {
         out.tags = tags
     }
+    const note = profile.id && level === 'secrets' ? profileNotes[profile.id] : undefined
+    if (typeof note === 'string' && note.trim()) {
+        out.note = note
+    }
     return out
 }
 
@@ -429,6 +449,9 @@ function shareProfile (profile: PartialProfile<Profile>, level: PurgeLevel, repo
  * `profileTags` is `sidebarPlus.profileTags`, or an empty object when tags are
  * switched off. Tags travel at both purge levels. They are labels the user
  * chose to display, not credentials.
+ *
+ * `profileNotes` is `sidebarPlus.profileNotes`, or an empty object when notes
+ * are switched off. Notes travel at level `secrets` only.
  */
 export function shareGroup (
     group: PartialProfileGroup<ProfileGroup>,
@@ -436,12 +459,13 @@ export function shareGroup (
     level: PurgeLevel,
     report: PurgeReport,
     profileTags: Record<string, unknown> = {},
+    profileNotes: Record<string, unknown> = {},
     depth = 0,
 ): SharedGroup {
     const out: SharedGroup = {
         profiles: (group.profiles ?? [])
             .filter(p => !(p as PartialProfile<Profile> & { isTemplate?: boolean }).isTemplate)
-            .map(p => shareProfile(p, level, report, profileTags))
+            .map(p => shareProfile(p, level, report, profileTags, profileNotes))
             .filter((p): p is SharedProfile => p !== null),
         children: [],
     }
@@ -461,7 +485,7 @@ export function shareGroup (
     if (depth < MAX_DEPTH) {
         out.children = allGroups
             .filter(g => g.parentGroupId === group.id)
-            .map(child => shareGroup(child, allGroups, level, report, profileTags, depth + 1))
+            .map(child => shareGroup(child, allGroups, level, report, profileTags, profileNotes, depth + 1))
     }
     return out
 }
@@ -471,9 +495,10 @@ export function buildPayload (
     allGroups: PartialProfileGroup<ProfileGroup>[],
     level: PurgeLevel,
     profileTags: Record<string, unknown> = {},
+    profileNotes: Record<string, unknown> = {},
 ): SharePayload {
     const removed = emptyReport()
-    const shared = shareGroup(group, allGroups, level, removed, profileTags)
+    const shared = shareGroup(group, allGroups, level, removed, profileTags, profileNotes)
     return { format: SHARE_FORMAT, version: SHARE_VERSION, purge: level, removed, group: shared }
 }
 
@@ -634,6 +659,12 @@ function sanitiseGroup (raw: Record<string, unknown>, level: PurgeLevel, report:
             const tags = cleanTags(rec.tags)
             if (tags.length) {
                 profile.tags = tags
+            }
+            // Plain text, shown through Angular's interpolation like any
+            // note. Dropped at level `credentials`, whatever the payload
+            // carries, and capped in length.
+            if (level === 'secrets' && typeof rec.note === 'string' && rec.note.trim()) {
+                profile.note = rec.note.slice(0, MAX_SHARED_NOTE)
             }
             profiles.push(profile)
         }

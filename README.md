@@ -157,7 +157,9 @@ be **frozen** on one session so it stops following the focused tab.
   connection details for your own machines, or *without credentials* for
   someone else. Passwords, login scripts, proxy commands and vault key
   references never travel, at either level; what was removed is stated in the
-  notice, and the JSON is re-checked field by field when pasted back
+  notice, and the JSON is re-checked field by field when pasted back. Tags
+  travel with their profiles at both levels, and notes only *with* connection
+  details, each while its feature is switched on
 
 ## 🌍 Languages
 
