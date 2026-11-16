@@ -8,10 +8,12 @@ import { ConfirmModalComponent } from './confirmModal.component'
 /**
  * The transfer list, at the bottom of the sidebar.
  *
- * Deliberately compact — one line per transfer, no progress bar: the SFTP
- * design settled on a sober row (state, percentage, speed) back on 2026-07-29,
- * and the user asked for entries small enough to fit more of them in the same
- * space. The list scrolls past its cap rather than growing into the tree.
+ * Deliberately compact, one line per transfer. The SFTP design settled on a
+ * sober row (state, percentage, speed) back on 2026-07-29, and the user asked
+ * for entries small enough to fit more of them in the same space. The list
+ * scrolls past its cap rather than growing into the tree. The progress bar
+ * added since is a 2px track drawn over the row's bottom edge, so the rows
+ * did not grow.
  *
  * Hidden entirely when there is nothing to show, like the active sessions and
  * tunnels blocks above it.

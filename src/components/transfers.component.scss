@@ -90,6 +90,7 @@ sidebar-plus-transfers {
     }
 
     .transfer-row {
+        position: relative;
         display: flex;
         align-items: center;
         gap: .25rem;
@@ -106,6 +107,50 @@ sidebar-plus-transfers {
                 opacity: 1;
             }
         }
+    }
+
+    // The progress track along the bottom edge of the row. Absolutely
+    // positioned and 2px tall, because a row is a fixed height and the block is
+    // capped, so anything in the flex layout would shift the figures or grow
+    // every line.
+    .transfer-progress {
+        position: absolute;
+        left: .25rem;
+        right: .25rem;
+        bottom: 1px;
+        height: 2px;
+        border-radius: 1px;
+        background-color: var(--theme-secondary);
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .transfer-progress-fill {
+        height: 100%;
+        width: 0;
+        border-radius: 1px;
+        background-color: var(--theme-primary, #0d6efd);
+        opacity: .8;
+        // Short on purpose. The registry refreshes every 500 ms, and a longer
+        // easing would leave the bar behind the percentage printed next to it.
+        transition: width 180ms linear;
+    }
+
+    // The session badge, quiet because it is an annotation and the name is
+    // what the row is about. Capped and ellipsised, so a long label never
+    // pushes the figures off the row.
+    .transfer-session {
+        flex: 0 1 auto;
+        max-width: 7rem;
+        padding: 0 .3rem;
+        border-radius: .6rem;
+        background-color: var(--theme-secondary);
+        color: var(--theme-secondary-fg, var(--theme-fg));
+        font-size: .62rem;
+        line-height: 1.15;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     // The name is the only part allowed to give way: it shrinks and ellipsises
@@ -192,6 +237,27 @@ sidebar-plus-transfers {
         opacity: .7;
     }
 
+    // A finished line takes the success colour on its tick and its full bar,
+    // so a landed file is spotted at a glance. Dimmed like the rest of the
+    // line, it does not compete with the running ones.
+    .transfer-done {
+        .transfer-arrow {
+            color: var(--theme-success, var(--bs-success, #2ea043));
+        }
+
+        .transfer-progress-fill {
+            background-color: var(--theme-success, var(--bs-success, #2ea043));
+            opacity: .55;
+        }
+    }
+
+    // A cancelled line keeps its partial bar, which says how far it got, the
+    // one thing the word "cancelled" alone does not.
+    .transfer-cancelled .transfer-progress-fill {
+        background-color: var(--theme-danger, var(--bs-danger, #dc3545));
+        opacity: .55;
+    }
+
     .transfer-cancelled .transfer-name {
         opacity: .55;
         text-decoration: line-through;
@@ -207,6 +273,14 @@ sidebar-plus-transfers {
 
         .transfer-figure {
             color: var(--bs-danger);
+        }
+
+        .transfer-arrow {
+            color: var(--theme-danger, var(--bs-danger, #dc3545));
+        }
+
+        .transfer-progress-fill {
+            background-color: var(--theme-danger, var(--bs-danger, #dc3545));
         }
     }
 }

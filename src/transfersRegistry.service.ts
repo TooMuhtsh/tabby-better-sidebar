@@ -24,6 +24,33 @@ export interface TransferContext {
     remotePath?: string
     /** The owning SSH tab's display name, same fallback rule as the sessions list. */
     sessionLabel?: string
+    /** The owning SSH tab's identity, from `sessionKeyOf()`. 0 or absent when unknown. */
+    sessionKey?: number
+}
+
+const sessionKeys = new WeakMap<object, number>()
+let nextSessionKey = 1
+
+/**
+ * A number standing for one tab for as long as it lives, 0 for none.
+ *
+ * The transfer list tells the rows of the session on screen from the others,
+ * and the display label cannot do it, because two tabs of the same profile
+ * carry the same name and a tab renamed after its transfer started no longer
+ * matches its own rows. The tab object itself is the identity. It is kept in a
+ * WeakMap rather than on the entry, so a line of history does not hold a
+ * closed tab in memory. A reconnect keeps the tab, hence the key.
+ */
+export function sessionKeyOf (tab: object|null|undefined): number {
+    if (!tab) {
+        return 0
+    }
+    let key = sessionKeys.get(tab)
+    if (!key) {
+        key = nextSessionKey++
+        sessionKeys.set(tab, key)
+    }
+    return key
 }
 
 /**
@@ -66,8 +93,32 @@ export interface TransferEntry {
     remotePath: string
     /** Which session carries it. Empty when the starter never said. */
     sessionLabel: string
+    /** That session's identity, see `sessionKeyOf()`. 0 when the starter never said. */
+    sessionKey: number
+    /**
+     * True when the row belongs to a known session other than the one on
+     * screen, which makes the row show its session label. A field rather than
+     * a template call, refreshed by `setCurrentSession()` (piège #54).
+     */
+    otherSession: boolean
     /** The row's whole tooltip, composed once — name, remote path and session on their own lines. */
     tooltip: string
+    /** Font Awesome class of the row's icon, see `iconFor()`. */
+    icon: string
+}
+
+/**
+ * The icon of a row. An arrow while the transfer runs, hands over or has
+ * failed, a mark of the outcome otherwise. Exactly one class, so two glyphs
+ * never compete for the same icon.
+ */
+function iconFor (direction: TransferDirection, state: TransferState): string {
+    switch (state) {
+        case 'done': return 'fa-check'
+        case 'cancelled': return 'fa-ban'
+        case 'unsound': return 'fa-circle-exclamation'
+        default: return direction === 'down' ? 'fa-arrow-down' : 'fa-arrow-up'
+    }
 }
 
 /** How often the visible figures are recomputed while something is running. */
@@ -149,6 +200,8 @@ export class SidebarPlusTransfersService {
     summary = ''
     /** The full breakdown, on hover: the badge itself only has room for what matters now. */
     summaryTitle = ''
+    /** `sessionKeyOf()` the focused pane, kept current by the sidebar. */
+    private currentSessionKey = 0
     private counter = 0
     private timer: ReturnType<typeof setInterval>|null = null
 
@@ -233,10 +286,11 @@ export class SidebarPlusTransfersService {
         this.zone.run(() => {
             const size = transfer.getSize()
             const now = Date.now()
+            const direction: TransferDirection = transfer instanceof FileDownload ? 'down' : 'up'
             const entry: TransferEntry = {
                 id: this.counter++,
                 transfer,
-                direction: transfer instanceof FileDownload ? 'down' : 'up',
+                direction,
                 name: transfer.getName(),
                 size,
                 percent: 0,
@@ -254,8 +308,12 @@ export class SidebarPlusTransfersService {
                 handoverUntil: 0,
                 remotePath: context?.remotePath ?? '',
                 sessionLabel: context?.sessionLabel ?? '',
+                sessionKey: context?.sessionKey ?? 0,
+                otherSession: false,
                 tooltip: '',
+                icon: iconFor(direction, 'active'),
             }
+            entry.otherSession = this.isOtherSession(entry)
             entry.tooltip = this.composeTooltip(entry)
             this.entries.unshift(entry)
             this.refreshSummary()
@@ -280,7 +338,36 @@ export class SidebarPlusTransfersService {
         }
         entry.remotePath = context.remotePath ?? entry.remotePath
         entry.sessionLabel = context.sessionLabel ?? entry.sessionLabel
+        entry.sessionKey = context.sessionKey ?? entry.sessionKey
+        entry.otherSession = this.isOtherSession(entry)
         entry.tooltip = this.composeTooltip(entry)
+    }
+
+    /**
+     * Tells the list which session is on screen, by its `sessionKeyOf()`.
+     *
+     * Called by the sidebar on every focus change and on its 2s pass. The
+     * flags are only recomputed when the focus really moved.
+     */
+    setCurrentSession (key: number): void {
+        if (key === this.currentSessionKey) {
+            return
+        }
+        this.currentSessionKey = key
+        for (const entry of this.entries) {
+            entry.otherSession = this.isOtherSession(entry)
+        }
+    }
+
+    /**
+     * Whether a row names a session, and a session other than the focused one.
+     *
+     * Compared by identity, never by label. A row whose starter gave no
+     * identity (a transfer of Tabby's own SFTP panel, say) is left unmarked,
+     * since nothing honest can be said about it.
+     */
+    private isOtherSession (entry: TransferEntry): boolean {
+        return !!entry.sessionLabel && entry.sessionKey !== 0 && entry.sessionKey !== this.currentSessionKey
     }
 
     /** One line each, present parts only: the tooltip is read on hover, not parsed. */
@@ -486,6 +573,7 @@ export class SidebarPlusTransfersService {
     /** Freezes a finished line: the duration it took, and no figure that keeps moving. */
     private finish (entry: TransferEntry, state: TransferState, now: number): void {
         entry.state = state
+        entry.icon = iconFor(entry.direction, state)
         entry.elapsedLabel = formatDuration((now - entry.startedAtMs) / 1000)
         entry.etaLabel = ''
         entry.speedLabel = ''

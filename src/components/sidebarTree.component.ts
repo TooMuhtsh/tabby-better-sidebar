@@ -62,7 +62,7 @@ import { BetterPanelContribution, electBetterPanelHost, SIDEBAR_PANEL_TOKEN } fr
 import { openProfileModal, PROFILE_MODAL_UNAVAILABLE } from '../profileModal'
 import { TranslatableMessage } from '../i18nMessage'
 import { clampInViewport } from '../viewport'
-import { formatSpeed, SidebarPlusTransfersService } from '../transfersRegistry.service'
+import { formatSpeed, sessionKeyOf, SidebarPlusTransfersService } from '../transfersRegistry.service'
 
 interface CollapsableProfileGroup extends ProfileGroup {
     collapsed: boolean
@@ -2510,6 +2510,9 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         }
         this.sessionLabelToProfileId = sessionLabelToProfileId
         this.refreshTransferActivity()
+        // The transfer list marks the rows of any other session. Kept before
+        // the early return too, since it does not depend on the blocks below.
+        this.transfers.setCurrentSession(sessionKeyOf(this.resolveFocusedTab()))
 
         if (!wantSessions && !wantTunnels) {
             // Neither block is on: this whole scan — every tab of every split,

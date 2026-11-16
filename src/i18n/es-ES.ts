@@ -249,6 +249,7 @@ const es_ES: Record<string, string> = {
 
     // transfersRegistry.service.ts — badge, breakdown tooltip, row tooltip
     'Session: {label}': 'Sesión: {label}',
+    'Belongs to another session ({label})': 'Pertenece a otra sesión ({label})',
     '{count} running': '{count} en curso',
     '{count, plural, one {# finished} other {# finished}}': '{count, plural, one {# terminada} other {# terminadas}}',
     '{count, plural, one {# cancelled} other {# cancelled}}': '{count, plural, one {# cancelada} other {# canceladas}}',

@@ -407,6 +407,19 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
     }
 
     /**
+     * The same tab's identity, from `sessionKeyOf()`, set by the host panel
+     * next to `sessionLabel` and stamped on the same lines. The transfer list
+     * compares it, never the label, to tell this session's rows apart.
+     */
+    set sessionKey (value: number) {
+        this.fileTransfers.sessionKey = value
+    }
+
+    get sessionKey (): number {
+        return this.fileTransfers.sessionKey
+    }
+
+    /**
      * True when the SFTP channel could not be opened at all.
      *
      * Read by the host panel, which has no other way of telling a browser that
@@ -499,7 +512,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             await super.download(itemPath, mode, size)
             return
         }
-        const url = this.dragServer.offer(this.sftp, item, this._sessionLabel ?? undefined)
+        const url = this.dragServer.offer(this.sftp, item, this._sessionLabel ?? undefined, this.sessionKey)
         if (!url) {
             await super.download(itemPath, mode, size)
             return
@@ -1188,7 +1201,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // Files only: a `DownloadURL` announces exactly one file, so a
         // directory cannot be offered this way and takes the route below.
         if (!isDirectory && this.dragServer.ready && event.dataTransfer) {
-            const url = this.dragServer.offer(this.sftp, item, this._sessionLabel ?? undefined)
+            const url = this.dragServer.offer(this.sftp, item, this._sessionLabel ?? undefined, this.sessionKey)
             if (url) {
                 // Both, because both are on offer: copy towards the OS, move
                 // inside the panel. `effectAllowed` is the gate `dropEffect`
@@ -1210,7 +1223,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
         // the same drag and the copy no longer takes a gesture of its own. The
         // two-step shape below is only reached when the server never started.
         if (isDirectory && this.canDragOutFolders && this.dragServer.ready && event.dataTransfer) {
-            const marker = this.dragServer.offerMarker(this.sftp, item, this._sessionLabel ?? undefined)
+            const marker = this.dragServer.offerMarker(this.sftp, item, this._sessionLabel ?? undefined, this.sessionKey)
             if (marker) {
                 event.dataTransfer.effectAllowed = 'copyMove'
                 event.dataTransfer.setData('DownloadURL', `application/octet-stream:${marker.markerName}:${marker.url}`)
@@ -1755,6 +1768,7 @@ export class SidebarPlusSftpBrowserComponent extends SFTPPanelComponent implemen
             this.registry.track(transfer, false, {
                 remotePath: planned.remotePath,
                 sessionLabel: this._sessionLabel ?? undefined,
+                sessionKey: this.sessionKey,
             })
             try {
                 await this.sftp.upload(planned.remotePath, transfer)

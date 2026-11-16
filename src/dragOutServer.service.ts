@@ -46,6 +46,8 @@ interface Offer {
      * claims the offer, this is the only party that can still say whose it was.
      */
     sessionLabel?: string
+    /** The same tab's identity, from `sessionKeyOf()`, for the same reason. */
+    sessionKey?: number
 }
 
 /**
@@ -246,8 +248,8 @@ export class SidebarPlusDragOutServer {
      * Synchronous by necessity: it is called from `dragstart`, where an `await`
      * would let the gesture start without the announcement.
      */
-    offer (sftp: SftpSession, item: SFTPFile, sessionLabel?: string): string|null {
-        const announced = this.announce('file', sftp, item, sessionLabel)
+    offer (sftp: SftpSession, item: SFTPFile, sessionLabel?: string, sessionKey?: number): string|null {
+        const announced = this.announce('file', sftp, item, sessionLabel, sessionKey)
         return announced?.url ?? null
     }
 
@@ -259,21 +261,21 @@ export class SidebarPlusDragOutServer {
      * the drop site, and therefore what the sweep looks for. Unique per gesture,
      * so two drags in flight cannot be confused for one another.
      */
-    offerMarker (sftp: SftpSession, item: SFTPFile, sessionLabel?: string): { url: string, markerName: string }|null {
-        const announced = this.announce('marker', sftp, item, sessionLabel)
+    offerMarker (sftp: SftpSession, item: SFTPFile, sessionLabel?: string, sessionKey?: number): { url: string, markerName: string }|null {
+        const announced = this.announce('marker', sftp, item, sessionLabel, sessionKey)
         if (!announced) {
             return null
         }
         return { url: announced.url, markerName: announced.token + MARKER_EXTENSION }
     }
 
-    private announce (kind: Offer['kind'], sftp: SftpSession, item: SFTPFile, sessionLabel?: string): { url: string, token: string }|null {
+    private announce (kind: Offer['kind'], sftp: SftpSession, item: SFTPFile, sessionLabel?: string, sessionKey?: number): { url: string, token: string }|null {
         if (!this.ready) {
             return null
         }
         this.pruneExpired()
         const token = crypto.randomBytes(24).toString('hex')
-        this.offers.set(token, { kind, sftp, item, expiresAt: Date.now() + OFFER_TTL_MS, sessionLabel })
+        this.offers.set(token, { kind, sftp, item, expiresAt: Date.now() + OFFER_TTL_MS, sessionLabel, sessionKey })
         return { url: `http://127.0.0.1:${this.port}/${token}`, token }
     }
 
@@ -338,7 +340,7 @@ export class SidebarPlusDragOutServer {
         // write it where it was dropped — so "terminé" is not ours to announce
         // (piège #58). The marker route below is not concerned: there, the
         // download *is* the final write, at a path we chose.
-        this.transfers.track(transfer, true, { remotePath: offer.item.fullPath, sessionLabel: offer.sessionLabel })
+        this.transfers.track(transfer, true, { remotePath: offer.item.fullPath, sessionLabel: offer.sessionLabel, sessionKey: offer.sessionKey })
         try {
             await offer.sftp.download(offer.item.fullPath, transfer)
         } catch (error) {
@@ -401,7 +403,7 @@ export class SidebarPlusDragOutServer {
     private async deliver (offer: Offer, folder: string): Promise<void> {
         const target = this.freeName(folder, offer.item.name)
         try {
-            const context = { sessionLabel: offer.sessionLabel }
+            const context = { sessionLabel: offer.sessionLabel, sessionKey: offer.sessionKey }
             if (offer.item.isDirectory) {
                 await downloadRemoteTree(
                     offer.sftp,

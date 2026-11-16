@@ -20,6 +20,7 @@ import { getAllOpenTabs, isLiveSSHTab, isSSHTab } from '../tabs'
 import { SidebarPlusNoticesService } from '../notices.service'
 import { SidebarPlusI18nService } from '../i18n'
 import { SidebarPlusSftpBrowserComponent } from './sftpBrowser.component'
+import { sessionKeyOf } from '../transfersRegistry.service'
 
 /**
  * How long a lost session is given to come back before the sidebar switches
@@ -551,6 +552,7 @@ export class SidebarPlusSftpComponent implements OnInit, OnDestroy {
                 || (tab as unknown as { profile?: { name?: string } }).profile?.name
                 || tab.title
                 || null
+            ref.instance.sessionKey = sessionKeyOf(tab)
             // Same window for `path`, and for the same reason — ngOnInit
             // navigates to it. Only set when there is something to restore, so
             // a first panel keeps the inherited default.

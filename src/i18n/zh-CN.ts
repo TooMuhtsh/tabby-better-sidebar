@@ -245,6 +245,7 @@ const zh_CN: Record<string, string> = {
 
     // transfersRegistry.service.ts — badge, breakdown tooltip, row tooltip
     'Session: {label}': '会话：{label}',
+    'Belongs to another session ({label})': '属于另一个会话（{label}）',
     '{count} running': '{count} 个进行中',
     '{count, plural, one {# finished} other {# finished}}': '{count, plural, other {# 项已完成}}',
     '{count, plural, one {# cancelled} other {# cancelled}}': '{count, plural, other {# 项已取消}}',

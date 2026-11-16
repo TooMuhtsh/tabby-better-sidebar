@@ -32,15 +32,24 @@
             [class.transfer-failed]='entry.state === "failed" || entry.state === "unsound"',
             [title]='entry.tooltip'
         )
-            .fa.fa-fw.fas.transfer-arrow(
-                [class.fa-arrow-down]='entry.direction === "down"',
-                [class.fa-arrow-up]='entry.direction === "up"'
-            )
+            //- The arrow says which way while it runs. A finished line says
+            //- how it ended instead, so a landed file stands out from a
+            //- running one without reading the figures. A failed line keeps
+            //- its arrow, in the danger colour. `entry.icon` is a field, set by
+            //- the registry when the state changes.
+            .fa.fa-fw.fas.transfer-arrow([ngClass]='entry.icon')
             //- Every value here is a plain field of the entry, never a call:
             //- change detection runs these expressions on every pass, and Tabby
             //- runs a great many passes (piège #54). The registry's tick is what
             //- keeps them fresh.
             span.transfer-name.no-wrap.me-auto {{ entry.name }}
+            //- Which session the transfer belongs to, only when it is not the
+            //- one on screen. Labelling every row with the session the user is
+            //- already in would be noise. The full name is in the tooltip.
+            span.transfer-session.no-wrap(
+                *ngIf='entry.otherSession',
+                [title]="'Belongs to another session ({label})' | translate:{ label: entry.sessionLabel }"
+            ) {{ entry.sessionLabel }}
             span.transfer-speed(*ngIf='entry.state === "active"') {{ entry.speedLabel }}
             span.transfer-figure(*ngIf='entry.state === "active"') {{ entry.percent }}%
             span.transfer-figure(*ngIf='entry.state === "done"') {{ entry.sizeLabel }}
@@ -78,3 +87,7 @@
                 [title]="entry.state === 'active' ? ('Cancel this transfer and remove it' | translate) : ('Remove from the list' | translate)"
             )
                 .fa.fa-fw.fas.fa-trash
+            //- A 2px track along the bottom edge, absolutely positioned, so it
+            //- costs no row height and moves none of the figures.
+            .transfer-progress
+                .transfer-progress-fill([style.width.%]='entry.percent')

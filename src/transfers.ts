@@ -42,6 +42,8 @@ export class SftpTransfers {
      * after construction, when the host panel binds it.
      */
     sessionLabel: string|null = null
+    /** The same tab's identity, from `sessionKeyOf()`. Set alongside `sessionLabel`. */
+    sessionKey = 0
 
     constructor (
         private platform: PlatformService,
@@ -92,6 +94,7 @@ export class SftpTransfers {
             this.registry.attachContext(transfer, {
                 remotePath,
                 sessionLabel: context?.sessionLabel ?? this.sessionLabel ?? undefined,
+                sessionKey: context?.sessionKey ?? this.sessionKey,
             })
             await this.report(transfer, () => sftp.download(remotePath, transfer))
             await this.verifyArrival(sftp, remotePath, localPath, name, size, transfer)
@@ -181,6 +184,7 @@ export class SftpTransfers {
             this.registry.attachContext(transfer, {
                 remotePath,
                 sessionLabel: context?.sessionLabel ?? this.sessionLabel ?? undefined,
+                sessionKey: context?.sessionKey ?? this.sessionKey,
             })
             await this.report(transfer, () => sftp.upload(remotePath, transfer))
         } else {
