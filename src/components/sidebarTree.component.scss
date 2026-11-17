@@ -605,7 +605,7 @@ sidebar-plus-tree.sidebar-plus-sessions-bottom .selection-bar {
         overflow: hidden;
     }
 
-    // The hue comes from the tag's text (profileTags.ts), the lightness from
+    // The hue is one of eight picked from the tag's text (profileTags.ts), the lightness from
     // the row. The text mixes a mid tone of the hue with the row's own text
     // colour, so it stays dark on a light theme and light on a dark one, and
     // keeps the contrast of the theme's text with a tint on top. oklch gives

@@ -12,12 +12,15 @@
  * runs once per config change and the template only reads a Map. The fork's
  * fixed pastel colour also vanished on light themes, so the hue alone comes
  * from here and the stylesheet mixes it with the row's own text colour.
+ * The hue is picked from a short palette (`TAG_HUES`), not from the whole
+ * wheel: two tags may share a colour, but two colours are never almost the
+ * same.
  */
 
 /** One pill as the tree renders it, computed ahead of time. */
 export interface TagPill {
     text: string
-    /** 0 to 359, handed to the stylesheet as `--sidebar-plus-tag-hue`. */
+    /** One of `TAG_HUES`, handed to the stylesheet as `--sidebar-plus-tag-hue` (an oklch hue). */
     hue: number
 }
 
@@ -73,20 +76,27 @@ export function parseTagsInput (text: string): string[] {
 }
 
 /**
- * A stable hue for a label: the same text always gets the same colour, on
- * every machine and after every restart.
+ * The tag colours, as oklch hues: red, orange, yellow, green, teal, blue,
+ * violet and pink. Eight hues spread so that each one reads as its own colour
+ * at the stylesheet's lightness. The continuous wheel used first gave whole
+ * families of near twins (three close blues for "ovh", "test" and "app").
+ */
+export const TAG_HUES: readonly number[] = [25, 65, 100, 145, 190, 250, 295, 340]
+
+/**
+ * A stable colour for a label: the same text always gets the same one, on
+ * every machine and after every restart. Case is ignored, like everywhere else
+ * tags are compared.
  *
- * The string hash is the fork's. The golden angle on top is not: with the bare
- * hash modulo 360, "web1" and "web2" landed one degree apart, which is the same
- * colour. Multiplying by about 137.5 degrees sends neighbours far apart on the
- * wheel. Case is ignored, like everywhere else tags are compared.
+ * The string hash is the fork's. With eight colours, two tags can share one;
+ * that is the price of colours that never look almost alike.
  */
 export function tagHue (tag: string): number {
     let hash = 0
     for (const char of tag.toLowerCase()) {
         hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0
     }
-    return Math.round((Math.abs(hash) * 137.508) % 360)
+    return TAG_HUES[Math.abs(hash) % TAG_HUES.length]
 }
 
 /**
