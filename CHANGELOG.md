@@ -3,6 +3,45 @@
 All notable changes to `tabby-better-sidebar` are documented here, one entry
 per npm release. Dates are the npm publication dates.
 
+## 1.0.11 (2026-11-17)
+
+Several features below are adapted from the MIT fork of
+[miller806](https://github.com/miller806/tabby-better-sidebar-miller). Thank
+you! Every new feature is an option, off by default, so nothing changes for an
+existing config.
+
+- **Added**: SFTP copy, cut and paste ("Copy, cut and paste files", under
+  "SFTP view", `sftpClipboard`). Ctrl+C, Ctrl+X and Ctrl+V (Cmd on macOS),
+  Enter and Backspace act on the panel once it has been clicked, and Ctrl+C in
+  the terminal still interrupts the running command. A cut within one session
+  is a rename. A copy across sessions goes through the transfer manager. A
+  file copied in the system file manager can be pasted too (on Windows, one
+  file at a time). On a name collision a dialog offers keep both, overwrite
+  (files only) or skip.
+- **Added**: the SFTP view can sit in a column on the right of the window
+  ("Position of the SFTP view", `sftpPlacement`). The profile tree stays
+  visible next to the files, the SFTP tab of the sidebar opens and closes the
+  column, and its width is kept per machine. Switching sides keeps the same
+  SFTP connection.
+- **Added**: tags on servers ("Tags", `showTags`), set from the right click,
+  shown as small pills after the name and found by the search. Their colour
+  comes from a palette of eight, picked from the tag's text, and stays
+  readable on light and dark themes. Tags follow a duplicated profile, leave
+  with a deleted one, and travel in a shared folder.
+- **Added**: notes now travel in a shared folder too, at the "with
+  connection details" level only, while notes are switched on.
+- **Added**: the active sessions block can sit at the bottom of the sidebar
+  ("Position in the sidebar", `activeSessionsPosition`, top by default).
+- **Added**: an option to hide the folder Tabby imports from `~/.ssh/config`
+  from the tree and the search (`hideImportedSsh`). Its servers stay in the
+  recent profiles, the active sessions and Pinned.
+- **Added**: compact rows (`compactRows`), shorter rows and a narrower
+  indent, with the icons and the wrapping of long names kept.
+- **Changed**: the transfer manager shows a progress bar on each line, one
+  clear icon per end state, and a badge on lines that belong to another tab.
+- **Changed**: less work per event in the sidebar (drag hover, resize, the
+  SFTP panel's timer and listing), with no visible change.
+
 ## 1.0.10 (2026-11-16)
 
 - **Changed**: the search now matches the exact text by default, whatever
