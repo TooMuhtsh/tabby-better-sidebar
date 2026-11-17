@@ -613,9 +613,11 @@ sidebar-plus-tree.sidebar-plus-sessions-bottom .selection-bar {
     // as a blue one. The fork's fixed pastel (hsl at 72% lightness) was
     // near invisible on a white background.
     //
-    // 45% of hue and 12% of tint were measured over all 360 hues. The text
-    // stays above 4.5:1 against its pill on white, light grey, dark and dark
-    // blue backgrounds, and on a selected row, light or dark.
+    // The text takes only 20% of the hue: at 45%, a test in Tabby's light
+    // theme measured 3.7 to 4.0:1 at this 10px size, under the 4.5:1 aim
+    // (dark themes were fine). The hue now shows mostly through the border
+    // (60%) and the 12% tint behind the text, which leaves the text close to
+    // the theme's own colour and its contrast.
     .profile-tag {
         --sidebar-plus-tag-color: oklch(62% .16 var(--sidebar-plus-tag-hue, 0));
         flex: 0 1 auto;
@@ -625,11 +627,11 @@ sidebar-plus-tree.sidebar-plus-sessions-bottom .selection-bar {
         text-overflow: ellipsis;
         white-space: nowrap;
         padding: 0 5px;
-        border: 1px solid color-mix(in srgb, var(--sidebar-plus-tag-color) 45%, transparent);
+        border: 1px solid color-mix(in srgb, var(--sidebar-plus-tag-color) 60%, transparent);
         border-radius: 4px;
         font-size: 10px;
         line-height: 13px;
-        color: color-mix(in oklab, var(--sidebar-plus-tag-color) 45%, currentColor);
+        color: color-mix(in oklab, var(--sidebar-plus-tag-color) 20%, currentColor);
         background-color: color-mix(in srgb, var(--sidebar-plus-tag-color) 12%, transparent);
     }
 
