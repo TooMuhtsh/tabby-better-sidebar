@@ -725,7 +725,7 @@ const zh_CN: Record<string, string> = {
     '{name}: arrival not verified — {reason}': '{name}：未验证是否送达——{reason}',
     'The upload of {name} could not start': '{name} 的上传未能开始',
 
-    // sidebarTree / folderTransferModal — accessible folder move/copy
+    // sidebarTree / folderTransferModal: folder move and copy without dragging
     'Move folder...': '移动文件夹...',
     'Copy folder...': '复制文件夹...',
     'Move folder': '移动文件夹',

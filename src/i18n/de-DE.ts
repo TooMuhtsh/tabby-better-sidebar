@@ -726,7 +726,7 @@ const de_DE: Record<string, string> = {
     '{name}: arrival not verified — {reason}': '{name}: Ankunft nicht bestätigt — {reason}',
     'The upload of {name} could not start': 'Der Upload von {name} konnte nicht gestartet werden',
 
-    // sidebarTree / folderTransferModal — accessible folder move/copy
+    // sidebarTree / folderTransferModal: folder move and copy without dragging
     'Move folder...': 'Ordner verschieben...',
     'Copy folder...': 'Ordner kopieren...',
     'Move folder': 'Ordner verschieben',

@@ -62,6 +62,11 @@ plugin reconnaît de son côté.
   (désactivé par défaut)
 - **Glisser-déposer** pour réorganiser — profils et dossiers, y compris déplacer
   un profil d'un dossier à l'autre et changer un dossier de parent
+- **Déplacer ou copier un dossier sans glisser** : clic droit sur un dossier,
+  puis *Gérer*, **Déplacer le dossier...** ou **Copier le dossier...**, choix
+  de la destination et confirmation. Sous-dossiers et profils suivent, et une
+  copie garde les réglages de connexion locaux, les notes, les étiquettes et
+  les snippets rattachés
 - **Espaces de travail** : masquer profils et dossiers par espace (perso /
   travail / projet), chacun avec ses propres favoris, son propre ordre entre
   frères, sa propre icône et une couleur contextuelle optionnelle ; sélecteur en

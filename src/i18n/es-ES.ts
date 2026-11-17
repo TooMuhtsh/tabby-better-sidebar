@@ -726,7 +726,7 @@ const es_ES: Record<string, string> = {
     '{name}: arrival not verified — {reason}': '{name}: llegada no verificada — {reason}',
     'The upload of {name} could not start': 'La subida de {name} no pudo iniciarse',
 
-    // sidebarTree / folderTransferModal — accessible folder move/copy
+    // sidebarTree / folderTransferModal: folder move and copy without dragging
     'Move folder...': 'Mover carpeta...',
     'Copy folder...': 'Copiar carpeta...',
     'Move folder': 'Mover carpeta',

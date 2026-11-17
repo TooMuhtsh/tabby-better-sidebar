@@ -4785,6 +4785,8 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
                 throw new Error('Copying a profile did not generate a new id')
             }
             this.copyNote(profile.id, duplicated.id)
+            // Tags follow a copy, as they do a duplicated profile.
+            this.setTagsFor(duplicated.id, this.tagsFor(profile.id))
             if (profile.id) {
                 profileIds.set(profile.id, duplicated.id)
                 this.snippets.copy(profile.id, duplicated.id)

@@ -563,12 +563,6 @@
     a.group-context-menu-item((click)='launchGroupSessions(contextMenuGroup)', href='#')
         .fa.fa-fw.fas.fa-play.me-2
         | {{ 'Launch all sessions' | translate }}
-    a.group-context-menu-item((click)='openFolderTransfer("move")', href='#')
-        .fa.fa-fw.fas.fa-arrow-right.me-2
-        | {{ 'Move folder...' | translate }}
-    a.group-context-menu-item((click)='openFolderTransfer("copy")', href='#')
-        .fa.fa-fw.fas.fa-copy.me-2
-        | {{ 'Copy folder...' | translate }}
     a.group-context-menu-item((click)='openCreateGroupPrompt()', href='#')
         .fa.fa-fw.fas.fa-folder-plus.me-2
         | {{ 'New folder...' | translate }}
@@ -622,6 +616,14 @@
     a.group-context-menu-item((click)='openIconPicker()', href='#')
         .fa.fa-fw.fas.fa-icons.me-2
         | {{ 'Change the icon...' | translate }}
+    //- Move and copy without dragging (PR #21). Here rather than at the top of
+    //- the menu, which the submenus exist to keep short.
+    a.group-context-menu-item((click)='openFolderTransfer("move")', href='#')
+        .fa.fa-fw.fas.fa-arrow-right.me-2
+        | {{ 'Move folder...' | translate }}
+    a.group-context-menu-item((click)='openFolderTransfer("copy")', href='#')
+        .fa.fa-fw.fas.fa-copy.me-2
+        | {{ 'Copy folder...' | translate }}
     a.group-context-menu-item(*ngIf='showNotes', (click)='openNoteModal()', href='#')
         .fa.fa-fw.fas.fa-note-sticky.me-2
         | {{ hasNote(contextMenuGroup.id) ? ('Edit the note...' | translate) : ('Add a note...' | translate) }}
