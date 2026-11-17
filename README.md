@@ -319,6 +319,11 @@ browsable as a small static site.
 - [Tabby](https://github.com/Eugeny/tabby) by Eugeny — the terminal this plugin
   extends; its native profile sidebar is the starting point of this one
   (MIT, see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md))
+- [miller806](https://github.com/miller806/tabby-better-sidebar-miller), for the
+  MIT fork several features were adapted from: lighter event handling, transfer
+  progress and session badge, active sessions at the bottom, hiding the imported
+  ~/.ssh/config folder, compact rows, server tags and SFTP copy and paste.
+  Thank you!
 - [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) — the
   service logo collection (Apache-2.0)
 - [Iconify](https://iconify.design) Material Design Icons and Tabler, and
