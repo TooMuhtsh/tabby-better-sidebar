@@ -11,6 +11,8 @@
         name='folderDestination',
         [(ngModel)]='selectedDestination'
     )
+        //- Shown while nothing is chosen: a move preselects no destination.
+        option(value='', disabled) {{ 'Choose a destination' | translate }}
         option(*ngFor='let destination of destinations', [value]='destination.value') {{ destination.label }}
     p.text-muted.small.mt-3.mb-0(*ngIf='action === "copy"') {{ 'Copies retain saved connection settings and credentials.' | translate }}
 .modal-footer

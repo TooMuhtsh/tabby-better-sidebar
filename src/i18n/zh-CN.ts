@@ -732,6 +732,7 @@ const zh_CN: Record<string, string> = {
     'Copy folder': '复制文件夹',
     'Choose a destination and confirm. All subfolders and profiles are included.': '选择目标位置并确认。操作将包含所有子文件夹和配置。',
     'Destination folder': '目标文件夹',
+    'Choose a destination': '选择目标位置',
     'Top level (no folder)': '顶层（无父文件夹）',
     'Copies retain saved connection settings and credentials.': '复制会保留已保存的连接设置和凭据。',
     'Confirm move': '确认移动',

@@ -733,6 +733,7 @@ const es_ES: Record<string, string> = {
     'Copy folder': 'Copiar carpeta',
     'Choose a destination and confirm. All subfolders and profiles are included.': 'Elige un destino y confirma. Se incluyen todas las subcarpetas y los perfiles.',
     'Destination folder': 'Carpeta de destino',
+    'Choose a destination': 'Elegir un destino',
     'Top level (no folder)': 'Nivel superior (sin carpeta)',
     'Copies retain saved connection settings and credentials.': 'Las copias conservan los ajustes de conexión y las credenciales guardadas.',
     'Confirm move': 'Confirmar traslado',

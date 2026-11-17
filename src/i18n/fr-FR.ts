@@ -762,6 +762,7 @@ const fr_FR: Record<string, string> = {
     'Copy folder': 'Copier le dossier',
     'Choose a destination and confirm. All subfolders and profiles are included.': 'Choisissez une destination et confirmez. Tous les sous-dossiers et profils sont inclus.',
     'Destination folder': 'Dossier de destination',
+    'Choose a destination': 'Choisir une destination',
     'Top level (no folder)': 'Racine (aucun dossier parent)',
     'Copies retain saved connection settings and credentials.': 'Les copies conservent les paramètres de connexion et les identifiants enregistrés.',
     'Confirm move': 'Confirmer le déplacement',

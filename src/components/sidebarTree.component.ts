@@ -736,7 +736,28 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         // Angular and the corrected contextMenuX/Y are picked up by the pass
         // it schedules. No loop: menuPositionDirty is already false and the
         // clamp never sets it back.
-        setTimeout(() => this.clampContextMenuPosition())
+        setTimeout(() => {
+            this.clampContextMenuPosition()
+            this.focusOpenedPopupField()
+        })
+    }
+
+    /** Set by the rename and new folder prompts, read once after they render. */
+    private focusPopupField = false
+
+    /**
+     * Puts the cursor in the field of the popup that just opened, so it can be
+     * typed in and confirmed by Enter without a click. The rename text is
+     * selected, ready to be replaced.
+     */
+    private focusOpenedPopupField (): void {
+        if (!this.focusPopupField) {
+            return
+        }
+        this.focusPopupField = false
+        const field = document.querySelector<HTMLInputElement>('sidebar-plus-tree .create-popup input')
+        field?.focus()
+        field?.select()
     }
 
     /** Keeps whichever context menu/popup is currently open fully within the viewport — a right-click near the bottom/right edge of a tall sidebar would otherwise render partially under the taskbar or off-screen and be unusable. */
@@ -4657,13 +4678,23 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
             return
         }
 
-        const modal = this.ngbModal.open(FolderTransferModalComponent)
-        modal.componentInstance.action = action
-        modal.componentInstance.sourceName = source.name
-        modal.componentInstance.destinations = candidates
-        const preferred = action === 'copy' ? (source.parentGroupId ?? 'root') : candidates[0].value
-        modal.componentInstance.selectedDestination =
-            candidates.some(destination => destination.value === preferred) ? preferred : candidates[0].value
+        // Opened inside the zone: this runs after an await on a Tabby API, so
+        // outside of it the dialog stayed blank until the next mouse move
+        // (piège #41).
+        //
+        // A move preselects nothing, so a reflex Enter cannot send the folder
+        // somewhere. A copy keeps its current parent preselected: the worst a
+        // reflex Enter does there is a copy next to the original.
+        const modal = this.zone.run(() => {
+            const ref = this.ngbModal.open(FolderTransferModalComponent)
+            ref.componentInstance.action = action
+            ref.componentInstance.sourceName = source.name
+            ref.componentInstance.destinations = candidates
+            const preferred = action === 'copy' ? (source.parentGroupId ?? 'root') : ''
+            ref.componentInstance.selectedDestination =
+                candidates.some(destination => destination.value === preferred) ? preferred : ''
+            return ref
+        })
 
         const selectedDestination = await modal.result.catch(() => null) as FolderTransferDestination|null
         if (!selectedDestination) {
@@ -5003,6 +5034,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.renameValue = this.contextMenuProfile?.name ?? this.contextMenuGroup?.name ?? ''
         this.contextMenuMode = 'rename'
         this.menuPositionDirty = true
+        this.focusPopupField = true
     }
 
     async confirmRename (): Promise<void> {
@@ -5031,6 +5063,7 @@ export class SidebarPlusTreeComponent implements OnInit, OnDestroy, AfterViewChe
         this.contextMenuMode = 'createGroup'
         this.newGroupName = ''
         this.menuPositionDirty = true
+        this.focusPopupField = true
     }
 
     async createGroup (): Promise<void> {

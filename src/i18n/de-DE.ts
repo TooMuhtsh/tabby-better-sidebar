@@ -733,6 +733,7 @@ const de_DE: Record<string, string> = {
     'Copy folder': 'Ordner kopieren',
     'Choose a destination and confirm. All subfolders and profiles are included.': 'Ziel auswählen und bestätigen. Alle Unterordner und Profile werden einbezogen.',
     'Destination folder': 'Zielordner',
+    'Choose a destination': 'Ziel auswählen',
     'Top level (no folder)': 'Oberste Ebene (kein Ordner)',
     'Copies retain saved connection settings and credentials.': 'Kopien behalten gespeicherte Verbindungseinstellungen und Zugangsdaten.',
     'Confirm move': 'Verschieben bestätigen',
