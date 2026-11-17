@@ -28,6 +28,10 @@ existing config.
   comes from a palette of eight, picked from the tag's text, and stays
   readable on light and dark themes. Tags follow a duplicated profile, leave
   with a deleted one, and travel in a shared folder.
+- **Added**: move or copy a folder without dragging, from its right click
+  ("Manage", then "Move folder..." or "Copy folder...", #21, thanks to
+  p4535992). Subfolders and profiles follow. A copy gets new ids and keeps
+  the notes, tags, snippets and SFTP favorites.
 - **Added**: notes now travel in a shared folder too, at the "with
   connection details" level only, while notes are switched on.
 - **Added**: the active sessions block can sit at the bottom of the sidebar
